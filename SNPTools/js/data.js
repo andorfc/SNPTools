@@ -27,7 +27,7 @@ const Data = (function () {
     endpoint : 'processForm.php',  // relative to index.html
     vcfDir   : 'vcf/',             // web-served, writable; MUST match processForm.php
     geneEndpoint : 'lookupGeneModel.php',  // gene model -> coordinates
-    structDir : 'js/structures/',  // per-gene structure-<gene>.js files (SNPFold)
+    structDir : 'data/structures/',  // per-gene structure-<gene>.js files (SNPFold)
     domainsDir : 'data/domains/by_chr/',              // per-chromosome Pfam files: <chr>.json (preferred)
     domainsUrl : 'data/domains/domains.by_chr.json',  // combined file (fallback if per-chrom absent)
     domainsGeneUrl : 'data/domains/domains.by_gene.json',  // gene -> canonical protein domains (SNPImpact detail)
