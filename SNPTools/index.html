@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNPTools — SNPVersity 2.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="./css/main.css">
+<style>
+/* ===== MaizeGDB masthead — brand bar above the SNPTools main column ===== */
+.mg-mast{--mg-blue:rgb(8,44,148);--mg-blue-dark:rgb(6,33,110);--mg-blue-tint:rgba(8,44,148,.07);
+  display:flex;align-items:center;gap:18px;padding:15px 26px;
+  background:linear-gradient(180deg,#ffffff,#fbfcff);
+  border-bottom:1px solid var(--line,#e6e9ef);
+  box-shadow:inset 0 4px 0 var(--mg-blue),0 2px 12px rgba(8,44,148,.07);
+  position:relative;z-index:5;flex:0 0 auto}
+.mg-brand{display:inline-flex;align-items:center;text-decoration:none;line-height:0}
+.mg-brand img{height:55px;width:auto;display:block}
+.mg-brand:focus-visible{outline:2px solid var(--mg-blue);outline-offset:3px;border-radius:4px}
+.mg-divider{width:1px;height:45px;background:var(--line,#e6e9ef)}
+.mg-kicker{height:35px;font-size:30px;color:var(--ink,#141922);font-weight:600;letter-spacing:.01em}
+.mg-kicker b{color:var(--mg-blue);font-weight:700}
+.mg-mast .mg-spacer{flex:1}
+.mg-nav{display:flex;align-items:center;gap:6px}
+.mg-help{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  font:600 14.5px/1 var(--body,'Inter',sans-serif);color:#fff;
+  background:var(--mg-blue);border:1px solid var(--mg-blue);border-radius:10px;
+  padding:12px 19px;text-decoration:none;transition:.15s;
+  box-shadow:0 2px 8px rgba(8,44,148,.20)}
+.mg-help:hover{background:var(--mg-blue-dark);border-color:var(--mg-blue-dark);box-shadow:0 4px 14px rgba(8,44,148,.30);transform:translateY(-1px)}
+.mg-help.on{background:var(--mg-blue-dark);border-color:var(--mg-blue-dark)}
+.mg-help svg{width:18px;height:18px}
+.mg-help:focus-visible{outline:2px solid var(--mg-blue);outline-offset:2px}
+@media (max-width:640px){
+  .mg-mast{padding:12px 16px;gap:12px}
+  .mg-brand img{height:38px}
+  .mg-divider,.mg-kicker{display:none}
+  .mg-help{padding:11px 14px}
+  .mg-help .mg-lbl{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ LEFT RAIL ============ -->
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 3c3 4 9 4 12 9M6 12c3 4 9 4 12 9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="3" r="1.6" fill="#fff"/><circle cx="18" cy="21" r="1.6" fill="#fff"/></svg>
+      </div>
+      <div>
+        <div class="name">SNP<b>Tools</b></div>
+        <div class="tag">Germplasm · Genomics · Traits</div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="foot">Developed by MaizeGDB <br> Funed by USDA-ARS</div>
+  </aside>
+  <div class="scrim" id="scrim" onclick="toggleRail(false)"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <!-- ======= MAIZEGDB MASTHEAD ======= -->
+    <div class="mg-mast">
+      <a class="mg-brand" href="https://maizegdb.org" target="_blank" rel="noopener"
+         aria-label="MaizeGDB — Maize Genetics and Genomics Database (opens in a new tab)">
+        <img src="./images/maizegdb_logo.png" alt="MaizeGDB — Maize Genetics and Genomics Database">
+      </a>
+      <div class="mg-divider"></div>
+      <div class="mg-kicker">SNP<b>Tools</b></div>
+      <div class="mg-spacer"></div>
+      <nav class="mg-nav">
+        <a class="mg-help" href="#help" onclick="openHelp();return false;" aria-label="Help and FAQ">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.4a2.5 2.5 0 114 2c-.9.7-1.5 1.2-1.5 2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/></svg>
+          <span class="mg-lbl">Help &amp; FAQ</span>
+        </a>
+      </nav>
+    </div>
+
+    <header class="topbar">
+      <button class="btn ghost railtoggle" onclick="toggleRail(true)" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="crumb">
+        <b>SNPTools</b>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="crumbTool"><b>SNPVersity</b></span>
+      </div>
+      <div class="spacer"></div>
+      <div class="send-wrap">
+        <button class="btn" id="sendBtn" onclick="toggleMenu()">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h13m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Send selection to…
+        </button>
+        <div class="menu" id="sendMenu">
+          <div class="mh">Move this set into another tool</div>
+          <div class="mi" onclick="go('snptrait')"><span data-ico="leaf"></span> SNPTrait — link traits</div>
+          <div class="mi" onclick="sendToImpact()"><span data-ico="star"></span> SNPImpact — rank variants</div>
+          <div class="mi" onclick="sendToCompare()"><span data-ico="compare"></span> SNPCompare — compare sets</div>
+          <div class="mi" onclick="sendToTree()"><span data-ico="tree"></span> SNPTree — phylogeny</div>
+          <div class="mi" onclick="sendToMatrix()"><span data-ico="grid"></span> SNPMatrix — distance matrix</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="scroll">
+      <div class="page" id="page"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tt" id="tt"></div>
+
+<script src="./js/core.js"></script>
+<script src="./js/accessions.catalog.js"></script>
+<script src="./js/data.js"></script>
+<script src="./js/structure-Zm00001eb378140.js"></script>
+<script src="./js/snpversity.js"></script>
+<script src="./js/snpimpact.js"></script>
+<script src="./js/snpfold.js"></script>
+<script src="./js/snptree.js"></script>
+<script src="./js/snpmatrix.js"></script>
+<script src="./js/snpcompare.js"></script>
+<script src="./js/snpfunction.js"></script>
+<script src="./js/snphelp.js"></script>
+</body>
+</html>
