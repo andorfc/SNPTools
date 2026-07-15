@@ -145,7 +145,6 @@ annotations, and B73 v5 coordinates, and selections flow freely between them.
 | **SNPMatrix** | Live | Computes the pairwise IBS distance matrix from the in-memory genotype matrix and renders a heatmap with clustered ordering, %-identity view, and bioproject color bars. Downloads: CSV distance matrix, PHYLIP, PNG, SVG. |
 | **SNPTrait** | In development | Will connect variation to phenotype and trait records from the National Germplasm collection; filter 20,000+ accessions by trait/metadata, then hand a set to the genomic tools. |
 | **SNPImpute** | In development | Pan-genome–guided imputation to fill missing genotypes and predict function across sequencing depths. |
-| **SNPDensity** | In development | SNP/INDEL density, burden, and distribution across genes and regions. |
 | **SNPGermplasm** | In development | Genotype-driven collection management: redundancy, uniqueness, and priority materials. |
 
 <!-- TODO: confirm the intended public status of SNPImpute / SNPDensity / SNPGermplasm /
