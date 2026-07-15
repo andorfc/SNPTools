@@ -28,10 +28,10 @@ const ICONS = {
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
   {label:'Compare & Relate', tools:['snpcompare','snptree','snpmatrix']},
-  {label:'Impute & Predict', tools:['snpimpute','snpfold']},
-  {label:'Collection', tools:['snpgermplasm']},
+  //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
+  //{label:'Collection', tools:['snpgermplasm']},
 ];
 const TOOLS = {
   snpversity:{name:'SNPVersity', icon:'dna', color:'#2563eb', cat:'Visualization & Search',
@@ -108,7 +108,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpversity:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new'}[id]||'soon';
+        const _bl={snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">

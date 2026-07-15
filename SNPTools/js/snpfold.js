@@ -17,7 +17,7 @@
   const W = 1000;   // svg user-units width (scales to container)
 
   const FD = {
-    gene: 'Zm00001eb378140',
+    gene: 'Zm00001eb406050',
     struct: null, pdb: null, variants: [],
     selId: null,
     colorMode: 'plddt',     // plddt | domain | impact
@@ -100,7 +100,8 @@
       ] : []),
     ];
     if (!scores.some(([, value]) => value != null)) return 'n/a';
-    return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
+    //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
+    return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join('<br>');
   }
 
   function escFold(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -229,7 +230,7 @@
   function searchBar(){
     return `<div class="card pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gene model</span>
-      <input id="foldGeneInput" value="${FD.gene||''}" placeholder="e.g. Zm00001eb378140" spellcheck="false"
+      <input id="foldGeneInput" value="${FD.gene||''}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
         style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
         onkeydown="if(event.key==='Enter')FOLD.loadGene()">
       <button class="btn" onclick="FOLD.loadGene()">Load structure</button>
