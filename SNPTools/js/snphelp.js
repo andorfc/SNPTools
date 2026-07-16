@@ -86,6 +86,162 @@ const SNPHelp = (function () {
     ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection.'],
   ];
 
+
+  /* ---- complete definitions by tool ----
+   * Keep table-header wording identical to the live tools so users can
+   * search this page for the label they see on screen.
+   */
+  const DEFINITIONS = [
+    { tool:'Shared terms', color:'#64748b', items:[
+      ['Accession', 'A named maize line, sample, or sequencing run represented by one genotype column.'],
+      ['Allele', 'One observed DNA state at a genomic position. REF is the B73 v5 reference allele; ALT is an alternate allele.'],
+      ['Variant', 'A genomic position where at least one accession differs from the B73 v5 reference.'],
+      ['SNP', 'Single-nucleotide polymorphism: a one-base substitution.'],
+      ['INDEL', 'Insertion or deletion relative to the reference sequence.'],
+      ['Gene model', 'The B73 v5 identifier and annotated exon, intron, CDS, and transcript structure assigned to a gene.'],
+      ['Consequence / Effect', 'The predicted molecular result of a variant, such as synonymous, missense, splice-site, frameshift, stop gained, or intronic.'],
+      ['Impact', 'A broad severity class assigned from the consequence: HIGH, MODERATE, LOW, or MODIFIER.'],
+      ['Priority', 'The SNPTools ranking tier (TOP, HIGH, MODERATE, or LOW) produced by combining consequence, model scores, and domain context.'],
+      ['Domain', 'A Pfam-annotated protein domain overlapping the affected residue; — means no loaded domain hit.'],
+      ['Het', 'Heterozygous: the accession carries one reference and one alternate allele, usually displayed as 0/1 or 1/0.'],
+      ['Hom', 'Alternate homozygous: the accession carries two alternate alleles, displayed as 1/1.'],
+      ['Missing / ./.', 'No usable genotype call. Missing calls are excluded from pairwise similarity calculations.'],
+      ['AF', 'Alternate-allele frequency: the frequency of the ALT allele among called chromosomes in the analyzed panel.'],
+      ['MAF', 'Minor-allele frequency: the frequency of the less common allele, constrained to 0–0.5.'],
+      ['Carrier', 'An accession with at least one copy of the alternate allele.'],
+      ['Co-called sites', 'Sites where both accessions in a pair have non-missing genotype calls.'],
+      ['B73 RefGen v5', 'The maize reference assembly used for coordinates, REF alleles, gene models, and annotations throughout SNPTools.'],
+    ]},
+    { tool:'SNPVersity', color:'#2563eb', items:[
+      ['CHR', 'Reference chromosome containing the variant.'],
+      ['POS', 'One-based genomic coordinate on B73 v5.'],
+      ['REF', 'Reference allele in B73 v5.'],
+      ['ALT', 'Alternate allele represented by the row.'],
+      ['Gene model', 'B73 v5 gene model overlapping or associated with the variant.'],
+      ['Effect', 'Predicted variant consequence from the annotation source.'],
+      ['Impact', 'Predicted severity category: HIGH, MODERATE, LOW, or MODIFIER.'],
+      ['Domain', 'Pfam protein domain overlapping the affected coding residue, when available.'],
+      ['MQ', 'Mapping quality: a phred-scaled measure of confidence that reads were aligned to the correct genomic location; higher is better.'],
+      ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
+      ['maxR²', 'Maximum linkage-disequilibrium r² used by the dataset filter or imputation-quality workflow; values closer to 1 indicate stronger correlation.'],
+      ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
+      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores. PlantCAD2 is available for MaizeGDB 2026 datasets. More extreme disruptive scores are prioritized according to the score convention used by the data pipeline.'],
+      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions. ESM2 and ESM3 are available for MaizeGDB 2026 datasets.'],
+      ['Accession genotype columns', 'Each accession column shows its genotype at the site: 0/0 reference homozygous, 0/1 heterozygous, 1/1 alternate homozygous, or ./. missing.'],
+      ['Dataset', 'A defined variant collection with its own accession panel, filters, included variant types, and score columns.'],
+      ['Sites', 'Number of variant positions in the complete dataset, not necessarily the number returned by the current query.'],
+      ['Imputed', 'Whether missing genotypes were statistically inferred in that dataset.'],
+    ]},
+    { tool:'SNPImpact', color:'#7c3aed', items:[
+      ['Gene', 'Gene model associated with the candidate variant.'],
+      ['Variant', 'Genomic change, generally shown as position and REF→ALT alleles.'],
+      ['Consequence', 'Specific predicted molecular consequence of the change.'],
+      ['Domain', 'Pfam domain containing the affected amino acid, when present.'],
+      ['PlantCAD1 / PlantCAD2', 'DNA language-model scores used to estimate regulatory or sequence disruption.'],
+      ['ESM / ESM2 / ESM3', 'Protein language-model scores used to estimate the effect of an amino-acid substitution.'],
+      ['Priority', 'Integrated candidate tier. TOP is the strongest prioritization, followed by HIGH, MODERATE, and LOW.'],
+      ['Shortlist / flag', 'A user-selected marker for retaining a candidate variant for later review or export.'],
+      ['Gene-model diagram', 'A compact display of exons, introns, coding sequence, strand, and the variant position.'],
+      ['Exon', 'A transcript segment retained in the mature RNA; coding portions contribute to the protein sequence.'],
+      ['Intron', 'A transcribed segment removed during RNA splicing.'],
+      ['CDS', 'Coding sequence: the portion of exons translated into protein.'],
+      ['Imputation r²', 'Estimated squared correlation between imputed and true genotypes; values nearer 1 indicate greater confidence.'],
+      ['MQ', 'Mapping quality for the variant site.'],
+      ['MAF', 'Minor-allele frequency for the candidate variant.'],
+    ]},
+    { tool:'SNPFunction', color:'#2563eb', items:[
+      ['Non-syn : syn', 'The number or ratio of nonsynonymous coding variants to synonymous coding variants. A higher value indicates more amino-acid-changing variation relative to silent variation; it is descriptive and is not by itself a formal dN/dS estimate.'],
+      ['Exon : intron', 'The number or ratio of variants in annotated exons to variants in introns of the gene model. Infinity (∞) means exon variants were observed but no intron variants were counted.'],
+      ['Domain-disrupting', 'Coding variants that alter an amino acid located inside an annotated Pfam domain.'],
+      ['Knockout alleles', 'Alleles predicted to strongly disrupt gene function, such as frameshift, stop-gained, essential splice, or other loss-of-function changes.'],
+      ['Mean PlantCAD1 / Mean PlantCAD2', 'Average DNA language-model score across the gene variants included in the burden summary.'],
+      ['Mean ESM / Mean ESM2 / Mean ESM3', 'Average protein language-model score across scored amino-acid-changing variants in the gene.'],
+      ['Allele', 'The specific genomic REF→ALT change represented by a damaging-allele row.'],
+      ['Consequence', 'Predicted molecular effect of that allele.'],
+      ['Domain', 'Pfam domain overlapping the affected residue.'],
+      ['PlantCAD1 / PlantCAD2', 'DNA language-model score for the allele.'],
+      ['ESM / ESM2 / ESM3', 'Protein language-model score for the resulting amino-acid change.'],
+      ['Priority', 'Integrated SNPTools evidence tier for the allele.'],
+      ['Het', 'Number of accessions carrying the allele heterozygously.'],
+      ['Hom', 'Number of accessions carrying the allele as alternate homozygous.'],
+      ['AF', 'Alternate-allele frequency across the whole analyzed panel.'],
+      ['Variant burden', 'The count and composition of variants assigned to the gene across the full dataset panel.'],
+      ['Damaging allele', 'An allele selected because its consequence and/or prediction scores indicate a potentially important functional effect.'],
+    ]},
+    { tool:'SNPCompare', color:'#0e7490', items:[
+      ['#', 'Current rank after sorting and filtering.'],
+      ['Project', 'BioProject or dataset project associated with the accession.'],
+      ['SRA ID', 'Sequence Read Archive run identifier associated with the accession.'],
+      ['Accession name', 'Human-readable line or germplasm name.'],
+      ['Global sim', 'Genome-wide identity-by-state similarity between the focal accession and the comparison accession: matching genotypes divided by co-called sites.'],
+      ['Local sim', 'Identity-by-state similarity calculated only from variants in the current SNPVersity region.'],
+      ['Δ (local−global)', 'Local similarity minus global similarity. Positive values indicate the pair is more similar in the selected region than genome-wide; negative values indicate less similarity in the region.'],
+      ['Global miss%', 'Percentage of genome-wide comparison sites where at least one accession lacks a genotype call.'],
+      ['Local miss%', 'Percentage of sites in the selected region where at least one accession lacks a genotype call.'],
+      ['Similarity', 'Fraction of co-called sites at which the two accessions have the same genotype.'],
+      ['Missing%', 'Percentage of evaluated sites where either member of the pair is missing a genotype.'],
+      ['Co-called sites', 'Number of sites in the local region with genotype calls for both accessions.'],
+      ['Focal accession', 'The accession against which every other accession is ranked.'],
+      ['Global', 'Precomputed genome-wide comparison scope.'],
+      ['This region / Local', 'Comparison calculated from the current SNPVersity genotype matrix.'],
+      ['Both', 'Side-by-side display of global and local values plus their difference.'],
+    ]},
+    { tool:'SNPTree', color:'#15803d', items:[
+      ['IBS allele distance', 'Mean pairwise allele-dosage difference across co-called sites. Identical genotypes contribute 0, opposite homozygotes 1, and a homozygote-versus-heterozygote comparison 0.5.'],
+      ['Informative sites', 'Variant sites that contain more than one observed genotype state among the selected accessions.'],
+      ['Shared sites', 'Sites with non-missing calls for both accessions in a pair.'],
+      ['UPGMA', 'Unweighted Pair Group Method with Arithmetic Mean, an agglomerative clustering method that assumes an ultrametric tree.'],
+      ['Neighbour-Joining (NJ)', 'A distance-based tree-building method that does not require equal evolutionary rates among branches.'],
+      ['Branch length', 'Distance assigned to a tree edge from the pairwise IBS distance calculation.'],
+      ['Newick', 'Compact parenthetical text format for tree topology and branch lengths.'],
+      ['MEGA pairwise format', 'Distance-matrix text format that can be imported by MEGA software.'],
+      ['PHYLIP', 'Fixed-layout distance-matrix format used by many phylogenetic programs.'],
+      ['Local phylogeny', 'A distance tree describing similarity in the selected genomic interval; it should not automatically be interpreted as a whole-genome species tree.'],
+    ]},
+    { tool:'SNPMatrix', color:'#b45309', items:[
+      ['IBS distance', 'Pairwise mean allele-dosage difference across co-called sites; 0 means identical across compared calls and larger values indicate more difference.'],
+      ['% identity', 'Similarity view derived from the distance matrix and displayed as a percentage.'],
+      ['Shared-site count', 'Number of non-missing sites used for a particular pairwise matrix cell.'],
+      ['Input order', 'Rows and columns remain in the same order as the accession selection.'],
+      ['Clustered order', 'Rows and columns are reordered by UPGMA clustering to place similar accessions near one another.'],
+      ['Bioproject bars', 'Color strips indicating the project or BioProject associated with each accession.'],
+      ['Heatmap cell', 'The pairwise distance or identity value for the row accession versus the column accession.'],
+      ['CSV distance matrix', 'Comma-separated pairwise IBS distance table.'],
+      ['PNG / SVG', 'Raster and scalable-vector image exports of the displayed heatmap.'],
+      ['PHYLIP', 'Distance-matrix export for compatible phylogenetic software.'],
+    ]},
+    { tool:'SNPFold', color:'#be185d', items:[
+      ['Variant', 'Coding DNA change mapped to a protein residue.'],
+      ['Consequence', 'Predicted molecular effect of the coding change.'],
+      ['Residue', 'One-based amino-acid position in the displayed protein sequence.'],
+      ['Domain', 'Pfam domain overlapping the residue.'],
+      ['Local pLDDT', 'AlphaFold confidence score near the affected residue, from 0 to 100. Higher values indicate greater confidence in the local predicted structure.'],
+      ['Structure', 'DSSP-style secondary-structure assignment at the residue: α-helix, β-strand, or loop/coil.'],
+      ['PlantCAD / PlantCAD2', 'DNA language-model scores for the underlying nucleotide variant.'],
+      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for the amino-acid substitution.'],
+      ['Priority', 'Integrated evidence tier for the structure-mapped variant.'],
+      ['Carriers', 'Number of accessions carrying the alternate allele; expanded details separate heterozygous and homozygous carriers.'],
+      ['pLDDT', 'Predicted Local Distance Difference Test score from AlphaFold. Common interpretation: ≥90 very high confidence, 70–89 confident, 50–69 low, and <50 very low.'],
+      ['Secondary structure', 'Local protein conformation classified as helix, strand, or coil/loop, generated from the structure model.'],
+      ['ΔΔG', 'Predicted change in protein folding free energy after mutation. Positive and negative interpretations depend on the scoring convention used by the source model; magnitude reflects predicted structural effect.'],
+      ['Protein browser', 'Linear alignment of protein residues, domains, secondary structure, confidence, and variant markers.'],
+      ['3D viewer color: confidence', 'Colors residues by pLDDT confidence band.'],
+      ['3D viewer color: domain', 'Colors residues by Pfam-domain membership.'],
+      ['3D viewer color: impact', 'Colors or highlights variants according to predicted functional severity.'],
+    ]},
+    { tool:'Dataset table', color:'#475569', items:[
+      ['Dataset', 'Named variant collection and filtering configuration used for a query.'],
+      ['Reference', 'Genome assembly to which reads and variants were aligned.'],
+      ['Accessions', 'Number of samples or accession columns available in the dataset.'],
+      ['Sites', 'Approximate or reported number of variant sites in the complete dataset.'],
+      ['Filters', 'Quality and inclusion rules used to construct the dataset.'],
+      ['Het', 'Whether heterozygous genotype calls are retained.'],
+      ['INDELs', 'Whether insertion and deletion variants are included.'],
+      ['Imputed', 'Whether missing genotype calls have been statistically inferred.'],
+    ]},
+  ];
+
+
   /* ---- FAQ ---- */
   const FAQ = [
     ['Where does the data come from?',
@@ -134,6 +290,126 @@ const SNPHelp = (function () {
       <p class="hp-fine">Accessions are grouped into families (MaizeGDB 2026, MaizeGDB 2024, Schnable 2023, NAM 2021). Only the <b>MaizeGDB 2026</b> family carries the second-generation language-model scores (PlantCAD2, ESM2, ESM3); the others provide a single DNA score and a single protein score.</p>`;
   }
 
+  /* ---- in-depth MaizeGDB 2026 dataset description ---- */
+  const MGDB2026_PROJECTS = [
+    [539,'PRJCA009749','WGS resequencing of 1,604 maize inbred lines','10.1038/s41477-022-01190-2'],
+    [521,'PRJNA531553','Deep DNA resequencing of the association mapping panel','10.1038/s41588-019-0427-6'],
+    [453,'PRJNA609577','Zea mays genome sequencing','10.1038/s41588-020-0671-9'],
+    [340,'PRJNA783885','Maize landrace whole-genome resequencing','10.1038/s41467-022-32180-9'],
+    [232,'PRJEB56320','Maize Wisconsin Diversity Panel resequencing','10.1111/tpj.16123'],
+    [183,'PRJEB56320','Zea mays sequences (teosinte)','10.1038/s41588-022-01184-y'],
+    [77,'PRJNA641489','Maize Nested Association Mapping (NAM)','10.1126/science.abg5289'],
+    [76,'PRJEB31061','Maize Haplotype Map version 3','10.1093/gigascience/gix134'],
+    [67,'PRJNA399729','Maize landraces from six highland and lowland populations','10.1093/gigascience/gix134'],
+    [67,'PRJNA300309','European maize diversity','10.1371/journal.pgen.1006666'],
+    [57,'PRJNA783885','Genetic diversity of Zea (teosinte)','10.1038/ng.2313'],
+    [49,'PRJNA389800','Whole-genome sequencing of the maize 282 panel','10.1093/gigascience/gix134'],
+    [33,'PRJNA260788','European maize genomes','10.1038/s41588-020-0671-9'],
+    [7,'PRJNA479960','South American maize genome sequencing','10.1126/science.aav0207'],
+    [4,'PRJEB32225','Zm-B73-REFERENCE-NAM-5.0','10.1126/science.abg5289'],
+    [3,'PRJEB56265','Resequencing of three Polish maize inbred lines','10.1111/tpj.16123'],
+    [1,'PRJEB61159','Coastal preceramic maize from Paredones, Peru','10.7554/eLife.83149'],
+    [1,'PRJNA352392','A 5,310-year-old maize cob from the Tehuacan Valley, Mexico','10.1016/j.cub.2016.09.036']
+  ];
+
+  const MGDB2026_EFFECTS = [
+    ['Intergenic',274890726,90284097],
+    ["5' UTR",836712,398940],
+    ['Synonymous',1409639,670709],
+    ['Missense',1767459,747451],
+    ['Stop-related',84653,26405],
+    ['Frameshift',222401,71174],
+    ['Intron',12043697,5916121],
+    ['Non-coding',6777,3133],
+    ["3' UTR",1231422,640830],
+    ['Other',120889,46629],
+    ['Total',290043644,97572347]
+  ];
+
+  const MGDB2026_CHR = [
+    ['Chr1',308452471,51382911,41928591,14262099],
+    ['Chr2',243675191,40457547,32643386,11008991],
+    ['Chr3',238017767,39598148,32693292,10861052],
+    ['Chr4',250330460,42142813,35830675,12496251],
+    ['Chr5',226353449,36679188,30747268,10298954],
+    ['Chr6',181357234,28914586,23742034,8001535],
+    ['Chr7',185808916,30391975,24862777,8231456],
+    ['Chr8',182411202,29883638,24964435,8054636],
+    ['Chr9',163004744,26922259,21747152,7278487],
+    ['Chr10',152435371,25319421,20883764,7078616],
+    ['Total',2131846805,351692486,290043374,97572077]
+  ];
+
+  function fmtInt(n){ return Number(n).toLocaleString('en-US'); }
+
+  function maize2026Details(){
+    const projects = MGDB2026_PROJECTS.map(r=>`<tr>
+      <td class="hp-num">${fmtInt(r[0])}</td>
+      <td class="hp-mono">${esc(r[1])}</td>
+      <td>${esc(r[2])}</td>
+      <td class="hp-mono">${esc(r[3])}</td>
+    </tr>`).join('');
+
+    const effects = MGDB2026_EFFECTS.map((r,i)=>`<tr${i===MGDB2026_EFFECTS.length-1?' class="hp-total"':''}>
+      <td>${esc(r[0])}</td><td class="hp-num">${fmtInt(r[1])}</td><td class="hp-num">${fmtInt(r[2])}</td>
+    </tr>`).join('');
+
+    const chr = MGDB2026_CHR.map((r,i)=>`<tr${i===MGDB2026_CHR.length-1?' class="hp-total"':''}>
+      <td class="hp-mono">${esc(r[0])}</td><td class="hp-num">${fmtInt(r[1])}</td>
+      <td class="hp-num">${fmtInt(r[2])}</td><td class="hp-num">${fmtInt(r[3])}</td><td class="hp-num">${fmtInt(r[4])}</td>
+    </tr>`).join('');
+
+    return `
+        <br>
+      <details class="hp-data-detail" open>
+        <summary><b>MaizeGDB 2026 dataset: composition, processing, and scale</b><span class="hp-chev">${ico('caret')}</span></summary>
+        <div class="hp-data-body">
+          <p>The MaizeGDB 2026 resource combines public whole-genome resequencing from <b>2,710 maize accessions</b>, including diverse inbred lines, landraces, teosintes, association panels, NAM founders and related materials, and several historically important samples. All reads were processed through a standardized variant-calling workflow against <b>B73 RefGen_v5</b>, so coordinates, reference alleles, gene models, and downstream annotations use one common reference system.</p>
+
+          <h3>How the two MaizeGDB 2026 datasets differ</h3>
+          <div class="hp-comparegrid">
+            <div class="hp-dcard"><b>High Coverage</b><p>Contains approximately 290 million loci that passed mapping-quality and genotypic-coverage requirements. This version retains broader variation and is useful when sensitivity and variant discovery are the main goals.</p></div>
+            <div class="hp-dcard"><b>High Quality</b><p>Contains approximately 98 million loci. It applies the same mapping-quality and coverage filters plus an additional high-confidence linkage-disequilibrium criterion. This more conservative set is useful when specificity and confidence are priorities.</p></div>
+          </div>
+          <p class="hp-fine">“High Coverage” describes the broader filtered set; “High Quality” is the stricter subset. A locus count refers to a genomic variant position in the complete dataset, not the number of rows returned for a particular region or accession selection.</p>
+
+          <h3>What is stored and displayed</h3>
+          <p>The underlying resource is maintained in VCF and HDF5 forms. SNPVersity sends the selected dataset, genomic interval, and accession list to the server, which extracts the requested slice and returns a VCF. SNPTools then reuses that same genotype matrix in SNPImpact, SNPCompare, SNPTree, SNPMatrix, and related pages. Each site may include REF and ALT alleles, accession genotypes, predicted molecular consequence, gene association, mapping quality, genotype completeness, linkage-disequilibrium support, allele frequency, Pfam domain context, and DNA- or protein-language-model scores when available.</p>
+
+          <h3>Source projects</h3>
+          <p>The panel was assembled from multiple public projects rather than one experiment. This increases biological and geographic diversity, but it also means sequencing depth, library preparation, and project design can differ among accessions. The standardized alignment, calling, and filtering workflow reduces—though does not completely remove—these study-to-study differences.</p>
+          <div class="hp-tablewrap"><table class="hp-table hp-compact">
+            <thead><tr><th>Accessions</th><th>BioProject</th><th>Project or population</th><th>DOI</th></tr></thead>
+            <tbody>${projects}</tbody>
+          </table></div>
+
+          <h3>Variant-effect composition</h3>
+          <p>Most loci are intergenic because much of the maize genome lies outside annotated coding regions. Coding and gene-associated categories are much smaller but are especially important for SNPImpact, SNPFunction, and SNPFold. “Stop-related” summarizes variants annotated in the source statistics as stop effects; the exact transcript-level consequence shown in a result may be more specific.</p>
+          <div class="hp-tablewrap"><table class="hp-table hp-compact">
+            <thead><tr><th>Effect category</th><th>High Coverage</th><th>High Quality</th></tr></thead>
+            <tbody>${effects}</tbody>
+          </table></div>
+
+          <h3>Distribution by chromosome</h3>
+          <p>Variant counts broadly track chromosome length, although local diversity, repetitive sequence, mappability, selection, and the composition of the accession panel also affect density. “Raw” is the pre-filter total reported in the source summary; the two filtered columns show the successive retained sets.</p>
+          <div class="hp-tablewrap"><table class="hp-table hp-compact">
+            <thead><tr><th>Chromosome</th><th>Length (bp)</th><th>Raw variants</th><th>High Coverage</th><th>High Quality</th></tr></thead>
+            <tbody>${chr}</tbody>
+          </table></div>
+
+          <h3>Important interpretation notes</h3>
+          <ul class="hp-notes">
+            <li><b>Reference-relative calls:</b> REF and ALT are defined relative to B73 v5; “alternate” does not mean rare, harmful, or derived.</li>
+            <li><b>Accessions are not all independent:</b> some projects include replicates, related lines, founders, or multiple runs. Project and accession metadata should be considered when interpreting similarity.</li>
+            <li><b>Missingness varies:</b> genotype completeness can differ by site and accession. Pairwise tools exclude sites where either member lacks a usable call.</li>
+            <li><b>Consequence is transcript dependent:</b> one genomic variant may receive several annotations when it overlaps multiple transcripts; interfaces generally display the most severe or most relevant consequence.</li>
+            <li><b>Model scores are predictions:</b> PlantCAD and ESM scores prioritize candidates but do not establish biological causality. Use them together with frequency, consequence, domain, structure, phenotype, and experimental evidence.</li>
+            <li><b>Counts can differ slightly among summaries:</b> totals generated at different pipeline stages or from differently normalized records may vary by a small number of sites. The live dataset metadata and downloadable files are authoritative for an analysis.</li>
+          </ul>
+        </div>
+      </details>`;
+  }
+
   function statusPill(s){
     const live = s===LIVE;
     return `<span class="hp-status ${live?'on':'off'}">${live?'Live':'In development'}</span>`;
@@ -161,6 +437,15 @@ const SNPHelp = (function () {
     </details>`;
   }
 
+
+  function definitionGroup(g){
+    const items = g.items.map(x=>`<div class="hp-def"><dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd></div>`).join('');
+    return `<details class="hp-defgroup">
+      <summary><span class="hp-defdot" style="background:${g.color}"></span><b>${esc(g.tool)}</b><span class="hp-count">${g.items.length} definitions</span><span class="hp-chev">${ico('caret')}</span></summary>
+      <dl class="hp-deflist">${items}</dl>
+    </details>`;
+  }
+
   function render(page){
     injectCSS();
     page = page || document.getElementById('page');
@@ -169,6 +454,7 @@ const SNPHelp = (function () {
 
     const toolCards = PAGES.map(pageCard).join('');
     const gloss = GLOSSARY.map(g=>`<div class="hp-gl"><dt>${esc(g[0])}</dt><dd>${esc(g[1])}</dd></div>`).join('');
+    const definitions = DEFINITIONS.map(definitionGroup).join('');
     const faq = FAQ.map(f=>`<details class="hp-faq"><summary>${esc(f[0])}<span class="hp-chev">${ico('caret')}</span></summary><div>${esc(f[1])}</div></details>`).join('');
 
     page.innerHTML = `
@@ -182,7 +468,8 @@ const SNPHelp = (function () {
           <a href="#hp-flow">How it works</a>
           <a href="#hp-tools">The tools</a>
           <a href="#hp-data">Datasets</a>
-          <a href="#hp-gloss">Glossary</a>
+          <a href="#hp-definitions">Definitions</a>
+          <a href="#hp-gloss">Scores &amp; annotations</a>
           <a href="#hp-faq">FAQ</a>
         </div>
       </section>
@@ -215,15 +502,22 @@ const SNPHelp = (function () {
         <p class="hp-lead">Each query runs against one dataset. All are called against the B73 v5 reference; they differ
           in how they were filtered, how many accessions and sites they hold, and which score columns they carry.</p>
         ${datasetTable()}
+        ${maize2026Details()}
+      </section>
+
+      <section id="hp-definitions" class="hp-sec">
+        <div class="hp-h"><span class="hp-n">04</span><h2>Definitions &amp; table columns</h2></div>
+        <p class="hp-lead">Definitions are grouped by tool and use the same labels shown in the interfaces. Expand a group or use your browser's find command to locate a column heading.</p>
+        <div class="hp-defgroups">${definitions}</div>
       </section>
 
       <section id="hp-gloss" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">04</span><h2>Scores &amp; annotations</h2></div>
+        <div class="hp-h"><span class="hp-n">05</span><h2>Scores &amp; annotations</h2></div>
         <dl class="hp-gloss">${gloss}</dl>
       </section>
 
       <section id="hp-faq" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">05</span><h2>Frequently asked</h2></div>
+        <div class="hp-h"><span class="hp-n">06</span><h2>Frequently asked</h2></div>
         <div class="hp-faqs">${faq}</div>
       </section>
 
@@ -334,6 +628,23 @@ const SNPHelp = (function () {
       .hp-chip{display:inline-block;font-size:11px;color:#3a465a;background:#f1f4f9;border:1px solid #e4e9f1;border-radius:6px;padding:2px 7px;margin:2px 2px 0 0;white-space:nowrap}
       .hp-yes{color:#1f8a4c;font-weight:600}
       .hp-no{color:var(--faint,#aab4c4)}
+
+
+      /* complete definitions */
+      .hp-defgroups{display:flex;flex-direction:column;gap:9px}
+      .hp-defgroup{border:1px solid var(--line,#e6e9ef);border-radius:11px;background:#fff;overflow:hidden}
+      .hp-defgroup[open]{border-color:#cdd6e6}
+      .hp-defgroup summary{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;list-style:none}
+      .hp-defgroup summary::-webkit-details-marker{display:none}
+      .hp-defgroup summary b{font-family:var(--disp,'Space Grotesk',sans-serif);font-size:15px;color:var(--ink,#141922)}
+      .hp-defdot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+      .hp-count{font-size:11.5px;color:var(--muted,#5b6b83);margin-left:2px}
+      .hp-defgroup summary .hp-chev{margin-left:auto}
+      .hp-deflist{margin:0;padding:0 15px 8px 35px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 28px}
+      .hp-def{padding:11px 0;border-top:1px solid #eef1f6}
+      .hp-def dt{font-family:var(--disp,'Space Grotesk',sans-serif);font-size:13.5px;font-weight:600;color:var(--ink,#141922);margin-bottom:3px}
+      .hp-def dd{margin:0;font-size:12.8px;line-height:1.55;color:var(--muted,#5b6b83)}
+
 
       /* glossary */
       .hp-gloss{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:2px 26px}
