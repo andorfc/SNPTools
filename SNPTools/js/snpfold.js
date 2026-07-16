@@ -25,6 +25,9 @@
     viewer: null, libState: 'idle',
     dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
+    root: null,          // persistent DOM container — survives navigation to other tools
+    loaded: false,       // a gene's heavy content is (being) rendered into root
+    loadedGene: null,    // which gene that content is for
   };
 
   /* ---------- palettes ---------- */
@@ -187,6 +190,63 @@
     return normalized.includes('maizegdb2026');
   }
 
+  /* ---------- dataset chooser (compact; shares Data.datasets() with SNPVersity) ---------- */
+  function foldDatasets(){
+    try {
+      if (typeof Data !== 'undefined' && typeof Data.datasets === 'function'){
+        const ds = Data.datasets();
+        if (Array.isArray(ds)) return ds;
+      }
+    } catch (e) { /* no dataset catalog available */ }
+    return [];
+  }
+  function datasetId(d){
+    if (d && typeof d === 'object'){
+      if (nonEmpty(d.id))  return d.id;
+      if (nonEmpty(d.key)) return d.key;
+      return datasetText(d);
+    }
+    return d;
+  }
+  function isCurrentDataset(d){
+    const a = String(datasetId(d)), b = String(datasetId(FD.dataset));
+    if (a && a === b) return true;
+    const na = datasetText(d).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const nb = datasetText(FD.dataset).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    return !!na && na === nb;
+  }
+  function datasetLabel(d){
+    const name = (d && nonEmpty(d.name)) ? String(d.name) : datasetText(d);
+    let sub = (d && nonEmpty(d.sub)) ? String(d.sub) : '';
+    if (sub && name.toLowerCase().includes(sub.toLowerCase())) sub = '';
+    return { name: name || 'Dataset', sub };
+  }
+  function datasetCardsHTML(){
+    const list = foldDatasets();
+    if (!list.length) return '';
+    return list.map(d=>{
+      const id  = datasetId(d);
+      const sel = isCurrentDataset(d);
+      const { name, sub } = datasetLabel(d);
+      return `<button type="button" class="fold-ds ${sel?'sel':''}" onclick="FOLD.pickDataset('${escFold(id)}')">
+        <span class="fold-ds-dot"></span>
+        <span class="fold-ds-txt"><span class="fold-ds-name">${escFold(name)}</span>${sub?`<span class="fold-ds-sub">${escFold(sub)}</span>`:''}</span>
+      </button>`;
+    }).join('');
+  }
+  function datasetChooser(){
+    const cards = datasetCardsHTML();
+    if (!cards) return '';   // if the data layer exposes no catalog, show nothing
+    return `<div class="card pad fold-ds-card" style="margin-bottom:16px">
+      <div class="fold-ds-head">Dataset</div>
+      <div class="fold-ds-grid" id="foldDsGrid">${cards}</div>
+    </div>`;
+  }
+  function syncDatasetChooser(){
+    const grid = FD.root && FD.root.querySelector('#foldDsGrid');
+    if (grid) grid.innerHTML = datasetCardsHTML();
+  }
+
   /* ---------- structural context for a residue ---------- */
   function domainAt(resi){
     const ds = FD.struct.domains || [];
@@ -237,24 +297,96 @@
     </div>`;
   }
 
+  /* ---------- persistent container ----------
+     SNPFold's content is expensive to render (structure fetch + 3D viewer), so we
+     build it once into FD.root and re-attach that same node whenever the tool is
+     shown again — instead of rebuilding from scratch. Because we hold a JS reference
+     to FD.root, it survives another tool overwriting #page (it is simply detached,
+     not destroyed), which lets the 3D view stay warm across navigation. */
+  function ensureRoot(page){
+    if (!FD.root){
+      FD.root = document.createElement('div');
+      FD.root.className = 'snpfold-root';
+    }
+    if (FD.root.parentNode !== page){
+      page.innerHTML = '';
+      page.appendChild(FD.root);
+    }
+  }
+
+  /* Entry point called by the suite shell on navigation.
+     - Arriving from another tool (SNPVersity sets S.foldGene) → autoload that gene.
+     - Arriving from the side-panel menu → do NOT autoload; show a landing page the
+       first time, and simply re-show the already-loaded page on later visits. */
   async function render(page){
     page = page || document.getElementById('page');
-    if (typeof S !== 'undefined' && S.foldGene){
-      FD.gene = S.foldGene;
-      S.foldGene = null;
-      FD.selId = null;
-      FD.openCarrier = null;
-    }
-    FD.viewer = null;
+    injectCSS();
+    ensureRoot(page);
 
-    /* FIX: populate FD.dataset before testing whether 2026-only scores apply. */
+    /* keep FD.dataset in sync with the rest of the app (side panel / other tools) */
     const activeDataset = resolveDataset();
     if (activeDataset != null) FD.dataset = activeDataset;
     FD.sec = hasSecondaryScores(FD.dataset);
 
-    injectCSS();
+    const requestedGene = (typeof S !== 'undefined' && S && S.foldGene) ? S.foldGene : null;
 
-    page.innerHTML = searchBar() + `<div class="loading" style="padding:48px;text-align:center">
+    if (requestedGene){
+      /* came from another tool — honor the explicit request and autoload */
+      S.foldGene = null;
+      if (requestedGene !== FD.loadedGene || !FD.loaded){
+        FD.gene = requestedGene;
+        FD.selId = null;
+        FD.openCarrier = null;
+        await loadStructure();
+      } else {
+        /* same gene already loaded — just re-show it */
+        reshowLoaded();
+      }
+      return;
+    }
+
+    /* came from the side-panel menu */
+    if (FD.loaded){
+      reshowLoaded();            // preserve the rendered page, don't reload
+      return;
+    }
+    renderLanding();             // first visit from the menu: no autoload
+  }
+
+  /* re-show the already-rendered content without refetching */
+  function reshowLoaded(){
+    syncDatasetChooser();
+    if (FD.struct && FD.pdb){
+      if (!FD.viewer) buildViewer();           // (re)init if it never got a live DOM
+      else { try { FD.viewer.resize(); FD.viewer.render(); } catch (e){} }
+    }
+    if (typeof attachTT==='function') attachTT();
+  }
+
+  /* Landing shown when the tool is opened from the menu — dataset chooser + gene
+     search, but no structure/variant fetch until the user asks for it. */
+  function renderLanding(){
+    FD.root.innerHTML = datasetChooser() + searchBar() + `
+      <div class="empty-state"><div class="ei">${ICONS.fold}</div>
+        <h3>Structure-aware variant interpretation</h3>
+        <p>Pick a dataset above and a gene model, then press <b>Load structure</b> to map
+        coding variants onto the predicted protein — a linear browser, an interactive 3D
+        model, and per-variant structural context.</p>
+        <div style="margin-top:14px"><button class="btn primary" onclick="FOLD.loadGene()">Load structure for ${escFold(FD.gene)}</button></div>
+      </div>`;
+    if (typeof attachTT==='function') attachTT();
+  }
+
+  /* The heavy path: fetch the model + variants and render the full SNPFold UI into
+     FD.root. Used both for autoload-from-tool and for explicit user loads. */
+  async function loadStructure(){
+    FD.viewer = null;
+    FD.loaded = true;               // commit to the loaded view (keep across navigation)
+    FD.loadedGene = FD.gene;
+
+    const header = datasetChooser() + searchBar();
+
+    FD.root.innerHTML = header + `<div class="loading" style="padding:48px;text-align:center">
       <div class="spinner"></div><div>Loading model for ${FD.gene}…</div></div>`;
     try { await Data.ensureStructure(FD.gene); } catch (e){ /* no file for this gene */ }
 
@@ -262,7 +394,7 @@
     FD.pdb    = Data.pdbFor(FD.gene);
 
     if (!FD.struct){
-      page.innerHTML = searchBar() + `<div class="empty-state"><div class="ei">${ICONS.fold}</div>
+      FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="empty-state"><div class="ei">${ICONS.fold}</div>
         <h3>No predicted model for “${FD.gene}”</h3>
         <p>SNPFold loads a protein model from <span class="c-mono">structure-&lt;gene&gt;.js</span>.
         Search another gene model above, or generate its structure file and drop it in
@@ -276,7 +408,7 @@
       ? (plddtValues.reduce((a,b)=>a+b,0)/plddtValues.length).toFixed(0)
       : '—';
 
-    page.innerHTML = searchBar() + `<div class="loading" style="padding:48px;text-align:center">
+    FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:48px;text-align:center">
       <div class="spinner"></div><div>Loading coding variants for ${s.gene}…</div></div>`;
     try {
       /* Passing the dataset as a second argument is backward-compatible in JavaScript:
@@ -303,7 +435,7 @@
       FD.carriers = null;
     }
 
-    page.innerHTML = searchBar() + `
+    FD.root.innerHTML = datasetChooser() + searchBar() + `
       <div class="sec"><div class="bar"></div><div>
         <div class="n">STRUCTURE-AWARE INTERPRETATION · AlphaFold + PlantCAD/ESM</div>
         <h2>See where variants, domains, and local structure align</h2>
@@ -624,8 +756,22 @@
     reset(){ if(FD.viewer){ FD.viewer.zoomTo(); FD.viewer.render(); } },
     focus(){ focusResidue(true); },
     loadGene(){ const el=document.getElementById('foldGeneInput'); if(!el)return;
-      const g=el.value.trim(); if(!g)return; FD.gene=g; FD.selId=null; FD.openCarrier=null; render(); },
-    setDataset(dataset){ FD.dataset=dataset; FD.sec=hasSecondaryScores(dataset); render(); },
+      const g=el.value.trim(); if(!g)return; FD.gene=g; FD.selId=null; FD.openCarrier=null; loadStructure(); },
+    setDataset(dataset){ FD.dataset=dataset; if(typeof S!=='undefined'&&S)S.dataset=datasetId(dataset); FD.sec=hasSecondaryScores(dataset);
+      if(FD.loaded) loadStructure(); else renderLanding(); },
+    /* compact dataset chooser on this page — select which dataset to use directly */
+    pickDataset(id){
+      const ds = foldDatasets().find(d=>String(datasetId(d))===String(id));
+      const val = ds ? datasetId(ds) : id;
+      if (isCurrentDataset(ds || val)) { syncDatasetChooser(); return; }   // no change
+      FD.dataset = val;
+      if (typeof S !== 'undefined' && S) S.dataset = val;   // keep the whole app in sync
+      FD.sec = hasSecondaryScores(val);
+      /* Selecting a dataset only records the choice + moves the highlight. The page
+         is NOT reloaded here — the new dataset is applied when the user presses
+         "Load structure" (FOLD.loadGene), which reads the current FD.dataset. */
+      syncDatasetChooser();
+    },
   };
 
   /* carrier-chip + expandable-row styles — shared look with SNPFunction */
@@ -645,7 +791,20 @@
       .fn-k{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
       .carrier{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
       .carrier.hom{background:#fdecea;border-color:#f0c4bd;color:#8f281c}
-      .carrier.het{background:#eef4ff;border-color:#cfe0ff;color:#274b8f}`;
+      .carrier.het{background:#eef4ff;border-color:#cfe0ff;color:#274b8f}
+      /* compact dataset chooser (shares Data.datasets() with SNPVersity) */
+      .fold-ds-card{padding:12px 14px}
+      .fold-ds-head{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px}
+      .fold-ds-grid{display:flex;flex-wrap:wrap;gap:10px}
+      .fold-ds{display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;background:#fff;
+        border:1px solid var(--line);border-radius:10px;padding:9px 13px;min-width:210px;transition:border-color .12s,box-shadow .12s}
+      .fold-ds:hover{border-color:#c3cee0}
+      .fold-ds.sel{border-color:#9db4dd;box-shadow:0 0 0 2px rgba(47,106,208,.12);background:#f7faff}
+      .fold-ds-dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;border:2px solid #c3cee0;background:#fff}
+      .fold-ds.sel .fold-ds-dot{border-color:#2f6ad0;background:#2f6ad0;box-shadow:inset 0 0 0 2px #fff}
+      .fold-ds-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+      .fold-ds-name{font-weight:600;font-size:13px;color:var(--ink)}
+      .fold-ds-sub{font-size:11.5px;color:var(--muted)}`;
     document.head.appendChild(s);
   }
 
