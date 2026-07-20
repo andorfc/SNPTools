@@ -1,0 +1,107 @@
+/* =====================================================================
+ *  paneffect-native.css — PanEffect styles scoped for the SNPTools panel.
+ *  Everything is scoped under .pe-native-root so PanEffect's generic class
+ *  names (.content, .heatmap, .geneModel, …) can't collide with the shell.
+ *  EXCEPTION: .tooltip / .tooltipdomain are appended to <body> by the
+ *  zoomed views, so those rules stay global.
+ * ===================================================================== */
+
+.pe-native-root { position: relative; overflow-x: auto; font-family: Arial, sans-serif; color: #141922; }
+
+/* view panels */
+.pe-native-root .content { display: none; padding: 10px 0 24px; }
+.pe-native-root .content.active { display: block; }
+
+/* gene / protein summary */
+.pe-native-root .gene-model-container { display: flex; padding: 8px 0; max-width: 1400px; justify-content: space-between; }
+.pe-native-root .column { flex: 1; padding: 0 20px 0 0; }
+.pe-native-root .gene-model-title { font-weight: bold; font-size: 18px; margin: 14px 0 8px; }
+.pe-native-root .gene-model-features { list-style-type: square; padding-left: 20px; }
+.pe-native-root .gene-model-features li { margin-bottom: 5px; }
+.pe-native-root .text-content { font-size: 15px; line-height: 1.5; }
+.pe-native-root .spaced-list li { margin-bottom: 10px; list-style-type: square; padding-left: 5px; }
+
+.pe-native-root .gene { font-size: 18px; font-weight: 600; }
+.pe-native-root .pe-gm-head { font-size: 15px; color: #5b6472; margin: 2px 0 6px; }
+
+/* section headers */
+.pe-native-root .sectionHeader { font-size: 16px; font-weight: bold; margin-top: 22px; }
+
+/* WGS radio row */
+.pe-native-root #wgs_span label { margin-right: 22px; font-size: 14px; }
+
+/* number lines + ticks */
+.pe-native-root .numberLine { width: 1200px; height: 30px; position: relative; margin-bottom: 10px; }
+.pe-native-root .tick { position: absolute; width: 1px; height: 10px; background: #000; top: 0; }
+.pe-native-root .tick_bottom { position: absolute; width: 1px; height: 10px; background: #000; top: 15px; }
+.pe-native-root .label { position: absolute; font-size: 12px; top: 15px; transform: translateX(-50%); }
+.pe-native-root .label-last { position: absolute; font-size: 12px; top: 35px; transform: translateX(-50%); }
+.pe-native-root .label_bottom { position: absolute; font-size: 14px; }
+
+/* gene model + PFAM domains */
+.pe-native-root .geneModel { width: 1200px; background: #fff; position: relative; padding-bottom: 5px; margin-top: 10px; min-height: 30px; }
+.pe-native-root .domain { height: 20px; position: absolute; border-radius: 15px; margin-top: 5px; border: 2px solid grey; }
+.pe-native-root .truncate { height: 20px; background: #fff; position: absolute; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* secondary structure canvas */
+.pe-native-root #proteinStructure, .pe-native-root #proteinStructure-pan { max-width: 100%; }
+
+/* heatmaps */
+.pe-native-root .heatmap-container,
+.pe-native-root .heatmap-container-pan { width: 1200px; position: relative; }
+.pe-native-root .heatmap-container-zoom { width: 1200px; height: 200px; position: relative; }
+.pe-native-root .heatmap-container-zoom-pan { width: 1200px; position: relative; min-height: 600px; }
+.pe-native-root #full-heatmap,
+.pe-native-root #full-heatmap-pan { position: relative; }
+.pe-native-root #zoomed-heatmap { border: 2px solid black; }
+.pe-native-root #zoomed-heatmap-pan { overflow: visible; }
+.pe-native-root #highlight-box,
+.pe-native-root #highlight-box-pan { border: 3px solid blue; position: absolute; top: 0; height: 100%; z-index: 10; pointer-events: none; }
+
+/* sliders */
+.pe-native-root .slider-container { width: 1200px; margin: 20px 0; position: relative; }
+.pe-native-root #zoom-slider, .pe-native-root #zoom-slider-pan { width: 100%; }
+.pe-native-root #slider-value, .pe-native-root #slider-value-pan { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+
+/* colour-box legend (native canvas) */
+.pe-native-root .pe-legend { margin: 8px 0 4px; width: 1200px; max-width: 100%; }
+.pe-native-root .pe-legend-bar { display: flex; height: 14px; width: 320px; border: 1px solid #cfd6e2; border-radius: 3px; overflow: hidden; }
+.pe-native-root .pe-legend-bar span { flex: 1; }
+.pe-native-root .pe-legend-labels { display: flex; justify-content: space-between; width: 320px; font-size: 11px; color: #5b6472; margin-top: 3px; }
+.pe-native-root .colorBox { width: 30px; height: 30px; display: block; margin-bottom: 5px; }
+.pe-native-root .labelCB { font-size: 12px; margin-bottom: 5px; }
+.pe-native-root .valueCB { margin-left: 40px; display: inline-block; font-size: 12px; width: 40px; position: absolute; }
+.pe-native-root .rowCB { display: flex; align-items: center; position: relative; }
+
+/* ---- GLOBAL (tooltips are appended to <body> by the zoomed views) ---- */
+.tooltip { position: absolute; background: rgba(0,0,0,.75); color: #fff; padding: 5px 10px; border-radius: 5px; pointer-events: none; visibility: hidden; white-space: nowrap; font-size: .9em; z-index: 9999; }
+.tooltipdomain { position: absolute; background: #BBB; color: #000; padding: 5px 10px; border-radius: 5px; pointer-events: none; visibility: hidden; white-space: nowrap; font-size: .9em; z-index: 9999; }
+
+/* ===== polish / bug fixes ============================================ */
+
+/* (5) clean summary page */
+.pe-native-root .pe-sum { padding: 8px 2px 4px; }
+.pe-native-root .pe-sum-kicker { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #7a8496; font-weight: 600; }
+.pe-native-root .pe-sum-title { margin: 5px 0 14px; font-size: 22px; font-weight: 700; color: #141922; }
+.pe-native-root .pe-sum-dl { display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; background: #2563eb; color: #fff; border-radius: 9px; text-decoration: none; font-size: 14px; font-weight: 600; }
+.pe-native-root .pe-sum-dl:hover { background: #1d4ed8; }
+
+/* (3) PFAM track: padded, framed, no white label bleed */
+.pe-native-root #pfam-wrap,
+.pe-native-root #pfam-wrap-pan { padding: 8px 56px 28px 10px; margin-top: 6px; background: #f5f7fd; border: 1px solid #e6e9f2; border-radius: 10px; overflow-x: auto; }
+.pe-native-root #pfam-wrap .geneModel,
+.pe-native-root #pfam-wrap-pan .geneModel { background: transparent; overflow: visible; }
+.pe-native-root .truncate { background: transparent; }
+
+/* (4) pan zoomed matrix: consistent light background + dropdown headroom */
+.pe-native-root #zoomed-heatmap-pan { position: relative; background: transparent; }
+.pe-native-root .heatmap-container-zoom-pan { margin-top: 50px; background: #f5f7fd; border-radius: 10px; }
+.pe-native-root #viewSelector {
+  font: 500 12px/1 Arial, sans-serif;
+  width: 180px;
+  padding: 4px 7px;
+  border: 1px solid #c7cfdd;
+  border-radius: 7px;
+  background: #fff;
+  box-sizing: border-box;
+}
