@@ -458,19 +458,26 @@
         <p>Variants (lollipops, height = severity) over domains, secondary structure, and pLDDT. Click a variant.</p></div></div>
       <div class="card pad">
         <div class="fold-track" id="foldTrack">${trackSVG()}</div>
-        <div class="fold-legend">
-          <span class="lg"><span class="sw" style="background:${CONS_FILL.missense}"></span>Missense</span>
-          <span class="lg"><span class="sw" style="background:${CONS_FILL.lof}"></span>Loss-of-function</span>
-          <span class="lg"><span class="sw" style="background:${CONS_FILL.indel}"></span>In-frame indel</span>
-          <span class="lg gap">SS</span>
-          <span class="lg"><span class="sw" style="background:#d24b6a"></span>helix</span>
-          <span class="lg"><span class="sw" style="background:#2f6fd0"></span>strand</span>
-          <span class="lg"><span class="sw" style="background:#cbd4e1"></span>coil</span>
-          <span class="lg gap">pLDDT</span>
-          <span class="lg"><span class="sw" style="background:#0053d6"></span>≥90</span>
-          <span class="lg"><span class="sw" style="background:#65cbf3"></span>70–90</span>
-          <span class="lg"><span class="sw" style="background:#ffdb13"></span>50–70</span>
-          <span class="lg"><span class="sw" style="background:#ff7d45"></span>&lt;50</span>
+        <div class="fold-legend" style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-start">
+          <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">Lollipop:</div>
+            <span class="lg"><span class="sw" style="background:${CONS_FILL.missense}"></span>Missense</span>
+            <span class="lg"><span class="sw" style="background:${CONS_FILL.lof}"></span>Loss-of-function</span>
+            <span class="lg"><span class="sw" style="background:${CONS_FILL.indel}"></span>In-frame indel</span>
+          </div>
+          <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">Secondary structure:</div>
+            <span class="lg"><span class="sw" style="background:#d24b6a"></span>helix</span>
+            <span class="lg"><span class="sw" style="background:#2f6fd0"></span>strand</span>
+            <span class="lg"><span class="sw" style="background:#cbd4e1"></span>coil</span>
+          </div>
+          <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">AlphaFold confidence score (pLDDT):</div>
+            <span class="lg"><span class="sw" style="background:#0053d6"></span>≥90</span>
+            <span class="lg"><span class="sw" style="background:#65cbf3"></span>70–90</span>
+            <span class="lg"><span class="sw" style="background:#ffdb13"></span>50–70</span>
+            <span class="lg"><span class="sw" style="background:#ff7d45"></span>&lt;50</span>
+          </div>
         </div>
       </div>
 
@@ -589,6 +596,23 @@
     return `<svg viewBox="0 0 ${W} ${H}" class="track-svg" preserveAspectRatio="xMinYMin meet">${g}</svg>`;
   }
 
+  /* ---------- PanEffect jump ---------- */
+  function isMissense(v){ return v && v.consClass==='missense' && v.resi; }
+  /* internal view switch — highlights the substitution when missense,
+     otherwise just opens PanEffect on the gene */
+  function panEffect(v){
+    if (!FD.gene) return;
+    if (typeof goPanEffect !== 'function') return go('paneffect');
+    if (isMissense(v)) goPanEffect(FD.gene, {variant:{pos:v.resi, wt:v.ref||'', sub:v.alt||''}});
+    else goPanEffect(FD.gene);
+  }
+  function peJump(v){
+    if (!isMissense(v) || !FD.gene) return '';
+    const sub = `${v.ref||''}${v.resi}${v.alt||''}`;
+    return ` <a class="pe-jump" href="#" title="View ${escFold(sub)} in PanEffect"
+      onclick="event.stopPropagation();FOLD.panEffect('${v.id}');return false;">effects ↗</a>`;
+  }
+
   /* ---------- variant table ---------- */
   function rowHTML(v){
     const c = ctxFor(v);
@@ -597,7 +621,7 @@
     const openC = FD.openCarrier===v.id;
     return `<tr class="fold-row ${on?'sel':''}" onclick="FOLD.select('${v.id}')">
       <td class="c-mono c-alt" style="padding-left:11px">${v.variant}</td>
-      <td><span class="cons ${v.consClass}">${v.consequence}</span></td>
+      <td><span class="cons ${v.consClass}">${v.consequence}</span>${peJump(v)}</td>
       <td class="num">${v.resi}</td>
       <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${c.plddt==null?'<span style="color:var(--faint)">—</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span>`}</td>
@@ -658,6 +682,7 @@
         <div class="ck"><div class="kk">AI scores</div><div class="vv mono">${aiScoreSummary(v)}</div></div>
       </div>
       <div class="ctx-actions">
+        ${v.consClass==='missense' && v.resi ? `<button class="btn" onclick="FOLD.panEffect('${v.id}')">${ICONS.effect||ICONS.star} PanEffect</button>` : ''}
         <button class="btn" onclick="go('snpimpact')">${ICONS.star} SNPImpact</button>
         <button class="btn" onclick="go('snpcompare')">${ICONS.compare} Send to SNPCompare</button>
       </div>`;
@@ -750,6 +775,7 @@
   window.FOLD = {
     select(id){ FD.selId = (FD.selId===id?null:id); refreshSelection(); if(FD.selId) focusResidue(true); else if(FD.viewer){FD.viewer.removeAllLabels();applyStyle();FD.viewer.zoomTo();FD.viewer.render();} },
     carriers(id){ FD.openCarrier = (FD.openCarrier===id?null:id); refreshTable(); },
+    panEffect(id){ panEffect(FD.variants.find(v=>v.id===id)); },
     color(m){ FD.colorMode=m; document.querySelectorAll('.fold-toolbar .seg-b').forEach(b=>b.classList.remove('on'));
       const map={plddt:0,domain:1,impact:2}; const btns=document.querySelectorAll('.fold-toolbar .seg-b'); if(btns[map[m]])btns[map[m]].classList.add('on'); applyStyle(); },
     toggleVar(on){ FD.showVar=on; applyStyle(); },

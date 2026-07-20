@@ -23,12 +23,13 @@ const ICONS = {
   caret:'<svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M9 9v11" stroke="currentColor" stroke-width="1.6"/></svg>',
+  effect:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 4v16M13 4v16M3 9h18M3 14h18" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>',
 };
 
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold', 'paneffect']},
   {label:'Compare & Relate', tools:['snpcompare','snptree','snpmatrix']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
   //{label:'Collection', tools:['snpgermplasm']},
@@ -61,6 +62,10 @@ const TOOLS = {
     tag:'Pairwise identity and nearest neighbors',
     desc:'Calculate pairwise identity across all accessions and instantly rank the nearest genetic neighbors to a selected accession.',
     feats:[['grid','Identity matrix','Pairwise identity-by-state across the set.'],['search','Nearest neighbors','Rank closest lines to any accession.'],['density','Similarity heatmap','Read structure at a glance.']]},
+  paneffect:{name:'PanEffect', icon:'effect', color:'#b45309', cat:'Explore & Analyze',
+    tag:'Predict missense variant effects on proteins',
+    desc:'Visualize the predicted effect of every amino-acid substitution across a protein — in B73 and across the maize pan-genome — using ESM protein language-model scores, with Pfam domains and secondary structure for context.',
+    feats:[['star','Every substitution','ESM scores for all 20 substitutions at each residue.'],['grid','B73 + pan-genome','Reference view plus natural variation across the pan-genome.'],['func','Domain context','Pfam domains and predicted secondary structure overlaid.']]},
   snpimpute:{name:'SNPImpute', icon:'impute', color:'#0891b2', cat:'Impute & Predict',
     tag:'Impute sequence and function',
     desc:'Pan-genome–guided imputation that fills missing genotypes and predicts function across varying depths of sequencing.',
@@ -108,7 +113,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new'}[id]||'soon';
+        const _bl={snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">

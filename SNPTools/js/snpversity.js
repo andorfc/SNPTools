@@ -417,6 +417,7 @@ function renderResults(){
           <button class="btn" onclick="sendToCompare()">${ICONS.compare||ICONS.grid||''} Send to SNPCompare</button>
           <button class="btn" onclick="sendToTree()">${ICONS.tree} Send data to SNPTree</button>
           <button class="btn" onclick="sendToMatrix()">${ICONS.grid||ICONS.tree||''} Send to SNPMatrix</button>
+          <button class="btn" onclick="openPangenomeRegion()">${ICONS.grid||''} Pangenome viewer ↗</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
         </div>
       </div>
@@ -558,7 +559,11 @@ function renderTable(){
 function rowHTML(r){
   const lo=r.pos-10000,hi=r.pos+10000;
   const link=`https://jbrowse.maizegdb.org/?data=B73&loc=${S.chr}:${lo}..${hi}&highlight=${S.chr}:${lo}..${hi}`;
-  const eff = r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect;
+  const isMis = /missense/i.test(r.effect||'');
+  const peJump = (isMis && r.gene && r.gene!=='—')
+    ? ` <a class="pe-jump" href="#" title="View this substitution in PanEffect" onclick="goPanEffect('${r.gene}',{variant:'${escAttr(r.sub||'')}'});return false;">effects ↗</a>`
+    : '';
+  const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump;
   const sc=(v)=>`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>
@@ -586,12 +591,12 @@ function genesPanel(){
   const genes=[...new Set(rows.map(r=>r.gene).filter(g=>g&&g!=='—'))].sort();
   if(!genes.length) return '';
   const jb=g=>`https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(g)}`;
-  const pe=g=>`https://maizegdb.org/effect/maize_v2/index.html?id=${encodeURIComponent(g)}`;
   const items=genes.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 2px;border-bottom:1px solid #eef1f5">
       <span class="c-mono" style="font-size:12.5px">${g}</span>
       <span style="display:flex;gap:12px;font-size:12px;white-space:nowrap">
         <a href="${jb(g)}" target="_blank" rel="noopener">JBrowse ↗</a>
-        <a href="${pe(g)}" target="_blank" rel="noopener">PanEffect ↗</a>
+        <a href="${pangenomeGeneURL(g)}" target="_blank" rel="noopener">Pangenome ↗</a>
+        <a href="#" onclick="goPanEffect('${g}');return false;">PanEffect →</a>
         <a href="#" onclick="goFold('${g}');return false;">SNPFold →</a>
         <a href="#" onclick="goFunction('${g}');return false;">SNPFunction →</a>
       </span>
@@ -600,6 +605,22 @@ function genesPanel(){
     <summary style="cursor:pointer;font-weight:600">${genes.length} gene model${genes.length>1?'s':''} in this region</summary>
     <div style="display:grid;grid-template-columns:1fr;gap:0;margin-top:10px">${items}</div>
   </details>`;
+}
+/* ---- MaizeGDB Pangenome viewer links (B73 v5 coordinates / gene models) ---- */
+const PANGENOME_BASE = 'https://pangenome-viewer.maizegdb.org/';
+/* link for a single B73 gene model */
+function pangenomeGeneURL(gene, set){
+  return `${PANGENOME_BASE}?set=${encodeURIComponent(set||'NAM')}&geneID=${encodeURIComponent(gene)}`;
+}
+/* link for a genomic interval */
+function pangenomeRegionURL(chr, start, end, set){
+  const lo=Math.min(start,end), hi=Math.max(start,end);
+  const c=String(chr).startsWith('chr')?chr:`chr${chr}`;
+  return `${PANGENOME_BASE}?set=${encodeURIComponent(set||'NAM')}&chr=${encodeURIComponent(c)}&start=${lo}&end=${hi}`;
+}
+/* open the current query region in the Pangenome viewer */
+function openPangenomeRegion(){
+  window.open(pangenomeRegionURL(S.chr,S.start,S.end),'_blank','noopener');
 }
 /* jump to SNPFold for a specific gene model */
 function goFold(gene){ S.foldGene=gene; go('snpfold'); }

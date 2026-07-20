@@ -14,7 +14,12 @@
     root:null,                     // persistent DOM container — survives tool switches
     loaded:false,                  // a gene's content is (being) rendered into root
     loadedGene:null,               // which gene that content is for
+    annotation:undefined,          // functional-annotation record: undefined=loading, null=none, object=loaded
+    goCurated:false,               // GO filter: false = all terms, true = curated only (drops predicted-only)
   };
+
+  /* directory of per-gene functional-annotation JSON (one file per canonical model) */
+  const ANN_DIR = './data/function/annotations/';
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function scoreColor(v){ const lo=-12,hi=6,t=Math.max(0,Math.min(1,(v-lo)/(hi-lo))); const r=t<.5?255:Math.round(255*(1-(t-.5)*2)); const g=t<.5?Math.round(255*t*2):200; return `rgb(${r},${Math.max(60,g)},60)`; }
@@ -152,10 +157,25 @@
     FN.loaded = true;                // commit to the loaded view (keep across navigation)
     FN.loadedGene = FN.gene;
     FN.loading = true;
+    FN.goCurated = false;            // reset GO filter for the new gene
+    loadAnnotation(FN.gene);         // fetch functional annotation in parallel (independent of variant data)
     FN.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:44px;text-align:center"><div class="spinner"></div><div>Analyzing <b>${esc(FN.gene)}</b> across the panel…</div></div>`;
     Data.geneFunction(FN.gene, FN.dataset)
       .then(d => { FN.data = d; FN.loading = false; paint(); })
       .catch(e => { FN.loading = false; FN.data = {gene:FN.gene, error:(e&&e.message)||'failed'}; paint(); });
+  }
+
+  /* Load the functional-annotation record for a gene from ANN_DIR/<gene>.json.
+     Independent of the variant analysis: a missing file (404) or parse error just means
+     "no annotation" and never blocks the rest of the page. We only repaint once the main
+     variant data is present, so the annotation slots in without flashing the landing view. */
+  function loadAnnotation(gene){
+    const g = gene;
+    FN.annotation = undefined;                       // mark as loading (shows a placeholder)
+    fetch(ANN_DIR + encodeURIComponent(gene) + '.json', {cache:'force-cache'})
+      .then(r => r.ok ? r.json() : null)
+      .then(a => { if (FN.gene !== g) return; FN.annotation = a || null; if (FN.data) paint(); })
+      .catch(() => { if (FN.gene !== g) return; FN.annotation = null; if (FN.data) paint(); });
   }
 
   /* render the loaded content from cached FN.data (used after analysis + on toggle) */
@@ -163,10 +183,14 @@
     const d = FN.data;
     if (!d){ renderLanding(); return; }
     if (d.error){
-      FN.root.innerHTML = datasetChooser() + searchBar() + notice(`Couldn’t analyze “${esc(FN.gene)}”: ${esc(d.error)}`);
+      // variant analysis failed, but functional annotation may still be worth showing
+      FN.root.innerHTML = datasetChooser() + searchBar()
+        + notice(`Couldn’t analyze “${esc(FN.gene)}” across the panel: ${esc(d.error)}`)
+        + annotationSection();
+      if (typeof attachTT==='function') attachTT();
       return;
     }
-    FN.root.innerHTML = datasetChooser() + searchBar() + hero(d) + dossier(d) + burden(d) + catalog(d);
+    FN.root.innerHTML = datasetChooser() + searchBar() + hero(d) + dossier(d) + annotationSection() + burden(d) + catalog(d);
     if (typeof attachTT==='function') attachTT();
   }
 
@@ -203,6 +227,7 @@
     const jb = `https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(d.gene)}`;
     const pe = `https://maizegdb.org/effect/maize_v2/index.html?id=${encodeURIComponent(d.gene)}`;
     const mg = `https://maizegdb.org/gene_center/gene/${encodeURIComponent(d.gene)}`;
+    const pg = `https://pangenome-viewer.maizegdb.org/?set=NAM&geneID=${encodeURIComponent(d.gene)}`;
     const doms = (d.domains||[]).length
       ? d.domains.map(x=>domTag(`${x.name} (${x.pfam})`)).join(' ')
       : '<span class="muted">No Pfam domains annotated</span>';
@@ -218,6 +243,7 @@
         <a class="btn ghost" href="${pe}" target="_blank" rel="noopener">PanEffect ↗</a>
         <a class="btn ghost" href="${jb}" target="_blank" rel="noopener">JBrowse ↗</a>
         <a class="btn ghost" href="${mg}" target="_blank" rel="noopener">MaizeGDB ↗</a>
+        <a class="btn ghost" href="${pg}" target="_blank" rel="noopener">Pangenome viewer ↗</a>
       </div>
     </div>`;
   }
@@ -302,11 +328,251 @@
       </div></td></tr>`;
   }
 
+  /* =====================================================================
+   *  FUNCTIONAL ANNOTATION  (per-gene JSON from ANN_DIR)
+   *  A gene-scoped functional dossier: identity + description, protein
+   *  domain architecture (to-scale diagram), Gene Ontology grouped by
+   *  aspect, KEGG pathways / orthology, and external cross-references.
+   * ===================================================================== */
+
+  /* small provenance/aspect palettes ------------------------------------ */
+  const GO_ASPECT = {
+    BP:{label:'Biological process', abbr:'BP'},
+    MF:{label:'Molecular function', abbr:'MF'},
+    CC:{label:'Cellular component', abbr:'CC'},
+  };
+  const DOM_PALETTE = ['#2f6ad0','#176c3a','#b8862b','#7a3fb0','#0e7c86','#c0362c','#3a5a99'];
+
+  /* provenance badge for a functional_description.source string */
+  function descSourceBadge(src){
+    src = src || 'none';
+    let cls='pred', label=src;
+    if (/^MaizeGDB/i.test(src)){ cls='curated'; label='MaizeGDB · curated'; }
+    else if (/^UniProt/i.test(src)){ cls='uniprot'; label='UniProt'; }
+    else if (/^InterPro/i.test(src)){ cls='pred'; label='InterPro · predicted'; }
+    else if (src==='none'){ cls='none'; label='no informative source'; }
+    return `<span class="ann-srcbadge ${cls}" title="functional_description.source = ${esc(src)}">${esc(label)}</span>`;
+  }
+  /* one small badge per GO evidence source */
+  function goSourceBadges(sources){
+    const meta = {MaizeGDB:'curated', UniProt:'uniprot', InterPro2GO:'pred'};
+    return (sources||[]).map(s=>`<span class="go-src ${meta[s]||'pred'}" title="${esc(s)}${s==='InterPro2GO'?' (predicted from domain)':''}">${esc(s)}</span>`).join('');
+  }
+  function isPredictedOnly(t){ const s=t.sources||[]; return s.length>0 && s.every(x=>x==='InterPro2GO'); }
+  function xrefChip(text, href, title){
+    return href
+      ? `<a class="xref" href="${href}" target="_blank" rel="noopener" title="${esc(title||text)}">${esc(text)} <span class="xref-ext">↗</span></a>`
+      : `<span class="xref" title="${esc(title||text)}">${esc(text)}</span>`;
+  }
+
+  /* ---------- top-level annotation section ---------- */
+  function annotationSection(){
+    const a = FN.annotation;
+    if (a === undefined){
+      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
+        <div class="ann-load"><div class="spinner sm"></div><span>Loading functional annotation…</span></div></div>`;
+    }
+    if (a === null){
+      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
+        <div class="muted" style="padding:4px 0">No functional-annotation record for <span class="mono">${esc(FN.gene)}</span>.
+        Records exist for the 39,756 canonical B73 v5 gene models (<span class="mono">Zm00001eb…</span>).</div></div>`;
+    }
+    return annHeader(a) + annDomains(a) + annGO(a) + annPathways(a) + annXrefs(a);
+  }
+
+  /* ---------- identity header: symbol, name, description, evidence ---------- */
+  function annHeader(a){
+    const nm = a.names||{}, fd = a.functional_description||{};
+    const symbol = nm.primary_symbol || '';
+    const fullName = nm.full_name || (a.functional_description && a.functional_description.text) || '';
+    const aliases = (nm.aliases||[]).filter(Boolean);
+    const cov = a.annotation_coverage||{};
+    // "evidence present" chips — an at-a-glance summary of what's annotated
+    const ev = [
+      ['GO',      cov.has_go],
+      ['Pfam',    cov.has_pfam],
+      ['KEGG KO', cov.has_ko],
+      ['Pathway', cov.has_pathway],
+      ['UniProt', cov.has_uniprot],
+      ['Symbol',  cov.has_symbol],
+    ].map(([k,on])=>`<span class="ev-chip ${on?'on':'off'}" title="${on?'present':'not available'}">${on?'✓':'·'} ${k}</span>`).join('');
+    const ko = ((a.kegg&&a.kegg.orthology)||[])[0];
+    return `<div class="card pad ann-head" style="margin-bottom:16px">
+      <div class="ann-idrow">
+        ${symbol?`<span class="ann-symbol" title="primary gene symbol">${esc(symbol)}</span>`:''}
+        <div class="ann-titlewrap">
+          <div class="ann-fullname">${esc(fullName||'Uncharacterized protein')}</div>
+          ${aliases.length?`<div class="ann-aliases">also: ${aliases.map(x=>`<span class="mono">${esc(x)}</span>`).join(', ')}</div>`:''}
+        </div>
+      </div>
+      <div class="ann-desc">
+        <span class="ann-desc-txt">${esc(fd.text||'Uncharacterized protein')}</span>
+        ${descSourceBadge(fd.source)}
+      </div>
+      ${ko?`<div class="ann-ko"><span class="fn-k" style="display:inline">KEGG orthology</span> ${esc(ko.ko_id)} · ${esc(ko.name)}</div>`:''}
+      <div class="ann-ev">${ev}</div>
+    </div>`;
+  }
+
+  /* ---------- protein domain architecture (to-scale diagram) ---------- */
+  function annDomains(a){
+    const prot = a.protein||{}, L = +prot.length||0;
+    const doms = (a.pfam_domains||[]).slice().sort((x,y)=>(x.start||0)-(y.start||0));
+    const svg = domainSVG(L, doms);
+    const list = doms.length ? doms.map((x,i)=>{
+      const col = DOM_PALETTE[i%DOM_PALETTE.length];
+      const span = (x.start!=null&&x.end!=null)?`${x.start}–${x.end} aa`:'—';
+      const cover = (L&&x.start!=null&&x.end!=null)?` · ${Math.round(100*(x.end-x.start+1)/L)}% of protein`:'';
+      return `<div class="dom-row">
+        <span class="dom-swatch" style="background:${col}"></span>
+        <span class="dom-name">${esc(x.pfam_name||x.pfam_id||'domain')}</span>
+        <span class="mono dom-ids">${esc(x.pfam_id||'')}${x.interpro_id?` · ${esc(x.interpro_id)}`:''}</span>
+        <span class="dom-span mono">${span}${cover}</span>
+        ${x.evalue?`<span class="dom-ev mono" title="InterProScan E-value">E=${esc(x.evalue)}</span>`:''}
+      </div>`;
+    }).join('') : `<div class="muted" style="padding:4px 0">No Pfam domains annotated for this protein (Pfam-only InterProScan input).</div>`;
+    return `<div class="card pad" style="margin-bottom:16px">
+      <div class="fn-h" style="display:flex;align-items:baseline;gap:10px">Protein domain architecture
+        <span class="muted" style="font-weight:400;font-size:12px">${prot.protein_id?esc(prot.protein_id)+' · ':''}${L?L+' aa':'length n/a'}</span>
+      </div>
+      <div class="dom-arch">${svg}</div>
+      <div class="dom-list">${list}</div>
+    </div>`;
+  }
+
+  /* SVG: backbone scaled to protein length, Pfam domains as positioned blocks */
+  function domainSVG(L, doms){
+    const W=1000, padL=10, padR=10, trackW=W-padL-padR;
+    const sc = x => padL + (L ? (x/L)*trackW : 0);
+    // greedy row packing so overlapping domains don't collide
+    const rowsEnd=[]; const placed=doms.map(d=>{
+      let r=0; while(rowsEnd[r]!=null && rowsEnd[r] > (d.start||0)) r++;
+      rowsEnd[r]=(d.end||0); return {d,row:r};
+    });
+    const nRows=Math.max(1,rowsEnd.length);
+    const rowH=30, gap=8, top=30, bot=26;
+    const H=top+nRows*rowH+(nRows-1)*gap+bot;
+    const trackMid=(row)=>top+row*(rowH+gap);
+    // ruler ticks at 0, 25%, 50%, 75%, 100%
+    let ticks='';
+    if (L){
+      for (let f=0; f<=1.0001; f+=0.25){
+        const x=sc(L*f), val=Math.round(L*f);
+        ticks += `<line x1="${x}" y1="${top-8}" x2="${x}" y2="${top+nRows*rowH+(nRows-1)*gap+4}" class="dom-tick"/>
+                  <text x="${x}" y="${top-12}" class="dom-tick-lbl" text-anchor="${f===0?'start':f>=1?'end':'middle'}">${val}</text>`;
+      }
+    }
+    const backbone = `<rect x="${padL}" y="${top+ (nRows*rowH+(nRows-1)*gap)/2 - 4}" width="${trackW}" height="8" rx="4" class="dom-backbone"/>`;
+    const blocks = placed.map((p,i)=>{
+      const d=p.d, x=sc(d.start||0), w=Math.max(3, sc(d.end||0)-sc(d.start||0));
+      const y=trackMid(p.row), col=DOM_PALETTE[i%DOM_PALETTE.length];
+      const label=d.pfam_name||d.pfam_id||'';
+      const showText = w > label.length*7.5 + 12;   // only inline the label if it fits
+      const tip=`${label}${d.pfam_id?' ('+d.pfam_id+')':''} · ${d.start}-${d.end} aa${d.evalue?' · E='+d.evalue:''}`;
+      return `<g class="dom-block"><title>${esc(tip)}</title>
+        <rect x="${x}" y="${y}" width="${w}" height="${rowH-6}" rx="5" fill="${col}"/>
+        ${showText?`<text x="${x+w/2}" y="${y+(rowH-6)/2}" class="dom-blk-lbl" text-anchor="middle" dominant-baseline="central">${esc(label)}</text>`:''}
+      </g>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="dom-svg" preserveAspectRatio="xMidYMid meet" role="img"
+      aria-label="Protein domain architecture, ${L} amino acids, ${doms.length} Pfam domain(s)">
+      ${ticks}${backbone}${blocks}
+    </svg>`;
+  }
+
+  /* ---------- Gene Ontology grouped by aspect ---------- */
+  function annGO(a){
+    const all = a.go_terms||[];
+    if (!all.length){
+      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Gene Ontology</div>
+        <div class="muted" style="padding:4px 0">No GO terms annotated for this gene.</div></div>`;
+    }
+    const curatedOnly = FN.goCurated;
+    const terms = curatedOnly ? all.filter(t=>!isPredictedOnly(t)) : all;
+    // aspect counts (of the currently shown set) for the mini summary bar
+    const counts = {BP:0,MF:0,CC:0};
+    terms.forEach(t=>{ if(counts[t.aspect]!=null) counts[t.aspect]++; });
+    const shown = terms.length || 1;
+    const summary = ['BP','MF','CC'].map(k=>counts[k]?`<span class="go-seg asp-${k}" style="width:${100*counts[k]/shown}%" title="${GO_ASPECT[k].label}: ${counts[k]}"></span>`:'').join('');
+    const legend = ['BP','MF','CC'].map(k=>`<span class="go-lg"><span class="go-dot asp-${k}"></span>${GO_ASPECT[k].abbr} ${counts[k]}</span>`).join('');
+
+    const group = k => {
+      const list = terms.filter(t=>t.aspect===k);
+      if (!list.length) return '';
+      const chips = list.map(t=>{
+        const obs = t.status && t.status!=='current';
+        return `<div class="go-chip asp-${k} ${obs?'obs':''}" title="${esc(t.go_id)}${obs?' · '+esc(t.status):''}">
+          <a class="go-id" href="https://amigo.geneontology.org/amigo/term/${encodeURIComponent(t.go_id)}" target="_blank" rel="noopener">${esc(t.go_id)}</a>
+          <span class="go-name">${esc(t.name)}</span>
+          <span class="go-srcs">${goSourceBadges(t.sources)}</span>
+          ${obs?`<span class="go-obs" title="obsolete term retained/flagged">obsolete</span>`:''}
+        </div>`;
+      }).join('');
+      return `<div class="go-group">
+        <div class="go-ghead"><span class="go-dot asp-${k}"></span>${GO_ASPECT[k].label} <span class="muted">· ${list.length}</span></div>
+        <div class="go-chips">${chips}</div>
+      </div>`;
+    };
+    const nPred = all.filter(isPredictedOnly).length;
+    return `<div class="card pad" style="margin-bottom:16px">
+      <div class="fn-h" style="display:flex;align-items:center;gap:10px">Gene Ontology
+        <span class="muted" style="font-weight:400;font-size:12px">${terms.length} of ${all.length} terms${curatedOnly?' · curated only':''}</span>
+        ${nPred?`<button class="btn" style="margin-left:auto;font-size:12px;padding:6px 11px" onclick="FUNCTION.toggleGO()">${curatedOnly?'Show all evidence':'Curated only'}</button>`:''}
+      </div>
+      <div class="go-summary"><div class="go-bar">${summary}</div><div class="go-legend">${legend}</div></div>
+      ${group('BP')}${group('MF')}${group('CC')}
+      <div class="go-note muted">Source confidence: <span class="go-src curated">MaizeGDB</span>/<span class="go-src uniprot">UniProt</span> are curated; <span class="go-src pred">InterPro2GO</span> is predicted from domains.</div>
+    </div>`;
+  }
+
+  /* ---------- KEGG pathways & orthology ---------- */
+  function annPathways(a){
+    const paths = a.pathways||[];
+    const kegg = a.kegg||{};
+    const kos = kegg.orthology||[];
+    const genes = kegg.kegg_gene_ids||[];
+    if (!paths.length && !kos.length && !genes.length){
+      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Pathways &amp; orthology</div>
+        <div class="muted" style="padding:4px 0">No KEGG pathway or orthology mapping for this gene. KEGG coverage tracks UniProt/Entrez cross-references (~5–10% of models).</div></div>`;
+    }
+    const koHTML = kos.length ? `<div class="kv"><div class="fn-k">KEGG orthology (KO)</div><div class="fn-chips">${
+      kos.map(k=>xrefChip(`${k.ko_id} · ${k.name}`, `https://www.kegg.jp/entry/${encodeURIComponent(k.ko_id)}`, k.name)).join('')
+    }</div></div>` : '';
+    const pathHTML = paths.length ? `<div class="kv"><div class="fn-k">Pathways</div><div class="fn-chips">${
+      paths.map(p=>xrefChip(`${p.kegg_pathway_id||''} ${p.name||''}`.trim(), p.kegg_pathway_id?`https://www.kegg.jp/pathway/${encodeURIComponent(p.kegg_pathway_id)}`:null, p.name)).join('')
+    }</div></div>` : '';
+    const geneHTML = genes.length ? `<div class="kv"><div class="fn-k">KEGG genes</div><div class="fn-chips">${
+      genes.map(g=>xrefChip(g, `https://www.kegg.jp/entry/${encodeURIComponent(g)}`)).join('')
+    }</div></div>` : '';
+    return `<div class="card pad" style="margin-bottom:16px">
+      <div class="fn-h">Pathways &amp; orthology</div>
+      ${koHTML}${pathHTML}${geneHTML}
+    </div>`;
+  }
+
+  /* ---------- external cross-references ---------- */
+  function annXrefs(a){
+    const x = a.cross_references||{};
+    const rows = [];
+    if ((x.uniprot||[]).length) rows.push(['UniProt', x.uniprot.map(u=>xrefChip(u, `https://www.uniprot.org/uniprotkb/${encodeURIComponent(u)}/entry`))]);
+    if ((x.ncbi_entrez||[]).length) rows.push(['NCBI Gene', x.ncbi_entrez.map(g=>xrefChip(g, `https://www.ncbi.nlm.nih.gov/gene/${encodeURIComponent(g)}`))]);
+    if ((x.gene_model_v4||[]).length) rows.push(['B73 v4 model', x.gene_model_v4.map(g=>xrefChip(g, `https://maizegdb.org/gene_center/gene/${encodeURIComponent(g)}`))]);
+    if ((x.gene_model_v3||[]).length) rows.push(['B73 v3 model', x.gene_model_v3.map(g=>xrefChip(g, `https://maizegdb.org/gene_center/gene/${encodeURIComponent(g)}`))]);
+    if (!rows.length) return '';
+    const build = a.build_date ? `<div class="ann-build muted">Annotation build ${esc(a.build_date)} · ${esc((a.assembly||''))} ${esc((a.annotation_version||''))}</div>` : '';
+    return `<div class="card pad" style="margin-bottom:16px">
+      <div class="fn-h">Cross-references</div>
+      ${rows.map(([k,chips])=>`<div class="kv"><div class="fn-k">${esc(k)}</div><div class="fn-chips">${chips.join('')}</div></div>`).join('')}
+      ${build}
+    </div>`;
+  }
+
   /* ---------- public handlers ---------- */
   window.FUNCTION = {
     load(){ const el=document.getElementById('fnGeneInput'); if(!el)return; const g=el.value.trim(); if(!g)return;
       FN.gene=g; FN.data=null; FN.openId=null; analyzeGene(); },
     toggle(id){ FN.openId = (FN.openId===id?null:id); paint(); },
+    toggleGO(){ FN.goCurated = !FN.goCurated; paint(); },
     /* compact dataset chooser — selecting a dataset only records the choice + moves the
        highlight. The page is NOT re-analyzed here; the new dataset is applied on the next
        "Analyze gene" click (FUNCTION.load), which reads the current FN.dataset. */
@@ -378,7 +644,78 @@
       .fn-ds.sel .fn-ds-dot{border-color:#2f6ad0;background:#2f6ad0;box-shadow:inset 0 0 0 2px #fff}
       .fn-ds-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
       .fn-ds-name{font-weight:600;font-size:13px;color:var(--ink)}
-      .fn-ds-sub{font-size:11.5px;color:var(--muted)}`;
+      .fn-ds-sub{font-size:11.5px;color:var(--muted)}
+
+      /* ===== functional annotation ===== */
+      .ann-load{display:flex;align-items:center;gap:10px;color:var(--muted);padding:6px 0}
+      .spinner.sm{width:16px;height:16px;border-width:2px}
+      .kv{margin-top:12px} .kv:first-of-type{margin-top:4px}
+      .fn-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+      /* identity header */
+      .ann-idrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+      .ann-symbol{font-family:var(--mono);font-weight:700;font-size:17px;color:#fff;background:var(--mg-blue,rgb(8,44,148));
+        padding:5px 12px;border-radius:9px;letter-spacing:.02em;white-space:nowrap}
+      .ann-titlewrap{min-width:0}
+      .ann-fullname{font-size:17px;font-weight:600;color:var(--ink);line-height:1.2}
+      .ann-aliases{font-size:12px;color:var(--muted);margin-top:2px}
+      .ann-desc{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--ink)}
+      .ann-ko{margin-top:8px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+      .ann-srcbadge{font:600 10.5px/1 var(--body,'Inter',sans-serif);padding:4px 8px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px}
+      .ann-srcbadge.curated{background:#e7f3ec;color:#176c3a;border:1px solid #bfe0cb}
+      .ann-srcbadge.uniprot{background:#eaf1fc;color:#274b8f;border:1px solid #cbdcf6}
+      .ann-srcbadge.pred{background:#f2f0ea;color:#7a5b12;border:1px solid #e2dcc9}
+      .ann-srcbadge.none{background:#f2f3f5;color:#7a828f;border:1px solid #e2e6ec}
+      .ann-ev{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+      .ev-chip{font:600 11px/1 var(--body,'Inter',sans-serif);padding:5px 9px;border-radius:7px;border:1px solid var(--line)}
+      .ev-chip.on{background:#f0f7f2;color:#1c6b3c;border-color:#cfe6d7}
+      .ev-chip.off{background:#f7f8fa;color:#aab2be}
+      /* domain architecture */
+      .dom-arch{margin:6px 0 4px} .dom-svg{width:100%;height:auto;display:block;overflow:visible}
+      .dom-backbone{fill:#dfe4ec}
+      .dom-tick{stroke:#e3e8ef;stroke-width:1}
+      .dom-tick-lbl{fill:#98a1af;font-family:var(--mono);font-size:12px}
+      .dom-blk-lbl{fill:#fff;font-family:var(--body,'Inter',sans-serif);font-size:12px;font-weight:600;pointer-events:none}
+      .dom-block rect{transition:opacity .12s} .dom-block:hover rect{opacity:.85;cursor:default}
+      .dom-list{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:7px}
+      .dom-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:13px}
+      .dom-swatch{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+      .dom-name{font-weight:600;color:var(--ink)}
+      .dom-ids{font-size:11.5px;color:var(--muted)}
+      .dom-span{font-size:11.5px;color:var(--muted);margin-left:auto}
+      .dom-ev{font-size:11px;color:#8a6d1e;background:#f6f1e2;border:1px solid #e6dcc2;border-radius:6px;padding:1px 6px}
+      /* gene ontology */
+      .go-summary{margin:2px 0 14px}
+      .go-bar{display:flex;height:12px;border-radius:7px;overflow:hidden;background:#eef1f5}
+      .go-seg{display:inline-block;height:100%}
+      .go-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+      .go-lg{display:inline-flex;align-items:center;gap:5px}
+      .go-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+      .go-group{margin-top:14px}
+      .go-ghead{font-size:12.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px;margin-bottom:8px}
+      .go-chips{display:flex;flex-wrap:wrap;gap:8px}
+      .go-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-left-width:4px;
+        border-radius:9px;padding:6px 10px;background:#fff;font-size:12.5px;max-width:100%}
+      .go-chip.obs{opacity:.6}
+      .go-id{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-decoration:none;white-space:nowrap}
+      .go-id:hover{text-decoration:underline}
+      .go-name{color:var(--ink)}
+      .go-srcs{display:inline-flex;gap:4px}
+      .go-src{font:600 9.5px/1 var(--body,'Inter',sans-serif);padding:3px 6px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+      .go-src.curated{background:#e7f3ec;color:#176c3a} .go-src.uniprot{background:#eaf1fc;color:#274b8f} .go-src.pred{background:#f2f0ea;color:#7a5b12}
+      .go-obs{font-size:10px;color:#a23b2c;background:#fbeae7;border-radius:5px;padding:2px 6px}
+      .go-note{font-size:11.5px;margin-top:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+      /* aspect colors: BP green, MF blue, CC purple */
+      .asp-BP{--asp:#176c3a} .asp-MF{--asp:#2f6ad0} .asp-CC{--asp:#7a3fb0}
+      .go-seg.asp-BP{background:#176c3a}.go-seg.asp-MF{background:#2f6ad0}.go-seg.asp-CC{background:#7a3fb0}
+      .go-dot.asp-BP{background:#176c3a}.go-dot.asp-MF{background:#2f6ad0}.go-dot.asp-CC{background:#7a3fb0}
+      .go-chip.asp-BP{border-left-color:#176c3a}.go-chip.asp-MF{border-left-color:#2f6ad0}.go-chip.asp-CC{border-left-color:#7a3fb0}
+      /* cross-references */
+      .xref{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px;padding:4px 9px;border-radius:7px;
+        border:1px solid var(--line);background:#f7f9fc;color:var(--ink);text-decoration:none}
+      a.xref:hover{border-color:#c3cee0;background:#eef4ff}
+      .xref-ext{color:var(--muted);font-family:var(--body,'Inter',sans-serif)}
+      .ann-build{font-size:11px;margin-top:12px}
+      @media (max-width:640px){ .dom-span{margin-left:0} }`;
     document.head.appendChild(s);
   }
 

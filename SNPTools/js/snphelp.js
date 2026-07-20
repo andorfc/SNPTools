@@ -33,9 +33,9 @@ const SNPHelp = (function () {
       get:'A ranked, filterable variant table and a shortlist of candidate alleles.' },
     { id:'snpfunction', name:'SNPFunction', icon:'func', color:'#2563eb', status:LIVE,
       tag:'Gene function & allele mining',
-      what:'A gene-scoped dossier that is independent of any one region. Enter a gene and it summarizes the Pfam domains and protein, computes the gene\u2019s variant burden across the whole panel, and lists which accessions carry each damaging or knockout allele.',
+      what:'A gene-scoped dossier, independent of any one region. It opens with a functional-annotation record — gene symbol and names, a sourced description, protein domain architecture drawn to scale, Gene Ontology grouped by aspect, KEGG pathways and orthology, and external cross-references, each tagged by provenance (curated vs predicted). Below that it computes the gene\u2019s variant burden across the whole panel and lists which accessions carry each damaging or knockout allele.',
       give:'A gene model ID and a dataset.',
-      get:'A domain/protein summary, a burden breakdown, and a damaging-allele catalog with carrier lines.' },
+      get:'A functional-annotation dossier (identity, domains, GO, pathways, cross-references), a variant-burden breakdown, and a damaging-allele catalog with carrier lines.' },
     { id:'snpcompare', name:'SNPCompare', icon:'compare', color:'#0e7490', status:LIVE,
       tag:'Similarity to a focal accession',
       what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is the fraction of co-called sites with the same genotype. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression.',
@@ -61,6 +61,11 @@ const SNPHelp = (function () {
       what:'Maps coding variants onto predicted protein structure. A linear protein browser aligns variants with Pfam domains, secondary structure, and per-residue pLDDT confidence; an on-demand 3D viewer shows the fold coloured by confidence, domain, or impact; and a per-variant readout interprets each change (domain, local confidence, secondary structure, predicted \u0394\u0394G).',
       give:'A gene with an available structure model.',
       get:'A structure-aware, per-variant interpretation of coding changes.' },
+    { id:'paneffect', name:'PanEffect', icon:'effect', color:'#b45309', status:LIVE,
+      tag:'Missense effects across the pan-genome',
+      what:'Visualizes the predicted effect of every possible amino-acid substitution across a protein using ESM protein-language-model scores. A B73 reference view and a pan-genome view each show a full-length substitution heatmap with a zoomable window, aligned to Pfam domains and predicted secondary structure; the pan-genome view adds the natural variation seen across the maize assemblies, coloured by heterotic group. Choose a gene model and an ESM model, or arrive from SNPVersity or SNPFold on a specific missense call and that substitution is highlighted in the MaizeGDB 2026 view.',
+      give:'A gene model and an ESM model (ESM1 / ESM2 / ESM3); optionally a missense variant handed off from another tool.',
+      get:'B73 and pan-genome substitution heatmaps with domain and secondary-structure context, plus a downloadable per-variant effects file.' },
     { id:'snpdensity', name:'SNPDensity', icon:'density', color:'#9333ea', status:SOON,
       tag:'Density & burden',
       what:'Measures SNP and INDEL density, burden, and distribution across genes and regions to highlight mutational load, constraint, and diversification.',
@@ -84,6 +89,9 @@ const SNPHelp = (function () {
     ['MAF', 'Minor allele frequency, the frequency of the less common allele. SNPVersity can filter a region by a minimum MAF.'],
     ['Pfam domain', 'When a variant falls inside a known protein domain, that domain is shown and linked to InterPro. Domain annotation is still being loaded for some regions, where it reads as \u2014.'],
     ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection.'],
+    ['Gene Ontology (GO)', 'Standardized terms describing a gene product\u2019s biological process, molecular function, and cellular component. SNPFunction groups them by aspect and tags each by source: MaizeGDB and UniProt are curated, InterPro2GO is predicted from domains.'],
+    ['Curated vs predicted', 'Annotation provenance. Curated evidence (MaizeGDB, UniProt) is human-reviewed; predicted evidence (InterPro / InterPro2GO) is inferred from protein domains. SNPFunction labels each description and GO term accordingly and can hide predicted-only terms.'],
+    ['Heterotic group', 'A maize breeding classification (stiff-stalk, non-stiff-stalk, Iodent, Lancaster, tropical, teosinte, and others). PanEffect colours the pan-genome rows by the assembly\u2019s heterotic group.'],
   ];
 
 
@@ -167,6 +175,18 @@ const SNPHelp = (function () {
       ['AF', 'Alternate-allele frequency across the whole analyzed panel.'],
       ['Variant burden', 'The count and composition of variants assigned to the gene across the full dataset panel.'],
       ['Damaging allele', 'An allele selected because its consequence and/or prediction scores indicate a potentially important functional effect.'],
+      ['Functional annotation', 'A per-gene dossier assembled for the 39,756 canonical B73 v5 gene models: identity, description, protein domains, Gene Ontology, pathways, and cross-references.'],
+      ['Gene symbol / aliases', 'The primary gene symbol and any additional names or synonyms recorded for the model.'],
+      ['Description source', 'Provenance of the functional description, shown as a badge: MaizeGDB (curated), UniProt, InterPro (predicted from domains), or no informative source.'],
+      ['Evidence chips', 'An at-a-glance row of what is annotated for the gene: GO, Pfam, KEGG KO, Pathway, UniProt, Symbol.'],
+      ['Protein domain architecture', 'A to-scale diagram of the protein with Pfam domains as positioned blocks, plus a list giving Pfam and InterPro IDs, residue span, percent of protein covered, and InterProScan E-value.'],
+      ['Gene Ontology (BP / MF / CC)', 'GO terms grouped by aspect — Biological process, Molecular function, Cellular component — each linking out to AmiGO.'],
+      ['GO source (MaizeGDB / UniProt / InterPro2GO)', 'Provenance of each GO term. MaizeGDB and UniProt are curated; InterPro2GO is predicted from protein domains.'],
+      ['Curated only', 'A toggle that hides GO terms supported only by prediction (InterPro2GO), leaving curated evidence.'],
+      ['Obsolete term', 'A GO term whose status is no longer current; it is retained but flagged.'],
+      ['KEGG orthology (KO) / Pathways', 'KEGG orthology assignments, pathway memberships, and KEGG gene IDs, where the gene cross-references to UniProt or Entrez.'],
+      ['Cross-references', 'External identifiers for the gene: UniProt, NCBI Gene, and B73 v4 / v3 gene models.'],
+      ['Annotation build', 'The build date, assembly, and annotation version the functional record was generated from.'],
     ]},
     { tool:'SNPCompare', color:'#0e7490', items:[
       ['#', 'Current rank after sorting and filtering.'],
@@ -229,6 +249,20 @@ const SNPHelp = (function () {
       ['3D viewer color: domain', 'Colors residues by Pfam-domain membership.'],
       ['3D viewer color: impact', 'Colors or highlights variants according to predicted functional severity.'],
     ]},
+    { tool:'PanEffect', color:'#b45309', items:[
+      ['B73 Reference View', 'The substitution heatmap computed on the B73 v5 protein: every residue (columns) against all 20 possible amino acids (rows).'],
+      ['Pan-genome View', 'The same substitution heatmap projected onto a protein multiple-sequence alignment across the maize assemblies, so natural variation and its predicted effect can be read together. Available for canonical transcripts.'],
+      ['ESM score', 'A protein-language-model estimate of how tolerated an amino-acid substitution is; more negative is more disruptive.'],
+      ['ESM model (ESM1 / ESM2 / ESM3)', 'The protein language model used to score substitutions, selectable in the panel.'],
+      ['Substitution heatmap', 'A per-residue grid coloured by predicted effect. Hover a cell to read the position, wild-type → substitution, and score.'],
+      ['Zoomed region', 'A 50-residue window of the full heatmap, positioned with the slider, showing per-cell substitution letters and the wild-type residue track.'],
+      ['MaizeGDB 2026 view', 'Colours the B73 heatmap using substitutions observed in the MaizeGDB 2026 High-Coverage set. Hand-offs from SNPVersity or SNPFold open in this view; "Show all variant effects" colours every possible substitution.'],
+      ['PFAM Domains track', 'Pfam domains drawn to scale along the protein and linked to InterPro, shared with the SNPFold and SNPFunction views.'],
+      ['Secondary structure', 'Predicted per-residue secondary structure (helix / strand / coil) drawn above the heatmap for context.'],
+      ['Species / Gene model', 'In the pan-genome zoomed view, switches the row labels between assembly (species) names and their gene-model IDs.'],
+      ['Heterotic group colour', 'Pan-genome rows are coloured by the assembly\u2019s heterotic group (stiff-stalk, non-stiff-stalk, Iodent, Lancaster, tropical, teosinte, and others).'],
+      ['Variant effects file', 'The per-substitution ESM score table for the gene, downloadable from the summary.'],
+    ]},
     { tool:'Dataset table', color:'#475569', items:[
       ['Dataset', 'Named variant collection and filtering configuration used for a query.'],
       ['Reference', 'Genome assembly to which reads and variants were aligned.'],
@@ -257,7 +291,7 @@ const SNPHelp = (function () {
     ['What can I download?',
      'A VCF from SNPVersity; a CSV distance matrix, PHYLIP, PNG, and SVG from SNPMatrix; Newick, MEGA, and PHYLIP trees from SNPTree. Comparison and impact tables can be exported from their own pages.'],
     ['Which tools are ready to use now?',
-     'SNPVersity, SNPImpact, SNPFunction, SNPCompare, SNPTree, SNPMatrix, and SNPFold are live. SNPTrait, SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap and marked in development in the sidebar.'],
+     'SNPVersity, SNPImpact, SNPFunction, SNPCompare, SNPTree, SNPMatrix, SNPFold, and PanEffect are live. SNPTrait, SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap and marked in development in the sidebar.'],
   ];
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -492,7 +526,7 @@ const SNPHelp = (function () {
 
       <section id="hp-tools" class="hp-sec">
         <div class="hp-h"><span class="hp-n">02</span><h2>The tools</h2></div>
-        <p class="hp-lead">Eleven tools across five stages. Seven are live today; the rest are on the roadmap and share
+        <p class="hp-lead">Twelve tools across five stages. Eight are live today; the rest are on the roadmap and share
           the same data and coordinates. Expand any tool for what it does, what it takes, and what it returns.</p>
         <div class="hp-tools">${toolCards}</div>
       </section>

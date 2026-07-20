@@ -34,6 +34,28 @@
   }
   const fmtMaf = m => (m==null ? '—' : (+m).toFixed(3));
 
+  /* ---------- PanEffect jump ---------- */
+  /* true when this row is a single amino-acid substitution */
+  function isMissense(r){
+    return r.consClass==='missense' || /missense/i.test(r.consequence||'');
+  }
+  /* substitution string PanEffect highlights on, e.g. "A123T".
+     SNPVersity rows carry it as r.sub; SNPImpact rows carry the parts. */
+  function aaSub(r){
+    if (r.sub) return r.sub;
+    if (r.aaRef && r.aaAlt && r.resi!=null) return `${r.aaRef}${r.resi}${r.aaAlt}`;
+    return '';
+  }
+  function canPanEffect(r){ return !!(r && r.gene && r.gene!=='—'); }
+  /* internal view switch — highlights the substitution when missense,
+     otherwise just opens PanEffect on the gene */
+  function panEffect(r){
+    if (!canPanEffect(r)) return;
+    const sub = isMissense(r) ? aaSub(r) : '';
+    if (typeof goPanEffect === 'function') goPanEffect(r.gene, sub ? {variant:sub} : undefined);
+    else go('paneffect');
+  }
+
   function filtered(){
     let r = IMP.rows.filter(v =>
       (IMP.fCons==='all'   || v.consClass===IMP.fCons) &&
@@ -149,10 +171,15 @@
   function rowHTML(r){
     const star = IMP.shortlist.has(r.id);
     const opened = IMP.openId===r.id;
+    const sub = isMissense(r) ? aaSub(r) : '';
+    const peJump = (isMissense(r) && canPanEffect(r))
+      ? ` <a class="pe-jump" href="#" title="View ${esc(sub||'this substitution')} in PanEffect"
+             onclick="event.stopPropagation();IMPACT.panEffect('${r.id}');return false;">effects ↗</a>`
+      : '';
     return `<tr class="imp-row ${opened?'open':''}" onclick="IMPACT.open('${r.id}')">
       <td class="gene-link" style="padding-left:11px">${r.gene}</td>
       <td class="c-mono c-alt">${r.variant}</td>
-      <td>${consPill(r)}</td>
+      <td>${consPill(r)}${peJump}</td>
       <td>${domTag(r.domain)}</td>
       <td class="num">${scoreCell(r.plantcad)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2)}</td>`:''}
@@ -267,7 +294,7 @@
   }
   function detailHTML(r){
     if (!r) return '';
-    const pan = `https://maizegdb.org/effect/maize_v2/index.html?id=${encodeURIComponent(r.gene)}`;
+    const peSub = isMissense(r) ? aaSub(r) : '';
     return `
     <div class="imp-detail card fade">
       <div class="idh">
@@ -283,7 +310,9 @@
         <div class="idh-actions">
           <button class="btn" onclick="goFold('${r.gene}')">${ICONS.fold} View in SNPFold</button>
           <button class="btn" onclick="goFunction('${r.gene}','${IMP.input.dataset}')">${ICONS.leaf||''} Gene in SNPFunction</button>
-          <a class="btn ghost" href="${pan}" target="_blank" rel="noopener">PanEffect ↗</a>
+          <button class="btn ghost" onclick="IMPACT.panEffect('${r.id}')"
+            title="${peSub ? 'Highlight '+esc(peSub)+' in PanEffect' : 'View '+esc(r.gene)+' in PanEffect'}"
+            ${canPanEffect(r)?'':'disabled'}>${ICONS.effect||''} ${peSub ? `PanEffect · ${esc(peSub)}` : 'PanEffect'} →</button>
           <button class="btn ghost" onclick="IMPACT.close()" aria-label="close">✕</button>
         </div>
       </div>
@@ -345,6 +374,7 @@
       Promise.all([Data.ensureGeneDomains(), Data.ensureGeneModels(IMP.input.chr)]).then(()=>{ render();
         const d=document.getElementById('impDetail'); if(IMP.openId && d && d.scrollIntoView) d.scrollIntoView({behavior:'smooth',block:'nearest'}); }); },
     close(){ IMP.openId=null; render(); },
+    panEffect(id){ panEffect(IMP.rows.find(r=>r.id===id)); },
     star(id){ IMP.shortlist.has(id)?IMP.shortlist.delete(id):IMP.shortlist.add(id); render(); },
     sendCompare(){ if(IMP.input){ S.compareInput=IMP.input; } go('snpcompare'); },
     exportCSV(){
