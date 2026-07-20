@@ -25,6 +25,7 @@
     viewer: null, libState: 'idle',
     dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
+    sort: { key: null, dir: 'asc' },     // variant-table sort: column key + direction ('asc'|'desc'); null key = file order
     root: null,          // persistent DOM container — survives navigation to other tools
     loaded: false,       // a gene's heavy content is (being) rendered into root
     loadedGene: null,    // which gene that content is for
@@ -500,16 +501,9 @@
 
       <!-- variant table -->
       <div class="sec" style="margin-top:24px"><div class="bar"></div><div><h2 style="font-size:16px">Coding variants on this gene</h2></div></div>
-      <div class="tbl-wrap" style="max-height:none"><table class="vcf">
-        <thead><tr>
-          <th>Variant</th><th>Consequence</th><th class="num">Residue</th><th>Domain</th>
-          <th class="num">Local pLDDT</th><th>Structure</th><th class="num">PlantCAD</th>
-          ${FD.sec?'<th class="num">PlantCAD2</th>':''}
-          <th class="num">ESM1</th>
-          ${FD.sec?'<th class="num">ESM2</th><th class="num">ESM3</th>':''}
-          <th>Priority</th><th class="num">Carriers</th>
-        </tr></thead>
-        <tbody id="foldTableBody">${FD.variants.map(rowHTML).join('')}</tbody>
+      <div class="tbl-wrap" style="max-height:none"><table class="vcf fold-table">
+        <thead id="foldTableHead">${tableHeadHTML()}</thead>
+        <tbody id="foldTableBody">${sortedVariants().map(rowHTML).join('')}</tbody>
       </table></div>
     `;
     buildViewer();
@@ -613,6 +607,84 @@
       onclick="event.stopPropagation();FOLD.panEffect('${v.id}');return false;">effects ↗</a>`;
   }
 
+  /* ---------- variant table: sortable column model ----------
+     One entry per <th>, in display order. `get` returns the value the column is
+     sorted on (null/undefined => always sorted to the bottom, either direction).
+     `sec` marks the MaizeGDB-2026-only columns, so the header and the row markup
+     stay in sync automatically. `desc1` = first click sorts high→low, which reads
+     better for counts/ranks; everything else starts low→high. */
+  const PRIO_RANK = { high:3, moderate:2, medium:2, low:1, modifier:0 };
+  const FOLD_COLS = [
+    { key:'variant',     label:'Variant',     type:'str',
+      get:v => v.variant },
+    { key:'consequence', label:'Consequence', type:'str',
+      get:v => v.consequence },
+    { key:'resi',        label:'Residue',     type:'num', num:true,
+      get:v => finiteNumber(v.resi) },
+    { key:'domain',      label:'Domain',      type:'str',
+      get:v => { const d = ctxFor(v).domain; return d ? d.name : null; } },
+    { key:'plddt',       label:'Local pLDDT', type:'num', num:true, desc1:true,
+      get:v => finiteNumber(ctxFor(v).plddt) },
+    { key:'ss',          label:'Structure',   type:'str',
+      get:v => { const c = ctxFor(v); return c.inModel ? c.ssLabel : null; } },
+    { key:'plantcad',    label:'PlantCAD',    type:'num', num:true,
+      get:v => modelScore(v, 'plantcad') },
+    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'plantcad2') },
+    { key:'esm',         label:'ESM1',        type:'num', num:true,
+      get:v => modelScore(v, 'esm') },
+    { key:'esm2',        label:'ESM2',        type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'esm2') },
+    { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'esm3') },
+    { key:'priority',    label:'Priority',    type:'num', desc1:true,
+      get:v => { const p = v.priority ? PRIO_RANK[String(v.priority).toLowerCase()] : null;
+                 return p == null ? null : p; } },
+    { key:'carriers',    label:'Carriers',    type:'num', num:true, desc1:true,
+      get:v => { const c = carrierOf(v);
+                 if (!c) return null;
+                 const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
+                 return n === 0 ? null : n; } },
+  ];
+  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
+  function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
+
+  /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
+     never shuffle rows arbitrarily. */
+  function sortedVariants(){
+    const list = FD.variants || [];
+    const col  = foldCol(FD.sort.key);
+    if (!col) return list.slice();
+    const dir = FD.sort.dir === 'desc' ? -1 : 1;
+    return list
+      .map((v, i) => ({ v, i, k: col.get(v) }))
+      .sort((a, b) => {
+        const aNull = a.k == null || a.k === '';
+        const bNull = b.k == null || b.k === '';
+        if (aNull && bNull) return a.i - b.i;
+        if (aNull) return 1;          // blanks always last
+        if (bNull) return -1;
+        const r = col.type === 'num'
+          ? (Number(a.k) - Number(b.k))
+          : String(a.k).localeCompare(String(b.k), undefined, { numeric:true, sensitivity:'base' });
+        return r ? r * dir : a.i - b.i;
+      })
+      .map(x => x.v);
+  }
+
+  function tableHeadHTML(){
+    return '<tr>' + foldVisibleCols().map(c => {
+      const on = FD.sort.key === c.key;
+      const arrow = on ? (FD.sort.dir === 'desc' ? '▼' : '▲') : '↕';
+      const tip = on
+        ? `Sorted ${FD.sort.dir === 'desc' ? 'high to low' : 'low to high'} — click to reverse`
+        : `Sort by ${c.label}`;
+      return `<th class="fold-th${c.num ? ' num' : ''}${on ? ' sorted' : ''}" title="${escFold(tip)}"
+        aria-sort="${on ? (FD.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"
+        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${escFold(c.label)}<span class="fold-ar">${arrow}</span></span></th>`;
+    }).join('') + '</tr>';
+  }
+
   /* ---------- variant table ---------- */
   function rowHTML(v){
     const c = ctxFor(v);
@@ -634,7 +706,7 @@
       <td style="text-align:center">${carrierBtn(v, cr, openC)}</td>
     </tr>${openC?carrierRow(v, cr):''}`;
   }
-  function foldCols(){ return FD.sec ? 13 : 10; }   // total columns (kept in sync with header)
+  function foldCols(){ return foldVisibleCols().length; }   // colspan for the expanded carrier row
   function carrierBtn(v, cr, open){
     if (!cr || (cr.hom===0 && cr.het===0)) return '<span style="color:var(--faint)">—</span>';
     return `<button class="fold-cbtn ${open?'on':''}" title="Show carrier accessions (whole panel)"
@@ -765,16 +837,25 @@
   function refreshSelection(){
     const t=document.getElementById('foldTrack'); if(t) t.innerHTML=trackSVG();
     const c=document.getElementById('foldCtx'); if(c) c.innerHTML=ctxHTML();
-    const b=document.getElementById('foldTableBody'); if(b) b.innerHTML=FD.variants.map(rowHTML).join('');
-    if (typeof attachTT==='function') attachTT();
+    refreshTable();
   }
+  /* re-renders header (sort arrows) and body (sorted rows) together */
   function refreshTable(){
-    const b=document.getElementById('foldTableBody'); if(b) b.innerHTML=FD.variants.map(rowHTML).join('');
+    const h=document.getElementById('foldTableHead'); if(h) h.innerHTML=tableHeadHTML();
+    const b=document.getElementById('foldTableBody'); if(b) b.innerHTML=sortedVariants().map(rowHTML).join('');
     if (typeof attachTT==='function') attachTT();
   }
   window.FOLD = {
     select(id){ FD.selId = (FD.selId===id?null:id); refreshSelection(); if(FD.selId) focusResidue(true); else if(FD.viewer){FD.viewer.removeAllLabels();applyStyle();FD.viewer.zoomTo();FD.viewer.render();} },
     carriers(id){ FD.openCarrier = (FD.openCarrier===id?null:id); refreshTable(); },
+    /* Click a column header to sort; click the same header again to reverse.
+       Blank cells (—) always sort to the bottom, whichever direction is active. */
+    sortBy(key){
+      const col = foldCol(key); if (!col) return;
+      if (FD.sort.key === key) FD.sort = { key, dir: FD.sort.dir === 'asc' ? 'desc' : 'asc' };
+      else                     FD.sort = { key, dir: col.desc1 ? 'desc' : 'asc' };
+      refreshTable();
+    },
     panEffect(id){ panEffect(FD.variants.find(v=>v.id===id)); },
     color(m){ FD.colorMode=m; document.querySelectorAll('.fold-toolbar .seg-b').forEach(b=>b.classList.remove('on'));
       const map={plddt:0,domain:1,impact:2}; const btns=document.querySelectorAll('.fold-toolbar .seg-b'); if(btns[map[m]])btns[map[m]].classList.add('on'); applyStyle(); },
@@ -805,6 +886,20 @@
     if (document.getElementById('snpfold-carrier-css')) return;
     const s=document.createElement('style'); s.id='snpfold-carrier-css';
     s.textContent=`
+      /* sortable variant-table headers
+         Hover/active states are translucent overlays rather than opaque fills, so they
+         tint whatever the .vcf header background already is and never fight its text
+         colour. On a light header swap the two rgba(255,255,255,…) values for
+         rgba(0,0,0,.05) / rgba(0,0,0,.08) to darken instead of lighten. */
+      .fold-table th.fold-th{cursor:pointer;user-select:none;white-space:nowrap;position:relative;
+        transition:background-color .12s}
+      .fold-table th.fold-th:hover{background-color:rgba(55,55,55,.33)}
+      .fold-table th.fold-th .fold-th-in{display:inline-flex;align-items:center;gap:5px}
+      .fold-table th.fold-th.num .fold-th-in{justify-content:flex-end}
+      .fold-table th.fold-th .fold-ar{font-size:9px;line-height:1;opacity:.35;transition:opacity .12s}
+      .fold-table th.fold-th:hover .fold-ar{opacity:.7}
+      .fold-table th.fold-th.sorted{background-color:rgba(100,100,100,.75)}
+      .fold-table th.fold-th.sorted .fold-ar{opacity:1}
       .fold-cbtn{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fff;cursor:pointer;padding:0}
       .fold-cbtn:hover{border-color:#c3cee0}
       .fold-cbtn.on{border-color:#9db4dd;box-shadow:0 0 0 2px rgba(47,106,208,.12)}
