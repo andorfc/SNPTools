@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
 <link rel="stylesheet" href="./css/main.css">
+<link rel="stylesheet" href="./css/paneffect-native.css">
 <style>
 /* ===== MaizeGDB masthead — brand bar above the SNPTools main column ===== */
 .mg-mast{--mg-blue:rgb(8,44,148);--mg-blue-dark:rgb(6,33,110);--mg-blue-tint:rgba(8,44,148,.07);
@@ -121,6 +122,22 @@
 <script src="./js/snpversity.js"></script>
 <script src="./js/snpimpact.js"></script>
 <script src="./js/snpfold.js"></script>
+
+<!-- ===== Native PanEffect engine =====================================
+     PanEffect's ported scripts (classic scripts, shared global scope) +
+     the canvas heatmap + the engine. Data is served from ./paneffect/
+     (same-origin). Must load before snppaneffect.js. -->
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="./js/pe/support.js"></script>
+<script src="./js/pe/genome.js"></script>
+<script src="./js/pe/pan.js"></script>
+<script src="./js/pe/dom.js"></script>
+<script src="./js/pe/main.js"></script>
+<script src="./js/paneffect-heatmap.js"></script>
+<script src="./js/paneffect-engine.js"></script>
+<!-- =================================================================== -->
+
+<script src="./js/snppaneffect.js"></script>
 <script src="./js/snptree.js"></script>
 <script src="./js/snpmatrix.js"></script>
 <script src="./js/snpcompare.js"></script>
