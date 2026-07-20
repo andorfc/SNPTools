@@ -22,9 +22,12 @@ S.chr='chr10'; S.start=3750832; S.end=3755732;
 
 /* ================= SNPVERSITY PAGE ================= */
 function renderVersity(){
+  injectVersityCSS();
+  const inbound = applyPendingRequest();   // e.g. carriers handed over from SNPFunction
   const p=document.getElementById('page');
   p.className='page fade';
   p.innerHTML = `
+    ${inbound ? inboundBanner(inbound) : ''}
     <div class="sec"><div class="bar"></div><div style="width:100%">
       <div class="n">VCF BUILDER & VIEWER · B73 v5</div>
       <h2>Build a variant view across maize accessions</h2>
@@ -54,8 +57,78 @@ function renderVersity(){
     <div id="resultsAnchor" style="margin-top:30px"></div>
   `;
   renderDatasets(); renderRegion(); renderAccPicker(); renderRunbar();
+  if(inbound){
+    // prefill the gene box so "Load" re-fetches the same coordinates
+    const gi=document.getElementById('geneInput');
+    if(gi && inbound.gene){ gi.value=inbound.gene; }
+    const st=document.getElementById('geneStatus');
+    if(st && inbound.gene){ st.className='status ok'; st.textContent=`Region set from ${inbound.gene} (${S.chr}:${S.start.toLocaleString()}–${S.end.toLocaleString()})`; }
+    if(inbound.missing && inbound.missing.length){
+      uplSay('warn', `${inbound.missing.length} carrier${inbound.missing.length>1?'s are':' is'} not present in this dataset's accession list and could not be selected.`);
+      renderUplReport({matched:inbound.selected, considered:inbound.selected+inbound.missing.length,
+        unmatched:inbound.missing.map((t,i)=>({line:i+1, text:t})), dupes:[], fanout:[], source:'SNPFunction', skippedHeader:null, applied:true});
+    }
+    document.getElementById('runbar').scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   // returning from another tool: restore the last results instead of forcing a rebuild
   if(S.results && S.results.rows && S.results.rows.length) renderResults();
+}
+
+/* =====================================================================
+ *  INBOUND HANDOFF  —  another tool (SNPFunction) hands us a gene model
+ *  and a set of accessions to preselect.
+ *    payload = {gene, chr, start, end, dataset, accessions:[…], from, note}
+ * ===================================================================== */
+window.versityRequest = function(payload){
+  if(!payload) return;
+  S.pendingVersity = payload;
+  S.results = null;                  // the old result no longer matches the new query
+  if(typeof go==='function') go('snpversity');
+};
+
+/* consume S.pendingVersity: switch dataset, set the region, resolve + select
+   the accessions. Returns a summary for the banner, or null. */
+function applyPendingRequest(){
+  const req = S.pendingVersity; if(!req) return null;
+  S.pendingVersity = null;
+
+  // 1 · dataset (rebinds this dataset's real accession catalog)
+  if(req.dataset && req.dataset!==S.dataset && DATASETS.some(d=>d.id===req.dataset)){
+    S.dataset=req.dataset;
+    PROJECTS=Data.projectsFor(S.dataset);
+    ACCESSIONS=Data.accessionsFor(S.dataset);
+  }
+
+  // 2 · region
+  if(req.chr){ S.chr=String(req.chr).startsWith('chr')?req.chr:'chr'+req.chr; }
+  const flank=+req.flank||0;
+  if(req.start!=null && req.end!=null){
+    const lo=Math.min(+req.start,+req.end), hi=Math.max(+req.start,+req.end);
+    S.start=Math.max(0,lo-flank); S.end=hi+flank;
+  }
+
+  // 3 · accessions (resolved the same way as an uploaded list, so founder
+  //     names / run IDs / composite IDs all work)
+  const wanted=[...new Set((req.accessions||[]).filter(Boolean).map(String))];
+  const idx=buildAccIndex(); const missing=[];
+  S.selected.clear();
+  wanted.forEach(w=>{
+    const hit=idxHit(idx,w) || (w.match(RUN_RE)?idxHit(idx,w.match(RUN_RE)[1]):null);
+    if(hit) hit.forEach(id=>S.selected.add(id)); else missing.push(w);
+  });
+  accFilter='';
+  S.page=1;
+  return {gene:req.gene||'', from:req.from||'SNPFunction', note:req.note||'',
+          requested:wanted.length, selected:S.selected.size, missing};
+}
+function inboundBanner(i){
+  return `<div class="from-fn">
+    <b>From ${escAttr(i.from)}</b>
+    <span>${i.gene?`<span class="mono">${escAttr(i.gene)}</span> — `:''}${escAttr(i.note||'carrier accessions')}:
+      <b>${i.selected}</b> of ${i.requested} accession${i.requested===1?'':'s'} preselected${i.missing.length?`, ${i.missing.length} not in this dataset`:''}.</span>
+    <button class="btn" style="margin-left:auto" onclick="runQuery()">${ICONS.dna||''} Build VCF &amp; view</button>
+  </div>`;
 }
 
 function renderDatasets(){
@@ -232,11 +305,21 @@ function renderAccPicker(){
         <div class="sh"><span class="ttl">Selected</span><span class="ct" id="selCount"></span></div>
         <div class="sel-chips" id="selChips"></div>
         <div class="upl">
-          <label>Or upload a list (one SNPVersity ID per line)</label>
+          <label>Or upload a list (one accession per line)</label>
           <div class="file-row">
-            <input type="file" id="fileUpload" accept=".txt,.tsv,.csv">
-            <button class="btn" onclick="document.getElementById('fileUpload').value=''">Clear</button>
+            <input type="file" id="fileUpload" accept=".txt,.tsv,.csv,.list,text/plain" onchange="onAccFilePicked(this)">
           </div>
+          <div class="upl-name" id="uplName">No file chosen — you can also paste a list below.</div>
+          <textarea id="accPaste" class="upl-paste" spellcheck="false"
+            placeholder="ACC.8750_SRR12460455&#10;ACC.8782_SRR12460453&#10;SRR12460421&#10;…"
+            oninput="refreshUplButtons()"></textarea>
+          <div class="upl-actions">
+            <button class="btn primary" id="uplLoadBtn" onclick="loadAccList()" disabled>Load accessions</button>
+            <button class="btn" onclick="clearAccUpload()">Clear</button>
+          </div>
+          <label class="upl-opt"><input type="checkbox" id="uplReplace" checked> Replace current selection</label>
+          <div class="upl-status" id="uplStatus"></div>
+          <div class="upl-report" id="uplReport"></div>
         </div>
       </div>
     </div>`;
@@ -336,6 +419,198 @@ function renderSelected(){
   }
   const m=document.getElementById('mAcc'); if(m)m.textContent=arr.length;
 }
+/* =====================================================================
+ *  ACCESSION LIST UPLOAD  (file or paste)
+ *  Reads a plain list, resolves each entry against the current dataset's
+ *  accession catalog, and reports exactly what matched / what did not.
+ * ===================================================================== */
+let uplFileText = null;      // text of the last successfully read file
+let uplFileName = '';
+
+const MAX_UPL_BYTES = 5 * 1024 * 1024;
+const RUN_RE = /\b([SEDC]RR\d{4,})\b/i;                 // SRR / ERR / DRR / CRR run accessions
+const RUN_SUFFIX_RE = /[_\s,\t-]+[SEDC]RR\d{4,}\s*$/i;  // trailing "_SRR12460455"
+
+function normKey(s){ return String(s==null?'':s).replace(/\uFEFF/g,'').trim().replace(/^["']+|["']+$/g,'').toLowerCase(); }
+function looseKey(s){ return normKey(s).replace(/[^a-z0-9]+/g,''); }
+
+/* key → Set(accession id). Every accession is indexed under its id, run,
+   founder, label and the founder_run composite (both orders), in exact and
+   punctuation-insensitive form. Rebuilt on demand so it follows the dataset. */
+function buildAccIndex(){
+  const idx=new Map();
+  const add=(k,id)=>{ if(!k) return; if(!idx.has(k)) idx.set(k,new Set()); idx.get(k).add(id); };
+  ACCESSIONS.forEach(a=>{
+    const keys=[a.id, a.run, a.founder, a.label];
+    if(a.founder&&a.run){ keys.push(a.founder+'_'+a.run, a.run+'_'+a.founder); }
+    keys.filter(Boolean).forEach(v=>{ add(normKey(v),a.id); add(looseKey(v),a.id); });
+  });
+  return idx;
+}
+function idxHit(idx,key){ return idx.get(normKey(key)) || idx.get(looseKey(key)) || null; }
+
+/* resolve one line to accession id(s); returns {ok, ids, via} or {ok:false, text} */
+function resolveAccEntry(raw, idx){
+  const line=String(raw).replace(/\uFEFF/g,'').trim();
+  if(!line || /^[#!]/.test(line)) return null;                 // blank or comment → skipped
+  // whole line first, then each delimited field (handles csv/tsv exports)
+  const toks=[line].concat(line.split(/[,\t;|]+/)).map(t=>t.trim().replace(/^["']+|["']+$/g,'')).filter(Boolean);
+  for(const t of toks){ const hit=idxHit(idx,t); if(hit) return {ok:true, ids:[...hit], via:t, text:line}; }
+  // fall back to the embedded run accession …
+  const m=line.match(RUN_RE);
+  if(m){ const hit=idxHit(idx,m[1]); if(hit) return {ok:true, ids:[...hit], via:m[1], text:line}; }
+  // … then to the founder part with the run suffix stripped
+  const f=line.replace(RUN_SUFFIX_RE,'').trim();
+  if(f && f!==line){ const hit=idxHit(idx,f); if(hit) return {ok:true, ids:[...hit], via:f, text:line}; }
+  return {ok:false, text:line};
+}
+
+function uplSay(cls,msg){ const el=document.getElementById('uplStatus'); if(el){ el.className='upl-status '+(cls||''); el.innerHTML=msg||''; } }
+function refreshUplButtons(){
+  const btn=document.getElementById('uplLoadBtn'); if(!btn) return;
+  const pasted=(document.getElementById('accPaste')||{}).value||'';
+  btn.disabled = !(uplFileText && uplFileText.trim()) && !pasted.trim();
+}
+function clearAccUpload(){
+  uplFileText=null; uplFileName='';
+  const f=document.getElementById('fileUpload'); if(f) f.value='';
+  const t=document.getElementById('accPaste');  if(t) t.value='';
+  const n=document.getElementById('uplName');   if(n) n.textContent='No file chosen — you can also paste a list below.';
+  const r=document.getElementById('uplReport'); if(r) r.innerHTML='';
+  uplSay('',''); refreshUplButtons();
+}
+
+/* file chosen → validate + read into memory (nothing is selected until "Load") */
+function onAccFilePicked(input){
+  const file=input.files && input.files[0];
+  const nameEl=document.getElementById('uplName');
+  const rep=document.getElementById('uplReport'); if(rep) rep.innerHTML='';
+  uplFileText=null; uplFileName='';
+  if(!file){ if(nameEl) nameEl.textContent='No file chosen — you can also paste a list below.'; uplSay('',''); refreshUplButtons(); return; }
+  if(file.size>MAX_UPL_BYTES){
+    if(nameEl) nameEl.textContent=file.name;
+    uplSay('err',`That file is ${(file.size/1048576).toFixed(1)} MB. Please upload a plain list under 5 MB.`);
+    refreshUplButtons(); return;
+  }
+  if(file.size===0){
+    if(nameEl) nameEl.textContent=file.name;
+    uplSay('err','That file is empty.'); refreshUplButtons(); return;
+  }
+  if(/\.(xlsx|xls|pdf|docx?|zip|gz|bam|h5|vcf)$/i.test(file.name)){
+    if(nameEl) nameEl.textContent=file.name;
+    uplSay('err','Unsupported file type. Use a plain text, .csv or .tsv list with one accession per line.');
+    refreshUplButtons(); return;
+  }
+  const fr=new FileReader();
+  fr.onerror=()=>{ uplSay('err','Could not read that file.'); refreshUplButtons(); };
+  fr.onload=()=>{
+    const txt=String(fr.result||'');
+    if(/\u0000/.test(txt)){ uplSay('err','That looks like a binary file, not a text list.'); refreshUplButtons(); return; }
+    uplFileText=txt; uplFileName=file.name;
+    if(nameEl) nameEl.textContent=`${file.name} · ${(file.size/1024).toFixed(1)} KB · ${txt.split(/\r\n|\r|\n/).filter(l=>l.trim()).length} non-empty lines`;
+    uplSay('ok','File read. Press <b>Load accessions</b> to match it against this dataset.');
+    refreshUplButtons();
+  };
+  fr.readAsText(file);
+}
+
+/* main entry: parse whatever is available (file wins, else the textarea) */
+function loadAccList(){
+  const pasted=((document.getElementById('accPaste')||{}).value||'');
+  const text = (uplFileText && uplFileText.trim()) ? uplFileText : pasted;
+  const src  = (uplFileText && uplFileText.trim()) ? (uplFileName||'uploaded file') : 'pasted list';
+  if(!text || !text.trim()){ uplSay('err','Nothing to load — choose a file or paste a list first.'); return; }
+  applyAccList(text, src);
+}
+
+function applyAccList(text, source){
+  const idx=buildAccIndex();
+  const lines=String(text).split(/\r\n|\r|\n/);
+  const matched=new Map();      // accession id → the entry that matched it
+  const unmatched=[];           // {line, text}
+  const dupes=[];               // entries that resolved to something already matched
+  const fanout=[];              // entries that resolved to >1 accession (e.g. a founder with reps)
+  let considered=0, skippedHeader=null;
+
+  lines.forEach((raw,i)=>{
+    const r=resolveAccEntry(raw, idx);
+    if(r===null) return;                                   // blank / comment
+    // tolerate a single header row at the top
+    if(!r.ok && considered===0 && skippedHeader===null &&
+       /^(accession|accessions|id|sample|sample_?id|name|run|taxa|line)\b/i.test(r.text)){
+      skippedHeader=r.text; return;
+    }
+    considered++;
+    if(!r.ok){ unmatched.push({line:i+1, text:r.text}); return; }
+    if(r.ids.length>1) fanout.push({text:r.text, n:r.ids.length});
+    r.ids.forEach(id=>{ if(matched.has(id)) dupes.push(r.text); else matched.set(id, r.text); });
+  });
+
+  if(!considered){ uplSay('err','No usable entries found — the list looks empty or contains only comments.'); return; }
+  if(!matched.size){
+    uplSay('err',`None of the ${considered} entries in <b>${escAttr(source)}</b> matched an accession in this dataset. `+
+                 `Check that you picked the right dataset above, or that the file is one accession per line.`);
+    renderUplReport({matched:0, considered, unmatched, dupes, fanout, source, skippedHeader, applied:false});
+    return;
+  }
+
+  const replace=(document.getElementById('uplReplace')||{}).checked;
+  if(replace) S.selected.clear();
+  matched.forEach((_,id)=>S.selected.add(id));
+
+  const cls = unmatched.length ? 'warn' : 'ok';
+  uplSay(cls, `Loaded <b>${matched.size}</b> of ${considered} entries from <b>${escAttr(source)}</b>`+
+              (unmatched.length?` · <b>${unmatched.length}</b> not recognized`:'')+
+              ` · selection is now <b>${S.selected.size}</b> accessions.`);
+  renderUplReport({matched:matched.size, considered, unmatched, dupes, fanout, source, skippedHeader, applied:true});
+
+  renderAccList(); renderSelected(); renderRunbar();
+}
+
+function renderUplReport(r){
+  const box=document.getElementById('uplReport'); if(!box) return;
+  const bits=[];
+  if(r.skippedHeader) bits.push(`<div class="upl-note">Skipped header row: <span class="mono">${escAttr(r.skippedHeader)}</span></div>`);
+  if(r.dupes.length)  bits.push(`<div class="upl-note">${r.dupes.length} duplicate entr${r.dupes.length>1?'ies were':'y was'} ignored.</div>`);
+  if(r.fanout.length) bits.push(`<div class="upl-note">${r.fanout.length} entr${r.fanout.length>1?'ies':'y'} matched more than one run (all replicates were selected).</div>`);
+  if(r.unmatched.length){
+    const show=r.unmatched.slice(0,25);
+    bits.push(`<details class="upl-bad" open><summary>${r.unmatched.length} entr${r.unmatched.length>1?'ies':'y'} not found in this dataset</summary>
+      <ul>${show.map(u=>`<li><span class="ln">line ${u.line}</span> <span class="mono">${escAttr(u.text)}</span></li>`).join('')}</ul>
+      ${r.unmatched.length>show.length?`<div class="upl-note">…and ${r.unmatched.length-show.length} more.</div>`:''}
+      <div class="upl-note">Accepted forms: SNPVersity ID, run accession (SRR/ERR/DRR/CRR…), founder name, or <span class="mono">FOUNDER_RUN</span>.</div>
+    </details>`);
+  }
+  box.innerHTML=bits.join('');
+}
+
+/* minimal styling for the uploader (kept local so it can't clash with the suite CSS) */
+function injectVersityCSS(){
+  if(document.getElementById('snpversity-upl-css')) return;
+  const s=document.createElement('style'); s.id='snpversity-upl-css';
+  s.textContent=`
+    .upl-name{font-size:11.5px;color:var(--muted);margin:6px 0 6px;word-break:break-all}
+    .upl-paste{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;border:1px solid var(--line);
+      border-radius:8px;padding:7px 9px;font-family:var(--mono);font-size:11.5px;color:var(--ink);background:#fff}
+    .upl-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+    .upl-opt{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-top:8px;cursor:pointer}
+    .upl-opt input{margin:0}
+    .upl-status{font-size:11.5px;margin-top:8px;line-height:1.45}
+    .upl-status.ok{color:#176c3a} .upl-status.err{color:#c0362c} .upl-status.warn{color:#8a6d1e}
+    .upl-report{margin-top:8px}
+    .upl-note{font-size:11px;color:var(--muted);margin-top:5px}
+    .upl-bad{margin-top:7px;border:1px solid #f0c4bd;background:#fdf6f5;border-radius:8px;padding:7px 9px}
+    .upl-bad summary{cursor:pointer;font-size:11.5px;font-weight:600;color:#8f281c}
+    .upl-bad ul{margin:7px 0 0;padding-left:16px;max-height:190px;overflow:auto}
+    .upl-bad li{font-size:11px;margin-bottom:3px}
+    .upl-bad .ln{color:var(--faint);margin-right:5px}
+    .upl-bad .mono,.upl-note .mono,.upl-name .mono{font-family:var(--mono)}
+    .from-fn{background:#eef4ff;border:1px solid #cfe0ff;color:#274b8f;border-radius:9px;padding:9px 12px;
+      font-size:12.5px;margin-bottom:12px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+    .from-fn .mono{font-family:var(--mono)}`;
+  document.head.appendChild(s);
+}
+
 function toggleAcc(id){S.selected.has(id)?S.selected.delete(id):S.selected.add(id);renderAccList();renderSelected();renderRunbar();}
 function allSel(on){ACCESSIONS.forEach(a=>on?S.selected.add(a.id):S.selected.delete(a.id));renderAccList();renderSelected();renderRunbar();}
 function randomSel(p){S.selected.clear();const idx=[...ACCESSIONS.keys()].sort(()=>Math.random()-.5);const n=Math.ceil(ACCESSIONS.length*p);for(let i=0;i<n;i++)S.selected.add(ACCESSIONS[idx[i]].id);renderAccList();renderSelected();renderRunbar();}

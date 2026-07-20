@@ -25,6 +25,7 @@
     viewer: null, libState: 'idle',
     dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
+    locus: null,         // {chr,start,end,dataset} for this gene — used for the SNPVersity handoff
     sort: { key: null, dir: 'asc' },     // variant-table sort: column key + direction ('asc'|'desc'); null key = file order
     root: null,          // persistent DOM container — survives navigation to other tools
     loaded: false,       // a gene's heavy content is (being) rendered into root
@@ -429,11 +430,17 @@
       FD.carriers = (fn && fn.variants)
         ? Object.fromEntries(fn.variants.map(v => [v.pos+'|'+v.ref+'|'+v.alt, v]))
         : null;
+
+      /* keep the gene's genomic coordinates — needed to hand a region to SNPVersity */
+      FD.locus = (fn && fn.chr != null)
+        ? { chr:fn.chr, start:+fn.start, end:+fn.end, dataset:(fn.dataset!=null?fn.dataset:FD.dataset) }
+        : null;
     }
     catch (e){
       console.error('SNPFold variant loading error', e);
       FD.variants = [];
       FD.carriers = null;
+      FD.locus = null;
     }
 
     FD.root.innerHTML = datasetChooser() + searchBar() + `
@@ -500,7 +507,14 @@
       </div>
 
       <!-- variant table -->
-      <div class="sec" style="margin-top:24px"><div class="bar"></div><div><h2 style="font-size:16px">Coding variants on this gene</h2></div></div>
+      <div class="sec" style="margin-top:24px"><div class="bar"></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%">
+          <h2 style="font-size:16px;margin:0">Coding variants on this gene</h2>
+          ${anyCarriers()?`<button class="btn" style="margin-left:auto"
+            title="Open this gene's region in SNPVersity with every accession carrying any coding variant preselected"
+            onclick="FOLD.toVersity('all','all')">${ICONS.dna||''} Send all carriers to SNPVersity</button>`:''}
+        </div>
+      </div>
       <div class="tbl-wrap" style="max-height:none"><table class="vcf fold-table">
         <thead id="foldTableHead">${tableHeadHTML()}</thead>
         <tbody id="foldTableBody">${sortedVariants().map(rowHTML).join('')}</tbody>
@@ -682,7 +696,7 @@
       return `<th class="fold-th${c.num ? ' num' : ''}${on ? ' sorted' : ''}" title="${escFold(tip)}"
         aria-sort="${on ? (FD.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"
         onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${escFold(c.label)}<span class="fold-ar">${arrow}</span></span></th>`;
-    }).join('') + '</tr>';
+    }).join('') + '<th class="fold-send-th"></th></tr>';
   }
 
   /* ---------- variant table ---------- */
@@ -704,9 +718,17 @@
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
       <td>${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td style="text-align:center">${carrierBtn(v, cr, openC)}</td>
+      <td class="fold-send">${sendBtn(v, cr)}</td>
     </tr>${openC?carrierRow(v, cr):''}`;
   }
-  function foldCols(){ return foldVisibleCols().length; }   // colspan for the expanded carrier row
+  function foldCols(){ return foldVisibleCols().length + 1; }   // colspan for the expanded carrier row (+ send column)
+  /* per-variant "open in SNPVersity with these carriers preselected" */
+  function sendBtn(v, cr){
+    const n = cr ? ((Number(cr.hom)||0) + (Number(cr.het)||0)) : 0;
+    if (!n) return '<span style="color:var(--faint)">—</span>';
+    return `<button class="btn tiny" title="Open ${escFold(FD.gene)} in SNPVersity with all ${n} carrier${n>1?'s':''} of ${escFold(v.variant)} preselected"
+      onclick="event.stopPropagation();FOLD.toVersity('${v.id}','all')">SNPVersity →</button>`;
+  }
   function carrierBtn(v, cr, open){
     if (!cr || (cr.hom===0 && cr.het===0)) return '<span style="color:var(--faint)">—</span>';
     return `<button class="fold-cbtn ${open?'on':''}" title="Show carrier accessions (whole panel)"
@@ -719,16 +741,52 @@
     const chip = (id,cls)=>`<span class="carrier ${cls}">${escFold(id)}</span>`;
     const homs = carriersHom.slice(0,60).map(id=>chip(id,'hom')).join('');
     const hets = carriersHet.slice(0,60).map(id=>chip(id,'het')).join('');
+    const send = (mode,label,n)=> n
+      ? `<button class="btn tiny" onclick="event.stopPropagation();FOLD.toVersity('${v.id}','${mode}')">${label} (${n}) →</button>`
+      : '';
     return `<tr class="fn-carriers"><td colspan="${foldCols()}">
       <div class="fn-cwrap">
         <div><div class="fn-k">Homozygous ${v.consClass==='lof'?'(candidate knockouts)':''} · ${carriersHom.length}</div>
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${carriersHom.length>60?` <span class="muted">+${carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${carriersHet.length>60?` <span class="muted">+${carriersHet.length-60} more</span>`:''}</div></div>
+        <div class="fold-sendrow">
+          <span class="fn-k" style="margin:0">Open in SNPVersity</span>
+          ${send('hom','Homozygous carriers',carriersHom.length)}
+          ${send('het','Heterozygous carriers',carriersHet.length)}
+          ${send('all','All carriers',carriersHom.length+carriersHet.length)}
+        </div>
       </div></td></tr>`;
   }
 
   /* ---------- context panel ---------- */
+  /* does any variant in the table have carrier data? drives the "send all" button */
+  function anyCarriers(){
+    return (FD.variants||[]).some(v=>{ const c=carrierOf(v); return c && ((Number(c.hom)||0)+(Number(c.het)||0))>0; });
+  }
+
+  /* Genomic span of the current gene, for the SNPVersity handoff.
+     Preferred source is geneFunction (already fetched); falls back to fields on the
+     structure record, then to an on-demand Data.lookupGene(). Cached in FD.locus. */
+  async function foldLocus(){
+    if (FD.locus && FD.locus.chr != null) return FD.locus;
+    const s = FD.struct || {};
+    if (s.chr != null && s.start != null && s.end != null){
+      FD.locus = { chr:s.chr, start:+s.start, end:+s.end, dataset:datasetId(FD.dataset) };
+      return FD.locus;
+    }
+    if (typeof Data !== 'undefined' && typeof Data.lookupGene === 'function'){
+      try {
+        const g = await Data.lookupGene(FD.gene);
+        if (g && g.chr != null){
+          FD.locus = { chr:g.chr, start:+g.start, end:+g.end, dataset:datasetId(FD.dataset) };
+          return FD.locus;
+        }
+      } catch (e){ console.error('SNPFold: gene lookup failed', e); }
+    }
+    return null;
+  }
+
   function ctxHTML(){
     const v = FD.variants.find(x=>x.id===FD.selId);
     if (!v) return `<div class="ctx-empty">
@@ -755,6 +813,9 @@
       </div>
       <div class="ctx-actions">
         ${v.consClass==='missense' && v.resi ? `<button class="btn" onclick="FOLD.panEffect('${v.id}')">${ICONS.effect||ICONS.star} PanEffect</button>` : ''}
+        ${(()=>{ const cr=carrierOf(v); const n=cr?((Number(cr.hom)||0)+(Number(cr.het)||0)):0;
+          return n ? `<button class="btn" title="Preselect the ${n} accession${n>1?'s':''} carrying this allele in SNPVersity"
+            onclick="FOLD.toVersity('${v.id}','all')">${ICONS.dna||''} Carriers to SNPVersity</button>` : ''; })()}
         <button class="btn" onclick="go('snpimpact')">${ICONS.star} SNPImpact</button>
         <button class="btn" onclick="go('snpcompare')">${ICONS.compare} Send to SNPCompare</button>
       </div>`;
@@ -848,6 +909,48 @@
   window.FOLD = {
     select(id){ FD.selId = (FD.selId===id?null:id); refreshSelection(); if(FD.selId) focusResidue(true); else if(FD.viewer){FD.viewer.removeAllLabels();applyStyle();FD.viewer.zoomTo();FD.viewer.render();} },
     carriers(id){ FD.openCarrier = (FD.openCarrier===id?null:id); refreshTable(); },
+
+    /* Hand this gene's region + the accessions carrying an alternative allele over to
+       SNPVersity.  id 'all' = every coding variant with carriers in the table.
+       mode: 'hom' | 'het' | 'all'. */
+    async toVersity(id, mode){
+      mode = mode || 'all';
+      const vs = id==='all'
+        ? (FD.variants||[]).filter(v=>{ const c=carrierOf(v); return c && ((Number(c.hom)||0)+(Number(c.het)||0))>0; })
+        : (FD.variants||[]).filter(v=>String(v.id)===String(id));
+      if (!vs.length){ alert('No carrier data available for this variant.'); return; }
+
+      const acc=new Set();
+      vs.forEach(v=>{
+        const c=carrierOf(v); if(!c) return;
+        if(mode!=='het') (c.carriersHom||[]).forEach(a=>acc.add(a));
+        if(mode!=='hom') (c.carriersHet||[]).forEach(a=>acc.add(a));
+      });
+      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+
+      const locus = await foldLocus();
+      if(!locus){
+        alert('Could not determine the genomic coordinates for '+FD.gene+', so the region cannot be set in SNPVersity.');
+        return;
+      }
+      const what = mode==='hom' ? 'homozygous carriers'
+                 : mode==='het' ? 'heterozygous carriers'
+                 : 'carriers of an alternative allele';
+      const note = id==='all'
+        ? `${what} across ${vs.length} coding variant${vs.length>1?'s':''}`
+        : `${what} of ${vs[0].variant}`;
+      const payload = {
+        gene:FD.gene, chr:locus.chr, start:locus.start, end:locus.end,
+        dataset:(locus.dataset!=null?locus.dataset:datasetId(FD.dataset)),
+        accessions:[...acc], from:'SNPFold', note,
+        allele: id==='all' ? null : vs[0].variant, mode
+      };
+      if (typeof window.versityRequest === 'function'){ window.versityRequest(payload); return; }
+      if (typeof S !== 'undefined' && S){          // older snpversity.js build
+        S.pendingVersity = payload;
+        if (typeof go === 'function') go('snpversity');
+      }
+    },
     /* Click a column header to sort; click the same header again to reverse.
        Blank cells (—) always sort to the bottom, whichever direction is active. */
     sortBy(key){
@@ -913,6 +1016,11 @@
       .carrier{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
       .carrier.hom{background:#fdecea;border-color:#f0c4bd;color:#8f281c}
       .carrier.het{background:#eef4ff;border-color:#cfe0ff;color:#274b8f}
+      .fold-sendrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+        border-top:1px solid var(--line);padding-top:10px}
+      .btn.tiny{font-size:11px;padding:4px 9px;border-radius:7px;line-height:1.3;white-space:nowrap}
+      td.fold-send{text-align:right;padding-right:10px;white-space:nowrap}
+      .fold-table th.fold-send-th{width:1%}
       /* compact dataset chooser (shares Data.datasets() with SNPVersity) */
       .fold-ds-card{padding:12px 14px}
       .fold-ds-head{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px}

@@ -302,29 +302,47 @@
         <td class="num">${v.het}</td>
         <td class="num">${v.hom?`<b>${v.hom}</b>`:'0'}</td>
         <td class="num">${(v.af*100).toFixed(1)}%</td>
-      </tr>${open?carrierRow(v,sec):''}`;
+        <td class="fn-send">${(v.hom+v.het)>0
+          ? `<button class="btn tiny" title="Open ${esc(d.gene)} in SNPVersity with all ${v.hom+v.het} carriers of this allele preselected"
+               onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','all')">SNPVersity →</button>`
+          : '<span class="muted">—</span>'}</td>
+      </tr>${open?carrierRow(v,sec,d):''}`;
     }).join('');
+    const anyCarrier = d.damaging.some(v=>(v.hom+v.het)>0);
     return `<div class="card pad">
-      <div class="fn-h" style="display:flex;align-items:center;gap:10px">Damaging &amp; knockout alleles
+      <div class="fn-h" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Damaging &amp; knockout alleles
         <span class="muted" style="font-weight:400;font-size:12px">${d.damaging.length} alleles · click a row for carrier lines</span>
-        <button class="btn" style="margin-left:auto" onclick="FUNCTION.exportCSV()">${ICONS.download||''} Export CSV</button>
+        <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+          ${anyCarrier?`<button class="btn" title="Open this gene's region in SNPVersity with every accession carrying any damaging allele preselected"
+            onclick="FUNCTION.toVersity('all','all')">${ICONS.dna||''} Send all carriers to SNPVersity</button>`:''}
+          <button class="btn" onclick="FUNCTION.exportCSV()">${ICONS.download||''} Export CSV</button>
+        </span>
       </div>
       <div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px">Allele</th><th>Consequence</th><th>Domain</th><th class="num">PlantCAD1</th>${sec?'<th class="num">PlantCAD2</th>':''}<th class="num">ESM</th>${sec?'<th class="num">ESM2</th><th class="num">ESM3</th>':''}<th>Priority</th><th class="num" title="heterozygous carriers">Het</th><th class="num" title="homozygous carriers">Hom</th><th class="num">AF</th></tr></thead>
+        <thead><tr><th style="padding-left:11px">Allele</th><th>Consequence</th><th>Domain</th><th class="num">PlantCAD1</th>${sec?'<th class="num">PlantCAD2</th>':''}<th class="num">ESM</th>${sec?'<th class="num">ESM2</th><th class="num">ESM3</th>':''}<th>Priority</th><th class="num" title="heterozygous carriers">Het</th><th class="num" title="homozygous carriers">Hom</th><th class="num">AF</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>`;
   }
-  function carrierRow(v, sec){
+  function carrierRow(v, sec, d){
     const chip = (id,cls)=>`<span class="carrier ${cls}">${esc(id)}</span>`;
     const homs = v.carriersHom.slice(0,60).map(id=>chip(id,'hom')).join('');
     const hets = v.carriersHet.slice(0,60).map(id=>chip(id,'het')).join('');
-    return `<tr class="fn-carriers"><td colspan="${sec?12:9}">
+    const send = (mode,label,n)=> n
+      ? `<button class="btn tiny" onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','${mode}')">${label} (${n}) →</button>`
+      : '';
+    return `<tr class="fn-carriers"><td colspan="${sec?13:10}">
       <div class="fn-cwrap">
         <div><div class="fn-k">Homozygous ${v.consClass==='lof'?'(candidate knockouts)':''} · ${v.carriersHom.length}</div>
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${v.carriersHom.length>60?` <span class="muted">+${v.carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${v.carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${v.carriersHet.length>60?` <span class="muted">+${v.carriersHet.length-60} more</span>`:''}</div></div>
+        <div class="fn-sendrow">
+          <span class="fn-k" style="margin:0">Open in SNPVersity</span>
+          ${send('hom','Homozygous carriers',v.carriersHom.length)}
+          ${send('het','Heterozygous carriers',v.carriersHet.length)}
+          ${send('all','All carriers',v.carriersHom.length+v.carriersHet.length)}
+        </div>
       </div></td></tr>`;
   }
 
@@ -572,6 +590,40 @@
     load(){ const el=document.getElementById('fnGeneInput'); if(!el)return; const g=el.value.trim(); if(!g)return;
       FN.gene=g; FN.data=null; FN.openId=null; analyzeGene(); },
     toggle(id){ FN.openId = (FN.openId===id?null:id); paint(); },
+
+    /* Hand this gene's region + the accessions carrying an alternative allele
+       over to SNPVersity.  alleleId 'all' = every damaging allele in the table.
+       mode: 'hom' | 'het' | 'all' (homozygous, heterozygous, or both). */
+    toVersity(alleleId, mode){
+      const d=FN.data; if(!d||!d.damaging) return;
+      mode = mode || 'all';
+      const vs = alleleId==='all' ? d.damaging : d.damaging.filter(v=>String(v.id)===String(alleleId));
+      if(!vs.length) return;
+      const acc=new Set();
+      vs.forEach(v=>{
+        if(mode!=='het') (v.carriersHom||[]).forEach(a=>acc.add(a));
+        if(mode!=='hom') (v.carriersHet||[]).forEach(a=>acc.add(a));
+      });
+      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+      const what = mode==='hom' ? 'homozygous carriers'
+                 : mode==='het' ? 'heterozygous carriers'
+                 : 'carriers of an alternative allele';
+      const note = alleleId==='all'
+        ? `${what} across ${vs.length} damaging allele${vs.length>1?'s':''}`
+        : `${what} of ${vs[0].variant}`;
+      const payload = {
+        gene:d.gene, chr:d.chr, start:+d.start, end:+d.end,
+        dataset:d.dataset!=null?d.dataset:FN.dataset,
+        accessions:[...acc], from:'SNPFunction', note,
+        allele: alleleId==='all' ? null : vs[0].variant, mode
+      };
+      if (typeof window.versityRequest === 'function'){ window.versityRequest(payload); return; }
+      // fallback if snpversity.js is an older build without the inbound hook
+      if (typeof S !== 'undefined' && S){
+        S.pendingVersity = payload;
+        if (typeof go === 'function') go('snpversity');
+      }
+    },
     toggleGO(){ FN.goCurated = !FN.goCurated; paint(); },
     /* compact dataset chooser — selecting a dataset only records the choice + moves the
        highlight. The page is NOT re-analyzed here; the new dataset is applied on the next
@@ -632,6 +684,10 @@
       .carrier{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
       .carrier.hom{background:#fdecea;border-color:#f0c4bd;color:#8f281c}
       .carrier.het{background:#eef4ff;border-color:#cfe0ff;color:#274b8f}
+      .fn-sendrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+        border-top:1px solid var(--line);padding-top:10px}
+      .btn.tiny{font-size:11px;padding:4px 9px;border-radius:7px;line-height:1.3;white-space:nowrap}
+      td.fn-send{text-align:right;padding-right:10px;white-space:nowrap}
       /* compact dataset chooser (shares Data.datasets() with SNPVersity) */
       .fn-ds-card{padding:12px 14px}
       .fn-ds-head{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px}
