@@ -9,7 +9,8 @@
 (function () {
 
   const FN = {
-    gene:'Zm00001eb406050',        // default example gene model
+    gene:null,                     // default example gene (set per reference on render)
+    geneUser:false,                // true once the user types/loads a specific gene
     dataset:null, data:null, loading:false, openId:null,
     root:null,                     // persistent DOM container — survives tool switches
     loaded:false,                  // a gene's content is (being) rendered into root
@@ -84,6 +85,16 @@
   const FOLD_CONS = ['missense', 'lof', 'indel', 'splice'];
   function canFold(v){ return !!v && FOLD_CONS.indexOf(v.consClass) !== -1; }
   function fnGene(){ return (FN.data && FN.data.gene) || FN.gene || ''; }
+
+  /* Default example gene for the CURRENT reference (graminearum→FGSG_, 7600→FVEG_,
+     MRC826→FVERT4_), via Data.exampleGenes(). Used to prefill the search box and
+     placeholder until the user chooses a gene. */
+  function defaultExampleGene(){
+    const ds = FN.dataset != null ? FN.dataset : ((typeof S !== 'undefined' && S) ? S.dataset : null);
+    const ex = (typeof Data !== 'undefined' && Data.exampleGenes) ? Data.exampleGenes(ds) : null;
+    return (ex && ex[0]) || 'FGSG_00777';
+  }
+  function ensureDefaultGene(){ if (!FN.geneUser) FN.gene = defaultExampleGene(); }
 
   /* Protein substitution ("A123T") when the record carries one, in whichever shape.
      Returns '' when the allele is not a single amino-acid change. */
@@ -237,6 +248,7 @@
 
     /* reflect the app-wide dataset for the picker highlight (until the user picks one) */
     if (FN.dataset == null && typeof S !== 'undefined' && S && S.dataset != null) FN.dataset = S.dataset;
+    ensureDefaultGene();   // prefill with the current reference's example gene
 
     const requestedGene = (typeof S !== 'undefined' && S && S.functionGene) ? S.functionGene : null;
 
@@ -244,7 +256,7 @@
       S.functionGene = null;
       if (typeof S !== 'undefined' && S && S.functionDataset != null) FN.dataset = S.functionDataset;
       if (requestedGene !== FN.loadedGene || !FN.loaded){
-        FN.gene = requestedGene; FN.data = null; FN.openId = null;
+        FN.gene = requestedGene; FN.geneUser = true; FN.data = null; FN.openId = null;
         analyzeGene();
       } else {
         reshowLoaded();
@@ -289,13 +301,57 @@
      Independent of the variant analysis: a missing file (404) or parse error just means
      "no annotation" and never blocks the rest of the page. We only repaint once the main
      variant data is present, so the annotation slots in without flashing the landing view. */
+  /* Candidate filenames, tolerating zero-padding differences (FVEG_03144 -> FVEG_003144),
+     mirroring the padding normalization in lookupGeneModel.php. */
+  function annCandidateIds(gene){
+    const g = String(gene||'').trim();
+    const out = [g];
+    const m = g.match(/^(.*_)0*(\d+)$/);
+    if (m){ const n = parseInt(m[2],10);
+      [6,5,4].forEach(w=>{ const c = m[1]+String(n).padStart(w,'0'); if(out.indexOf(c)<0) out.push(c); });
+      const c0 = m[1]+String(n); if(out.indexOf(c0)<0) out.push(c0);
+    }
+    return out;
+  }
+  /* Map the funannotate annotation JSON onto the shape the renderers expect. */
+  function normalizeAnnotation(a){
+    if (!a || typeof a!=='object') return a;
+    const nm = a.names || {};
+    const psym = nm.primary_symbol || nm.primary_name || '';
+    a.names = {
+      primary_symbol: (psym && psym !== a.gene_id) ? psym : '',   // don't echo the gene id as a symbol
+      full_name: nm.full_name || nm.product || (a.functional_description && a.functional_description.text) || '',
+      aliases: (nm.aliases || nm.all_products || []).filter(x => x && x !== nm.product),
+    };
+    a.kegg = a.kegg || {};
+    if (!a.kegg.orthology) a.kegg.orthology = a.kegg.ko || [];
+    if (!a.pfam_domains){
+      const pf = a.pfam || [], ip = a.interpro || [];
+      a.pfam_domains = pf.map((acc,i)=>({ pfam_id:acc, pfam_name:acc, interpro_id:ip[i]||null, start:null, end:null }));
+      a._extra_interpro = ip.slice(pf.length);
+    }
+    const cov = a.annotation_coverage || {};
+    if (cov.has_pathway == null) cov.has_pathway = !!(cov.has_kegg_pathway || (a.pathways||[]).length);
+    if (cov.has_eggnog  == null) cov.has_eggnog  = !!(a.cross_references && a.cross_references.eggnog_seed_ortholog);
+    if (cov.has_symbol  == null) cov.has_symbol  = !!(nm.primary_symbol || nm.primary_name);
+    a.annotation_coverage = cov;
+    return a;
+  }
   function loadAnnotation(gene){
     const g = gene;
     FN.annotation = undefined;                       // mark as loading (shows a placeholder)
-    fetch(ANN_DIR + encodeURIComponent(gene) + '.json', {cache:'force-cache'})
-      .then(r => r.ok ? r.json() : null)
-      .then(a => { if (FN.gene !== g) return; FN.annotation = a || null; if (FN.data) paint(); })
-      .catch(() => { if (FN.gene !== g) return; FN.annotation = null; if (FN.data) paint(); });
+    const cands = annCandidateIds(gene);
+    (function tryNext(i){
+      if (i >= cands.length){ if (FN.gene===g){ FN.annotation=null; if(FN.data) paint(); } return; }
+      fetch(ANN_DIR + encodeURIComponent(cands[i]) + '.json', {cache:'force-cache'})
+        .then(r => r.ok ? r.json() : null)
+        .then(a => {
+          if (FN.gene !== g) return;
+          if (a){ FN.annotation = normalizeAnnotation(a); if (FN.data) paint(); }
+          else tryNext(i+1);
+        })
+        .catch(() => { if (FN.gene===g) tryNext(i+1); });
+    })(0);
   }
 
   /* render the loaded content from cached FN.data (used after analysis + on toggle) */
@@ -318,7 +374,7 @@
   function searchBar(){
     return `<div class="card pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gene model</span>
-      <input id="fnGeneInput" value="${esc(FN.gene||'')}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
+      <input id="fnGeneInput" value="${esc(FN.gene||'')}" placeholder="e.g. ${esc(defaultExampleGene())}" spellcheck="false"
         style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
         onkeydown="if(event.key==='Enter')FUNCTION.load()">
       <button class="btn" onclick="FUNCTION.load()">Analyze gene</button>
@@ -345,9 +401,8 @@
   }
   function dossier(d){
     const region = `${d.chr}:${(+d.start).toLocaleString()}–${(+d.end).toLocaleString()}${d.strand?` (${d.strand})`:''}`;
-    const jb = `https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(d.gene)}`;
-    const mg = `https://maizegdb.org/gene_center/gene/${encodeURIComponent(d.gene)}`;
-    const pg = `https://pangenome-viewer.maizegdb.org/?set=NAM&geneID=${encodeURIComponent(d.gene)}`;
+    const geneUrl = (typeof fusariumGeneURL==='function') ? fusariumGeneURL(d.gene)
+                  : `https://fungidb.org/fungidb/app/record/gene/${encodeURIComponent(d.gene)}`;
     const doms = (d.domains||[]).length
       ? d.domains.map(x=>domTag(`${x.name} (${x.pfam})`)).join(' ')
       : '<span class="muted">No Pfam domains annotated</span>';
@@ -360,18 +415,20 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn" onclick="goFold('${esc(d.gene)}')">${ICONS.fold} View structure (SNPFold)</button>
-        <button class="btn" onclick="FUNCTION.panEffectGene()">${ICONS.effect||ICONS.star||''} PanEffect</button>
-        <a class="btn ghost" href="${jb}" target="_blank" rel="noopener">JBrowse ↗</a>
-        <a class="btn ghost" href="${mg}" target="_blank" rel="noopener">MaizeGDB ↗</a>
-        <a class="btn ghost" href="${pg}" target="_blank" rel="noopener">Pangenome viewer ↗</a>
+        <a class="btn ghost" href="${geneUrl}" target="_blank" rel="noopener">FungiDB ↗</a>
       </div>
     </div>`;
   }
 
   /* ---------- burden ---------- */
+  /* Language-model score columns for a dataset (DNA: FunDLM/EVO2, protein:
+     ESM1/2/3/ESM-C for graminearum 2026; DNABERT/ESM1 for the 2025 verts). */
+  function fnScoreCols(dataset){
+    return (typeof Data!=='undefined' && Data.scoreModels) ? Data.scoreModels(dataset) : [];
+  }
   function burden(d){
     const b = d.burden, bc = b.byClass;
-    const sec = Data.hasSecondaryScores(d.dataset);
+    const mbm = b.meanByModel || {};
     const total = d.nVariants || 1;
     const barSeg = (n,cls,label)=> n? `<span class="fn-seg ${cls}" style="width:${Math.max(2,100*n/total)}%" title="${label}: ${n}"></span>`:'';
     const nss = b.nonsynSyn==null ? '∞' : b.nonsynSyn;
@@ -383,11 +440,7 @@
         ${stat('Exon : intron', b.exonIntron==null?'∞':b.exonIntron, 'variants in exons vs introns of the gene model')}
         ${stat('Domain-disrupting', b.domainDisrupting, 'coding variants inside a Pfam domain')}
         ${stat('Candidate KO lines', d.koLines, 'accessions homozygous for a loss-of-function allele')}
-        ${stat('Mean PlantCAD1', b.meanPlantcad==null?'—':b.meanPlantcad, 'average PlantCAD1 DNA language-model score')}
-        ${sec?stat('Mean PlantCAD2', b.meanPlantcad2==null?'—':b.meanPlantcad2, 'average PlantCAD2 (2026) DNA language-model score'):''}
-        ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
-        ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 (2026) protein language-model score'):''}
-        ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 (2026) protein language-model score'):''}
+        ${fnScoreCols(d.dataset).map(m=>stat('Mean '+m.label, mbm[m.key]==null?'—':mbm[m.key], 'average '+m.label+' language-model score across this gene')).join('')}
       </div>
       <div class="fn-barwrap">
         <div class="fn-bar">
@@ -407,7 +460,7 @@
   function catalog(d){
     if (!d.damaging.length)
       return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div><div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles found in this gene across the panel.</div></div>`;
-    const sec = Data.hasSecondaryScores(d.dataset);
+    const smc = fnScoreCols(d.dataset);
     const rows = d.damaging.map(v=>{
       const open = FN.openId===v.id;
       const vDisp = truncVariant(v.variant);
@@ -416,10 +469,7 @@
         <td class="c-mono c-alt" style="padding-left:11px"${vTrunc?` data-tt="${esc(v.variant)}"`:''}>${esc(vDisp)}</td>
         <td>${consPill(v)}${peJump(v)}${foldJump(v)}</td>
         <td>${domTag(v.domain)}</td>
-        <td class="num">${scoreCell(v.plantcad)}</td>
-        ${sec?`<td class="num">${scoreCell(v.plantcad2)}</td>`:''}
-        <td class="num">${scoreCell(v.esm)}</td>
-        ${sec?`<td class="num">${scoreCell(v.esm2)}</td><td class="num">${scoreCell(v.esm3)}</td>`:''}
+        ${smc.map(m=>`<td class="num">${scoreCell(v[m.key])}</td>`).join('')}
         <td>${prioPill(v.priority)}</td>
         <td class="num">${v.het}</td>
         <td class="num">${v.hom?`<b>${v.hom}</b>`:'0'}</td>
@@ -428,7 +478,7 @@
           ? `<button class="btn tiny" title="Open ${esc(d.gene)} in SNPVersity with all ${v.hom+v.het} carriers of this allele preselected"
                onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','all')">SNPVersity →</button>`
           : '<span class="muted">—</span>'}</td>
-      </tr>${open?carrierRow(v,sec,d):''}`;
+      </tr>${open?carrierRow(v,smc.length,d):''}`;
     }).join('');
     const anyCarrier = d.damaging.some(v=>(v.hom+v.het)>0);
     const dsId = d.dataset!=null ? d.dataset : FN.dataset;
@@ -448,19 +498,20 @@
         <span data-ho-mount data-ho-id="fnMergeReplace" data-ho-target="SNPVersity" data-ho-dataset="${esc(dsId==null?'':dsId)}"></span>
       </div>`:''}
       <div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score (MaizeGDB 2026).">PlantCAD2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score (MaizeGDB 2026).">ESM2</th><th class="num" data-tt="ESM3 protein language-model score (MaizeGDB 2026).">ESM3</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th>${smc.map(m=>`<th class="num" data-tt="${esc(m.tip)}">${m.label}</th>`).join('')}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>`;
   }
-  function carrierRow(v, sec, d){
+  function carrierRow(v, nScoreCols, d){
+    const colspan = 8 + (nScoreCols || 0);   // Allele,Consequence,Domain + scores + Priority,Het,Hom,AF,send
     const chip = (id,cls)=>`<span class="carrier ${cls}">${esc(id)}</span>`;
     const homs = v.carriersHom.slice(0,60).map(id=>chip(id,'hom')).join('');
     const hets = v.carriersHet.slice(0,60).map(id=>chip(id,'het')).join('');
     const send = (mode,label,n)=> n
       ? `<button class="btn tiny" onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','${mode}')">${label} (${n}) →</button>`
       : '';
-    return `<tr class="fn-carriers"><td colspan="${sec?13:10}">
+    return `<tr class="fn-carriers"><td colspan="${colspan}">
       <div class="fn-cwrap">
         <div><div class="fn-k">Homozygous ${v.consClass==='lof'?'(candidate knockouts)':''} · ${v.carriersHom.length}</div>
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${v.carriersHom.length>60?` <span class="muted">+${v.carriersHom.length-60} more</span>`:''}</div></div>
@@ -494,18 +545,18 @@
   function descSourceBadge(src){
     src = src || 'none';
     let cls='pred', label=src;
-    if (/^MaizeGDB/i.test(src)){ cls='curated'; label='MaizeGDB · curated'; }
-    else if (/^UniProt/i.test(src)){ cls='uniprot'; label='UniProt'; }
+    if (/^UniProt/i.test(src)){ cls='uniprot'; label='UniProt'; }
+    else if (/eggNOG/i.test(src)){ cls='curated'; label='eggNOG'; }
     else if (/^InterPro/i.test(src)){ cls='pred'; label='InterPro · predicted'; }
-    else if (src==='none'){ cls='none'; label='no informative source'; }
+    else if (src==='none' || src===''){ cls='none'; label='no informative source'; }
     return `<span class="ann-srcbadge ${cls}" title="functional_description.source = ${esc(src)}">${esc(label)}</span>`;
   }
   /* one small badge per GO evidence source */
   function goSourceBadges(sources){
-    const meta = {MaizeGDB:'curated', UniProt:'uniprot', InterPro2GO:'pred'};
+    const meta = {UniProt:'uniprot', eggNOG:'curated', InterPro:'pred', InterPro2GO:'pred', MaizeGDB:'curated'};
     return (sources||[]).map(s=>`<span class="go-src ${meta[s]||'pred'}" title="${esc(s)}${s==='InterPro2GO'?' (predicted from domain)':''}">${esc(s)}</span>`).join('');
   }
-  function isPredictedOnly(t){ const s=t.sources||[]; return s.length>0 && s.every(x=>x==='InterPro2GO'); }
+  function isPredictedOnly(t){ const s=t.sources||[]; return s.length>0 && s.every(x=>x==='InterPro2GO'||x==='InterPro'); }
   function xrefChip(text, href, title){
     return href
       ? `<a class="xref" href="${href}" target="_blank" rel="noopener" title="${esc(title||text)}">${esc(text)} <span class="xref-ext">↗</span></a>`
@@ -522,7 +573,7 @@
     if (a === null){
       return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
         <div class="muted" style="padding:4px 0">No functional-annotation record for <span class="mono">${esc(FN.gene)}</span>.
-        Records exist for the 39,756 canonical B73 v5 gene models (<span class="mono">Zm00001eb…</span>).</div></div>`;
+        Functional records are available where the reference annotation provides them.</div></div>`;
     }
     return annHeader(a) + annDomains(a) + annGO(a) + annPathways(a) + annXrefs(a);
   }
@@ -540,7 +591,7 @@
       ['Pfam',    cov.has_pfam],
       ['KEGG KO', cov.has_ko],
       ['Pathway', cov.has_pathway],
-      ['UniProt', cov.has_uniprot],
+      ['eggNOG',  cov.has_eggnog],
       ['Symbol',  cov.has_symbol],
     ].map(([k,on])=>`<span class="ev-chip ${on?'on':'off'}" title="${on?'present':'not available'}">${on?'✓':'·'} ${k}</span>`).join('');
     const ko = ((a.kegg&&a.kegg.orthology)||[])[0];
@@ -564,26 +615,49 @@
   /* ---------- protein domain architecture (to-scale diagram) ---------- */
   function annDomains(a){
     const prot = a.protein||{}, L = +prot.length||0;
-    const doms = (a.pfam_domains||[]).slice().sort((x,y)=>(x.start||0)-(y.start||0));
-    const svg = domainSVG(L, doms);
-    const list = doms.length ? doms.map((x,i)=>{
-      const col = DOM_PALETTE[i%DOM_PALETTE.length];
-      const span = (x.start!=null&&x.end!=null)?`${x.start}–${x.end} aa`:'—';
-      const cover = (L&&x.start!=null&&x.end!=null)?` · ${Math.round(100*(x.end-x.start+1)/L)}% of protein`:'';
-      return `<div class="dom-row">
-        <span class="dom-swatch" style="background:${col}"></span>
-        <span class="dom-name">${esc(x.pfam_name||x.pfam_id||'domain')}</span>
-        <span class="mono dom-ids">${esc(x.pfam_id||'')}${x.interpro_id?` · ${esc(x.interpro_id)}`:''}</span>
-        <span class="dom-span mono">${span}${cover}</span>
-        ${x.evalue?`<span class="dom-ev mono" title="InterProScan E-value">E=${esc(x.evalue)}</span>`:''}
-      </div>`;
-    }).join('') : `<div class="muted" style="padding:4px 0">No Pfam domains annotated for this protein (Pfam-only InterProScan input).</div>`;
+    const doms = (a.pfam_domains||[]).slice();
+    const extraIp = a._extra_interpro || [];
+    const haveSpans = doms.some(d => d.start!=null && d.end!=null);
+    const pfHref = acc => 'https://www.ebi.ac.uk/interpro/entry/pfam/'+encodeURIComponent(acc)+'/';
+    const ipHref = acc => 'https://www.ebi.ac.uk/interpro/entry/InterPro/'+encodeURIComponent(acc)+'/';
+    let body;
+    if (haveSpans){
+      // Full residue spans -> the to-scale architecture diagram + detailed list.
+      const sorted = doms.filter(d=>d.start!=null).sort((x,y)=>(x.start||0)-(y.start||0));
+      const svg = domainSVG(L, sorted);
+      const list = sorted.map((x,i)=>{
+        const col = DOM_PALETTE[i%DOM_PALETTE.length];
+        const span = (x.start!=null&&x.end!=null)?`${x.start}–${x.end} aa`:'—';
+        const cover = (L&&x.start!=null&&x.end!=null)?` · ${Math.round(100*(x.end-x.start+1)/L)}% of protein`:'';
+        return `<div class="dom-row">
+          <span class="dom-swatch" style="background:${col}"></span>
+          <span class="dom-name">${esc(x.pfam_name||x.pfam_id||'domain')}</span>
+          <span class="mono dom-ids">${esc(x.pfam_id||'')}${x.interpro_id?` · ${esc(x.interpro_id)}`:''}</span>
+          <span class="dom-span mono">${span}${cover}</span>
+          ${x.evalue?`<span class="dom-ev mono" title="InterProScan E-value">E=${esc(x.evalue)}</span>`:''}
+        </div>`;
+      }).join('');
+      body = `<div class="dom-arch">${svg}</div><div class="dom-list">${list}</div>`;
+    } else if (doms.length || extraIp.length){
+      // No residue spans in the source annotation -> show Pfam / InterPro as linked chips.
+      // Pfam values are PF##### accessions (verticillioides) or Pfam names like
+      // "Pro_isomerase" (graminearum) — only linkify true accessions.
+      const chips = doms.filter(d=>d.pfam_id).map(d=>{
+          const isAcc = /^PF\d{3,}$/i.test(d.pfam_id);
+          return xrefChip(d.pfam_name||d.pfam_id, isAcc?pfHref(d.pfam_id):null, d.pfam_id);
+        })
+        .concat(doms.map(d=>d.interpro_id).filter(Boolean).map(ip=>xrefChip(ip, ipHref(ip))))
+        .concat(extraIp.map(ip=>xrefChip(ip, ipHref(ip)))).join('');
+      body = `<div class="fn-chips">${chips}</div>
+        <div class="muted" style="font-size:11.5px;margin-top:7px">Residue spans are not provided in this annotation, so the to-scale diagram is omitted.</div>`;
+    } else {
+      body = `<div class="muted" style="padding:4px 0">No Pfam or InterPro domains annotated for this protein.</div>`;
+    }
     return `<div class="card pad" style="margin-bottom:16px">
-      <div class="fn-h" style="display:flex;align-items:baseline;gap:10px">Protein domain architecture
+      <div class="fn-h" style="display:flex;align-items:baseline;gap:10px">Protein domains
         <span class="muted" style="font-weight:400;font-size:12px">${prot.protein_id?esc(prot.protein_id)+' · ':''}${L?L+' aa':'length n/a'}</span>
       </div>
-      <div class="dom-arch">${svg}</div>
-      <div class="dom-list">${list}</div>
+      ${body}
     </div>`;
   }
 
@@ -668,7 +742,7 @@
       </div>
       <div class="go-summary"><div class="go-bar">${summary}</div><div class="go-legend">${legend}</div></div>
       ${group('BP')}${group('MF')}${group('CC')}
-      <div class="go-note muted">Source confidence: <span class="go-src curated">MaizeGDB</span>/<span class="go-src uniprot">UniProt</span> are curated; <span class="go-src pred">InterPro2GO</span> is predicted from domains.</div>
+      <div class="go-note muted">Source confidence: <span class="go-src curated">eggNOG</span> / <span class="go-src uniprot">UniProt</span> are curated; <span class="go-src pred">InterPro</span> is predicted from domains.</div>
     </div>`;
   }
 
@@ -700,24 +774,31 @@
   /* ---------- external cross-references ---------- */
   function annXrefs(a){
     const x = a.cross_references||{};
+    // fields may be a single string (graminearum) or an array (verticillioides)
+    const arr = v => Array.isArray(v) ? v : (v!=null && v!=='' ? [v] : []);
+    const gid = a.gene_id || FN.gene;
     const rows = [];
-    if ((x.uniprot||[]).length) rows.push(['UniProt', x.uniprot.map(u=>xrefChip(u, `https://www.uniprot.org/uniprotkb/${encodeURIComponent(u)}/entry`))]);
-    if ((x.ncbi_entrez||[]).length) rows.push(['NCBI Gene', x.ncbi_entrez.map(g=>xrefChip(g, `https://www.ncbi.nlm.nih.gov/gene/${encodeURIComponent(g)}`))]);
-    if ((x.gene_model_v4||[]).length) rows.push(['B73 v4 model', x.gene_model_v4.map(g=>xrefChip(g, `https://maizegdb.org/gene_center/gene/${encodeURIComponent(g)}`))]);
-    if ((x.gene_model_v3||[]).length) rows.push(['B73 v3 model', x.gene_model_v3.map(g=>xrefChip(g, `https://maizegdb.org/gene_center/gene/${encodeURIComponent(g)}`))]);
-    if (!rows.length) return '';
-    const build = a.build_date ? `<div class="ann-build muted">Annotation build ${esc(a.build_date)} · ${esc((a.assembly||''))} ${esc((a.annotation_version||''))}</div>` : '';
+    // the gene's own record (FungiDB for FGSG/FVEG, NCBI for FVERT4 — via core.js helper)
+    const geneUrl = (typeof fusariumGeneURL==='function') ? fusariumGeneURL(gid)
+                  : `https://fungidb.org/fungidb/app/record/gene/${encodeURIComponent(gid)}`;
+    rows.push(['Gene record', [xrefChip(gid, geneUrl, 'FungiDB / NCBI gene record')]]);
+    const up=arr(x.uniprot);           if (up.length) rows.push(['UniProt', up.map(u=>xrefChip(u, `https://www.uniprot.org/uniprotkb/${encodeURIComponent(u)}/entry`))]);
+    const ez=arr(x.ncbi_entrez);       if (ez.length) rows.push(['NCBI Gene', ez.map(g=>xrefChip(g, `https://www.ncbi.nlm.nih.gov/gene/${encodeURIComponent(g)}`))]);
+    const rp=arr(x.refseq_protein);    if (rp.length) rows.push(['RefSeq protein', rp.map(g=>xrefChip(g, `https://www.ncbi.nlm.nih.gov/protein/${encodeURIComponent(g)}`))]);
+    const rt=arr(x.refseq_transcript); if (rt.length) rows.push(['RefSeq transcript', rt.map(g=>xrefChip(g, `https://www.ncbi.nlm.nih.gov/nuccore/${encodeURIComponent(g)}`))]);
+    if (x.eggnog_seed_ortholog) rows.push(['eggNOG seed ortholog', [xrefChip(String(x.eggnog_seed_ortholog), 'http://eggnog5.embl.de/#/app/seqscan', 'eggNOG-mapper seed ortholog')]]);
+    const ogs=arr(x.eggnog_ogs);       if (ogs.length) rows.push(['eggNOG orthologous groups', ogs.slice(0,12).map(o=>xrefChip(String(o).split('@')[0], null, String(o)))]);
     return `<div class="card pad" style="margin-bottom:16px">
       <div class="fn-h">Cross-references</div>
       ${rows.map(([k,chips])=>`<div class="kv"><div class="fn-k">${esc(k)}</div><div class="fn-chips">${chips.join('')}</div></div>`).join('')}
-      ${build}
     </div>`;
   }
 
   /* ---------- public handlers ---------- */
   window.FUNCTION = {
-    load(){ const el=document.getElementById('fnGeneInput'); if(!el)return; const g=el.value.trim(); if(!g)return;
-      FN.gene=g; FN.data=null; FN.openId=null; analyzeGene(); },
+    load(){ const el=document.getElementById('fnGeneInput'); if(!el)return; let g=el.value.trim(); if(!g)return;
+      if(typeof Data!=='undefined' && Data.canonicalGeneId) g=Data.canonicalGeneId(g);
+      FN.gene=g; FN.geneUser=true; FN.data=null; FN.openId=null; analyzeGene(); },
     toggle(id){ FN.openId = (FN.openId===id?null:id); paint(); },
     panEffect(id){ const d=FN.data; if(!d||!d.damaging) return;
       panEffectTo(d.damaging.find(v=>String(v.id)===String(id))); },
@@ -780,24 +861,22 @@
       if (isCurrentDataset(ds || val)){ syncDatasetChooser(); return; }   // no change
       FN.dataset = val;
       if (typeof S !== 'undefined' && S) S.dataset = val;   // keep the whole app in sync
-      syncDatasetChooser();
+      ensureDefaultGene();                                  // follow the new reference's example gene
+      if (!FN.loaded){ renderLanding(); }                   // refresh the prefilled search box
+      else syncDatasetChooser();
       if (typeof Handoff!=='undefined') Handoff.sync(FN.root);
     },
     exportCSV(){
       const d=FN.data; if(!d||!d.damaging) return;
-      const sec=Data.hasSecondaryScores(d.dataset);
-      const cols=['variant','consequence','domain','plantcad']
-        .concat(sec?['plantcad2']:[])
-        .concat(['esm'])
-        .concat(sec?['esm2','esm3']:[])
+      const smc=fnScoreCols(d.dataset);
+      const cols=['variant','consequence','domain']
+        .concat(smc.map(m=>m.label))
         .concat(['combined','priority','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
-        const base=[v.variant,v.consequence,v.domain,v.plantcad];
-        if(sec) base.push(v.plantcad2);
-        base.push(v.esm);
-        if(sec) base.push(v.esm2, v.esm3);
-        base.push(v.combined,v.priority,v.het,v.hom,v.af.toFixed(4),
-          '"'+v.carriersHom.join(';')+'"','"'+v.carriersHet.join(';')+'"');
+        const base=[v.variant,v.consequence,v.domain]
+          .concat(smc.map(m=>v[m.key]))
+          .concat([v.combined,v.priority,v.het,v.hom,v.af.toFixed(4),
+            '"'+v.carriersHom.join(';')+'"','"'+v.carriersHet.join(';')+'"']);
         return base.map(x=>x==null?'':x).join(',');
       };
       const csv=[cols.join(',')].concat(d.damaging.map(line)).join('\n');

@@ -2,9 +2,10 @@
  *  snpimpact.js — AI-driven prioritization & interpretation (real data).
  *
  *  Ranks, sorts, and filters the variants in a region (regardless of
- *  accessions), using the same VCF SNPVersity produced: DNA + protein
- *  language-model scores (PlantCAD / ESM), predicted consequence, and
- *  real Pfam domain annotation. Receives the region via S.impactInput.
+ *  accessions), using the real HDF5 VCF: DNA + protein language-model
+ *  scores (FunDLM/EVO2 + ESM1/2/3/ESM-C), predicted consequence, and real
+ *  Pfam domain annotation. The region comes either from the built-in query
+ *  bar (queryVariants against the HDF5) or a SNPVersity hand-off (S.impactInput).
  * ===================================================================== */
 (function () {
 
@@ -145,7 +146,7 @@
     let v = null;
     try {
       if (r.gene && r.gene!=='—' && IMP.input && typeof Data.geneModelOf === 'function')
-        v = cdsResidue(Data.geneModelOf(IMP.input.chr, r.gene), r.pos);
+        v = cdsResidue(Data.geneModelOf(IMP.input.chr, r.gene, r.pos), r.pos);
     } catch(e){ v = null; }
     r._resi = v; r.resiDerived = (v != null);
     return v;
@@ -200,38 +201,121 @@
       .protbar .vm.splice{background:#7048b6}
       .protbar .vm.syn{background:#5b7a99}
       .protbar .lost-region{position:absolute;top:0;bottom:0;z-index:1;
-        background:repeating-linear-gradient(45deg,rgba(139,26,16,.13) 0 5px,rgba(139,26,16,.04) 5px 10px)}`;
+        background:repeating-linear-gradient(45deg,rgba(139,26,16,.13) 0 5px,rgba(139,26,16,.04) 5px 10px)}
+      .imp-query{margin-bottom:16px}
+      .imp-q-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+      .imp-q-row .fld{display:flex;flex-direction:column;gap:5px}
+      .imp-q-row .fld label{font-size:10.5px;font-weight:600;color:var(--muted);
+        text-transform:uppercase;letter-spacing:.4px}
+      .imp-q-row .fld label .opt{text-transform:none;letter-spacing:0;font-weight:400}
+      .imp-q-row .fld.gene{flex:1 1 240px;min-width:200px}
+      .imp-q-row .fld.sm{width:120px}
+      .imp-q-row .fld.sm input{width:100%}
+      .imp-q-row select,.imp-q-row input{border:1px solid var(--line);border-radius:9px;
+        padding:8px 10px;font-size:13px;background:#fff}
+      .imp-q-row .btn.imp-run{padding:9px 18px}
+      .imp-q-err{margin-top:10px;font-size:12.5px;color:#b42318;background:#fef3f2;
+        border:1px solid #fecdca;border-radius:8px;padding:8px 11px}`;
     document.head.appendChild(s);
   }
   function render(page){
     page = page || document.getElementById('page');
     injectImpactCSS();
+    ensureQDefaults();
     const input = S.impactInput;
-    if (!input || !input.rows || !input.rows.length){ page.innerHTML = emptyState(); return; }
+    const hasData = !!(input && input.rows && input.rows.length);
 
-    const sig = `${input.chr}:${input.start}-${input.end}:${input.dataset}:${input.rows.length}`;
-    if (IMP._sig !== sig){
-      IMP.rows = Data.rankImpact(input.rows);
-      IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
+    if (hasData){
+      const sig = `${input.chr}:${input.start}-${input.end}:${input.dataset}:${input.rows.length}`;
+      if (IMP._sig !== sig){
+        IMP.rows = Data.rankImpact(input.rows);
+        IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
+        // keep the query bar in sync with the active region (self-query or hand-off)
+        if (IMP.q){ IMP.q.dataset = input.dataset; IMP.q.chr = input.chr;
+          IMP.q.start = String(input.start); IMP.q.end = String(input.end); IMP.q.gene = ''; IMP.q.err = ''; }
+      }
+      IMP.sec = Data.hasSecondaryScores(input.dataset);
+      Data.ensureGeneDomains();                             // warm up detail track (non-blocking)
+      Data.ensureGeneModels(input.chr);                     // warm up gene-model view for this chromosome
     }
-    IMP.sec = Data.hasSecondaryScores(input.dataset);    // show PlantCAD2/ESM2 only for MaizeGDB 2026
-    Data.ensureGeneDomains();                             // warm up detail track (non-blocking)
-    Data.ensureGeneModels(input.chr);                     // warm up gene-model view for this chromosome
 
+    page.innerHTML = headerHTML(hasData ? input.dataset : IMP.q.dataset)
+                   + queryBar()
+                   + (hasData ? resultsHTML(input) : hintHTML());
+    if (typeof attachTT==='function') attachTT();
+  }
+
+  function headerHTML(ds){
+    const _sm = (typeof Data!=='undefined'&&Data.scoreModels)?Data.scoreModels(ds):[];
+    const _dnaL = _sm.filter(m=>m.kind==='dna').map(m=>m.label).join('/') || 'DNA';
+    const _protL = _sm.filter(m=>m.kind==='protein').map(m=>m.label).join('/') || 'protein';
+    return `
+      <div class="sec"><div class="bar"></div><div>
+        <div class="n">AI-DRIVEN PRIORITIZATION · ${_dnaL} + ${_protL}</div>
+        <h2>Rank candidate variants using AI</h2>
+        <p>Combine DNA and protein language-model scores with predicted effects to surface
+        the variants most likely to be causal. Query a region below — or send one from SNPVersity —
+        then sort, filter, and open any variant for its gene-model consequence, domain impact,
+        and AI score summary.</p>
+      </div></div>`;
+  }
+
+  /* ---------- standalone query controls (pull a region straight from the HDF5) ---------- */
+  function ensureQDefaults(){
+    if (IMP.q) return;
+    const inp = S.impactInput;
+    const ds = (inp && inp.dataset) || (typeof S!=='undefined' && S.dataset) || (Data.datasets()[0]||{}).id;
+    IMP.q = {
+      dataset: ds, gene: '',
+      chr:   (inp && inp.chr)   || 'chr1',
+      start: (inp && inp.start!=null) ? String(inp.start) : '1',
+      end:   (inp && inp.end!=null)   ? String(inp.end)   : '100000',
+      busy: false, err: '',
+    };
+  }
+  function queryBar(){
+    const q = IMP.q;
+    const datasets = Data.datasets();
+    const chrs = Object.keys(Data.chromLengths(q.dataset) || {});
+    const exGene = (Data.exampleGenes(q.dataset)||[])[0] || '';
+    return `<div class="card pad imp-query">
+      <div class="imp-q-row">
+        <div class="fld"><label>Reference genome</label>
+          <select onchange="IMPACT.setQ('dataset', this.value)">
+            ${datasets.map(d=>`<option value="${d.id}" ${q.dataset===d.id?'selected':''}>${esc(d.name)} · ${esc(d.sub)}</option>`).join('')}
+          </select></div>
+        <div class="fld gene"><label>Gene model <span class="opt">(optional — fills the region)</span></label>
+          <input type="text" value="${esc(q.gene)}" placeholder="${esc(exGene||'FGSG_… / FVEG_… / FVERT4_…')}"
+            oninput="IMPACT.setQ('gene', this.value)" onkeydown="if(event.key==='Enter')IMPACT.runQuery()" class="mono-in"></div>
+        <div class="fld sm"><label>Chr</label>
+          <select onchange="IMPACT.setQ('chr', this.value)">
+            ${chrs.map(c=>`<option value="${c}" ${q.chr===c?'selected':''}>${c}</option>`).join('')}
+          </select></div>
+        <div class="fld sm"><label>Start</label>
+          <input type="number" min="1" value="${esc(q.start)}" oninput="IMPACT.setQ('start', this.value)"
+            onkeydown="if(event.key==='Enter')IMPACT.runQuery()" class="mono-in"></div>
+        <div class="fld sm"><label>End</label>
+          <input type="number" min="1" value="${esc(q.end)}" oninput="IMPACT.setQ('end', this.value)"
+            onkeydown="if(event.key==='Enter')IMPACT.runQuery()" class="mono-in"></div>
+        <button class="btn solid imp-run" onclick="IMPACT.runQuery()" ${q.busy?'disabled':''}>
+          ${q.busy?'Ranking…':'Rank variants'}</button>
+      </div>
+      ${q.err?`<div class="imp-q-err">${esc(q.err)}</div>`:''}
+    </div>`;
+  }
+  function hintHTML(){
+    return `<div class="empty-state" style="padding-top:22px"><div class="ei">${ICONS.star||''}</div>
+      <h3>Rank the variants in a region by predicted impact</h3>
+      <p>Pick a reference and a region above (or type a gene model to fill it), then press
+      <b>Rank variants</b> to pull that region straight from the HDF5 and score it. You can also
+      run a query in SNPVersity and use <b>Send to SNPImpact</b>.</p></div>`;
+  }
+  function resultsHTML(input){
     const region = `${input.chr}:${(+input.start).toLocaleString()}–${(+input.end).toLocaleString()}`;
     const all = filtered();
     const rows = all.slice(0, CAP);
     const top = IMP.rows.filter(r=>r.priority==='TOP'||r.priority==='HIGH').length;
-
-    page.innerHTML = `
-      <div class="sec"><div class="bar"></div><div>
-        <div class="n">AI-DRIVEN PRIORITIZATION · PlantCAD + ESM</div>
-        <h2>Rank candidate variants using AI</h2>
-        <p>Combine DNA and protein language-model scores with predicted effects to surface
-        the variants most likely to be causal. Sort, filter, and open any variant to see its
-        gene-model consequence, domain impact, and AI score summary.</p>
-      </div></div>
-
+    return `
       <div class="imp-context">
         <span><b>${IMP.rows.length.toLocaleString()}</b> variants in region</span>
         <span class="dot">·</span><span><b>${top.toLocaleString()}</b> high-priority</span>
@@ -257,7 +341,7 @@
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${th('Priority','priority')}<th></th>
+            ${scoreCols().map(m=>th(m.label, m.key, 'num', m.tip)).join('')}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -267,16 +351,6 @@
 
       <div id="impDetail">${IMP.openId ? detailHTML(IMP.rows.find(r=>r.id===IMP.openId)) : ''}</div>
     `;
-    if (typeof attachTT==='function') attachTT();
-  }
-
-  function emptyState(){
-    return `<div class="empty-state"><div class="ei">${ICONS.star||''}</div>
-      <h3>Send a region from SNPVersity</h3>
-      <p>SNPImpact ranks the variants in a queried region by predicted impact — independent of
-      which accessions you picked. Run a query in SNPVersity, then use
-      <b>Send to SNPImpact</b> (or the “Send selection to…” menu).</p>
-      <button class="btn solid" onclick="go('snpversity')">Go to SNPVersity</button></div>`;
   }
 
   function sel(label, key, opts){
@@ -285,23 +359,27 @@
         ${opts.map(o=>`<option value="${o[0]}" ${IMP[key]===o[0]?'selected':''}>${o[1]}</option>`).join('')}
       </select></div>`;
   }
+  /* Fallback tooltips for the non-score columns. The language-model score columns
+     carry their own per-model tips from Data.scoreModels() (passed to th()), so
+     they are intentionally not listed here. */
   const COL_TT = {
     'Gene':'Gene model associated with the candidate variant.',
     'Variant':'Genomic change — position and REF to ALT alleles.',
     'Consequence':'Specific predicted molecular consequence of the change.',
     'Domain':'Pfam domain containing the affected amino acid, when present.',
-    'PlantCAD1':'PlantCAD DNA language-model score estimating sequence disruption.',
-    'PlantCAD2':'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
-    'ESM':'ESM protein language-model score for the amino-acid substitution.',
-    'ESM2':'ESM2 protein language-model score (MaizeGDB 2026).',
-    'ESM3':'ESM3 protein language-model score (MaizeGDB 2026).',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
   };
-  function th(label, key, cls){
+  function th(label, key, cls, tip){
     const active = IMP.sortKey===key;
     const arrow = active ? (IMP.sortDir>0?' ▲':' ▼') : ' ⇅';
-    const tt = COL_TT[label] ? ` data-tt="${COL_TT[label]}"` : '';
+    const t = tip || COL_TT[label];
+    const tt = t ? ` data-tt="${esc(t)}"` : '';
     return `<th class="sortable ${cls||''} ${active?'on':''}"${tt} onclick="IMPACT.sort('${key}')">${label}<span class="arr">${arrow}</span></th>`;
+  }
+  /* Language-model score columns for the active dataset (DNA: FunDLM/EVO2,
+     protein: ESM1/2/3/ESM-C for graminearum 2026; DNABERT/ESM1 for the 2025 verts). */
+  function scoreCols(){
+    return (typeof Data!=='undefined' && Data.scoreModels) ? Data.scoreModels(IMP.input&&IMP.input.dataset) : [];
   }
 
   function rowHTML(r){
@@ -323,10 +401,7 @@
       <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}</td>
       <td>${consPill(r)}${peJump}${foldJump}</td>
       <td>${domTag(r.domain)}</td>
-      <td class="num">${scoreCell(r.plantcad)}</td>
-      ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2)}</td>`:''}
-      <td class="num">${scoreCell(r.esm)}</td>
-      ${IMP.sec?`<td class="num">${scoreCell(r.esm2)}</td><td class="num">${scoreCell(r.esm3)}</td>`:''}
+      ${scoreCols().map(m=>`<td class="num">${scoreCell(r[m.key])}</td>`).join('')}
       <td>${prioPill(r.priority)}</td>
       <td style="text-align:center">
         <button class="star-btn ${star?'on':''}" title="Add to shortlist"
@@ -464,7 +539,7 @@
           <div class="idh-t">Variant detail</div>
           <div class="idh-meta">
             <span>Gene: ${isSingleGeneModel(r.gene)
-              ? `<a class="mono" style="color:var(--blue-600);font-weight:700" href="${maizegdbGeneURL(r.gene)}" target="_blank" rel="noopener" title="MaizeGDB gene page for ${esc(r.gene)}">${esc(r.gene)}</a>`
+              ? `<a class="mono" style="color:var(--blue-600);font-weight:700" href="${maizegdbGeneURL(r.gene)}" target="_blank" rel="noopener" title="Gene record for ${esc(r.gene)}">${esc(r.gene)}</a>`
               : `<b class="mono">${esc(r.gene)}</b>`}</span>
             <span>Variant: <b class="mono">${r.variant}</b></span>
             <span>${consPill(r)}</span>
@@ -486,7 +561,7 @@
         <div class="id-step">
           <div class="id-step-h"><span class="num-dot">1</span> Predicted consequence <span class="muted">· gene model</span></div>
           <div class="id-sub">${consequenceBlurb(r)}</div>
-          ${(()=>{ const gm=geneModelSVG(r, Data.geneModelOf(IMP.input.chr, r.gene));
+          ${(()=>{ const gm=geneModelSVG(r, Data.geneModelOf(IMP.input.chr, r.gene, r.pos));
             return gm
               ? `<div class="gm-wrap" style="margin:8px 0 2px">${gm.svg}</div>
                  <div class="id-foot ${r.consClass==='lof'?'red':''}">${gm.caption} · ${IMP.input.chr}:${r.pos.toLocaleString()} ${r.ref}›${r.alt} · impact ${r.impactLevel||'—'}</div>`
@@ -502,10 +577,7 @@
         <div class="id-step">
           <div class="id-step-h"><span class="num-dot">3</span> AI score summary</div>
           <div class="ai-pill ${r.combined!=null&&r.combined<=-4?'hi':''}">AI score: ${r.combined==null?'n/a':r.combined<=-7?'high impact':r.combined<=-4?'elevated':'low impact'}</div>
-          ${scoreBar('PlantCAD1', r.plantcad)}
-          ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2):''}
-          ${scoreBar('ESM', r.esm)}
-          ${IMP.sec?scoreBar('ESM2', r.esm2)+scoreBar('ESM3', r.esm3):''}
+          ${scoreCols().map(m=>scoreBar(m.label, r[m.key])).join('')}
           <div class="pctl">
             <div class="pctl-l">Region impact percentile</div>
             <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':r.percentile+'th'}</span></div>
@@ -548,6 +620,61 @@
 
   /* ---------- public handlers ---------- */
   window.IMPACT = {
+    /* --- standalone query --- */
+    setQ(k, v){
+      ensureQDefaults();
+      IMP.q[k] = v; IMP.q.err = '';
+      if (k === 'dataset'){
+        const chrs = Object.keys(Data.chromLengths(v) || {});
+        if (chrs.indexOf(IMP.q.chr) < 0) IMP.q.chr = chrs[0] || 'chr1';
+        IMP.q.gene = '';
+        render();                        // refresh chromosome options for the new reference
+      }
+    },
+    async runQuery(){
+      ensureQDefaults();
+      const q = IMP.q; q.err = '';
+      let chr = q.chr, start = parseInt(q.start, 10), end = parseInt(q.end, 10);
+      const gene = (q.gene || '').trim();
+      q.busy = true; render();
+      try {
+        if (gene){
+          let g = null;
+          try { g = await Data.lookupGene(gene, Data.dbOf(q.dataset)); } catch(e){}
+          if (!g || !g.chr || g.placed === false){
+            q.err = (g && g.placed === false)
+              ? `“${gene}” is on an unplaced scaffold — no chromosomal region to query.`
+              : `Gene “${gene}” not found for this reference.`;
+            q.busy = false; render(); return;
+          }
+          chr = g.chr; start = +g.start; end = +g.end;
+          q.chr = chr; q.start = String(start); q.end = String(end);
+        }
+        if (!chr || !(start >= 1) || !(end > start)){
+          q.err = 'Enter a valid region (start ≥ 1 and end > start), or a gene model.';
+          q.busy = false; render(); return;
+        }
+        const ids = Data.defaultSelectionFor(q.dataset) || [];
+        const res = await Data.queryVariants(q.dataset, chr, start, end, ids);
+        if (res && res.wide){
+          q.err = `Region is too wide to rank at once (${(end-start).toLocaleString()} bp). Narrow it to ≤ 1,000,000 bp.`;
+          S.impactInput = null; IMP._sig = null; q.busy = false; render(); return;
+        }
+        const dsName = (Data.datasets().find(d => d.id === q.dataset) || {}).name || q.dataset;
+        if (res && res.rows && res.rows.length){
+          S.impactInput = { rows: res.rows, accs: res.accs || [], chr, start, end,
+                            dataset: q.dataset, datasetName: dsName, vcfUrl: res.vcfUrl };
+          IMP._sig = null;               // force re-rank in render()
+        } else {
+          S.impactInput = null; IMP._sig = null;
+          q.err = `No variants found in ${chr}:${start.toLocaleString()}–${end.toLocaleString()}.`;
+        }
+      } catch(e){
+        S.impactInput = null; IMP._sig = null;
+        q.err = 'Query failed: ' + (e && e.message ? e.message : e);
+      }
+      q.busy = false; render();
+    },
     setFilter(k,v){ IMP[k]=v; render(); },
     sort(k){ if(IMP.sortKey===k) IMP.sortDir*=-1;
       else { IMP.sortKey=k; IMP.sortDir = (k==='gene'||k==='consequence'||k==='domain')?1:1; } render(); },
@@ -560,10 +687,8 @@
     star(id){ IMP.shortlist.has(id)?IMP.shortlist.delete(id):IMP.shortlist.add(id); render(); },
     sendCompare(){ if(IMP.input){ S.compareInput=IMP.input; } go('snpcompare'); },
     exportCSV(){
-      const cols=['gene','variant','consequence','domain','plantcad']
-        .concat(IMP.sec?['plantcad2']:[])
-        .concat(['esm'])
-        .concat(IMP.sec?['esm2','esm3']:[])
+      const cols=['gene','variant','consequence','domain']
+        .concat(scoreCols().map(m=>m.key))
         .concat(['combined','priority','percentile','impactLevel','maf','pos','ref','alt']);
       const rows=filtered();
       const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';

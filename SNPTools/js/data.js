@@ -1,105 +1,148 @@
 /* =====================================================================
- *  data.js — the DATA LAYER (LIVE / real HDF5 build).
+ *  data.js — the DATA LAYER (Fusarium, LIVE HDF5 build).
  *
- *  queryVariants() no longer fabricates demo data: it POSTs the region +
- *  accession list to processForm.php, which runs h5_to_vcf.py against the
- *  real .h5 store, writes a VCF, and returns its path. We then fetch that
- *  VCF and parse it into the exact row shape the tools already expect.
+ *  queryVariants() POSTs the region + accession list to processForm.php,
+ *  which runs h5_to_vcf.py against the real Fusarium .h5 store (haploid),
+ *  writes a VCF, and returns its path. We fetch + parse it into the row
+ *  shape the tools expect.
  *
- *  Accession IDs come from accessions.real.js (window.SNP_REAL_ACCESSIONS),
- *  which holds the actual column names inside the .h5 files, so a selection
- *  maps to real HDF5 columns.
+ *  Accession IDs are the real HDF5 column names:
+ *    - F. graminearum : numeric isolate IDs, grouped by population (strains.js)
+ *    - F. verticillioides 7600 / MRC826 : column names read from the HDF5
+ *  All of this is compiled into window.SNP_CATALOG by build_strains_catalog.py.
  *
- *  PFAM / protein-domain data is not in the HDF5 yet — the "Domain" column
- *  is filled with "N/A" until that separate data structure is built.
+ *  Fusarium INFO carries MQ, CVC, CVP, TYPE, EFFECT, GENEMODEL, SUB, MAXR2,
+ *  DNA_SCORE, AA_SCORE, MAF.  DNA_SCORE -> pc1, AA_SCORE -> esm1 (no secondary
+ *  language-model scores yet).  Pfam domains / structures are not wired yet, so
+ *  the Domain column degrades to '—'.
  *
- *  SNPImpact / SNPFold still use demo generators (they are not backed by
- *  these .h5 files); those bodies are left untouched below.
- *
- *  Depends on rnd() and pick() from core.js.
+ *  Depends on rnd() and pick() from core.js, and the global S (current query).
  * ===================================================================== */
 const Data = (function () {
 
-  /* =============================================================
-   *  BACKEND CONFIG — edit these two lines if your paths differ.
-   * ============================================================= */
   const CFG = {
-    endpoint : 'processForm.php',  // relative to index.html
-    vcfDir   : 'vcf/',             // web-served, writable; MUST match processForm.php
-    geneEndpoint : 'lookupGeneModel.php',  // gene model -> coordinates
-    structDir : 'data/structures/',  // per-gene structure-<gene>.js files (SNPFold)
-    domainsDir : 'data/domains/by_chr/',              // per-chromosome Pfam files: <chr>.json (preferred)
-    domainsUrl : 'data/domains/domains.by_chr.json',  // combined file (fallback if per-chrom absent)
-    domainsGeneUrl : 'data/domains/domains.by_gene.json',  // gene -> canonical protein domains (SNPImpact detail)
-    geneModelsDir : 'data/genemodels/by_chr/',        // per-chromosome exon/CDS structure (SNPImpact gene model)
-    // Regions wider than this fall back to a download link instead of a
-    // full in-browser table (mirrors the original app's behavior).
+    endpoint     : 'processForm.php',
+    vcfDir       : 'vcf/',
+    geneEndpoint : 'lookupGeneModel.php',
+    structDir    : 'data/structures/',
+    // Pfam domains are per-reference (three separate assemblies with colliding
+    // contig names — chr1/chr2/… mean different things in each genome), so the
+    // domain stores are keyed by family, not shared.
+    domainDirByFamily : {
+      graminearum : 'data/domains_fusarium/Fgram_ph1/',
+      vert7600    : 'data/domains_fusarium/Fvert_7600/',
+      vertMRC826  : 'data/domains_fusarium/Fvert_mrc/',
+    },
+    // graminearum's by_chr uses source-GFF seqids: chr1-3 are named, but chr4
+    // (and scaffolds) keep their RefSeq accession. Map the app's chr name to the
+    // seqid the domain file is keyed under.
+    domainChrAlias : {
+      graminearum : { chr4: 'NC_026477.1' },
+    },
+    geneModelsDir  : 'data/genemodels/by_chr/',
     tableMaxSpan : 1_000_000,
   };
 
   /* ---------------- datasets (UI cards) ----------------
-   * `id`     -> sent to processForm.php as dataSet
-   * `family` -> which real accession list to show + which .h5 family
+   * id     -> sent to processForm.php as dataSet
+   * family -> which accession catalog + which .h5 family + which gene store
    */
+  // Isolate + variant counts are the COMPLETE per-genome totals (all chromosomes),
+  // from the 2026 site-summary tables. `sites` = SNP + INDEL total for that filter tier;
+  // `snps`/`indels` break it down; `sitesShort` is the compact card label.
   const DATASETS = [
-    {id:'mgdb2026_hq', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Quality',   ref:'B73 v5', acc:'2,710', sites:'98M',
-     filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
-    {id:'mgdb2026_hc', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Coverage',  ref:'B73 v5', acc:'2,710', sites:'290M',
-     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
+    {id:'gram_hq',     family:'graminearum', db:'graminearum', name:'F. graminearum 2026', sub:'High Quality',  ref:'PH-1 (FGSG)', acc:'512',
+     sites:'120,390', sitesShort:'120K', snps:'111,754', indels:'8,636', chr:4, asm:'36.4 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:false, indel:true,  impute:false},
+    {id:'gram_hc',     family:'graminearum', db:'graminearum', name:'F. graminearum 2026', sub:'High Coverage', ref:'PH-1 (FGSG)', acc:'512',
+     sites:'2,485,599', sitesShort:'2.49M', snps:'2,339,005', indels:'146,594', chr:4, asm:'36.4 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:false, indel:true,  impute:false},
+    {id:'vert7600_hq', family:'vert7600',    db:'vert7600',   name:'F. verticillioides 7600', sub:'High Quality',  ref:'7600 (FVEG)', acc:'113',
+     sites:'937,497', sitesShort:'937K', snps:'872,140', indels:'65,357', chr:11, asm:'41.1 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:false, indel:true,  impute:false},
+    {id:'vert7600_hc', family:'vert7600',    db:'vert7600',   name:'F. verticillioides 7600', sub:'High Coverage', ref:'7600 (FVEG)', acc:'113',
+     sites:'1,227,771', sitesShort:'1.23M', snps:'1,139,829', indels:'87,942', chr:11, asm:'41.1 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:false, indel:true,  impute:false},
+    {id:'vertmrc_hq',  family:'vertMRC826',  db:'vertMRC826', name:'F. verticillioides MRC826', sub:'High Quality',  ref:'MRC826 (FVERT4)', acc:'113',
+     sites:'1,064,463', sitesShort:'1.06M', snps:'990,183', indels:'74,280', chr:12, asm:'42.9 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:false, indel:true,  impute:false},
+    {id:'vertmrc_hc',  family:'vertMRC826',  db:'vertMRC826', name:'F. verticillioides MRC826', sub:'High Coverage', ref:'MRC826 (FVERT4)', acc:'113',
+     sites:'1,402,131', sitesShort:'1.40M', snps:'1,304,907', indels:'97,224', chr:12, asm:'42.9 Mb',
+     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:false, indel:true,  impute:false},
   ];
 
-  /*const DATASETS = [
-    {id:'mgdb2026_hq', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Quality',   ref:'B73 v5', acc:'2,710', sites:'98M',
-     filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
-    {id:'mgdb2026_hc', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Coverage',  ref:'B73 v5', acc:'2,710', sites:'290M',
-     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
-    {id:'schnable2023',family:'schnable2023', name:'Schnable 2023', sub:'Imputed markers',ref:'B73 v5', acc:'1,515', sites:'12M',
-     filters:['Imputed'], het:false, indel:false, impute:true},
-    {id:'nam2021',     family:'nam2021',      name:'NAM 2021',      sub:'Founder panel',  ref:'B73 v5', acc:'27',    sites:'78M',
-     filters:['MQ ≥ 30','Founder panel'], het:true,  indel:true,  impute:false},
-    {id:'mgdb2024_hq', family:'mgdb2024',     name:'MaizeGDB 2024', sub:'High Quality',   ref:'B73 v5', acc:'1,498', sites:'83M',
-     filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
-  ];
-  */
-
-  /* colors + a friendly label per family, for the accession picker group */
   const FAMILY_META = {
-    mgdb2026:     {name:'MaizeGDB 2026', color:'#2563eb'},
-    mgdb2024:     {name:'MaizeGDB 2024', color:'#cf8a12'},
-    schnable2023: {name:'Schnable 2023', color:'#1f8a4c'},
-    nam2021:      {name:'NAM 2021',      color:'#7c3aed'},
+    graminearum: {name:'F. graminearum 2026',      color:'#7c3aed'},
+    vert7600:    {name:'F. verticillioides 7600',  color:'#2563eb'},
+    vertMRC826:  {name:'F. verticillioides MRC826', color:'#0e7490'},
   };
 
-  /* ---------------- accession catalog (projects -> groups -> accessions) ----------------
-   * Source: window.SNP_CATALOG (compiled from data/accessions.tsv + data/projects.tsv).
-   * Falls back to the older flat window.SNP_REAL_ACCESSIONS if present.
-   */
+  /* chromosome geometry per reference — EXACT lengths (bp) from the reference GFFs
+     (region features / ##sequence-region). Used for the region ribbon; the query
+     uses the entered start/end directly. */
+  const CHR_LEN_BY_FAMILY = {
+    // F. graminearum PH-1 — 4 chromosomes
+    graminearum: {chr1:11697295, chr2:8914601, chr3:7713129, chr4:8033942},
+    // F. verticillioides 7600 — 11 chromosomes
+    vert7600: {chr1:6218892, chr2:4689494, chr3:4638610, chr4:4230616, chr5:4245961,
+               chr6:3897820, chr7:3246105, chr8:2858895, chr9:2756060, chr10:2257929, chr11:2039996},
+    // F. verticillioides MRC826 — 12 chromosomes
+    vertMRC826: {chr1:6256590, chr2:4714944, chr3:4895763, chr4:4254065, chr5:4357113,
+               chr6:4064809, chr7:3327862, chr8:2926371, chr9:2825676, chr10:2460917, chr11:2064835, chr12:693693},
+  };
+
+  /* example gene models per reference (verticillioides IDs resolve to matching
+     chr tokens; graminearum FGSG_ IDs currently resolve to RefSeq scaffolds — see
+     MISSING_DATA.md — so the graminearum autofill needs a chr remap to be useful). */
+  // FungiDB-style (unpadded) IDs on purpose: the gene lookup normalizes zero-padding
+  // (e.g. FVEG_03144 -> stored FVEG_003144), so the example buttons exercise the same
+  // tolerance as a gene ID pasted straight from FungiDB. All resolve to placed (chr) genes.
+  // Canonical (reference-GFF) display forms: FGSG 5-digit; FVEG / FVERT4 6-digit.
+  const EXAMPLE_GENES_BY_FAMILY = {
+    graminearum: ['FGSG_00777','FGSG_00778','FGSG_03537','FGSG_10375'],
+    vert7600:    ['FVEG_003144','FVEG_000765','FVEG_014423','FVEG_005000'],
+    vertMRC826:  ['FVERT4_000001','FVERT4_000765','FVERT4_005000','FVERT4_010000'],
+  };
   const CATALOG = (typeof window !== 'undefined' && window.SNP_CATALOG) || null;
   const REAL    = (typeof window !== 'undefined' && window.SNP_REAL_ACCESSIONS) || {};
 
   function familyOf(datasetId){
     const d = DATASETS.find(x => x.id === datasetId);
-    return d ? d.family : 'mgdb2026';
+    return d ? d.family : 'graminearum';
   }
-  // MaizeGDB 2026 is the only family carrying the second-generation language-model
-  // scores (PlantCAD2 / ESM2). Tools call this to show those columns conditionally.
-  function hasSecondaryScores(datasetId){ return familyOf(datasetId) === 'mgdb2026'; }
-  function famNode(datasetId){
-    return CATALOG ? CATALOG.families[familyOf(datasetId)] : null;
+  function dbOf(datasetId){
+    const d = DATASETS.find(x => x.id === datasetId);
+    return d ? d.db : 'graminearum';
   }
+  /* Language-model score columns to show for a dataset, in order. As of the 2026
+     rebuild ALL three references carry the same six models — two DNA (FunDLM, EVO2)
+     and four protein (ESM1, ESM2, ESM3, ESM-C) — in the INFO
+     (FUNDLM/EVO2/ESM1/ESM2/ESM3/ESMC_SCORE). `key` indexes the parsed row
+     (pc1/pc2 = DNA, esm1..esm3/esmc = protein). */
+  function scoreModels(datasetId){
+    return [
+      {key:'pc1',  kind:'dna',     label:'FunDLM', tip:'FunDLM DNA language-model score (INFO FUNDLM_SCORE); more extreme = more disruptive.'},
+      {key:'pc2',  kind:'dna',     label:'EVO2',   tip:'EVO2 DNA language-model score (INFO EVO2_SCORE).'},
+      {key:'esm1', kind:'protein', label:'ESM1',   tip:'ESM1 protein language-model score (INFO ESM1_SCORE).'},
+      {key:'esm2', kind:'protein', label:'ESM2',   tip:'ESM2 protein language-model score (INFO ESM2_SCORE).'},
+      {key:'esm3', kind:'protein', label:'ESM3',   tip:'ESM3 protein language-model score (INFO ESM3_SCORE).'},
+      {key:'esmc', kind:'protein', label:'ESM-C',  tip:'ESM-C protein language-model score (INFO ESMC_SCORE).'},
+    ];
+  }
+  // All three references now carry the protein (secondary) models.
+  function hasSecondaryScores(datasetId){
+    return ['graminearum','vert7600','vertMRC826'].indexOf(familyOf(datasetId)) >= 0;
+  }
+  function famNode(datasetId){ return CATALOG ? CATALOG.families[familyOf(datasetId)] : null; }
 
-  // Projects (bioproject sections) with metadata + groups, for the picker.
   function projectsFor(datasetId){
     const fam = famNode(datasetId);
     if (fam) return fam.projects;
-    // legacy fallback: single synthetic project from the flat list
     const list = REAL[familyOf(datasetId)] || [];
     return [{id:familyOf(datasetId), title:familyOf(datasetId), bioprojects:[], color:'#2563eb',
-             count:list.length, namFounders:[],
-             groups:[{name:null, accessions:list}]}];
+             count:list.length, namFounders:[], groups:[{name:null, accessions:list}]}];
   }
 
-  // Flat accession list (one object per accession) for search, chips, table headers.
   const _accCache = {};
   function accessionsFor(datasetId){
     const fam = familyOf(datasetId);
@@ -110,6 +153,12 @@ const Data = (function () {
       node.projects.forEach(p => p.groups.forEach(g => g.accessions.forEach(a => {
         out.push({id:a.id, run:a.run, founder:a.founder, rep:a.rep, reps:a.reps,
                   label:a.label, group:g.name, namFounder:a.namFounder,
+                  // graminearum metadata
+                  population:a.population, species:a.species, host:a.host,
+                  chemotype:a.chemotype, country:a.country,
+                  // verticillioides metadata (from Fvert_MetaData xlsx)
+                  strain:a.strain, region:a.region, substrate:a.substrate,
+                  substrateDetail:a.substrateDetail, geo:a.geo,
                   proj:p.id, projColor:p.color, projTitle:p.title});
       })));
     } else {
@@ -124,18 +173,8 @@ const Data = (function () {
     return fam ? (fam.namFounders || []) : [];
   }
 
-  // Default selection: for a dataset with tagged NAM founders (2026), preselect
-  // one accession per NAM founder; otherwise one per the first 12 founders.
   function defaultSelectionFor(datasetId){
     const list = accessionsFor(datasetId);
-    const nam = namFoundersFor(datasetId);
-    if (nam.length){
-      const pick = {}, ids = [];
-      for (const a of list){
-        if (a.namFounder && !pick[a.namFounder]){ pick[a.namFounder] = 1; ids.push(a.id); }
-      }
-      return ids;
-    }
     const ids = [], seen = new Set();
     for (const a of list){
       if (seen.has(a.founder)) continue;
@@ -145,12 +184,11 @@ const Data = (function () {
     return ids;
   }
 
-  // union index for accessionById()
   let _byId = null;
   function idIndex(){
     if (_byId) return _byId;
     _byId = new Map();
-    ['mgdb2026','mgdb2024','schnable2023','nam2021'].forEach(fam => {
+    ['graminearum','vert7600','vertMRC826'].forEach(fam => {
       const dsid = (DATASETS.find(d => d.family === fam) || {}).id;
       if (dsid) accessionsFor(dsid).forEach(a => { if (!_byId.has(a.id)) _byId.set(a.id, a); });
     });
@@ -158,48 +196,52 @@ const Data = (function () {
   }
   function accessionById(id){ return idIndex().get(id) || null; }
 
-  /* ---------------- genome geometry ---------------- */
-  const GENE_MODELS = {
-    'Zm00001eb374090':{chr:'chr8', start:163450112, end:163454880},
-    'Zm00001eb067740':{chr:'chr2', start:21008440,  end:21013990},
-    'Zm00001eb404760':{chr:'chr10',start:9821400,   end:9826110},
-    'Zm00001eb404740':{chr:'chr10',start:9788220,   end:9794010},
-    'Zm00001eb233650':{chr:'chr5', start:8841220,   end:8849510},
-    'Zm00001eb313510':{chr:'chr7', start:174221000, end:174229800},
-  };
-  const CHR_LEN = {chr1:308452471,chr2:243675191,chr3:238017767,chr4:250330460,chr5:226353449,
-    chr6:181357234,chr7:185808916,chr8:182411202,chr9:163004744,chr10:152435371};
-  const CENTRO = {chr10:.34};
+  /* ---------------- chromosome geometry (family-aware) ---------------- */
+  function chromLengths(datasetId){
+    return CHR_LEN_BY_FAMILY[familyOf(datasetId)] || CHR_LEN_BY_FAMILY.graminearum;
+  }
+  const CENTRO = {};   // Fusarium centromere positions not wired yet
 
   /* ---------------- gene model -> coordinates (live) ----------------
-   * Resolves a B73 v5 gene model ID to its interval via lookupGeneModel.php,
-   * which reads the serialized GFF store on the server. Returns
-   *   {id, chr, start, end}  or  null when the ID isn't found.
+   * Resolves a gene-model ID to its interval via lookupGeneModel.php, choosing
+   * the serialized GFF store from the current dataset's reference (database=).
    */
-  const EXAMPLE_GENES = [
-    'Zm00001eb374090','Zm00001eb067740','Zm00001eb374230',
-    'Zm00001eb056510','Zm00001eb233650','Zm00001eb313510',
-  ];
-  async function lookupGene(id){
+  function exampleGenes(datasetId){
+    return EXAMPLE_GENES_BY_FAMILY[familyOf(datasetId)] || EXAMPLE_GENES_BY_FAMILY.graminearum;
+  }
+  async function lookupGene(id, database){
     id = (id || '').trim();
     if (!id) return null;
-    const url = `${CFG.geneEndpoint}?geneModelId=${encodeURIComponent(id)}`;
+    // default the reference store from the active dataset when not passed explicitly
+    if (!database){
+      try { database = dbOf((typeof S !== 'undefined' && S.dataset) ? S.dataset : DATASETS[0].id); }
+      catch(e){ database = 'graminearum'; }
+    }
+    const url = `${CFG.geneEndpoint}?geneModelId=${encodeURIComponent(id)}&database=${encodeURIComponent(database)}`;
     const resp = await fetch(url, {cache:'no-store'});
     if (!resp.ok) throw new Error('Gene lookup failed (HTTP ' + resp.status + ')');
     const raw = await resp.text();
     let d;
     try { d = JSON.parse(raw); }
     catch (e) { throw new Error('lookupGeneModel.php did not return JSON:\n' + raw.slice(0, 600)); }
-    // The PHP returns id:'empty' (and 0/0) when the gene isn't in the store.
     if (!d || d.id === 'empty' || d.chromosome == null) return null;
     const start = parseInt(d.start, 10), end = parseInt(d.end, 10);
+    const isChr  = /^chr[0-9]+$/.test(String(d.chromosome));
+    const placed = (d.placed != null) ? !!d.placed : isChr;
+    if (!placed){
+      // The gene exists but sits on an unplaced scaffold / mitochondrion, not on a
+      // chr1..chrN chromosome — so it has no region in the variant store. Return a
+      // flagged object (chr:null) so callers can show a clear message instead of
+      // trying to query an invalid chromosome.
+      return {id, chr:null, placed:false, scaffold:(d.scaffold || d.chromosome),
+              start:Number.isFinite(start)?start:null, end:Number.isFinite(end)?end:null};
+    }
     if (!Number.isFinite(start) || !Number.isFinite(end) || (start === 0 && end === 0)) return null;
-    return {id, chr: d.chromosome, start, end};
+    return {id, chr: d.chromosome, start, end, placed:true};
   }
 
   /* =============================================================
-   *  SNPVERSITY — LIVE query.
-   *  region + accession ids -> VCF (via processForm.php) -> rows
+   *  SNPVERSITY — LIVE query.  region + accession ids -> VCF -> rows
    * ============================================================= */
   const SEVERITY = {HIGH:3, MODERATE:2, LOW:1, MODIFIER:0};
 
@@ -209,7 +251,6 @@ const Data = (function () {
     return `${CFG.vcfDir}snpv_${ts}_${rnd}_${lo}_${hi}.vcf`;
   }
 
-  // Pull one INFO tag out of the INFO column (values are ';'-separated).
   function info(infoStr, key){
     const m = infoStr.match(new RegExp('(?:^|;)' + key + '=([^;\\t]*)'));
     return m ? m[1] : null;
@@ -219,21 +260,82 @@ const Data = (function () {
     const tok = String(s).split(/[;,]+/)[0].replace(/_/g, ' ').trim();
     return tok === '.' ? '' : tok;
   };
+  // Gene-model IDs must keep their underscores (FVEG_000765, FGSG_00777, FVERT4_010000)
+  // — cleanTok's _->space rewrite would mangle them and break the gene->annotation join.
+  // Take the first listed gene; leave boundary spans ("A..B") intact for isSingleGeneModel().
+  const cleanGene = s => {
+    if (s == null) return '';
+    const tok = String(s).split(/[;,]+/)[0].trim();
+    return tok === '.' ? '' : tok;
+  };
+  /* Canonical gene id: prefix + zero-padding-stripped number, uppercased
+     (FVEG_003144 ⇔ FVEG_03144 ⇔ FVEG_3144). Lets a gene id compare equal to the
+     VCF's GENEMODEL regardless of how each zero-pads the numeric part. */
+  // NOTE: the prefix can itself contain digits (FVERT4_), so the prefix group must be
+  // ".*_" (up to the final underscore), NOT [A-Za-z]+ — otherwise FVERT4 ids fail to
+  // match and silently skip padding normalization.
+  function geneCanon(g){
+    const m = String(g == null ? '' : g).trim().match(/^(.*_)0*(\d+)$/);
+    return m ? (m[1].toUpperCase() + m[2]) : String(g == null ? '' : g).trim().toUpperCase();
+  }
+  /* Canonical DISPLAY id — the FungiDB/reference-GFF form. The reference pads the
+     numeric part to a fixed width per genome, EXCEPT a high-numbered tail block that
+     is left at its natural (unpadded) length. Partition taken from the reference GFFs
+     (2026-08, no numeric value straddles two widths):
+       graminearum (FGSG_)   : 5-digit across the whole range (matches the VCF already)
+       vert7600    (FVEG_)    : 6-digit up to 15512, natural for 15513..15545
+       vertMRC826  (FVERT4_)  : 6-digit up to 15520, natural for 15521..15581
+     The variant store (SNPVersity) writes these 5-digit, so applying this at parse time
+     makes SNPVersity + every hand-off show the same 6-digit id as SNPFold / SNPFunction /
+     SNPImpact. Matching stays padding-tolerant (geneCanon), so a differently-padded id
+     still resolves. */
+  const CANON_ID = {
+    graminearum: { width: 5, natFrom: Infinity },
+    vert7600:    { width: 6, natFrom: 15513 },
+    vertMRC826:  { width: 6, natFrom: 15521 },
+  };
+  function familyFromGeneId(g){
+    const s = String(g == null ? '' : g).toUpperCase();
+    if (s.indexOf('FGSG')   === 0) return 'graminearum';
+    if (s.indexOf('FVERT4') === 0) return 'vertMRC826';   // test before FVEG (FVERT4 ≠ FVEG)
+    if (s.indexOf('FVEG')   === 0) return 'vert7600';
+    return null;
+  }
+  function canonicalGeneId(gene){
+    const s = String(gene == null ? '' : gene).trim();
+    const m = s.match(/^(.*_)0*(\d+)$/);              // prefix incl. any digits (FVERT4_) up to final "_"
+    if (!m) return s;                                 // compound/boundary/non-numeric: leave as-is
+    const n = parseInt(m[2], 10);
+    const cfg = CANON_ID[familyFromGeneId(s)];
+    if (!cfg) return m[1] + String(n);                // unknown prefix: just strip leading zeros
+    const num = (n >= cfg.natFrom) ? String(n) : String(n).padStart(cfg.width, '0');
+    return m[1] + num;
+  }
+  /* A variant belongs to a gene when the gene is its PRIMARY annotation — the
+     first GENEMODEL token, already stored as r.gene — compared padding-tolerantly.
+     Deliberately NOT matching secondary comma-members ("FGSG_00778,FGSG_00777"):
+     the residue we read (r.sub's first value) and the effect belong to that
+     primary gene, so pulling the variant into an overlapping neighbor's list would
+     attach the WRONG residue (appearing beyond the neighbor's protein/structure)
+     and surface variants under a gene that SNPVersity assigns elsewhere. */
+  function geneRowMatches(r, gene){
+    return geneCanon(r && r.gene) === geneCanon(gene);
+  }
   function numOrNull(v){
     if (v == null || v === '.' || v === '') return null;
     const f = parseFloat(v);
     return Number.isNaN(f) ? null : f;
   }
-  function firstNum(v){                       // first of a possibly comma-listed value
+  function firstNum(v){
     if (v == null) return null;
     return numOrNull(String(v).split(/[;,]+/)[0]);
   }
 
-  function parseVcf(text, ids){
+  function parseVcf(text, ids, family){
     const rows = [];
     if (!text) return {rows, sampleCols:{}, header:[]};
     const lines = text.split(/\r?\n/);
-    let sampleCols = {};        // sampleName -> column index in the row
+    let sampleCols = {};
     for (const line of lines){
       if (!line) continue;
       if (line.startsWith('##')) continue;
@@ -246,7 +348,6 @@ const Data = (function () {
       if (t.length < 8) continue;
       const infoStr = t[7] || '';
 
-      // impact: take the most severe when a site lists several
       let impact = 'MODIFIER';
       const effTokens = (info(infoStr, 'EFFECT') || '').split(/[;,]+/);
       let best = -1;
@@ -255,47 +356,55 @@ const Data = (function () {
         if (key in SEVERITY && SEVERITY[key] > best){ best = SEVERITY[key]; impact = key; }
       });
 
-      // genotypes in the exact order the caller selected
+      // Fusarium is haploid: a sample column is a single allele index ("0","1",".").
       const gts = ids.map(id => {
         const ci = sampleCols[id];
-        if (ci == null || t[ci] == null) return './.';
-        return (t[ci].split(':')[0] || './.').trim();
+        if (ci == null || t[ci] == null) return '.';
+        return (t[ci].split(':')[0] || '.').trim();
       });
 
+      // INDEL detection: REF/ALT differ in length (insertion/deletion). The DNA
+      // substitution language models (FunDLM / DNABERT, and Evo2) are point-mutation
+      // scorers — their values for indels are artifacts, so treat them as missing,
+      // the same way the protein models already are for indels. Protein models
+      // (ESM*) are '.' for indels in the store, so no extra guard is needed there.
+      const isIndel = String(t[3] || '').length !== String(t[4] || '').length;
       rows.push({
         pos:    parseInt(t[1], 10),
         ref:    t[3],
         alt:    t[4],
-        gene:   cleanTok(info(infoStr, 'GENEMODEL')) || '—',
+        gene:   canonicalGeneId(cleanGene(info(infoStr, 'GENEMODEL'))) || '—',
+        geneRaw: info(infoStr, 'GENEMODEL') || '',
         effect: cleanTok(info(infoStr, 'TYPE')) || 'intergenic',
         impact,
         sub:    cleanTok(info(infoStr, 'SUB')),
-        domain: domainAt(t[0], parseInt(t[1], 10)),     // Pfam domain covering this position (or '—')
+        domain: domainAt(family, t[0], parseInt(t[1], 10)),
         mq:     (firstNum(info(infoStr, 'MQ')) != null) ? Math.round(firstNum(info(infoStr, 'MQ'))) : 'N/A',
         comp:   (firstNum(info(infoStr, 'CVP')) != null) ? firstNum(info(infoStr, 'CVP')) : 'N/A',
         r2:     firstNum(info(infoStr, 'MAXR2')),
         maf:    (firstNum(info(infoStr, 'MAF')) != null) ? firstNum(info(infoStr, 'MAF')) : 0,
-        // 2026 uses plantcad1/2 + ESM1/2/3; older projects (2024/Schnable/NAM)
-        // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
-        pc1:    numOrNull(info(infoStr, 'plantcad1_score') != null ? info(infoStr, 'plantcad1_score') : info(infoStr, 'DNA_SCORE')),
-        pc2:    numOrNull(info(infoStr, 'plantcad2_score')),
-        esm1:   numOrNull(info(infoStr, 'ESM1_score') != null ? info(infoStr, 'ESM1_score') : info(infoStr, 'AA_SCORE')),
-        esm2:   numOrNull(info(infoStr, 'ESM2_score')),
-        esm3:   numOrNull(info(infoStr, 'ESM3_score')),
+        // Language-model scores. 2026 format (graminearum): two DNA models
+        // FUNDLM_SCORE/EVO2_SCORE + four protein models ESM1/2/3/ESMC_SCORE.
+        // 2025 format (verticillioides, until its rebuild): DNA_SCORE (DNABERT) +
+        // AA_SCORE (ESM1). Read the new names first, fall back to the old ones so
+        // both formats parse. Column keys: pc1/pc2 = DNA, esm1..esm3/esmc = protein.
+        pc1:    isIndel ? null : (numOrNull(info(infoStr, 'FUNDLM_SCORE')) != null ? numOrNull(info(infoStr, 'FUNDLM_SCORE')) : numOrNull(info(infoStr, 'DNA_SCORE'))),
+        pc2:    isIndel ? null : numOrNull(info(infoStr, 'EVO2_SCORE')),
+        esm1:   numOrNull(info(infoStr, 'ESM1_SCORE')) != null ? numOrNull(info(infoStr, 'ESM1_SCORE')) : numOrNull(info(infoStr, 'AA_SCORE')),
+        esm2:   numOrNull(info(infoStr, 'ESM2_SCORE')),
+        esm3:   numOrNull(info(infoStr, 'ESM3_SCORE')),
+        esmc:   numOrNull(info(infoStr, 'ESMC_SCORE')),
         gts,
       });
     }
     return {rows, sampleCols};
   }
 
-  // Build the accession objects the table header needs, in selection order.
   function accsFor(datasetId, ids){
     const map = new Map(accessionsFor(datasetId).map(a => [a.id, a]));
     return ids.map(id => map.get(id) || {id, run:id, founder:id, proj:familyOf(datasetId), projColor:'#8a94a6'});
   }
 
-  // Order the submitted accessions by project (catalog order), then by accession
-  // name — so each project's color renders as one contiguous block in the table.
   function sortIds(datasetId, ids){
     const order = {};
     projectsFor(datasetId).forEach((p, i) => { order[p.id] = i; });
@@ -312,23 +421,15 @@ const Data = (function () {
     });
   }
 
-  /**
-   * queryVariants(dataset, chr, lo, hi, ids) -> Promise<{rows, accs, chr, vcfUrl, span, wide, empty}>
-   * `wide` is true when the interval exceeds tableMaxSpan (offer download instead of table).
-   */
   async function queryVariants(dataset, chr, lo, hi, ids){
-    ids = sortIds(dataset, ids);      // group by project, then accession name
+    ids = sortIds(dataset, ids);
     const accs = accsFor(dataset, ids);
     const span = Math.max(hi - lo, 0);
     const outName = uniqueOutName(lo, hi);
 
     const body = new URLSearchParams({
-      start: String(lo),
-      end: String(hi),
-      chr: chr,                         // e.g. "chr10" — matches the .h5 filename token
-      dataSet: dataset,
-      genotypes: JSON.stringify(ids),
-      outName: outName,
+      start: String(lo), end: String(hi), chr: chr,
+      dataSet: dataset, genotypes: JSON.stringify(ids), outName: outName,
     });
 
     const resp = await fetch(CFG.endpoint, {
@@ -341,13 +442,10 @@ const Data = (function () {
     try { json = JSON.parse(raw); }
     catch (e) { throw new Error('processForm.php did not return JSON:\n' + raw.slice(0, 1000)); }
 
-    // A genuinely empty interval is a valid result, not a failure.
     if (json.status === 'empty'){
       return {rows:[], accs, chr, vcfUrl:null, span, wide:false, empty:true};
     }
-
     if (!resp.ok || json.status !== 'success'){
-      // Print the raw script output so the true cause is visible in the console.
       if (json.output)  console.error('[processForm.php] h5_to_vcf.py output:\n' + json.output);
       if (json.command) console.error('[processForm.php] command:\n' + json.command);
       const err = new Error(json.message || ('Request failed (HTTP ' + resp.status + ')'));
@@ -356,79 +454,29 @@ const Data = (function () {
     }
 
     const vcfUrl = json.outFile || outName;
-
-    // Very wide interval: don't try to render a giant table.
     if (span > CFG.tableMaxSpan){
       return {rows:[], accs, chr, vcfUrl, span, wide:true, empty:false};
     }
-
     const vcfResp = await fetch(vcfUrl, {cache:'no-store'});
     if (!vcfResp.ok){
-      // No VCF written usually means the range returned no variants.
       return {rows:[], accs, chr, vcfUrl, span, wide:false, empty:true};
     }
     const vcfText = await vcfResp.text();
-    await ensureDomains(chr);                    // load just this chromosome's Pfam file (cached)
-    const {rows} = parseVcf(vcfText, ids);
+    const fam = familyOf(dataset);
+    await ensureDomains(fam);
+    const {rows} = parseVcf(vcfText, ids, fam);
     return {rows, accs, chr, vcfUrl, span, wide:false, empty: rows.length === 0};
   }
 
-  /* =============================================================
-   *  SNPImpact query  (DEMO — not backed by these .h5 files)
-   * ============================================================= */
-  const BASES = ['A','C','G','T'];
-  const CONSEQ = [
-    {t:'Loss-of-function', cls:'lof',      base:-8.0},
-    {t:'Loss-of-domain',  cls:'lod',      base:-6.0},
-    {t:'Splice',          cls:'splice',   base:-3.0},
-    {t:'Missense',        cls:'missense', base:-1.4},
-    {t:'In-frame deletion',cls:'indel',   base:-0.6},
-    {t:'Synonymous',      cls:'syn',      base: 0.3},
-  ];
-  const DOM_NAMES = ['Kinase domain','NB-ARC','bZIP','NAC domain','WRKY','DNA-binding domain','PPR repeat','F-box'];
-  function priorityFromScore(s){ return s<=-7 ? 'TOP' : s<=-4 ? 'HIGH' : s<=-1 ? 'MODERATE' : 'LOW'; }
-
-  function queryImpact(opts){
-    opts = opts || {};
-    const out = [];
-    for (let i=0; i<46; i++){
-      const c = pick(CONSEQ);
-      const plantcad = +(c.base + rnd(-2,2)).toFixed(1);
-      const esm      = +(c.base*0.72 + rnd(-1.5,1.5)).toFixed(1);
-      const combined = +((plantcad + esm)/2).toFixed(2);
-      const hasDom   = (c.cls==='lod' || c.cls==='missense' || Math.random()<.35);
-      const aa = 90 + Math.floor(Math.random()*520);
-      const exons = 4 + Math.floor(Math.random()*4);
-      const affectedExon = 1 + Math.floor(Math.random()*exons);
-      out.push({
-        id:'v'+i,
-        gene:'Zm00001eb'+(100000+Math.floor(Math.random()*899999)),
-        variant: c.cls==='lof'      ? 'p.'+pick(['W','Q','R','E','K'])+aa+'*'
-               : c.cls==='missense' ? 'p.'+pick(['A','G','R','D','V'])+aa+pick(['R','K','L','P','S'])
-               : c.cls==='lod'      ? 'Δ Exon '+affectedExon
-               : c.cls==='splice'   ? 'splice-site'
-               : c.cls==='indel'    ? 'deletion'
-               :                      'c.'+aa+pick(BASES)+'>'+pick(BASES),
-        consequence:c.t, consClass:c.cls,
-        domain: hasDom ? pick(DOM_NAMES) : '—',
-        plantcad, esm, combined,
-        priority: priorityFromScore(combined),
-        percentile: Math.max(1, Math.min(99, Math.round(50 - combined*5 + rnd(-4,4)))),
-        protLen: 280 + Math.floor(Math.random()*520),
-        exons, affectedExon, aa,
-      });
-    }
-    out.sort((a,b) => a.combined - b.combined);
-    return out;
-  }
+  /* SNPImpact ranks REAL variants: the tool queries a region via queryVariants()
+     (or receives a SNPVersity hand-off) and calls rankImpact(rows) below. The old
+     synthetic queryImpact() generator was removed once the real path landed. */
 
   /* =============================================================
-   *  SNPFold — protein structure + coding variants (DEMO curated).
+   *  SNPFold — protein structure + coding variants
    * ============================================================= */
   function structureFor(gene){ return (window.SNPFOLD_STRUCT||{})[gene] || null; }
   function pdbFor(gene){ return (window.SNPFOLD_PDB||{})[gene] || null; }
-  /* Lazily load js/structures/structure-<gene>.js on demand. Resolves when the
-     gene's model is available; rejects if there's no file for it. */
   function ensureStructure(gene){
     gene = (gene||'').trim();
     if (!gene) return Promise.reject(new Error('no gene'));
@@ -443,53 +491,46 @@ const Data = (function () {
     });
   }
 
-  /* ---- Pfam domains by genomic position (SNPVersity Domain column / SNPImpact) ----
-     Loads ONE chromosome's file on demand (data/domains/by_chr/<chr>.json), cached
-     per chromosome. Falls back to a combined domains.by_chr.json if per-chrom is absent,
-     and degrades to '—' if neither exists. */
-  const _domByChr = {};            // chr -> sorted intervals
-  const _domChrProm = {};          // chr -> in-flight promise
-  let _domCombined = null, _domCombinedProm = null;
-  function _loadCombinedDomains(){
-    if (_domCombined) return Promise.resolve(_domCombined);
-    if (_domCombinedProm) return _domCombinedProm;
-    _domCombinedProm = fetch(CFG.domainsUrl, {cache:'force-cache'})
+  /* ---- Pfam domains by genomic position — one store per reference family ----
+   * Each family's domains.by_chr.json is {contig: [[gstart,gend,name,pfam,type,
+   * tx,instance], …]} sorted by gstart (domains crossing introns span several
+   * rows). Loaded whole, once per family, and cached. domainAt() takes the
+   * family so the three colliding contig namespaces stay separate. */
+  const _domByFam = {};        // family -> {contig:[rows...]}
+  const _domFamProm = {};
+  function domainFolder(family){
+    return CFG.domainDirByFamily[family] || CFG.domainDirByFamily.graminearum;
+  }
+  function domainChrKey(family, chr){
+    const al = (CFG.domainChrAlias || {})[family];
+    return (al && al[chr]) || chr;
+  }
+  function ensureDomains(family){
+    if (family in _domByFam) return Promise.resolve(_domByFam[family]);
+    if (_domFamProm[family]) return _domFamProm[family];
+    _domFamProm[family] = fetch(domainFolder(family) + 'domains.by_chr.json', {cache:'force-cache'})
       .then(r => r.ok ? r.json() : {}).catch(() => ({}))
-      .then(x => { _domCombined = x || {}; return _domCombined; });
-    return _domCombinedProm;
+      .then(idx => { _domByFam[family] = idx || {}; return _domByFam[family]; });
+    return _domFamProm[family];
   }
-  function ensureDomains(chr){
-    if (chr in _domByChr) return Promise.resolve(_domByChr[chr]);
-    if (_domChrProm[chr]) return _domChrProm[chr];
-    _domChrProm[chr] = fetch(CFG.domainsDir + encodeURIComponent(chr) + '.json', {cache:'force-cache'})
-      .then(r => { if (!r.ok) throw 0; return r.json(); })
-      .then(arr => { _domByChr[chr] = arr || []; return _domByChr[chr]; })
-      .catch(() => _loadCombinedDomains().then(idx => { _domByChr[chr] = (idx && idx[chr]) || []; return _domByChr[chr]; }));
-    return _domChrProm[chr];
-  }
-  // rows: [g_start, g_end, name, pfam, type], sorted by g_start.
-  // returns "Name (PFxxxxx)" for the most specific domain covering pos, else '—'.
-  function domainAt(chr, pos){
-    const a = _domByChr[chr];
+  function domainAt(family, chr, pos){
+    const idx = _domByFam[family];
+    if (!idx) return '—';
+    const a = idx[domainChrKey(family, chr)];
     if (!a || !a.length) return '—';
-    let lo = 0, hi = a.length;                 // first index with g_start > pos
+    let lo = 0, hi = a.length;
     while (lo < hi){ const m = (lo + hi) >> 1; if (a[m][0] <= pos) lo = m + 1; else hi = m; }
     let best = null;
     for (let i = lo - 1; i >= 0; i--){
       const iv = a[i];
-      if (iv[0] < pos - 100000) break;         // domain blocks are exon-sized
+      if (iv[0] < pos - 100000) break;          // domain blocks are short; safe cutoff
       if (iv[0] <= pos && iv[1] >= pos){
-        if (!best || (iv[1] - iv[0]) < (best[1] - best[0])) best = iv;   // smallest = most specific
+        if (!best || (iv[1] - iv[0]) < (best[1] - best[0])) best = iv;   // tightest wins
       }
     }
     return best ? `${best[2]}${best[3] ? ` (${best[3]})` : ''}` : '—';
   }
 
-  /* Coding-consequence classification for the structural view.
-       missense -> full residue-level treatment (AA change + LM scores)
-       lof      -> truncation / position marker (stop gained, frameshift, start/stop lost)
-       indel    -> in-frame insertion / deletion (position marker)
-       null     -> not shown (synonymous, stop_retained, splice, UTR, intron, intergenic ...) */
   function classifyConsequence(effect){
     const e = String(effect || '').toLowerCase().replace(/[\s]+/g, '_');
     if (/missense|protein_altering|non[_-]?synonymous/.test(e)) return {klass:'missense', label:'Missense',            structural:true};
@@ -504,8 +545,6 @@ const Data = (function () {
 
   const AA3 = {ALA:'A',ARG:'R',ASN:'N',ASP:'D',CYS:'C',GLN:'Q',GLU:'E',GLY:'G',HIS:'H',ILE:'I',
     LEU:'L',LYS:'K',MET:'M',PHE:'F',PRO:'P',SER:'S',THR:'T',TRP:'W',TYR:'Y',VAL:'V',TER:'*',SEC:'U'};
-  /* Parse INFO SUB into {ref, resi, alt}. Handles 1-letter (A1V, R441*),
-     3-letter (Ala1Val, Trp441Ter) and frameshift forms. null if no residue. */
   function parseSub(sub){
     if (sub == null) return null;
     const s = String(sub).trim().replace(/^p\./i, '');
@@ -530,17 +569,12 @@ const Data = (function () {
       case 'Stop lost':   return 'p.*' + p.resi + (p.alt && p.alt !== '*' ? p.alt : 'ext');
     }
     if (cls.klass === 'indel') return 'p.' + (p.ref || '') + p.resi + (cls.label.indexOf('insertion') >= 0 ? 'ins' : 'del');
-    return 'p.' + (p.ref || '') + p.resi + (p.alt || '');   // missense
+    return 'p.' + (p.ref || '') + p.resi + (p.alt || '');
   }
 
-  /* LIVE: coding variants for one gene, from the same HDF5 -> VCF pipeline as
-     SNPVersity. Residue + AA change come from INFO SUB; consequence from TYPE;
-     scores from PlantCAD/ESM (pc1/esm1). Nothing fabricated. Async.
-     `ids` defaults to a representative selection (site-level INFO is panel-wide,
-     so this stays small); pass a broader set for an exhaustive allele catalog. */
   async function queryFoldVariants(gene, dataset, ids){
     dataset = dataset || DATASETS[0].id;
-    const g = await lookupGene(gene);
+    const g = await lookupGene(gene, dbOf(dataset));
     if (!g || !g.chr) return [];
     ids = ids || defaultSelectionFor(dataset);
     let res;
@@ -548,24 +582,18 @@ const Data = (function () {
     catch (e){ console.warn('queryFoldVariants:', e && e.message); return []; }
     const out = [];
     for (const r of (res.rows || [])){
-      if (gene && r.gene && r.gene !== gene && r.gene !== '—') continue;
+      if (gene && !geneRowMatches(r, gene) && r.gene !== '—') continue;   // padding-/compound-tolerant
       const cls = classifyConsequence(r.effect);
       if (!cls) continue;
       const p = parseSub(r.sub);
-      if (!p || p.resi == null) continue;                 // need a residue to place it
-      const pc  = (r.pc1  != null ? r.pc1  : null);
-      const esm = (r.esm1 != null ? r.esm1 : null);
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2)
-                     : (pc != null ? pc : (esm != null ? esm : null));
+      if (!p || p.resi == null) continue;
+      const combined = compositeScore(r);
       out.push({
         id:'f' + out.length, gene, resi:p.resi, ref:p.ref, alt:p.alt,
         variant: hgvsProtein(p, cls), consequence: cls.label, consClass: cls.klass,
         structural: cls.structural, pos:r.pos, refNt:r.ref, altNt:r.alt,
         impact: r.impact || null, maf: (r.maf != null ? r.maf : null),
-        plantcad: pc, esm: esm,
-        plantcad2: (r.pc2 != null ? r.pc2 : null), esm2: (r.esm2 != null ? r.esm2 : null),
-        esm3: (r.esm3 != null ? r.esm3 : null),
-        combined,
+        ...lmScores(r), combined,
         priority: combined == null ? null
                 : (combined <= -7 ? 'TOP' : combined <= -4 ? 'HIGH' : combined <= -1 ? 'MODERATE' : 'LOW'),
       });
@@ -574,8 +602,6 @@ const Data = (function () {
     return out;
   }
 
-  /* ---------------- SNPImpact: rank a region's variants ---------------- */
-  // broader than the fold classifier: also covers splice / UTR / intron / intergenic
   function impactClass(effect){
     const e = String(effect || '').toLowerCase().replace(/[\s]+/g, '_');
     if (/missense|protein_altering|non[_-]?synonymous/.test(e)) return {klass:'missense', label:'Missense',           severe:false};
@@ -589,15 +615,15 @@ const Data = (function () {
     if (/inframe_deletion/.test(e))              return {klass:'indel',  label:'In-frame deletion',  severe:false};
     if (/synonymous|stop_retained/.test(e))      return {klass:'syn',    label:'Synonymous',         severe:false};
     if (/intron/.test(e))                        return {klass:'other',  label:'Intron',             severe:false};
-    if (/5_prime_utr|five_prime/.test(e))        return {klass:'other',  label:'5\u2032 UTR',        severe:false};
-    if (/3_prime_utr|three_prime/.test(e))       return {klass:'other',  label:'3\u2032 UTR',        severe:false};
+    if (/5_prime_utr|five_prime/.test(e))        return {klass:'other',  label:'5′ UTR',        severe:false};
+    if (/3_prime_utr|three_prime/.test(e))       return {klass:'other',  label:'3′ UTR',        severe:false};
     if (/upstream/.test(e))                      return {klass:'other',  label:'Upstream',           severe:false};
     if (/downstream/.test(e))                    return {klass:'other',  label:'Downstream',         severe:false};
     if (/intergenic/.test(e))                    return {klass:'other',  label:'Intergenic',         severe:false};
     return {klass:'other', label: (cleanTok(effect) || 'Other'), severe:false};
   }
   function impactPriority(cls, combined, level){
-    if (cls.severe) return 'TOP';                          // LOF, splice donor/acceptor
+    if (cls.severe) return 'TOP';
     if (cls.klass === 'missense' || cls.klass === 'indel'){
       if (combined != null){
         if (combined <= -7) return 'TOP';
@@ -607,16 +633,13 @@ const Data = (function () {
       }
       return level === 'HIGH' ? 'HIGH' : level === 'MODERATE' ? 'MODERATE' : 'LOW';
     }
-    return level === 'HIGH' ? 'HIGH' : 'LOW';               // syn / non-coding
+    return level === 'HIGH' ? 'HIGH' : 'LOW';
   }
-  // rank every variant in a region (from parseVcf rows). Accessions are irrelevant here.
   function rankImpact(rows){
     const out = [];
     for (const r of (rows || [])){
       const cls = impactClass(r.effect);
-      const pc = r.pc1 != null ? r.pc1 : null, esm = r.esm1 != null ? r.esm1 : null;
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2)
-                     : (pc != null ? pc : (esm != null ? esm : null));
+      const combined = compositeScore(r);
       const p = parseSub(r.sub);
       const coding = (cls.klass === 'missense' || cls.klass === 'lof' || cls.klass === 'indel');
       const variant = (p && p.resi != null && coding)
@@ -626,34 +649,54 @@ const Data = (function () {
         id: 'i' + out.length, gene: r.gene, pos: r.pos, ref: r.ref, alt: r.alt,
         variant, consequence: cls.label, consClass: cls.klass,
         resi: p ? p.resi : null, aaRef: p ? p.ref : null, aaAlt: p ? p.alt : null,
-        domain: r.domain || '\u2014', impactLevel: r.impact || null,
-        plantcad: pc, esm: esm, combined,
-        plantcad2: (r.pc2 != null ? r.pc2 : null),
-        pc1: r.pc1, pc2: r.pc2, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
+        domain: r.domain || '—', impactLevel: r.impact || null,
+        ...lmScores(r), combined,
         maf: r.maf, r2: r.r2, mq: r.mq,
         priority: impactPriority(cls, combined, r.impact), percentile: null,
       });
     }
-    // real region percentile: most deleterious (most negative combined) -> highest
     const scored = out.filter(v => v.combined != null).slice().sort((a, b) => a.combined - b.combined);
     const N = scored.length;
     scored.forEach((v, i) => { v.percentile = N ? Math.round(100 * (N - i) / N) : null; });
     return out;
   }
 
-  /* gene -> canonical protein domains (protein coords) for the SNPImpact detail track */
+  /* Per-gene protein-domain index (SNPFold / SNPImpact tracks). The three
+   * references live in separate files but gene IDs are prefix-unique
+   * (FGSG_/FVEG_/FVERT4_), so all three merge into one lookup keyed by gene. */
   let _geneDom = null, _geneDomProm = null;
   function ensureGeneDomains(){
     if (_geneDom) return Promise.resolve(_geneDom);
     if (_geneDomProm) return _geneDomProm;
-    _geneDomProm = fetch(CFG.domainsGeneUrl, {cache:'force-cache'})
-      .then(r => r.ok ? r.json() : {}).catch(() => ({}))
-      .then(x => { _geneDom = x || {}; return _geneDom; });
+    const fams = Object.keys(CFG.domainDirByFamily);
+    _geneDomProm = Promise.all(fams.map(f =>
+      fetch(domainFolder(f) + 'domains.by_gene.json', {cache:'force-cache'})
+        .then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    )).then(parts => {
+      const merged = {};
+      parts.forEach(p => { for (const k in p) if (!(k in merged)) merged[k] = p[k]; });
+      _geneDom = merged; return _geneDom;
+    });
     return _geneDomProm;
   }
-  function geneDomains(gene){ return (_geneDom || {})[gene] || null; }
+  function _geneDomCandidates(gene){
+    const g = String(gene || '').trim();
+    if (!g) return [];
+    const out = [g];
+    const m = g.match(/^(.*_)(\d+)$/);   // pad/unpad tolerance (FVEG_765 vs FVEG_000765; prefix may contain digits, e.g. FVERT4_)
+    if (m){
+      const pre = m[1], num = m[2].replace(/^0+/, '') || '0';
+      for (const w of [5, 6, 7]) out.push(pre + num.padStart(w, '0'));
+      out.push(pre + num);
+    }
+    return out;
+  }
+  function geneDomains(gene){
+    const map = _geneDom || {};
+    for (const c of _geneDomCandidates(gene)){ if (map[c]) return map[c]; }
+    return null;
+  }
 
-  /* per-chromosome exon/CDS structure (canonical transcript) for SNPImpact's gene-model view */
   const _gmByChr = {}, _gmProm = {};
   function ensureGeneModels(chr){
     if (chr in _gmByChr) return Promise.resolve(_gmByChr[chr]);
@@ -663,49 +706,113 @@ const Data = (function () {
       .then(x => { _gmByChr[chr] = x || {}; return _gmByChr[chr]; });
     return _gmProm[chr];
   }
-  function geneModelOf(chr, gene){ return (_gmByChr[chr] || {})[gene] || null; }
+  /* A variant's GENEMODEL can be a single gene ("FGSG_00780"), a comma list of
+   * overlapping genes ("FGSG_00778,FGSG_00777"), or a boundary span for an
+   * intergenic/up-downstream variant ("FGSG_00780..FGSG_00781"). Split all of
+   * those into individual gene ids so the gene-model view can resolve one. */
+  function _geneTokens(geneStr){
+    const s = String(geneStr == null ? '' : geneStr).trim();
+    if (!s || s === '.') return [];
+    const out = [];
+    s.split(/[;,]+/).forEach(part => {
+      part = part.trim();
+      if (!part || part === '.') return;
+      if (part.indexOf('..') !== -1) part.split('..').forEach(p => { p = p.trim(); if (p && p !== '.') out.push(p); });
+      else out.push(part);
+    });
+    return out;
+  }
+  function geneModelOf(chr, gene, pos){
+    const map = _gmByChr[chr] || {};
+    const hits = []; const seen = new Set();
+    for (const tok of _geneTokens(gene)){
+      for (const c of _geneDomCandidates(tok)){               // padding-tolerant
+        if (map[c] && !seen.has(c)){ seen.add(c); hits.push(map[c]); break; }
+      }
+    }
+    if (!hits.length) return null;
+    if (pos == null || hits.length === 1) return hits[0];
+    // multiple candidates (intergenic between genes): prefer the gene containing
+    // the variant, else the nearest — so the marker lands in the right flank.
+    let best = hits[0], bestD = Infinity;
+    for (const m of hits){
+      const lo = Math.min.apply(null, m.exons.map(e => e[0]));
+      const hi = Math.max.apply(null, m.exons.map(e => e[1]));
+      if (pos >= lo && pos <= hi) return m;
+      const d = pos < lo ? lo - pos : pos - hi;
+      if (d < bestD){ bestD = d; best = m; }
+    }
+    return best;
+  }
 
-  /* ---------- SNPFunction: gene-scoped functional dossier + allele mining ---------- */
   function _dose(g){
     if (g == null) return null;
     const s = String(g); if (s==='./.'||s==='.'||s==='') return null;
+    // Fusarium is HAPLOID: a single-allele genotype is the isolate's only copy, so
+    // an alt call is a FULL-dosage carrier (dose 2 = "homozygous"/knockout-eligible),
+    // never heterozygous. (Matches the dosage convention in SNPTree/Matrix/Compare.)
+    if (!/[\/|]/.test(s)) return s === '0' ? 0 : 2;
     const a = s.split(/[\/|]/); if (a.length < 2 || a[0]==='.' || a[1]==='.') return null;
-    return (a[0]!=='0'?1:0) + (a[1]!=='0'?1:0);        // 0 / 1 / 2
+    return (a[0]!=='0'?1:0) + (a[1]!=='0'?1:0);
   }
   function _avg(a){ return a.length ? +(a.reduce((s,x)=>s+x,0)/a.length).toFixed(2) : null; }
 
-  // Aggregate a gene across the WHOLE panel: which accessions carry damaging/LOF alleles.
+  /* ---- language-model scores on a variant ----
+     Carry all six model scores (pc1/pc2 = DNA: FunDLM/EVO2; esm1/esm2/esm3/esmc =
+     protein: ESM1/ESM2/ESM3/ESM-C) from a parsed row onto a variant object, keyed
+     exactly like Data.scoreModels() so tools can render `v[model.key]` directly.
+     `plantcad`/`esm` are kept as legacy aliases (= primary DNA / primary protein). */
+  function lmScores(r){
+    return { pc1:r.pc1, pc2:r.pc2, esm1:r.esm1, esm2:r.esm2, esm3:r.esm3, esmc:r.esmc,
+             plantcad:r.pc1, esm:r.esm1, plantcad2:r.pc2 };
+  }
+  function _meanOf(s, keys){
+    const a = keys.map(k => s[k]).filter(x => x != null);
+    return a.length ? +(a.reduce((x,y)=>x+y,0)/a.length).toFixed(2) : null;
+  }
+  /* Composite = consensus of the PROTEIN models (ESM1/2/3/ESM-C) — a comparable
+     scale and the direct amino-acid-impact signal — falling back to the DNA models
+     (FunDLM/EVO2) for non-coding sites. Drives priority tiers, percentile, and the
+     severity labels. (Old builds averaged one DNA + one protein score.) */
+  function compositeScore(s){
+    const prot = _meanOf(s, ['esm1','esm2','esm3','esmc']);
+    return prot != null ? prot : _meanOf(s, ['pc1','pc2']);
+  }
+  function meanScoresOf(variants){
+    const keys = ['pc1','pc2','esm1','esm2','esm3','esmc'];
+    const out = {};
+    keys.forEach(k => { out[k] = _avg(variants.map(v => v[k]).filter(x => x != null)); });
+    return out;
+  }
+
   async function geneFunction(gene, dataset){
     dataset = dataset || DATASETS[0].id;
     const dsName = (DATASETS.find(d=>d.id===dataset)||{}).name || dataset;
-    const g = await lookupGene(gene);
+    const g = await lookupGene(gene, dbOf(dataset));
     if (!g || !g.chr) return {gene, dataset, datasetName:dsName, error:'No gene-model coordinates found for '+gene+'.'};
-    const ids = (accessionsFor(dataset)||[]).map(a=>a.id);            // FULL panel
-    await Promise.all([ensureDomains(g.chr), ensureGeneDomains(), ensureGeneModels(g.chr)]);
+    const ids = (accessionsFor(dataset)||[]).map(a=>a.id);
+    await Promise.all([ensureDomains(familyOf(dataset)), ensureGeneDomains(), ensureGeneModels(g.chr)]);
     let res;
     try { res = await queryVariants(dataset, g.chr, g.start, g.end, ids); }
     catch (e){ return {gene, chr:g.chr, start:g.start, end:g.end, dataset, datasetName:dsName, error:'Variant query failed: '+(e&&e.message)}; }
 
     const accs = res.accs || [];
-    const rows = (res.rows || []).filter(r => r.gene === gene);
+    const rows = (res.rows || []).filter(r => geneRowMatches(r, gene));   // padding-/compound-tolerant
     const gd = geneDomains(gene), gm = geneModelOf(g.chr, gene);
 
     const variants = rows.map((r, vi) => {
       const cls = impactClass(r.effect);
-      const pc = r.pc1 != null ? r.pc1 : null, esm = r.esm1 != null ? r.esm1 : null;
-      const pc2 = r.pc2 != null ? r.pc2 : null, esm2 = r.esm2 != null ? r.esm2 : null;
-      const esm3 = r.esm3 != null ? r.esm3 : null;
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2) : (pc != null ? pc : (esm != null ? esm : null));
+      const combined = compositeScore(r);
       let het=0, hom=0, called=0; const homIds=[], hetIds=[];
       for (let k=0;k<accs.length;k++){ const d=_dose(r.gts[k]);
         if (d==null) continue; called++;
         if (d===2){ hom++; homIds.push(accs[k].id); } else if (d===1){ het++; hetIds.push(accs[k].id); } }
-      const an = 2*called, ac = het + 2*hom, af = an ? ac/an : 0;
+      const an = called, ac = het + hom, af = an ? ac/an : 0;   // haploid: allele count == carrier count
       const p = parseSub(r.sub);
       const coding = (cls.klass==='missense'||cls.klass==='lof'||cls.klass==='indel');
       const variant = (p && p.resi!=null && coding) ? hgvsProtein(p, {label:cls.label, klass:cls.klass}) : `${r.pos} ${r.ref}>${r.alt}`;
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
-        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, combined,
+        domain:r.domain||'—', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, ...lmScores(r), combined,
         priority: impactPriority(cls, combined, r.impact),
         het, hom, af, carriersHom:homIds, carriersHet:hetIds};
     });
@@ -713,13 +820,12 @@ const Data = (function () {
     const byClass = {missense:0, lof:0, splice:0, indel:0, syn:0, other:0};
     variants.forEach(v => { byClass[v.consClass] = (byClass[v.consClass]||0) + 1; });
     const nonsyn = byClass.missense + byClass.lof + byClass.indel + byClass.splice, syn = byClass.syn;
-    const domainDisrupting = variants.filter(v => v.domain!=='\u2014' && (v.consClass==='missense'||v.consClass==='lof'||v.consClass==='indel')).length;
+    const domainDisrupting = variants.filter(v => v.domain!=='—' && (v.consClass==='missense'||v.consClass==='lof'||v.consClass==='indel')).length;
     const afSpectrum = {
       rare:   variants.filter(v => v.af>0 && v.af<0.01).length,
       low:    variants.filter(v => v.af>=0.01 && v.af<0.05).length,
       common: variants.filter(v => v.af>=0.05).length,
     };
-    // exon vs intron: prefer the real gene model; else fall back to consequence
     let exonic=0, intronic=0;
     for (const v of variants){
       let inExon;
@@ -732,8 +838,8 @@ const Data = (function () {
     const damaging = variants
       .filter(v => v.consClass==='lof' || v.severe || (v.consClass==='missense' && v.combined!=null && v.combined<=-4))
       .sort((a,b) => (PR.indexOf(a.priority)-PR.indexOf(b.priority)) || ((a.combined==null?0:a.combined)-(b.combined==null?0:b.combined)));
-    const koGenotypes = damaging.filter(v=>v.consClass==='lof').reduce((n,v)=>n+v.hom, 0);
-    const koLines = new Set(); damaging.filter(v=>v.consClass==='lof').forEach(v=>v.carriersHom.forEach(id=>koLines.add(id)));
+    const koGenotypes = damaging.filter(v=>v.consClass==='lof').reduce((n,v)=>n+v.hom+v.het, 0);
+    const koLines = new Set(); damaging.filter(v=>v.consClass==='lof').forEach(v=>{v.carriersHom.forEach(id=>koLines.add(id));v.carriersHet.forEach(id=>koLines.add(id));});
 
     return {
       gene, chr:g.chr, start:g.start, end:g.end, strand: gm?gm.strand:null, dataset, datasetName:dsName,
@@ -741,52 +847,38 @@ const Data = (function () {
       protLen: gd?gd.len:null, protein: gd?gd.protein:null, domains: gd?(gd.domains||[]):[],
       burden: { byClass, nonsyn, syn, nonsynSyn: syn ? +(nonsyn/syn).toFixed(2) : (nonsyn?null:0),
                 exonic, intronic, exonIntron: intronic ? +(exonic/intronic).toFixed(2) : (exonic?null:0),
-                domainDisrupting, meanPlantcad:_avg(variants.map(v=>v.plantcad).filter(x=>x!=null)),
-                meanEsm:_avg(variants.map(v=>v.esm).filter(x=>x!=null)),
-                meanPlantcad2:_avg(variants.map(v=>v.plantcad2).filter(x=>x!=null)),
-                meanEsm2:_avg(variants.map(v=>v.esm2).filter(x=>x!=null)),
-                meanEsm3:_avg(variants.map(v=>v.esm3).filter(x=>x!=null)), afSpectrum },
+                domainDisrupting, meanByModel:meanScoresOf(variants),
+                meanPlantcad:_avg(variants.map(v=>v.pc1).filter(x=>x!=null)),
+                meanEsm:_avg(variants.map(v=>v.esm1).filter(x=>x!=null)), afSpectrum },
       damaging, koGenotypes, koLines: koLines.size, variants,
     };
   }
 
-
   const DEFAULT_DS = DATASETS[0].id;
   return {
     datasets:    () => DATASETS,
-    // dataset-aware accession accessors
-    projectsFor, accessionsFor, defaultSelectionFor, familyOf, hasSecondaryScores, namFoundersFor,
-    // backwards-compatible defaults (first dataset)
+    projectsFor, accessionsFor, defaultSelectionFor, familyOf, dbOf, hasSecondaryScores, scoreModels, namFoundersFor,
+    canonicalGeneId, geneCanon, parseSub, classifyConsequence,
     projects:    () => projectsFor(DEFAULT_DS),
     accessions:  () => accessionsFor(DEFAULT_DS),
     defaultSelection: () => defaultSelectionFor(DEFAULT_DS),
-    geneModels:  () => GENE_MODELS,
-    exampleGenes:() => EXAMPLE_GENES,
-    lookupGene,             // async: gene model id -> {id, chr, start, end} | null
-    chromLengths:() => CHR_LEN,
+    geneModels:  () => ({}),
+    exampleGenes,
+    lookupGene,
+    chromLengths: chromLengths,
     centromeres: () => CENTRO,
     accessionById,
-    queryVariants,          // now async (returns a Promise)
-    queryImpact,
-    structureFor,
-    pdbFor,
-    ensureStructure,
-    queryFoldVariants,
-    rankImpact,
-    ensureGeneDomains,
-    geneDomains,
-    ensureGeneModels,
-    geneModelOf,
-    geneFunction,
+    queryVariants,
+    structureFor, pdbFor, ensureStructure, queryFoldVariants, rankImpact,
+    ensureDomains, domainAt,
+    ensureGeneDomains, geneDomains, ensureGeneModels, geneModelOf, geneFunction,
   };
 })();
 
-/* Global helper: render a "Name (PFxxxxx)" domain string as a chip with the
-   Pfam accession linked to InterPro. Used by SNPVersity / SNPImpact / SNPFunction. */
 function pfamHref(pf){ return 'https://www.ebi.ac.uk/interpro/entry/pfam/' + pf + '/'; }
 function domTag(dom){
-  if (dom == null || dom === '\u2014' || dom === 'N/A' || dom === '')
-    return '<span style="color:var(--faint)">\u2014</span>';
+  if (dom == null || dom === '—' || dom === 'N/A' || dom === '')
+    return '<span style="color:var(--faint)">—</span>';
   var esc = function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
   var m = String(dom).match(/(PF\d{4,6})/);
   if (m){

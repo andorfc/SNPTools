@@ -11,27 +11,37 @@ const DATASETS    = Data.datasets();
 let   PROJECTS    = Data.projectsFor(S.dataset);
 let   ACCESSIONS  = Data.accessionsFor(S.dataset);
 const GENE_MODELS = Data.geneModels();
-const CHR_LEN     = Data.chromLengths();
+let   CHR_LEN     = Data.chromLengths(S.dataset);
 const CENTRO      = Data.centromeres();
 
 /* friendly default: preselect up to 12 founders (one run each) for this dataset */
 Data.defaultSelectionFor(S.dataset).forEach(id=>S.selected.add(id));
 
 /* default query region */
-S.chr='chr10'; S.start=3750832; S.end=3755732;
+S.chr='chr1'; S.start=2520531; S.end=2524130;
 
 /* ================= SNPVERSITY PAGE ================= */
 function renderVersity(){
   injectVersityCSS();
   const inbound = applyPendingRequest();   // e.g. carriers handed over from SNPFunction
+  // Keep the module's dataset bindings in sync with S.dataset even when we arrive here
+  // WITHOUT a handoff (e.g. the dataset was changed in SNPTrait, which mutates the shared
+  // S.dataset directly). Otherwise the accession picker/index stays bound to whatever
+  // dataset was last rendered here.
+  if(!inbound){
+    PROJECTS=Data.projectsFor(S.dataset);
+    ACCESSIONS=Data.accessionsFor(S.dataset);
+    CHR_LEN=Data.chromLengths(S.dataset);
+    if(!CHR_LEN[S.chr]) S.chr=Object.keys(CHR_LEN)[0];
+  }
   const p=document.getElementById('page');
   p.className='page fade';
   p.innerHTML = `
     ${inbound ? inboundBanner(inbound) : ''}
     <div class="sec"><div class="bar"></div><div style="width:100%">
-      <div class="n">VCF BUILDER & VIEWER · B73 v5</div>
-      <h2>Build a variant view across maize accessions</h2>
-      <p>Choose a dataset, set a genomic interval, and pick the accessions you want. SNPVersity returns a color-coded variant table and a downloadable VCF — alleles, effects, and DNA/protein language-model scores included.</p>
+      <div class="n">VCF BUILDER &amp; VIEWER</div>
+      <h2>Build a variant view across Fusarium isolates</h2>
+      <p>Choose a reference dataset, set a genomic interval, and pick the isolates you want. SNPVersity returns a color-coded variant table and a downloadable VCF — alleles, effects, and DNA/protein language-model scores included.</p>
     </div></div>
 
     <!-- DATASET -->
@@ -95,18 +105,25 @@ function applyPendingRequest(){
 
   // Accession IDs are not portable between dataset families, so a handoff that
   // switches dataset can only ever reset the selection — 'add' is meaningless.
-  const crossDataset = !!(req.dataset && req.dataset!==S.dataset && DATASETS.some(d=>d.id===req.dataset));
+  const reqValid = !!(req.dataset && DATASETS.some(d=>d.id===req.dataset));
+  const crossDataset = !!(reqValid && req.dataset!==S.dataset);
   const merge = crossDataset ? 'replace' : (req.merge==='add' ? 'add' : 'replace');
 
   // Snapshot dataset + region + selection *before* touching any of them, so a
   // single Undo reverts the whole query state coherently rather than half of it.
   snapshotQuery(`the handoff from ${req.from||'another tool'}`);
 
-  // 1 · dataset (rebinds this dataset's real accession catalog)
-  if(crossDataset){
+  // 1 · dataset — ALWAYS rebind to the requested dataset's catalog when the payload
+  //     names a valid dataset. S.dataset may already equal req.dataset (e.g. SNPTrait
+  //     switched it before handing off) while the module-level PROJECTS/ACCESSIONS are
+  //     still bound to a previously rendered dataset. That stale binding is what made a
+  //     whole verticillioides selection resolve as "not found in this dataset".
+  if(reqValid){
     S.dataset=req.dataset;
     PROJECTS=Data.projectsFor(S.dataset);
     ACCESSIONS=Data.accessionsFor(S.dataset);
+    CHR_LEN=Data.chromLengths(S.dataset);
+    if(!CHR_LEN[S.chr]) S.chr=Object.keys(CHR_LEN)[0];
   }
 
   // 2 · region  (a region has no union semantics — the newest handoff wins)
@@ -205,10 +222,10 @@ function renderDatasets(){
     <div class="ds ${d.id===S.dataset?'sel':''}" onclick="selectDataset('${d.id}')">
       <div class="dot"></div>
       <div class="t">${d.name}</div>
-      <div class="ref">${d.sub} · aligned to ${d.ref}</div>
+      <div class="ref">${d.sub} · aligned to ${d.ref}${d.chr?` · chr1–chr${d.chr} · ${d.asm||''}`:''}</div>
       <div class="stats">
-        <div class="stat"><div class="v">${d.acc}</div><div class="k">accessions</div></div>
-        <div class="stat"><div class="v">${d.sites}</div><div class="k">variant sites</div></div>
+        <div class="stat"><div class="v">${d.acc}</div><div class="k">isolates</div></div>
+        <div class="stat" title="${d.snps?`${d.snps} SNPs + ${d.indels} INDELs = ${d.sites} total variants`:''}"><div class="v">${d.sitesShort||d.sites}</div><div class="k">variant sites</div></div>
       </div>
       <div class="badges">
         <span class="chiplet ${d.het?'on':''}">${d.het?'✓':'×'} heterozygous</span>
@@ -220,13 +237,15 @@ function renderDatasets(){
 function selectDataset(id){
   touchSelection();
   S.dataset=id;
-  // switch to this dataset's real accession catalog
+  // switch to this dataset's real accession catalog + reference chromosome set
   PROJECTS   = Data.projectsFor(id);
   ACCESSIONS = Data.accessionsFor(id);
+  CHR_LEN    = Data.chromLengths(id);
+  if(!CHR_LEN[S.chr]){ S.chr = Object.keys(CHR_LEN)[0]; }   // snap to a chr this reference has
   S.selected.clear();
   Data.defaultSelectionFor(id).forEach(x=>S.selected.add(x));
   accFilter='';
-  renderDatasets(); renderAccPicker(); renderRunbar();
+  renderDatasets(); renderRegion(); renderAccPicker(); renderRunbar();
   const m=document.getElementById('mAcc'); if(m)m.textContent=S.selected.size;
 }
 
@@ -269,7 +288,7 @@ function renderRegion(){
       <div class="gene-row">
         <div class="field" style="margin:0">
           <label>Gene model · auto-fill coordinates</label>
-          <input type="text" id="geneInput" placeholder="Zm00001eb…" class="mono-in">
+          <input type="text" id="geneInput" placeholder="FGSG_… / FVEG_… / FVERT4_…" class="mono-in">
         </div>
         <button class="btn" onclick="loadGene()" style="margin-bottom:1px">Load</button>
       </div>
@@ -327,6 +346,11 @@ async function loadGene(){
     return;
   }
   if(!g){st.className='status err';st.textContent='Gene model “'+id+'” not found.';return;}
+  if(g.placed===false){
+    st.className='status err';
+    st.textContent=`${id} is on unplaced scaffold ${g.scaffold||'(unknown)'} (mitochondrion / not assembled into a chromosome), so it is not part of the chr-level variant store and has no region to load.`;
+    return;
+  }
   const flank=+document.getElementById('flankInput').value||0;
   S.chr=g.chr; S.start=Math.max(0,g.start-flank); S.end=g.end+flank;
   const chrSel=document.getElementById('chrInput');
@@ -343,7 +367,7 @@ async function loadGene(){
   drawRibbon(); renderRunbar();
 }
 function exampleGene(){
-  const ids=Data.exampleGenes(); const id=pick(ids);
+  const ids=Data.exampleGenes(S.dataset); const id=pick(ids);
   document.getElementById('geneInput').value=id; loadGene();
 }
 
@@ -499,7 +523,7 @@ function renderSelected(){
   if(!arr.length){box.innerHTML='<div class="empty">Nothing selected yet.<br>Toggle accessions or grab a random sample.</div>';}
   else{
     box.innerHTML=arr.map(id=>{const a=ACCESSIONS.find(x=>x.id===id);
-      return `<span class="sel-chip"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${a?a.run:id}<button onclick="toggleAcc('${id}')" aria-label="remove">×</button></span>`;
+      return `<span class="sel-chip"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${a?a.run:id}${a&&a.reps>1?' · r'+a.rep:''}<button onclick="toggleAcc('${id}')" aria-label="remove">×</button></span>`;
     }).join('');
   }
   const m=document.getElementById('mAcc'); if(m)m.textContent=arr.length;
@@ -702,10 +726,13 @@ function injectVersityCSS(){
     .from-fn .mono{font-family:var(--mono)}
     .from-fn-acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .from-fn .ho-hint{color:#4a6ca8}
-    /* per-row jump links in the Effect column (matches .pe-jump) */
+    /* per-row jump links in the Effect column */
     .effect-cell .fold-jump{font-size:11px;white-space:nowrap;margin-left:2px;
       color:#176c3a;text-decoration:none;border-bottom:1px dotted #9ecdb1}
-    .effect-cell .fold-jump:hover{color:#0f4f2a;border-bottom-style:solid}`;
+    .effect-cell .fold-jump:hover{color:#0f4f2a;border-bottom-style:solid}
+    .effect-cell .pe-jump{font-size:11px;white-space:nowrap;margin-left:6px;
+      color:#3a53a8;text-decoration:none;border-bottom:1px dotted #9ea9d0}
+    .effect-cell .pe-jump:hover{color:#26398a;border-bottom-style:solid}`;
   document.head.appendChild(s);
 }
 
@@ -792,7 +819,6 @@ function renderResults(){
           <button class="btn" onclick="sendToImpact()">${ICONS.star||''} Send to SNPImpact</button>
           <button class="btn" onclick="sendToCompare()">${ICONS.compare||ICONS.grid||''} Send to SNPCompare</button>
           <button class="btn" onclick="sendToTree()">${ICONS.tree} Send data to SNPTree</button>
-          <button class="btn" onclick="openPangenomeRegion()">${ICONS.grid||''} Pangenome viewer ↗</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
         </div>
       </div>
@@ -901,20 +927,19 @@ function renderTable(){
     </div>
     <div class="legend">
       <span style="font-weight:600;color:var(--ink)">Genotype</span>
-      <span class="li"><span class="sw" style="background:#e9f4ec"></span>Reference allele (0)</span>
-      <span class="li"><span class="sw" style="background:#fdf3d2"></span>Alternative heterozygous allele (1)</span>
-      <span class="li"><span class="sw" style="background:#f4a259"></span>Alternative homozygous allele (2)</span>
-      <span class="li"><span class="sw" style="background:#eaeef4"></span>Missing (.)</span>
+      <span class="li"><span class="sw" style="background:#e9f4ec"></span>Reference genotype (0)</span>
+      <span class="li"><span class="sw" style="background:#f4a259"></span>Alternate genotype (1)</span>
+      <span class="li"><span class="sw" style="background:#eaeef4"></span>Missing or unknown (N)</span>
       <span style="margin-left:14px;font-weight:600;color:var(--ink)">LM score</span>
       <span class="li"><span class="sw" style="width:54px;background:linear-gradient(90deg,rgb(255,0,0),#aab4be,rgb(0,255,0))"></span>deleterious → tolerated</span>
     </div>
     ${genesPanel()}
     <div class="tbl-wrap"><table class="vcf">
       <thead><tr>
-        <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on B73 v5.">POS</th><th class="num" data-tt="Reference allele in B73 v5.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>
-        <th data-tt="B73 v5 gene model overlapping the variant.">Gene model</th><th data-tt="Predicted consequence — e.g. missense, synonymous, intron, frameshift.">Effect</th><th data-tt="Predicted severity — HIGH, MODERATE, LOW, or MODIFIER.">SNPEff Impact</th><th data-tt="Pfam protein domain overlapping the affected residue, when available.">Domain</th>
+        <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on the reference genome.">POS</th><th class="num" data-tt="Reference allele.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>
+        <th data-tt="Reference gene model overlapping the variant.">Gene model</th><th data-tt="Predicted consequence — e.g. missense, synonymous, intron, frameshift.">Effect</th><th data-tt="Predicted severity — HIGH, MODERATE, LOW, or MODIFIER.">SNPEff Impact</th><th data-tt="Pfam protein domain overlapping the affected residue, when available.">Domain</th>
         <th class="num" data-tt="Mapping quality — confidence that reads aligned to the correct location; higher is better.">MQ</th><th class="num" data-tt="Completeness — fraction of accessions with a non-missing call at this site.">COMP</th><th class="num" data-tt="Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.">maxR²</th><th class="num" data-tt="Minor-allele frequency — frequency of the less common allele (0 to 0.5).">MAF</th>
-        <th class="num" data-tt="PlantCAD DNA language-model score; more extreme values are more disruptive.">PlantCAD1</th><th class="num" data-tt="Second-generation PlantCAD DNA score (MaizeGDB 2026 datasets).">PlantCAD2</th><th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM1</th><th class="num" data-tt="ESM2 protein language-model score (MaizeGDB 2026 datasets).">ESM2</th><th class="num" data-tt="ESM3 protein language-model score (MaizeGDB 2026 datasets).">ESM3</th>
+        ${Data.scoreModels(S.dataset).map(m=>`<th class="num ${m.kind==='protein'?'lm-prot':'lm-dna'}" data-tt="${escAttr(m.tip)}">${m.label}</th>`).join('')}
         ${accs.map(a=>`<th class="acc-th" style="height:${thH}px" title="${escAttr((a.projTitle||a.proj||'')+' — '+a.id)}"><span class="proj-bar" style="background:${a.projColor};height:8px" title="${escAttr(a.projTitle||a.proj||'')}"></span><span class="v">${a.id}</span></th>`).join('')}
       </tr></thead>
       <tbody>
@@ -932,15 +957,17 @@ function renderTable(){
   attachTT();
 }
 function rowHTML(r){
-  const lo=r.pos-10000,hi=r.pos+10000;
-  const link=`https://jbrowse.maizegdb.org/?data=B73&loc=${S.chr}:${lo}..${hi}&highlight=${S.chr}:${r.pos}..${r.pos}`;
   const effectText = String(r.effect||'');
   const isMis = /missense/i.test(effectText);
   const isSyn = /synonymous/i.test(effectText) && !/non[-_ ]?synonymous/i.test(effectText);
   const isFoldCoding = /missense|protein[_ -]?altering|non[_ -]?synonymous|stop[_ -]?gained|nonsense|frameshift|start[_ -]?lost|initiator[_ -]?codon|stop[_ -]?lost|inframe[_ -]?(insertion|deletion)/i.test(effectText);
   const hasGene = r.gene && r.gene!=='—';
-  const peJump = (isMis && hasGene)
-    ? ` <a class="pe-jump" href="#" title="View this substitution in PanEffect" onclick="goPanEffect('${r.gene}',{variant:'${escAttr(r.sub||'')}'});return false;">effects ↗</a>`
+  /* PanEffect: missense variants get a jump to the missense variant-effect
+     heatmap, highlighting this substitution (same handoff SNPFold / SNPFunction
+     / SNPImpact use). Needs a real protein substitution (residue + alt AA). */
+  const peSub = (isMis && hasGene && r.sub) ? Data.parseSub(r.sub) : null;
+  const peJump = (peSub && peSub.resi != null && peSub.alt && peSub.alt !== '*' && !/fs/i.test(peSub.alt))
+    ? ` <a class="pe-jump" href="#" title="View ${escAttr((peSub.ref||'')+peSub.resi+(peSub.alt||''))} in PanEffect" onclick="event.stopPropagation();goEffect('${escAttr(r.gene)}',${peSub.resi},'${escAttr(peSub.ref||'')}','${escAttr(peSub.alt||'')}');return false;">effects ↗</a>`
     : '';
   /* SNPFold: residue-level coding changes and severe LOF changes get a structure
      link. The genomic position/alleles are also passed so stop-gained records can
@@ -952,7 +979,7 @@ function rowHTML(r){
   const sc=(v)=>`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>
-    <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
+    <td class="c-pos">${r.pos.toLocaleString()}</td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
     <td>${geneCell(r.gene)}</td>
@@ -963,21 +990,37 @@ function rowHTML(r){
     <td class="num">${r.comp}</td>
     <td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>
     <td class="num">${r.maf}</td>
-    ${sc(r.pc1)}${sc(r.pc2)}${sc(r.esm1)}${sc(r.esm2)}${sc(r.esm3)}
+    ${Data.scoreModels(S.dataset).map(m=>sc(r[m.key])).join('')}
     ${r.gts.map(g=>{
-      const cls=g==='0/0'?'gt-00':(g==='1/1'?'gt-11':(g==='./.'?'gt-na':'gt-01'));
-      const v=g==='0/0'?'0':(g==='1/1'?'2':(g==='./.'?'·':'1'));
-      return `<td class="gt ${cls}" data-tt="${g}">${v}</td>`;
+      // Fusarium is HAPLOID: each column is a single allele index ("0","1","2",".").
+      // 0 = reference, any non-zero digit = that alternate allele, "." / missing = N.
+      // (no heterozygous state, so no "0/1" handling.)
+      const gg = (g==null?'.':String(g)).trim();
+      const miss = (gg===''||gg==='.'||gg==='./.'||gg==='.|.'||gg.toUpperCase()==='N');
+      const first = gg.split(/[\/|]/)[0];                 // tolerate a stray diploid "1/1"
+      const ref  = (first==='0');
+      const cls = miss ? 'gt-na' : (ref ? 'gt-00' : 'gt-11');
+      const v   = miss ? 'N' : (ref ? '0' : first);
+      return `<td class="gt ${cls}" data-tt="${escAttr(gg)}">${v}</td>`;
     }).join('')}
   </tr>`;
 }
+/* Open PanEffect for a missense variant, highlighting the substitution.
+   Mirrors the goPanEffect handoff used by SNPFold / SNPFunction / SNPImpact.
+   Falls back to the plain PanEffect page if the handoff API isn't loaded. */
+function goEffect(gene, resi, wt, sub){
+  if(typeof goPanEffect !== 'function') return go('paneffect');
+  if(gene && resi != null) goPanEffect(gene, {variant:{pos:+resi, wt:wt||'', sub:sub||''}});
+  else if(gene) goPanEffect(gene);
+}
+
 /* "Gene model" table cell: link real gene models to their MaizeGDB page.
    maizegdbGeneURL / isSingleGeneModel are shared helpers defined in core.js.
    Intergenic spans and the "—" placeholder stay as plain text. */
 function geneCell(g){
   if(!g || g==='—') return '<span style="color:var(--faint)">—</span>';
   return isSingleGeneModel(g)
-    ? `<a class="gene-link" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene page for ${escAttr(g)}">${g}</a>`
+    ? `<a class="gene-link" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="Gene record for ${escAttr(g)} (FungiDB / NCBI)">${g}</a>`
     : g;
 }
 function genesPanel(){
@@ -985,13 +1028,10 @@ function genesPanel(){
   // Only single, real gene models — intergenic / boundary spans dropped (isSingleGeneModel, core.js).
   const genes=[...new Set(rows.map(r=>r.gene).filter(isSingleGeneModel))].sort();
   if(!genes.length) return '';
-  const jb=g=>`https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(g)}`;
   const items=genes.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 2px;border-bottom:1px solid #eef1f5">
       <span class="c-mono" style="font-size:12.5px">${g}</span>
       <span style="display:flex;gap:12px;font-size:12px;white-space:nowrap">
-        <a href="${jb(g)}" target="_blank" rel="noopener">JBrowse ↗</a>
-        <a href="${pangenomeGeneURL(g)}" target="_blank" rel="noopener">Pangenome ↗</a>
-        <a href="#" onclick="goPanEffect('${g}');return false;">PanEffect →</a>
+        <a href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener">FungiDB ↗</a>
         <a href="#" onclick="goFold('${g}');return false;">SNPFold →</a>
         <a href="#" onclick="goFunction('${g}');return false;">SNPFunction →</a>
       </span>

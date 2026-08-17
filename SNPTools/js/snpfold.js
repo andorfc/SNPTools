@@ -17,14 +17,15 @@
   const W = 1000;   // svg user-units width (scales to container)
 
   const FD = {
-    gene: 'Zm00001eb406050',
+    gene: null,             // default example gene (set per reference on render)
+    geneUser: false,        // true once the user types/loads a specific gene
     struct: null, pdb: null, variants: [],
     selId: null,
     colorMode: 'plddt',     // plddt | domain | impact
     showVar: true,
     highlight: new Set(),   // variant ids force-shown in the 3D view regardless of showVar
     viewer: null, libState: 'idle',
-    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
+    dataset: null, sec: false,  // sec = show DNABERT2/ESM2/ESM3 (MaizeGDB 2026 only)
     structSource: null,  // 'alphafold' | 'boltz' | 'esmfold' | null — which folder the current FD.struct/FD.pdb came from
     modelPref: 'best',   // 'best' | 'alphafold' | 'boltz' | 'esmfold' — user's model choice for the next load
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
@@ -33,7 +34,7 @@
     pendingVariant: null,// {chr,pos,ref,alt,sub,…} handed over by another tool; selected once variants are in hand
     truncation: null,    // {structureLength,maxVariantResidue,beyondCount,sourceLabel} when variants extend past the loaded model
     iupred: null,        // {disorder:[...], anchor2:[...], isoform} — IUPred2A scores for the loaded gene's matching isoform
-    sites: null,         // {isoform, rows:[...], byResidue:Map} — InterProScan site/feature annotations (data/results.sites.tsv)
+    sites: null,         // {isoform, rows:[...], byResidue:Map} — InterProScan site/feature annotations (data/<refDir>_results.sites.tsv)
     trackZoom: 1,         // Protein browser horizontal zoom multiplier; 1 = fit-to-container
     root: null,          // persistent DOM container — survives navigation to other tools
     loaded: false,       // a gene's heavy content is (being) rendered into root
@@ -55,13 +56,45 @@
   const CONS_FILL = { lof:'#d6322a', missense:'#2f5bbf', lod:'#b54708', splice:'#6d28d9', indel:'#176c3a', syn:'#8a93a3' };
   const SS_LABEL = { H:'α-helix', E:'β-strand', C:'loop / coil' };
 
-  /* ---------- structure source (AlphaFold2 vs Boltz2) ----------
-     Checked in this order — first folder that actually has the gene's file wins. */
+  /* ---------- structure source (Boltz2 / ESMFold / AlphaFold2) ----------
+     Structure files live per reference genome, then per source:
+       ./data/structures/<refDir>/<source>/structure-<gene>.js
+     The reference is chosen from the gene-id prefix (FGSG_ / FVEG_ / FVERT4_),
+     the same way the domain and gene-model stores are keyed. Sources are checked
+     in this order — first folder that actually has the gene's file wins. */
+  const STRUCT_REF_DIR = {
+    graminearum: 'Fgram_ph1',
+    vert7600:    'Fvert_7600',
+    vertMRC826:  'Fvert_mrc',
+  };
+  function familyFromGene(gene){
+    const g = String(gene || '').toUpperCase();
+    if (g.indexOf('FGSG')   === 0) return 'graminearum';
+    if (g.indexOf('FVERT4') === 0) return 'vertMRC826';   // test before FVEG (FVERT4 ≠ FVEG)
+    if (g.indexOf('FVEG')   === 0) return 'vert7600';
+    return null;
+  }
   const STRUCT_SOURCES = [
-    { key: 'alphafold', dir: './data/structures/alphafold', label: 'AlphaFold2', badge: 'AF2' },
-    { key: 'boltz',      dir: './data/structures/boltz',     label: 'Boltz2',     badge: 'B2'  },
-    { key: 'esmfold',    dir: './data/structures/esmfold',   label: 'ESMFold',    badge: 'ESM'  },
+    { key: 'boltz',      sub: 'boltz',     label: 'Boltz2',     badge: 'B2'  },
+    { key: 'esmfold',    sub: 'esmfold',   label: 'ESMFold',    badge: 'ESM' },
+    { key: 'alphafold',  sub: 'alphafold', label: 'AlphaFold2', badge: 'AF2' },
   ];
+  /* full folder for this gene+source; falls back to the flat layout if the gene's
+     reference can't be determined from its prefix. */
+  function structDirFor(gene, src){
+    const refDir = STRUCT_REF_DIR[familyFromGene(gene)];
+    return refDir ? `./data/structures/${refDir}/${src.sub}` : `./data/structures/${src.sub}`;
+  }
+
+  /* Default example gene for the CURRENT reference (graminearum→FGSG_, 7600→FVEG_,
+     MRC826→FVERT4_), via Data.exampleGenes(). Prefills the search box + placeholder
+     until the user chooses a gene. */
+  function defaultExampleGene(){
+    const ds = FD.dataset != null ? FD.dataset : (typeof resolveDataset === 'function' ? resolveDataset() : null);
+    const ex = (typeof Data !== 'undefined' && Data.exampleGenes) ? Data.exampleGenes(ds) : null;
+    return (ex && ex[0]) || 'FGSG_00777';
+  }
+  function ensureDefaultGene(){ if (!FD.geneUser) FD.gene = defaultExampleGene(); }
 
   /* Loads structure-<gene>.js as a <script> tag (same mechanism the app already uses to
      bring in per-gene structure files) and resolves true once it has run, or rejects if
@@ -94,18 +127,57 @@
      this cache rather than re-reading Data.structureFor/pdbFor after the fact. */
   const structCache = Object.create(null);   // "<gene>::<sourceKey>" -> { struct, pdb }
 
+  /* Zero-padding-tolerant candidate ids for a gene, so a structure file named with a
+     different padding than the query still resolves (e.g. search "FVERT4_10000" ->
+     structure-FVERT4_010000.js). The reference/annotation/structure stores use the
+     6-digit FungiDB form for FVEG/FVERT4 while the variant store uses 5-digit; the
+     structure-<gene>.js file also REGISTERS under its own (6-digit) key, so we must
+     read Data.structureFor() with the candidate that actually matched, not the query. */
+  function structGeneCandidates(gene){
+    const g = String(gene || '').trim();
+    const out = [g];
+    const canon = (typeof Data !== 'undefined' && Data.canonicalGeneId) ? Data.canonicalGeneId(g) : null;
+    if (canon && out.indexOf(canon) < 0) out.push(canon);
+    const m = g.match(/^(.*_)0*(\d+)$/);   // prefix may contain digits (FVERT4_)
+    if (m){
+      const pre = m[1], n = String(parseInt(m[2], 10));
+      for (const w of [6, 5, 4]){ const c = pre + n.padStart(w, '0'); if (out.indexOf(c) < 0) out.push(c); }
+      if (out.indexOf(pre + n) < 0) out.push(pre + n);
+    }
+    return out;
+  }
+  /* Candidate ids as keyed by the disorder + sites data: graminearum uses the
+     bare gene model (FGSG_00328), the two verticillioides proteomes use the
+     transcript id (FVEG_006990-T1 / FVERT4_005549-T1). Try the family's usual
+     form first, then the others, across every padding variant. */
+  function annotIdCandidates(gene){
+    const bases = structGeneCandidates(gene);
+    const suffixes = familyFromGene(gene) === 'graminearum'
+      ? ['', '-T1', '_T001'] : ['-T1', '_T001', ''];
+    const out = [];
+    for (const b of bases){
+      for (const sfx of suffixes){
+        const id = b + sfx;
+        if (out.indexOf(id) < 0) out.push(id);
+      }
+    }
+    return out;
+  }
   async function resolveStructureSource(gene, pref){
     const order = (!pref || pref === 'best') ? STRUCT_SOURCES : STRUCT_SOURCES.filter(s => s.key === pref);
+    const cands = structGeneCandidates(gene);
     for (const src of order){
-      const cacheKey = gene + '::' + src.key;
-      if (structCache[cacheKey]) return { src, data: structCache[cacheKey] };  // already resolved this one — use our snapshot, not Data's shared slot
-      try { await loadScriptOnce(`${src.dir}/structure-${gene}.js`); }
-      catch (e){ continue; }             // no file for this gene in this folder — try next
-      const struct = Data.structureFor(gene);
-      if (struct){
-        const data = { struct, pdb: Data.pdbFor(gene) };
-        structCache[cacheKey] = data;    // snapshot now, before another source's script can overwrite Data's slot
-        return { src, data };
+      for (const cand of cands){
+        const cacheKey = cand + '::' + src.key;
+        if (structCache[cacheKey]) return { src, data: structCache[cacheKey], gene: cand };  // snapshot, not Data's shared slot
+        try { await loadScriptOnce(`${structDirFor(cand, src)}/structure-${cand}.js`); }
+        catch (e){ continue; }            // no file for this candidate in this folder — try next
+        const struct = Data.structureFor(cand);
+        if (struct){
+          const data = { struct, pdb: Data.pdbFor(cand) };
+          structCache[cacheKey] = data;   // snapshot now, before another source's script can overwrite Data's slot
+          return { src, data, gene: cand };
+        }
       }
     }
     return null;
@@ -193,17 +265,9 @@
     );
   }
   function aiScoreSummary(v){
-    const scores = [
-      ['PlantCAD', modelScore(v, 'plantcad')],
-      ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
-      ['ESM1', modelScore(v, 'esm')],
-      ...(FD.sec ? [
-        ['ESM2', modelScore(v, 'esm2')],
-        ['ESM3', modelScore(v, 'esm3')],
-      ] : []),
-    ];
+    const sm = (typeof Data!=='undefined' && Data.scoreModels) ? Data.scoreModels(FD.dataset) : [];
+    const scores = sm.map(m => [m.label, modelScore(v, m.key)]);
     if (!scores.some(([, value]) => value != null)) return 'n/a';
-    //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
     return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join('<br>');
   }
 
@@ -496,8 +560,10 @@
       consClass:v.consClass, structural:v.consClass === 'missense',
       pos:v.pos, refNt:v.refNt != null ? v.refNt : v.ref, altNt:v.altNt != null ? v.altNt : v.alt,
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
+      // carry all six model scores (keys match Data.scoreModels) + legacy aliases
+      pc1:v.pc1, pc2:v.pc2, esm1:v.esm1, esm2:v.esm2, esm3:v.esm3, esmc:v.esmc,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
-      esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
+      esm:v.esm != null ? v.esm : v.esm1, combined:v.combined,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
     };
   }
@@ -775,9 +841,10 @@
   function searchBar(){
     return `<div class="card pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gene model</span>
-      <input id="foldGeneInput" value="${FD.gene||''}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
+      <input id="foldGeneInput" value="${FD.gene||''}" spellcheck="false"
         style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
-        onkeydown="if(event.key==='Enter')FOLD.loadGene()">
+        onkeydown="if(event.key==='Enter')FOLD.loadGene()"
+        placeholder="e.g. ${escFold(defaultExampleGene())}">
       <button class="btn" onclick="FOLD.loadGene()">Load structure</button>
       ${modelPrefRadios()}
     </div>`;
@@ -813,6 +880,7 @@
     const activeDataset = resolveDataset();
     if (activeDataset != null) FD.dataset = activeDataset;
     FD.sec = hasSecondaryScores(FD.dataset);
+    ensureDefaultGene();   // prefill with the current reference's example gene
 
     const requestedGene = (typeof S !== 'undefined' && S && S.foldGene) ? S.foldGene : null;
     /* Optional site to highlight, e.g. the "fold ↗" link on a SNPVersity row.
@@ -825,7 +893,7 @@
       /* came from another tool — honor the explicit request and autoload */
       S.foldGene = null;
       if (requestedGene !== FD.loadedGene || !FD.loaded){
-        FD.gene = requestedGene;
+        FD.gene = requestedGene; FD.geneUser = true;
         FD.selId = null;
         FD.openCarrier = null;
         await loadStructure();   // applies FD.pendingVariant once variants arrive
@@ -976,6 +1044,9 @@
     FD.viewer = null;
     FD.truncation = null;
     FD.loaded = true;               // commit to the loaded view (keep across navigation)
+    // Normalize to the canonical (6-digit for FVEG/FVERT4) display id up front, so the
+    // header/search box show the same id as SNPVersity and the other tools.
+    if (typeof Data !== 'undefined' && Data.canonicalGeneId && FD.gene) FD.gene = Data.canonicalGeneId(FD.gene);
     FD.loadedGene = FD.gene;
 
     const header = datasetChooser() + searchBar();
@@ -986,6 +1057,11 @@
     FD.structSource = null;
     let matched = null;
     try { matched = await resolveStructureSource(FD.gene, FD.modelPref); } catch (e){ /* no file for this gene in the checked folder(s) */ }
+
+    // Adopt the id that actually resolved (its padding matches the stored files/keys),
+    // so downstream reads (Data.structureFor, variant/annotation joins) and the display
+    // all agree.
+    if (matched && matched.gene && matched.gene !== FD.gene){ FD.gene = matched.gene; FD.loadedGene = matched.gene; }
 
     FD.struct = matched ? matched.data.struct : null;
     FD.pdb    = matched ? matched.data.pdb    : null;
@@ -1074,7 +1150,7 @@
 
     FD.root.innerHTML = datasetChooser() + searchBar() + `
       <div class="sec"><div class="bar"></div><div>
-        <div class="n">STRUCTURE-AWARE INTERPRETATION · ${STRUCT_SOURCES.find(x=>x.key===FD.structSource)?.label || 'Predicted structure'} + PlantCAD/ESM</div>
+        <div class="n">STRUCTURE-AWARE INTERPRETATION · ${STRUCT_SOURCES.find(x=>x.key===FD.structSource)?.label || 'Predicted structure'} + ${((typeof Data!=='undefined'&&Data.scoreModels)?Data.scoreModels(FD.dataset):[]).map(m=>m.label).join('/')||'language models'}</div>
         <h2>See where variants, domains, and local structure align</h2>
         <p>Coding variants mapped onto the predicted protein. Read each change against its
         Pfam domain, secondary structure, and local model confidence (pLDDT) — in a linear
@@ -1203,7 +1279,7 @@
   function trackSVG(){
     const s=FD.struct, N=s.length;
     const lolliTop=8, lolliH=58, base=lolliTop+lolliH;      // lollipop baseline
-    const domY=base+6, domH=18, ssY=domY+domH+22, ssH=12, pY=ssY+ssH+10, pH=12;
+    const domY=base+6, domH=18, ssY=domY+domH+22, ssH=12, pY=ssY+ssH+22, pH=12;
     const maxSev=10;
     /* InterProScan site/feature lanes — one horizontal lane per analysis program
        (CDD, PIRSR, SFLD), stacked under the pLDDT strip, mirroring how
@@ -1228,7 +1304,7 @@
       const x1=x(seg.from), x2=x(seg.to);
       g+=`<rect x="${x1.toFixed(1)}" y="${pY}" width="${Math.max(.6,x2-x1).toFixed(1)}" height="${pH}" fill="${seg.key}"/>`;
     });
-    g+=`<text x="0" y="${pY+pH+11}" class="tlab">pLDDT confidence</text>`;
+    g+=`<text x="0" y="${pY-4}" class="tlab">pLDDT confidence</text>`;
 
     // InterProScan site/feature lanes, one per program
     sitePrograms.forEach((program,pi)=>{
@@ -1363,14 +1439,16 @@
   }
 
   /* ---------- IUPred2A intrinsic disorder / Anchor2 ----------
-     Per-isoform precomputed scores, one file per protein isoform, under
-     data/B73_iupred2a_data_28april2026/<gene>_P0NN_iupred2a_results_<date>.txt.
-     We probe isoforms P001..P020 and prefer the one whose residue count matches
-     the loaded structure's length exactly (falling back to the first isoform
-     found if none match, so a value still shows even off-length). */
-  const IUPRED_DIR = 'data/B73_iupred2a_data_28april2026/';
-  const IUPRED_DATE = '2026-04-28';
-  const IUPRED_MAX_ISOFORM = 20;
+     Per-genome precomputed scores, one file per (single-isoform) protein under
+     data/<refDir>_iupred2a_data_<date>/<gene>_iupred2a_results_<date>.txt, where
+     <refDir> is Fgram_ph1 / Fvert_7600 / Fvert_mrc (chosen from the gene prefix,
+     the same convention structures + domains use). The file is keyed on the bare
+     gene model (Fusarium is single-isoform — no _P00n suffix). */
+  const IUPRED_DATE = '2026-08-17';
+  function iupredDirForGene(gene){
+    const refDir = STRUCT_REF_DIR[familyFromGene(gene)];
+    return refDir ? `data/${refDir}_iupred2a_data_${IUPRED_DATE}/` : null;
+  }
   function parseIupredText(text){
     const disorder = [], anchor2 = [];
     const lines = String(text || '').split('\n');
@@ -1386,22 +1464,22 @@
   }
   async function loadIupredForGene(gene, structLen){
     if (!gene || typeof fetch !== 'function') return null;
-    let fallback = null;
-    for (let i = 1; i <= IUPRED_MAX_ISOFORM; i++){
-      const iso = 'P' + String(i).padStart(3, '0');
-      const url = `${IUPRED_DIR}${gene}_${iso}_iupred2a_results_${IUPRED_DATE}.txt`;
-      let text = null;
+    const dir = iupredDirForGene(gene);
+    if (!dir) return null;
+    /* one file per protein; try padding- and transcript-suffix-tolerant
+       candidates (bare FGSG_ vs FVEG_/FVERT4_ "-T1" forms). */
+    for (const cand of annotIdCandidates(gene)){
+      const url = `${dir}${cand}_iupred2a_results_${IUPRED_DATE}.txt`;
       try {
         const resp = await fetch(url);
         if (!resp.ok) continue;
-        text = await resp.text();
-      } catch (e) { continue; }
-      const parsed = parseIupredText(text);
-      if (!parsed) continue;
-      if (!fallback) fallback = { isoform: iso, ...parsed };
-      if (structLen && parsed.disorder.length === structLen) return { isoform: iso, ...parsed };
+        const text = await resp.text();
+        if (/<html|<script/i.test(text)) continue;   // a server 404 page, not data
+        const parsed = parseIupredText(text);
+        if (parsed) return { isoform: cand, ...parsed };
+      } catch (e) { /* try next candidate */ }
     }
-    return fallback;
+    return null;
   }
   function iupredAt(resi){
     const r = finiteNumber(resi);
@@ -1417,14 +1495,27 @@
     const fg = disordered ? '#a03d1a' : '#1a4fa0';
     return `<span class="iupred-chip" style="background:${bg};color:${fg}">${val.toFixed(2)}</span>`;
   }
+  /* Variant-detail card value: chip + a small "0–1, higher = more" scale hint,
+     matching the maize SNPFold disorder/ANCHOR2 cards. */
+  function iupredValCell(val){
+    if (val == null || !Number.isFinite(val)) return '<span style="color:var(--faint)">—</span>';
+    return `${iupredCell(val)} <span class="muted">0–1, higher = more</span>`;
+  }
+  /* Tooltip copy shared by the disorder/ANCHOR2 track, table columns, and cards. */
+  const IUPRED_TT = 'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).';
+  const ANCHOR2_TT = 'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.';
 
   /* ---------- InterProScan site/feature annotations ----------
-     data/results.sites.tsv is one header-less standard InterProScan "sites" TSV
-     for every isoform of every gene (12 tab-delimited columns: protein_id, md5,
+     data/<refDir>_results.sites.tsv is one header-less standard InterProScan
+     "sites" TSV per genome (12 tab-delimited columns: protein_id, md5,
      seq_length, analysis[-version], signature, sig_start, sig_end, group,
-     residue, site_start, site_end, description). It's ~55MB / 460k rows, so we
-     fetch and index it once (lazily, on first use) rather than per gene. */
-  const SITES_URL = 'data/results.sites.tsv';
+     residue, site_start, site_end, description). Rows key on the bare gene model
+     (Fusarium is single-isoform). Each file is ~13–16MB, so we fetch and index
+     it once per genome (lazily, on first use) rather than per gene. */
+  function sitesUrlForGene(gene){
+    const refDir = STRUCT_REF_DIR[familyFromGene(gene)];
+    return refDir ? `data/${refDir}_results.sites.tsv` : null;
+  }
   const SITE_PROGRAM_COLOR = { CDD:'#7a4fd6', PIRSR:'#0f9d78', SFLD:'#c2740c' };
   function siteProgramOf(analysis){
     const m = /^([A-Za-z]+)/.exec(String(analysis||''));
@@ -1456,64 +1547,61 @@
     const s = String(desc||'').trim();
     return s.replace(/^null:\s*/i, '');
   }
-  let sitesIndexPromise = null;
-  function ensureSitesIndex(){
-    if (sitesIndexPromise) return sitesIndexPromise;
-    sitesIndexPromise = (async () => {
+  const sitesIndexByFamily = Object.create(null);   // family -> Promise<Map<geneId, row[]>>
+  function ensureSitesIndex(gene){
+    const fam = familyFromGene(gene);
+    const url = sitesUrlForGene(gene);
+    if (!fam || !url) return Promise.resolve(new Map());
+    if (sitesIndexByFamily[fam]) return sitesIndexByFamily[fam];
+    sitesIndexByFamily[fam] = (async () => {
       if (typeof fetch !== 'function') return new Map();
       let text;
       try {
-        const resp = await fetch(SITES_URL);
+        const resp = await fetch(url);
         if (!resp.ok) return new Map();
         text = await resp.text();
       } catch (e) { console.warn('InterProScan sites load failed', e); return new Map(); }
-      /* index by base gene id -> isoform suffix (e.g. "P002") -> row[] */
+      /* index by bare gene model -> row[] (Fusarium single-isoform, no _P00n) */
       const genes = new Map();
       const lines = text.split('\n');
       for (const line of lines){
         if (!line) continue;
         const f = line.split('\t');
         if (f.length < 12) continue;
-        const m = /^(.*)_([A-Za-z]\d+)$/.exec(f[0]);
-        if (!m) continue;
-        const [, gene, iso] = m;
+        const gid = f[0];
         const row = {
           length: Number(f[2]), analysis: f[3], program: siteProgramOf(f[3]),
           signature: f[4], sigStart: Number(f[5]), sigEnd: Number(f[6]),
           group: f[7], residue: f[8], siteStart: Number(f[9]), siteEnd: Number(f[10]),
           description: f[11],
         };
-        let byIso = genes.get(gene); if (!byIso){ byIso = new Map(); genes.set(gene, byIso); }
-        let rows = byIso.get(iso); if (!rows){ rows = []; byIso.set(iso, rows); }
+        let rows = genes.get(gid); if (!rows){ rows = []; genes.set(gid, rows); }
         rows.push(row);
       }
       return genes;
     })();
-    return sitesIndexPromise;
+    return sitesIndexByFamily[fam];
   }
-  /* picks the isoform whose recorded seq_length matches the loaded structure
-     exactly, falling back to whichever isoform has the most site rows. */
   async function loadSitesForGene(gene, structLen){
     if (!gene) return null;
-    const genes = await ensureSitesIndex();
-    const byIso = genes.get(gene);
-    if (!byIso || !byIso.size) return null;
-    let bestIso = null, bestRows = null;
-    for (const [iso, rows] of byIso){
-      if (structLen && rows[0] && rows[0].length === structLen) { bestIso = iso; bestRows = rows; break; }
-      if (!bestRows || rows.length > bestRows.length) { bestIso = iso; bestRows = rows; }
+    const genes = await ensureSitesIndex(gene);
+    /* padding- + transcript-suffix-tolerant lookup (bare FGSG_ vs FVEG_-T1) */
+    let rows = null;
+    for (const cand of annotIdCandidates(gene)){
+      const r = genes.get(cand);
+      if (r && r.length){ rows = r; break; }
     }
-    if (!bestRows) return null;
+    if (!rows) return null;
     const byResidue = new Map();
     const programs = new Set();
-    bestRows.forEach(r => {
+    rows.forEach(r => {
       programs.add(r.program);
       for (let p = r.siteStart; p <= r.siteEnd; p++){
         let list = byResidue.get(p); if (!list){ list = []; byResidue.set(p, list); }
         list.push(r);
       }
     });
-    return { isoform: bestIso, rows: bestRows, byResidue, programs: [...programs].sort() };
+    return { isoform: 'P001', rows, byResidue, programs: [...programs].sort() };
   }
   function sitesAt(resi){
     const r = finiteNumber(resi);
@@ -1549,7 +1637,16 @@
      stay in sync automatically. `desc1` = first click sorts high→low, which reads
      better for counts/ranks; everything else starts low→high. */
   const PRIO_RANK = { top:4, high:3, moderate:2, medium:2, low:1, modifier:0 };
-  const FOLD_COLS = [
+  /* Language-model score columns for the active dataset, in order (DNA then
+     protein). modelScore(v, key) falls back to reading v[key] directly, so the
+     scoreModels keys (pc1/pc2/esm1/esm2/esm3/esmc) resolve straight to the fields
+     the data layer now carries on every variant. */
+  function scoreColDefs(){
+    const sm = (typeof Data!=='undefined' && Data.scoreModels) ? Data.scoreModels(FD.dataset) : [];
+    return sm.map(m => ({ key:m.key, label:m.label, type:'num', num:true, tip:m.tip,
+                          get:v => modelScore(v, m.key) }));
+  }
+  function FOLD_COLS(){ return [
     { key:'variant',     label:'Variant',     type:'str',
       get:v => v.variant },
     { key:'consequence', label:'Consequence', type:'str',
@@ -1562,16 +1659,7 @@
       get:v => finiteNumber(ctxFor(v).plddt) },
     { key:'ss',          label:'Structure',   type:'str',
       get:v => { const c = ctxFor(v); return c.inModel ? c.ssLabel : null; } },
-    { key:'plantcad',    label:'PlantCAD',    type:'num', num:true,
-      get:v => modelScore(v, 'plantcad') },
-    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
-      get:v => modelScore(v, 'plantcad2') },
-    { key:'esm',         label:'ESM1',        type:'num', num:true,
-      get:v => modelScore(v, 'esm') },
-    { key:'esm2',        label:'ESM2',        type:'num', num:true, sec:true,
-      get:v => modelScore(v, 'esm2') },
-    { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
-      get:v => modelScore(v, 'esm3') },
+    ...scoreColDefs(),
     { key:'disorder',    label:'IUPred2', type:'num', num:true,
       get:v => { const c = iupredAt(v.resi); return c ? c.disorder : null; } },
     { key:'anchor2',     label:'Anchor2',     type:'num', num:true,
@@ -1589,9 +1677,9 @@
                  if (!c) return null;
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
-  ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
-  function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
+  ]; }
+  function foldVisibleCols(){ return FOLD_COLS().filter(c => !c.sec || FD.sec); }
+  function foldCol(key){ return FOLD_COLS().find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
      never shuffle rows arbitrarily. */
@@ -1623,13 +1711,13 @@
     domain:'Pfam domain overlapping the affected residue, when present.',
     plddt:'Local pLDDT — AlphaFold per-residue confidence (0 to 100); higher is more reliable.',
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
-    plantcad:'PlantCAD DNA language-model score for the change.',
-    plantcad2:'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    plantcad:'DNABERT DNA language-model score for the change.',
+    plantcad2:'Secondary DNA language-model score (not used for Fusarium).',
     esm:'ESM protein language-model score for the substitution.',
-    esm2:'ESM2 protein language-model score (MaizeGDB 2026).',
-    esm3:'ESM3 protein language-model score (MaizeGDB 2026).',
-    disorder:'IUPred2 — predicted intrinsic disorder at the residue (0 to 1); higher is more disordered.',
-    anchor2:'ANCHOR2 — likelihood the residue lies in a disordered binding region (0 to 1).',
+    esm2:'Secondary ESM protein score (not used for Fusarium).',
+    esm3:'Tertiary ESM protein score (not used for Fusarium).',
+    disorder:IUPRED_TT,
+    anchor2:ANCHOR2_TT,
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',
     priority:'Integrated evidence tier — TOP, HIGH, MODERATE, LOW.',
     carriers:'Number of accessions carrying this variant (heterozygous plus homozygous).',
@@ -1638,7 +1726,7 @@
     return '<tr>' + foldVisibleCols().map(c => {
       const on = FD.sort.key === c.key;
       const arrow = on ? (FD.sort.dir === 'desc' ? '▼' : '▲') : '↕';
-      const def = FOLD_TT[c.key] || c.label;
+      const def = c.tip || FOLD_TT[c.key] || c.label;
       const sortNote = on
         ? (FD.sort.dir === 'desc' ? ' · sorted high→low, click to reverse' : ' · sorted low→high, click to reverse')
         : ' · click to sort';
@@ -1661,10 +1749,7 @@
       <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${c.plddt==null?'<span style="color:var(--faint)">—</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span>`}</td>
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
-      <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
-      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
-      <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
-      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
+      ${scoreColDefs().map(m=>`<td class="num">${scoreCell(modelScore(v, m.key))}</td>`).join('')}
       <td class="num">${iupredCell(iupredAt(v.resi)?.disorder)}</td>
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>
@@ -1767,8 +1852,8 @@
         <div class="ck"><div class="kk">Secondary structure</div><div class="vv"><span class="ss-chip ss-${c.ss}">${c.ssLabel}</span></div></div>
         <div class="ck"><div class="kk">AI scores</div><div class="vv mono">${aiScoreSummary(v)}</div></div>
         <div class="ck"><div class="kk">InterProScan activity</div><div class="vv">${activityCell(v.resi)}</div></div>
-        <div class="ck"><div class="kk">Predicted disorder</div><div class="vv">${iupredCell(iupredAt(v.resi)?.disorder)}</div></div>
-        <div class="ck"><div class="kk">Flexibility (Anchor2)</div><div class="vv">${iupredCell(iupredAt(v.resi)?.anchor2)}</div></div>
+        <div class="ck"><div class="kk" data-tt="${escFold(IUPRED_TT)}">Predicted disorder</div><div class="vv">${iupredValCell(iupredAt(v.resi)?.disorder)}</div></div>
+        <div class="ck"><div class="kk" data-tt="${escFold(ANCHOR2_TT)}">Disordered binding (ANCHOR2)</div><div class="vv">${iupredValCell(iupredAt(v.resi)?.anchor2)}</div></div>
       </div>
       <div class="ctx-actions">
         ${v.consClass==='missense' && v.resi ? `<button class="btn" onclick="FOLD.panEffect('${v.id}')">${ICONS.effect||ICONS.star} PanEffect</button>` : ''}
@@ -2095,7 +2180,7 @@
     reset(){ if(FD.viewer){ FD.viewer.zoomTo(); FD.viewer.render(); } },
     focus(){ focusResidue(true); },
     loadGene(){ const el=document.getElementById('foldGeneInput'); if(!el)return;
-      const g=el.value.trim(); if(!g)return; FD.gene=g; FD.selId=null; FD.openCarrier=null; loadStructure(); },
+      const g=el.value.trim(); if(!g)return; FD.gene=g; FD.geneUser=true; FD.selId=null; FD.openCarrier=null; loadStructure(); },
     /* Best/AlphaFold2/Boltz2/ESMFold radio — reload the current gene's structure under
        the new preference if one is already loaded, otherwise just record the choice. */
     setModelPref(pref){
@@ -2112,10 +2197,12 @@
       FD.dataset = val;
       if (typeof S !== 'undefined' && S) S.dataset = val;   // keep the whole app in sync
       FD.sec = hasSecondaryScores(val);
+      ensureDefaultGene();                                  // follow the new reference's example gene
       /* Selecting a dataset only records the choice + moves the highlight. The page
          is NOT reloaded here — the new dataset is applied when the user presses
          "Load structure" (FOLD.loadGene), which reads the current FD.dataset. */
-      syncDatasetChooser();
+      if (!FD.loaded){ renderLanding(); }                   // refresh the prefilled search box
+      else syncDatasetChooser();
       if (typeof Handoff!=='undefined') Handoff.sync(FD.root);
     },
   };

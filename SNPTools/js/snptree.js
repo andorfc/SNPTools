@@ -20,13 +20,24 @@ const SNPTree = (function () {
   /* ------------------------------------------------------------------ *
    *  1. IBS distance from the genotype matrix
    * ------------------------------------------------------------------ */
-  // biallelic dosage: 0/0->0, het->1, 1/1->2, missing->null
+  // Allele dosage for the IBS distance (per-site distance = |di-dj|/2, so 0 vs 2 => 1).
+  // Fusarium is HAPLOID: each genotype is a single allele index ("0","1","2",".").
+  //   "0" = reference  -> 0
+  //   any non-zero allele (alt) -> 2   (so ref-vs-alt scores a full IBS difference,
+  //                                      and alt-vs-alt scores 0, as for a haploid Hamming step)
+  //   missing -> null
+  // Diploid forms are still handled (0/0->0, het->1, 1/1->2) so the function stays
+  // correct if fed diploid genotypes.
   function dosage(gt){
     if (gt == null) return null;
-    if (gt === '0/0') return 0;
-    if (gt === '1/1') return 2;
-    if (gt === './.' || gt === '.' || gt === '') return null;
-    return 1; // 0/1, 1/0
+    const s = String(gt).trim();
+    if (s === '' || s === '.' || s === './.' || s === '.|.') return null;
+    // diploid
+    if (s === '0/0' || s === '0|0') return 0;
+    if (s === '1/1' || s === '1|1' || s === '2/2' || s === '2|2') return 2;
+    if (s.indexOf('/') >= 0 || s.indexOf('|') >= 0) return 1;   // heterozygous
+    // haploid single allele
+    return s === '0' ? 0 : 2;
   }
 
   // rows: [{gts:[...n]}], returns {M:n×n mean allele-difference, C:n×n shared-site counts, sites, informative}

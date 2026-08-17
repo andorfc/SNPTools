@@ -19,17 +19,25 @@
   if (typeof window === 'undefined') return;
 
   var DATA_DIRS = ['csv','heatmap','target','query','pfam','uniprot','synonym','traits','dssp','structures'];
-  var ESM_OK = ['ESM1','ESM2','ESM3'];
+  /* Fusarium carries four protein language models. ESM4 is the ESM-C model
+     (its scores live in the .../ESM4/ directories); ESM_LABEL gives the display
+     name so the UI reads "ESM-C" while the data path stays "ESM4". */
+  var ESM_OK = ['ESM1','ESM2','ESM3','ESM4'];
+  var ESM_LABEL = { ESM1:'ESM1', ESM2:'ESM2', ESM3:'ESM3', ESM4:'ESM-C' };
 
   var state = {
     installedFetch: false, origFetch: null,
-    base: './paneffect/', variant: null,
+    base: './paneffect/', variant: null, refLabel: '',
     grids: { b73: null, pan: null },
     /* last rows handed to each canvas renderer, so a colour-scheme change
        can re-render without re-running the whole fetch pipeline */
     lastData: { b73: null, pan: null },
     /* genome.js's original updateHeatmapZoom, captured once before we wrap it */
     origUpdateHeatmapZoom: null,
+    /* observed-variant filter config for the reference view (set by the wrapper):
+       { set:Set<"resi|alt">, count, coverage:'hq'|'hc', coverageLabels, datasetName,
+         mode:'observed'|'all', onCoverage:async(cov)=>{set,count,datasetName} } */
+    observed: null,
   };
 
   /* ---------------- fetch rebaser -------------------------------------
@@ -65,12 +73,20 @@
     state.installedFetch = true;
   }
 
-  /* ---------------- id parsing (writes shared globals) --------------- */
+  /* ---------------- id parsing (writes shared globals) ---------------
+     Generalized for Fusarium ids, whose GENE MODEL itself contains an
+     underscore (FGSG_00134, FVEG_000452, FVERT4_010000) — the old maize
+     `id.split('_')[0]` would wrongly return "FGSG". Instead we strip a
+     trailing transcript/protein suffix (`_T001`, `_P001`, or the FungiDB
+     `-T1` alias) to recover the gene model. Fusarium genomes are single-
+     isoform, so the canonical transcript/protein are always _T001/_P001. */
   function parseId(id) {
     id = String(id || '').trim();
-    if (id.indexOf('_T') >= 0)      { gene_model = id.split('_')[0]; transcript = id;                   protein = id.replace('_T', '_P'); can_flag = false; }
-    else if (id.indexOf('_P') >= 0) { gene_model = id.split('_')[0]; transcript = id.replace('_P','_T'); protein = id;                     can_flag = false; }
-    else                            { gene_model = id; can_flag = true; transcript = id + '_T001';        protein = id + '_P001'; }
+    var m = id.match(/^(.*?)[_-][TP]\d+$/);
+    if (m) { gene_model = m[1]; can_flag = false; }
+    else   { gene_model = id;   can_flag = true; }
+    transcript = gene_model + '_T001';
+    protein    = gene_model + '_P001';
   }
 
   /* ---------------- canvas heatmap renderers (override) -------------- */
@@ -89,8 +105,14 @@
     if (state.grids.b73) { state.grids.b73.destroy(); state.grids.b73 = null; }
     Array.prototype.forEach.call(host.querySelectorAll('canvas.pe-hm'), function (c) { c.remove(); });
 
+    var obs = window.__PE_OBSERVED;
     var cells = data.map(function (d) {
-      return { x: +d.X, y: +d.Y, score: +d.Score, wt: d.WT, wgs2024: +d.WGS2024, wgs2026: +d.WGS2026 };
+      /* "Observed" flag: maize read WGS2026 from the CSV; Fusarium sources it from
+         the HDF5 missense query (window.__PE_OBSERVED, keyed "resi|altAA"). */
+      var wgs2026 = obs
+        ? (obs.has((+d.X) + '|' + String(d.Sub == null ? '' : d.Sub).trim()) ? 1 : 0)
+        : +d.WGS2026;
+      return { x: +d.X, y: +d.Y, score: +d.Score, wt: d.WT, wgs2024: +d.WGS2024, wgs2026: wgs2026 };
     });
     var vis = function (c) {
       return wgs_status || (wgs2024_status && c.wgs2024 === 1) || (wgs2026_status && c.wgs2026 === 1);
@@ -135,10 +157,11 @@
       cellW: window_length / alignment_length, cellH: 5,
       color: function (score, c) { return c.gap ? THEME.gapColor() : THEME.colorFor('pan', score); },
       tooltip: function (c) {
-        return 'B73 Position: ' + (c.x2 == null ? '' : c.x2) +
-               '<br>Target Position: ' + (c.x3 == null ? '' : c.x3) +
+        return 'Reference position: ' + (c.x2 == null ? '' : c.x2) +
+               '<br>Target position: ' + (c.x3 == null ? '' : c.x3) +
                '<br>Genome: ' + (GN_array[c.y] == null ? '' : GN_array[c.y]) +
-               '<br>G.M.: ' + (GM_array[c.y] == null ? '' : GM_array[c.y]) +
+               '<br>G.M.: ' + (GM_array[c.y] == null ? '' :
+                   (typeof displayGeneModel === 'function' ? displayGeneModel(GM_array[c.y]) : GM_array[c.y])) +
                '<br>Substitution: ' + c.wt + ' to ' + c.sub +
                '<br>Score: ' + (isNaN(c.score) ? '' : c.score);
       },
@@ -147,6 +170,88 @@
     state.grids.pan = grid;
     var box = document.getElementById('colorBox-pan');
     if (box) { box.innerHTML = ''; box.appendChild(buildLegendBar()); }
+  }
+
+  /* ---------------- heterotic-group key (pan view) ------------------
+     The pan-genome rows are one genome/accession each, tinted by
+     heterotic group (support.js colorGenome). The canvas re-render drops
+     the DOM key that pan.js's renderHeatmapPan used to append, so we
+     rebuild it here. Colours mirror colorGenome() exactly — keep the two
+     in sync if either changes. */
+  var HETEROTIC_GROUPS = [
+    { label: 'Stiff stalk',     color: 'black'   },
+    { label: 'Mix',             color: '#666666' },
+    { label: 'Non-stiff-stalk', color: '#455edd' },
+    { label: 'Iodent',          color: '#a807ed' },
+    { label: 'Lancaster',       color: '#da9af5' },
+    { label: 'European flint',  color: '#9ae6f5' },
+    { label: 'Chinese',         color: '#f50707' },
+    { label: 'Tang SiPingTou',  color: '#fa7d7d' },
+    { label: 'Popcorn',         color: '#ce58ce' },
+    { label: 'Sweet corn',      color: 'pink'    },
+    { label: 'Tropical',        color: '#30c727' },
+    { label: 'PanAnd',          color: '#773510' },
+    { label: 'Teosinte',        color: '#ca854c' },
+    { label: 'Hi/Lo',           color: '#1B9E77' }
+  ];
+  function buildHeteroticLegend() {
+    var wrap = document.createElement('div');
+    wrap.style.display = 'inline-block';
+    wrap.style.border = '1px solid #000';
+    wrap.style.borderRadius = '5px';
+    wrap.style.padding = '10px 14px';
+    wrap.style.margin = '12px 0';
+    wrap.style.fontFamily = 'Arial, sans-serif';
+    wrap.style.fontSize = '13px';
+    wrap.style.lineHeight = '1.55';
+    wrap.style.whiteSpace = 'nowrap';   // let the box widen instead of wrapping names
+
+    var title = document.createElement('div');
+    title.innerText = 'Heterotic group';
+    title.style.fontWeight = '600';
+    title.style.textDecoration = 'underline';
+    title.style.marginBottom = '4px';
+    wrap.appendChild(title);
+
+    HETEROTIC_GROUPS.forEach(function (g) {
+      var row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+
+      var sw = document.createElement('span');
+      sw.style.display = 'inline-block';
+      sw.style.width = '12px';
+      sw.style.height = '12px';
+      sw.style.marginRight = '6px';
+      sw.style.borderRadius = '2px';
+      sw.style.background = g.color;
+      sw.style.border = '1px solid rgba(0,0,0,.25)';
+      sw.style.flex = '0 0 auto';
+      row.appendChild(sw);
+
+      var txt = document.createElement('span');
+      txt.innerText = g.label;
+      txt.style.color = g.color;
+      txt.style.whiteSpace = 'nowrap';
+      row.appendChild(txt);
+
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+  function populateHeteroticLegend() {
+    var box = document.getElementById('heterotic-legend-pan');
+    if (!box) return;
+    /* Park the key to the right of the zoomed pan view's genome-name
+       labels — those right-hand labels sit at ~x=1206px (window_length =
+       1200) and are tinted by colorGenome(), so a genome's label colour
+       can be read straight across to the named group here. Positioned
+       relative to .heatmap-container-zoom-pan (position:relative). */
+    box.style.position = 'absolute';
+    box.style.top = '4px';
+    box.style.left = (window_length + 220) + 'px';
+    box.innerHTML = '';
+    box.appendChild(buildHeteroticLegend());
   }
 
   /* ---------------- zoomed-region highlight overlay -------------------
@@ -415,6 +520,49 @@
     );
   }
 
+  /* Reference-view filter bar: All / Observed radios (name=variantEffect, so
+     genome.js's handleRadioChange re-renders on toggle) + HQ/HC dataset picker
+     + a live count. Only meaningful when the wrapper supplied an observed config. */
+  function observedRow() {
+    return '' +
+      '<div class="pe-observed" id="pe-observed">' +
+        '<span class="pe-obs-lab">Show</span>' +
+        '<label class="pe-obs-opt"><input type="radio" id="peObsObserved" name="variantEffect" value="maize2026"> Observed missense variants</label>' +
+        '<label class="pe-obs-opt"><input type="radio" id="peObsAll" name="variantEffect" value="all"> All possible substitutions</label>' +
+        '<span class="pe-obs-lab pe-obs-from">from</span>' +
+        '<select id="pe-observed-cov" class="pe-obs-cov-sel">' +
+          '<option value="hq">High Quality</option>' +
+          '<option value="hc">High Coverage</option>' +
+        '</select>' +
+        '<span class="pe-obs-count" id="peObsCount"></span>' +
+      '</div>';
+  }
+
+  function wireObservedControls() {
+    var o = state.observed;
+    var cov = document.getElementById('pe-observed-cov');
+    if (!cov) return;
+    if (o && o.coverage) cov.value = o.coverage;
+    if (o && typeof o.onCoverage === 'function') {
+      cov.addEventListener('change', function () {
+        var val = cov.value;
+        var lbl = document.getElementById('peObsCount');
+        if (lbl) lbl.textContent = 'loading…';
+        Promise.resolve(o.onCoverage(val)).then(function (res) {
+          res = res || {};
+          o.set = res.set || null; o.count = res.count || 0;
+          o.datasetName = res.datasetName || ''; o.coverage = val; o.error = res.error || null;
+          window.__PE_OBSERVED = o.set;
+          updateObservedLabel();
+          refreshColors();   /* re-colour both reference views with the new dataset */
+        }).catch(function (e) {
+          console.warn('[PanEffectEngine] coverage switch failed:', e);
+          if (lbl) lbl.textContent = 'variant query unavailable';
+        });
+      });
+    }
+  }
+
   function wireScheme() {
     syncSchemeInputs(THEME.getScheme());
     Array.prototype.forEach.call(
@@ -506,16 +654,38 @@
     s.dispatchEvent(new Event('input'));
   }
 
-  /* ---------------- WGS view default -------------------------------- */
-  function applyWgs(mode) {
-    var is2026 = (mode === 'maize2026');
-    wgs_status = !is2026;         /* 'all variants' unless a 2026 handoff */
+  /* ---------------- reference-view variant filter ------------------- *
+     Fusarium repurposes maize's WGS sub-track: instead of a CSV column, the
+     "observed" flag comes from the HDF5 missense query. Two modes —
+     'all' (every possible substitution) and 'observed' (only substitutions
+     seen as missense calls in the chosen HQ/HC dataset). The genome.js radio
+     handler (input[name=variantEffect]) flips wgs_status/wgs2026_status and
+     re-renders both reference views; here we just set the initial state. */
+  function setObservedMode(observed) {
+    wgs_status = !observed;
     wgs2024_status = false;
-    wgs2026_status = is2026;
-    var rAll = document.getElementById('allVariants');
-    var r26 = document.getElementById('maizeWGS2026');
-    if (r26) r26.checked = is2026;
-    if (rAll) rAll.checked = !is2026;
+    wgs2026_status = observed;
+    var rAll = document.getElementById('peObsAll');
+    var rObs = document.getElementById('peObsObserved');
+    if (rAll) rAll.checked = !observed;
+    if (rObs) rObs.checked = observed;
+  }
+  function applyWgs(mode) {
+    /* initial filter: observed when the wrapper supplied observed variants and
+       chose 'observed' mode; otherwise show all possible substitutions */
+    var o = state.observed;
+    var observed = !!(o && o.mode === 'observed' && o.count > 0);
+    setObservedMode(observed);
+  }
+  function updateObservedLabel() {
+    var el = document.getElementById('peObsCount');
+    if (!el) return;
+    var o = state.observed;
+    if (!o) { el.textContent = ''; return; }
+    if (o.error === 'no-dataset') { el.textContent = 'no dataset available'; return; }
+    if (o.error) { el.textContent = 'variant query unavailable'; return; }
+    el.textContent = o.count + ' observed missense variant' + (o.count === 1 ? '' : 's') +
+      (o.datasetName ? ' · ' + o.datasetName : '');
   }
 
   /* ---------------- clean summary (override) ------------------------ */
@@ -528,7 +698,8 @@
     if (sm) {
       sm.innerHTML =
         '<div class="pe-sum">' +
-          '<div class="pe-sum-kicker">Missense variant effects · ' + currentESM + ' · B73 v5</div>' +
+          '<div class="pe-sum-kicker">Missense variant effects · ' + (ESM_LABEL[currentESM] || currentESM) +
+            (state.refLabel ? ' · ' + state.refLabel : '') + '</div>' +
           '<h2 class="pe-sum-title">' + (gene_model || '') + gnPrint + '</h2>' +
           '<a class="pe-sum-dl" href="' + csv + '" download>' +
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">' +
@@ -537,8 +708,8 @@
             'Download variant effects file</a>' +
         '</div>';
     }
-    var r = document.getElementById('reference_gm'); if (r) r.innerHTML = 'B73 Reference View';
-    var p = document.getElementById('pan_gm'); if (p) p.innerHTML = 'Pan-genome View';
+    var r = document.getElementById('reference_gm'); if (r) r.innerHTML = (state.refLabel || 'Reference') + ' — reference view';
+    var p = document.getElementById('pan_gm'); if (p) p.innerHTML = 'Across Fusarium species';
   }
 
   /* ---------------- teardown ---------------------------------------- */
@@ -579,6 +750,11 @@
       installFetch();
       state.base = normalizeBase(opts.dataBase || state.base);
       state.variant = opts.variant || null;
+      state.refLabel = opts.refLabel || '';
+      /* observed-variant filter (reference view): expose the HDF5-derived set
+         globally so canvasRenderGene / updateHeatmapZoom can read it at draw time */
+      state.observed = opts.observed || null;
+      window.__PE_OBSERVED = state.observed ? state.observed.set : null;
 
       /* drive PanEffect's shared globals */
       main_id = opts.gene || '';
@@ -616,6 +792,10 @@
       catch (e) { console.error('[PanEffectEngine] pipeline error:', e); }
 
       wireScheme();
+      wireObservedControls();
+      updateObservedLabel();
+      /* Heterotic-group legend is maize-only (heterotic groups don't apply to
+         Fusarium) — intentionally not populated. */
 
       if (state.variant && state.variant.pos) {
         /* let the sliders finish wiring, then centre on the variant.
@@ -646,17 +826,10 @@
 '<div id="summary" class="content"></div>' +
 
 '<div id="b73" class="content">' +
-  '<span class="gene" id="reference_gm"></span>' +
-  '<span id="wgs_span"><br><br>' +
-    '<input type="radio" id="allVariants" name="variantEffect" value="all" checked>' +
-    '<label for="allVariants">Show all variant effects</label>' +
-    /* MaizeGDB 2024 option disabled for now
-    '<input type="radio" id="maizeWGS" name="variantEffect" value="maize2024">' +
-    '<label for="maizeWGS">MaizeGDB 2024 High Coverage variant effects</label>' +
-    */
-    '<input type="radio" id="maizeWGS2026" name="variantEffect" value="maize2026">' +
-    '<label for="maizeWGS2026">MaizeGDB 2026 High Coverage variant effects</label><br>' +
-  '</span>' +
+  '<span class="gene" id="reference_gm"></span><br>' +
+  /* Reference-view variant filter: All possible substitutions vs. only those
+     observed as missense calls in the chosen HQ/HC HDF5 dataset. */
+  observedRow() + '<br>' +
   schemeRow('') +
   '<br>' +
   '<div class="sectionHeader">PFAM Domains</div>' +
@@ -687,7 +860,7 @@
   '<div class="slider-container" id="slider-container-pan"><span id="slider-pan"></span><span id="slider-value-pan">1</span></div>' +
   '<div class="sectionHeader">Heatmap of zoomed in region</div>' +
   '<div id="zoomNumberLine-pan" class="numberLine"></div>' +
-  '<div id="heatmap-container-zoom-pan" class="heatmap-container-zoom-pan"><div id="zoomed-heatmap-pan"></div></div>' +
+  '<div id="heatmap-container-zoom-pan" class="heatmap-container-zoom-pan"><div id="zoomed-heatmap-pan"></div><div id="heterotic-legend-pan" class="pe-heterotic-legend-wrap"></div></div>' +
   '<div id="zoomWTLine-pan" class="numberLine"></div>' +
 '</div>';
   }

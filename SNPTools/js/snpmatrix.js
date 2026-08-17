@@ -16,10 +16,15 @@ const SNPMatrix = (function () {
 
   /* ---- IBS distance from the genotype matrix ---- */
   function dosage(gt){
+    // Fusarium is HAPLOID: single allele index ("0","1","2","."). 0=ref, non-zero=alt,
+    // missing=null. Diploid forms still handled so the function stays general.
     if (gt==null) return null;
-    if (gt==='0/0') return 0; if (gt==='1/1') return 2;
-    if (gt==='./.'||gt==='.'||gt==='') return null;
-    return 1;                                   // het
+    const s=String(gt).trim();
+    if (s===''||s==='.'||s==='./.'||s==='.|.') return null;
+    if (s==='0/0'||s==='0|0') return 0;
+    if (s==='1/1'||s==='1|1'||s==='2/2'||s==='2|2') return 2;
+    if (s.indexOf('/')>=0||s.indexOf('|')>=0) return 1;   // het
+    return s==='0' ? 0 : 2;                                // haploid
   }
   function ibsMatrix(rows, n){
     const M = Array.from({length:n}, () => new Float64Array(n));

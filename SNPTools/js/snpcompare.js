@@ -47,11 +47,20 @@
 const SNPCompare = (function () {
 
   const CFG = {
-    globalEndpoint : 'ibsCompare.php', // ?focal=<ID> -> {rows:[{id,similarity,missing}]}
+    globalEndpoint : 'ibsCompare.php', // ?focal=<ID>&ds=<dataset> -> {rows:[{id,similarity,missing}]}
     useDemoGlobal  : false,
-    defaultDataset : 'mgdb2026_hq',
+    defaultDataset : 'gram_hq',
     minSitesFloor  : 20,               // never mask below this many sites
     minSitesFrac   : 0.05,             // default mask threshold = 5% of sites
+    // Fusarium families that ship a precomputed genome-wide distance folder
+    // under ./distance/ (served per-focal by ibsCompare.php).
+    globalFamilies : ['graminearum','vert7600','vertMRC826'],
+    // Short display names for the reference-genome switcher (one per family).
+    refLabels : {
+      graminearum : 'F. graminearum (PH-1)',
+      vert7600    : 'F. verticillioides (7600)',
+      vertMRC826  : 'F. verticillioides (MRC826)',
+    },
   };
 
   const ST = {
@@ -78,8 +87,16 @@ const SNPCompare = (function () {
   };
 
   /* ---------------- genotype + IBS ---------------- */
-  function dose(g){ if(g==null)return null; if(g==='0/0')return 0; if(g==='1/1')return 2;
-    if(g==='./.'||g==='.'||g==='')return null; return 1; }
+  function dose(g){
+    // Haploid Fusarium: "0"=ref, non-zero=alt, "."=missing. Diploid forms still handled.
+    if(g==null) return null;
+    const s=String(g).trim();
+    if(s===''||s==='.'||s==='./.'||s==='.|.') return null;
+    if(s==='0/0'||s==='0|0') return 0;
+    if(s==='1/1'||s==='1|1'||s==='2/2'||s==='2|2') return 2;
+    if(s.indexOf('/')>=0||s.indexOf('|')>=0) return 1;   // het
+    return s==='0' ? 0 : 2;                               // haploid
+  }
 
   function minSites(total){
     if(ST.minSites!=null) return ST.minSites;
@@ -310,7 +327,20 @@ const SNPCompare = (function () {
     const projBio={};
     (Data.projectsFor(ds)||[]).forEach(p=>{ projBio[p.id]=(p.bioprojects&&p.bioprojects.length)?p.bioprojects.join(', '):(p.title||''); });
     const m={};
-    (Data.accessionsFor(ds)||[]).forEach(a=>{ m[a.id]={id:a.id, name:a.founder, run:a.run, proj:a.proj, projColor:a.projColor, bio:projBio[a.proj]||''}; });
+    // Carry the full accession record so the table can surface the richer
+    // Fusarium metadata (population/species/host/chemotype/country for
+    // graminearum; strain/species/country/region/geo/substrate for
+    // verticillioides). `name` prefers the display label (e.g. "NRRL 25457").
+    (Data.accessionsFor(ds)||[]).forEach(a=>{
+      m[a.id]=Object.assign({}, a, {
+        id:a.id,
+        name:(a.label||a.founder||a.id),
+        run:a.run,
+        proj:a.proj,
+        projColor:a.projColor,
+        bio:projBio[a.proj]||''
+      });
+    });
     ST._meta=m; ST._metaDs=ds; return m;
   }
   function projectOptions(ds){
@@ -333,11 +363,12 @@ const SNPCompare = (function () {
     });
   }
   async function getGlobal(ds, focalId){
-    if(ST.globalCache[focalId]) return ST.globalCache[focalId];
+    const ck=(ds||'')+'|'+focalId;
+    if(ST.globalCache[ck]) return ST.globalCache[ck];
     let res;
     if(CFG.useDemoGlobal){ res={rows:globalDemo(ds,focalId), demo:true}; }
     else {
-      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}`,{cache:'no-store'});
+      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}&ds=${encodeURIComponent(ds||'')}`,{cache:'no-store'});
       if(!resp.ok) throw new Error('ibsCompare.php failed (HTTP '+resp.status+')');
       const raw=await resp.text(); let j;
       try{ j=JSON.parse(raw); }catch(e){ throw new Error('ibsCompare.php did not return JSON:\n'+raw.slice(0,500)); }
@@ -345,7 +376,7 @@ const SNPCompare = (function () {
         .map(r=>({id:r.id, sim:+(r.similarity!=null?r.similarity:r.sim), miss:Math.max(0,+(r.missing!=null?r.missing:r.miss))}));
       res={rows, demo:false};
     }
-    ST.globalCache[focalId]=res; return res;
+    ST.globalCache[ck]=res; return res;
   }
 
   /* ---------------- build the combined row set ---------------- */
@@ -375,17 +406,55 @@ const SNPCompare = (function () {
     if(ST.fMissMax!=null)rows=rows.filter(r=>(r.miss==null?0:r.miss)<=ST.fMissMax);
     if(ST.fProj!=='all') rows=rows.filter(r=>r.proj===ST.fProj);
     const k=ST.sortKey, d=ST.sortDir;
+    const strk=strKeys();
     rows.sort((a,b)=>{
       let va=a[k], vb=b[k];
-      if(k==='id'||k==='name'||k==='run'||k==='bio'){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
+      if(strk[k]){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
       va=va==null?-Infinity:va; vb=vb==null?-Infinity:vb; return d*(va-vb);
     });
     return rows;
   }
 
   /* ---------------- shell ---------------- */
-  function globalAvailable(){ try{ return Data.familyOf(ST.dataset)==='mgdb2026'; }catch(e){ return true; } }
+  function globalAvailable(){ try{ return CFG.globalFamilies.indexOf(Data.familyOf(ST.dataset))>=0; }catch(e){ return false; } }
   function hasLocal(){ return !!(ST.input&&ST.input.accs&&ST.input.accs.length>1); }
+  function famOf(ds){ try{ return Data.familyOf(ds); }catch(e){ return null; } }
+
+  /* the available reference genomes, one entry per family, in dataset order.
+     `ds` is that family's default (first / High-Quality) dataset id. */
+  function refList(){
+    const seen={}, out=[];
+    (Data.datasets()||[]).forEach(d=>{ if(!seen[d.family]){ seen[d.family]=1;
+      out.push({family:d.family, ds:d.id, label:CFG.refLabels[d.family]||d.name||d.family}); } });
+    return out;
+  }
+  /* reference-genome switcher — mirrors the Scope / Run button style, with the
+     active reference highlighted (`solid`). */
+  function refButtons(){
+    const cur=famOf(ST.dataset);
+    return refList().map(r=>
+      `<button class="qbtn ${r.family===cur?'solid':''}" onclick="SNPCompare.setRef('${r.family}')">${esc(r.label)}</button>`
+    ).join('');
+  }
+  /* switch the active reference genome. Follows the same reset path render()
+     uses: new focal/scope for the reference, cleared caches, app-wide S.dataset
+     kept in sync. A region hand-off from a DIFFERENT reference no longer applies,
+     so it is dropped (genome-wide scope remains). */
+  function setRef(family){
+    if(famOf(ST.dataset)===family) return;               // already active
+    const r=refList().find(x=>x.family===family); if(!r) return;
+    ST.dataset=r.ds;
+    if(typeof S!=='undefined' && S) S.dataset=r.ds;
+    if(ST.input && famOf(ST.input.dataset)!==family){
+      ST.input=null; if(typeof S!=='undefined' && S) S.compareInput=null;
+    }
+    // Reset focal + derived caches for the new reference. render() resets these
+    // only when it detects a dataset change, but we've already updated ST.dataset,
+    // so a stale focal (an id from the old reference) would otherwise survive.
+    ST.focal=null; ST._meta=null; ST.globalCache={}; ST.allRows=[];
+    ST._pairs=null; ST._layout=null; ST.ran=false;
+    render();
+  }
 
   function render(){
     injectCSS();
@@ -399,6 +468,9 @@ const SNPCompare = (function () {
     const prevDs=ST.dataset;
     if(S.compareInput){ if(S.compareInput!==ST.input){ ST._pairs=null; ST._layout=null; } ST.input=S.compareInput; }
     if(ST.input){ ST.dataset=ST.input.dataset||ST.dataset; }
+    // No region hand-off: follow the app-wide reference selection so genome-wide
+    // scope works for whichever Fusarium reference the user has chosen.
+    else if(typeof S!=='undefined' && S && S.dataset){ ST.dataset=S.dataset; }
     if(ST.dataset!==prevDs){ ST.focal=null; ST._meta=null; ST.globalCache={}; ST.allRows=[]; ST._pairs=null; }
     const gAvail=globalAvailable();
     if(!ST.focal){
@@ -452,6 +524,10 @@ const SNPCompare = (function () {
     </div></section>
 
     <div class="card pad" style="margin-bottom:16px">
+      ${refList().length>1?`<div style="margin-bottom:16px">
+        <div class="fl-lbl">Reference genome</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${refButtons()}</div>
+      </div>`:''}
       <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
         <div style="min-width:480px;flex:1 1 480px">
           <div class="fl-lbl">Focal accession</div>
@@ -465,13 +541,13 @@ const SNPCompare = (function () {
         </div>
         <div>
           <div class="fl-lbl">Scope</div>
-          ${scopeBtn('global','Genome-wide',gAvail,'Genome-wide matrix available for MaizeGDB 2026 only')}
+          ${scopeBtn('global','Genome-wide',gAvail,'Genome-wide matrix not available for this dataset yet')}
           ${scopeBtn('local','This region',local,'Send a result from SNPVersity to enable')}
-          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'Genome-wide matrix available for MaizeGDB 2026 only':'Send a result from SNPVersity to enable')}
+          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'Genome-wide matrix not available for this dataset yet':'Send a result from SNPVersity to enable')}
         </div>
         ${region?`<div><div class="fl-lbl">Region</div><div class="c-mono" style="color:var(--blue-600);font-size:13px;padding:8px 0">${region}</div></div>`:''}
       </div>
-      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">Genome-wide precomputed IBS is available for <b>MaizeGDB 2026</b> only. For <b>${esc(dsName)}</b>, use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`:''}
+      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">Genome-wide precomputed IBS is not available for these Fusarium datasets yet. For <b>${esc(dsName)}</b>, use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`:''}
 
       ${accListHTML()}
 
@@ -701,8 +777,35 @@ const SNPCompare = (function () {
   }
 
   /* ---------------- table ---------------- */
+  /* Trailing metadata columns, keyed to the accession-catalog fields for the
+     active reference. Fusarium carries more metadata than maize did, and it
+     differs by species, so the column set is chosen per family. `str` marks a
+     text column (sorted alphabetically rather than numerically). */
+  function metaColsFor(ds){
+    let fam='graminearum';
+    try{ fam=Data.familyOf(ds); }catch(e){}
+    if(fam==='vert7600' || fam==='vertMRC826'){
+      return [
+        {k:'strain',          t:'Strain',            str:true},
+        {k:'species',         t:'Species',           str:true},
+        {k:'country',         t:'Country',           str:true},
+        {k:'region',          t:'Region',            str:true},
+        {k:'geo',             t:'Geographic origin', str:true},
+        {k:'substrate',       t:'Substrate',         str:true},
+        {k:'substrateDetail', t:'Substrate detail',  str:true},
+      ];
+    }
+    // graminearum
+    return [
+      {k:'population', t:'Population', str:true},
+      {k:'species',    t:'Species',   str:true},
+      {k:'host',       t:'Host',      str:true},
+      {k:'chemotype',  t:'Chemotype', str:true},
+      {k:'country',    t:'Country',   str:true},
+    ];
+  }
   function cols(){
-    const c=[{k:'rank',t:'#'},{k:'id',t:'Final_ID'}];
+    const c=[{k:'rank',t:'#'},{k:'id',t:'Accession ID',str:true}];
     if(ST.mode==='both'){
       c.push({k:'gsim',t:'Global sim'},{k:'lsim',t:'Local sim'},{k:'dsim',t:'Δ (local−global)'},
              {k:'gmiss',t:'Global miss%'},{k:'lmiss',t:'Local miss%'},{k:'lboth',t:'Co-called sites'});
@@ -711,9 +814,16 @@ const SNPCompare = (function () {
     } else {
       c.push({k:'gsim',t:'Similarity'},{k:'gmiss',t:'Missing%'});
     }
-    c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'});
+    metaColsFor(ST.dataset).forEach(mc=>c.push(mc));
     return c;
   }
+  /* which column keys sort as text (rather than as numbers) */
+  function strKeys(){
+    const s={id:1, name:1, run:1, bio:1};
+    cols().forEach(c=>{ if(c.str) s[c.k]=1; });
+    return s;
+  }
+  function isStrKey(k){ return !!strKeys()[k]; }
   const fmtSim=v=>v==null?'—':v.toFixed(4);
   const fmtMiss=v=>v==null?'—':v.toFixed(2);
   const fmtD=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(4);
@@ -723,7 +833,7 @@ const SNPCompare = (function () {
     if(k==='gmiss'||k==='lmiss') return fmtMiss(r[k]);
     if(k==='dsim') return fmtD(r.dsim);
     if(k==='lboth') return r.lboth==null?'—':r.lboth.toLocaleString();
-    return esc(r[k]==null?'':r[k]);
+    return esc(r[k]==null||r[k]===''?'—':r[k]);
   }
   function renderTable(){
     const rows=viewRows();
@@ -1153,7 +1263,7 @@ const SNPCompare = (function () {
     if(ST.ran) paint(); else showIdle();
   }
   function sortBy(k){ if(k==='rank'||!ST.ran)return;
-    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio')?1:-1; }
+    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=isStrKey(k)?1:-1; }
     renderTable(); }
   function toTree(){ if(!ST.input)return; S.treeInput=ST.input; go('snptree'); }
   function toMatrix(){ if(!ST.input)return; S.matrixInput=ST.input; go('snpmatrix'); }
@@ -1283,7 +1393,7 @@ const SNPCompare = (function () {
 
   if(typeof SNPTools!=='undefined') SNPTools.register('snpcompare', { render });
 
-  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setView,
+  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setRef, setMode, setView,
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
            clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage,
            // testing / debugging

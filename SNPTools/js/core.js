@@ -37,16 +37,16 @@ const GROUPS = [
 ];
 const TOOLS = {
   snpversity:{name:'SNPVersity', icon:'dna', color:'#2563eb', cat:'Visualization & Search',
-    tag:'Explore variation across lines and populations',
-    desc:'Explore extensive variant datasets across maize accessions. Enter a genomic interval, choose accessions, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
+    tag:'Explore variation across Fusarium isolates',
+    desc:'Explore variant datasets across Fusarium isolates and reference genomes. Enter a genomic interval, choose isolates, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
-    tag:'Connect variation to phenotype and trait data',
-    desc:'Connect genomic variation to phenotype and trait records from the National Germplasm collection. Search, sort, and filter accessions by trait values and metadata, then move selected sets straight into other SNPTools.',
-    feats:[['search','Search & filter','Filter 20,000+ accessions by trait, phenotype, and metadata.'],['leaf','Trait records','Disease resistance, yield, composition, and evaluation data.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+    tag:'Strain Selector — pick isolates by metadata',
+    desc:'An interactive catalogue of the Fusarium isolates, pre-grouped by population structure (NA1, NA2, NA3, Admixture, Outgroups, Unknown). Filter by population, country, host, chemotype, species, or free text; batch-select; then send the selected isolates straight to SNPVersity to build a VCF.',
+    feats:[['search','Metadata facets','Filter isolates by population, country, host, chemotype and species.'],['leaf','Population structure','Isolates grouped and colour-coded by NA1/NA2/NA3/Admixture/Outgroups.'],['compare','Hand off sets','Send the selected isolates directly to SNPVersity.']]},
   snpimpact:{name:'SNPImpact', icon:'star', color:'#7c3aed', cat:'Explore & Analyze',
     tag:'Prioritize candidate variants using AI',
-    desc:'Rank variants using AI-based allele scores together with functional annotations. Combine PlantCAD and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
-    feats:[['star','Rank by impact','Order variants by combined AI score and consequence.'],['func','Score + effect','PlantCAD / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
+    desc:'Rank variants using AI-based allele scores together with functional annotations. Combine DNABERT and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
+    feats:[['star','Rank by impact','Order variants by combined AI score and consequence.'],['func','Score + effect','DNABERT / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
   snpfunction:{name:'SNPFunction', icon:'func', color:'#2563eb', cat:'Explore & Analyze',
     tag:'Give variants biological and genomic context',
     desc:'Add biological context by integrating gene models, regulatory features, conservation, and nearby genomic evidence — interpreting variants within their local genomic region.',
@@ -65,8 +65,8 @@ const TOOLS = {
     feats:[['grid','Identity matrix','Pairwise identity-by-state across the set.'],['search','Nearest neighbors','Rank closest lines to any accession.'],['density','Similarity heatmap','Read structure at a glance.']]},
   paneffect:{name:'PanEffect', icon:'effect', color:'#b45309', cat:'Explore & Analyze',
     tag:'Predict missense variant effects on proteins',
-    desc:'Visualize the predicted effect of every amino-acid substitution across a protein — in B73 and across the maize pan-genome — using ESM protein language-model scores, with Pfam domains and secondary structure for context.',
-    feats:[['star','Every substitution','ESM scores for all 20 substitutions at each residue.'],['grid','B73 + pan-genome','Reference view plus natural variation across the pan-genome.'],['func','Domain context','Pfam domains and predicted secondary structure overlaid.']]},
+    desc:'Visualize the predicted effect of every amino-acid substitution across a protein — across the Fusarium pan-genome — using ESM protein language-model scores, with Pfam domains and secondary structure for context.',
+    feats:[['star','Every substitution','ESM scores for all 20 substitutions at each residue.'],['grid','B73 + pan-genome','Reference view plus natural variation across isolates.'],['func','Domain context','Pfam domains and predicted secondary structure overlaid.']]},
   snpimpute:{name:'SNPImpute', icon:'impute', color:'#0891b2', cat:'Impute & Predict',
     tag:'Impute sequence and function',
     desc:'Pan-genome–guided imputation that fills missing genotypes and predicts function across varying depths of sequencing.',
@@ -90,9 +90,26 @@ const TOOLS = {
 function rnd(a,b){return a+Math.random()*(b-a)}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 
-/* ---- MaizeGDB gene model links — shared across tools ---- */
-const MAIZEGDB_GENE_BASE = 'https://www.maizegdb.org/gene_center/gene/';
-function maizegdbGeneURL(g){ return MAIZEGDB_GENE_BASE + encodeURIComponent(g); }
+/* ---- Fusarium gene model links — shared across tools ----
+   FGSG_ (F. graminearum) and FVEG_/FVERT4_ (F. verticillioides) IDs resolve on
+   NCBI Gene / FungiDB. maizegdbGeneURL is kept as an alias so the ported tool
+   modules keep working without edits. */
+const FUNGIDB_GENE_BASE = 'https://fungidb.org/fungidb/app/record/gene/';
+const NCBI_GENE_SEARCH  = 'https://www.ncbi.nlm.nih.gov/gene/?term=';
+function fusariumGeneURL(g){
+  g = String(g||'').trim();
+  var m = g.match(/^(FVEG|FGSG)_0*(\d+)$/i);
+  if (m){
+    // FungiDB hosts F. graminearum PH-1 (FGSG_) and F. verticillioides 7600 (FVEG_)
+    // with 5-digit IDs (e.g. FVEG_03144); normalize the store's padding to match.
+    var id = m[1].toUpperCase() + '_' + String(parseInt(m[2],10)).padStart(5,'0');
+    return FUNGIDB_GENE_BASE + encodeURIComponent(id);
+  }
+  // FVERT4_ (F. verticillioides MRC826) and anything else -> NCBI Gene search.
+  return NCBI_GENE_SEARCH + encodeURIComponent(g);
+}
+const MAIZEGDB_GENE_BASE = FUNGIDB_GENE_BASE;           // legacy alias (name kept for ported modules)
+function maizegdbGeneURL(g){ return fusariumGeneURL(g); }
 /* True only for a bare single gene model id — intergenic / boundary loci are
    encoded as ranges (contain "..") and are not single gene models. */
 function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('..') && !/\s/.test(g); }
@@ -103,8 +120,8 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
    should live inside that tool\u2019s own file (see IMP in snpimpact.js). */
 const S = {
   tool:'snpversity',
-  dataset:'mgdb2026_hq',
-  chr:'chr10', start:9788000, end:9826500, perPage:100,
+  dataset:'gram_hq',
+  chr:'chr1', start:2520531, end:2524130, perPage:100,
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,
@@ -173,7 +190,7 @@ function renderToolPage(id){
     </div>
     <div class="mock-strip">
       <div class="ms-h">Part of the integrated SNPTools platform</div>
-      <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and B73 v5 coordinates.</p>
+      <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and the Fusarium reference coordinates.</p>
     </div>`;
 }
 

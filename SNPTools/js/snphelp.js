@@ -18,18 +18,18 @@ const SNPHelp = (function () {
   const PAGES = [
     { id:'snpversity', name:'SNPVersity', icon:'dna', color:'#2563eb', status:LIVE,
       tag:'Build a variant view across accessions',
-      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or a B73 v5 gene model ID), and pick the accessions you want. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included.',
+      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or an FGSG / FVEG / FVERT4 gene model ID), and pick the accessions you want. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included.',
       give:'A dataset, a region or gene, and a set of accessions.',
       get:'A genotype table and a VCF. From here, "Send selection to…" hands the same result to any other tool.' },
-    { id:'snptrait', name:'SNPTrait', icon:'leaf', color:'#1f8a4c', status:SOON,
-      tag:'Connect variation to traits',
-      what:'Links genomic variation to phenotype and trait records from the National Germplasm collection. Search, sort, and filter accessions by trait values and metadata, then move a selected set straight into SNPVersity and the rest of the suite.',
-      give:'Trait, phenotype, or metadata filters across 20,000+ accessions.',
-      get:'A shortlisted set of lines you can hand off to the genomic tools.' },
+    { id:'snptrait', name:'SNPTrait', icon:'leaf', color:'#1f8a4c', status:LIVE,
+      tag:'Strain Selector — pick isolates by metadata',
+      what:'An interactive catalogue of the isolates in a dataset, grouped by population structure. Filter by population, species, host, chemotype, or country (rich metadata is available for F. graminearum), batch-select, then send the selected isolates straight to SNPVersity to build a VCF.',
+      give:'A dataset and metadata filters over its isolates.',
+      get:'A selected set of isolates handed to SNPVersity, also exportable as CSV / JSON.' },
     { id:'snpimpact', name:'SNPImpact', icon:'star', color:'#7c3aed', status:LIVE,
       tag:'Rank candidate variants',
-      what:'Prioritizes the variants in a region regardless of which accessions you picked. It orders them by an AI-based score (PlantCAD DNA-model and ESM protein-model predictions) combined with predicted consequence and Pfam domain annotation, so likely causal changes rise to the top. Filter by consequence, priority, score, or domain, and flag a shortlist.',
-      give:'A region sent from SNPVersity (accessions are ignored here).',
+      what:'Prioritizes the variants in a region regardless of which accessions you picked. It orders them by AI variant-effect scores (DNA models FunDLM and EVO2, protein models ESM1/ESM2/ESM3/ESM-C) combined with predicted consequence and Pfam domain annotation, so likely causal changes rise to the top. Filter by consequence, priority, score, or domain, and flag a shortlist.',
+      give:'A region — queried directly in SNPImpact (reference + interval or a gene model), or sent over from SNPVersity. Accessions are ignored here.',
       get:'A ranked, filterable variant table and a shortlist of candidate alleles.' },
     { id:'snpfunction', name:'SNPFunction', icon:'func', color:'#2563eb', status:LIVE,
       tag:'Gene function & allele mining',
@@ -46,52 +46,32 @@ const SNPHelp = (function () {
       what:'Builds a local phylogenetic tree from the genotype matrix already in memory, using identity-by-state distances (UPGMA / neighbour-joining). Useful for reading haplotype structure, introgression, and how lines cluster in a region.',
       give:'A SNPVersity result set (up to 250 accessions before a warning).',
       get:'An interactive tree, downloadable as Newick, MEGA, or PHYLIP.' },
-    { id:'snpmatrix', name:'SNPMatrix', icon:'grid', color:'#b45309', status:LIVE,
-      tag:'Pairwise distance matrix',
-      what:'Computes the pairwise identity-by-state distance among your selected accessions and draws it as a heatmap. Reorder by input order or by clustering, switch between IBS distance and % identity, and color rows by bioproject.',
-      give:'A SNPVersity result set (up to 400 accessions before a warning).',
-      get:'A heatmap plus downloads: CSV distance matrix, PHYLIP, PNG, and SVG.' },
-    { id:'snpimpute', name:'SNPImpute', icon:'impute', color:'#0891b2', status:SOON,
-      tag:'Impute sequence & function',
-      what:'Pan-genome\u2013guided imputation that fills missing genotypes and carries functional predictions through, across light and deep sequencing depths.',
-      give:'A genotype set with missing calls.',
-      get:'Imputed genotypes with function predictions.' },
     { id:'snpfold', name:'SNPFold', icon:'fold', color:'#be185d', status:LIVE,
       tag:'Variants on protein structure',
       what:'Maps coding variants onto predicted protein structure. A linear protein browser aligns variants with Pfam domains, secondary structure, and per-residue pLDDT confidence; an on-demand 3D viewer shows the fold colored by confidence, domain, or impact; and a per-variant readout interprets each change (domain, local confidence, secondary structure, predicted \u0394\u0394G).',
       give:'A gene with an available structure model.',
       get:'A structure-aware, per-variant interpretation of coding changes.' },
     { id:'paneffect', name:'PanEffect', icon:'effect', color:'#b45309', status:LIVE,
-      tag:'Missense effects across the pan-genome',
-      what:'Visualizes the predicted effect of every possible amino-acid substitution across a protein using ESM protein-language-model scores. A B73 reference view and a pan-genome view each show a full-length substitution heatmap with a zoomable window, aligned to Pfam domains and predicted secondary structure; the pan-genome view adds the natural variation seen across the maize assemblies, colored by heterotic group. Choose a gene model and an ESM model, or arrive from SNPVersity or SNPFold on a specific missense call and that substitution is highlighted in the MaizeGDB 2026 view.',
-      give:'A gene model and an ESM model (ESM1 / ESM2 / ESM3); optionally a missense variant handed off from another tool.',
-      get:'B73 and pan-genome substitution heatmaps with domain and secondary-structure context, plus a downloadable per-variant effects file.' },
-    { id:'snpdensity', name:'SNPDensity', icon:'density', color:'#9333ea', status:SOON,
-      tag:'Density & burden',
-      what:'Measures SNP and INDEL density, burden, and distribution across genes and regions to highlight mutational load, constraint, and diversification.',
-      give:'A region or gene set.',
-      get:'Density tracks and burden summaries.' },
-    { id:'snpgermplasm', name:'SNPGermplasm', icon:'germ', color:'#16a34a', status:SOON,
-      tag:'Collection management',
-      what:'Applies genotype-driven analytics to germplasm management, identifying redundancy, uniqueness, and priority materials for curation and deployment.',
-      give:'A collection of accessions.',
-      get:'Redundancy, uniqueness, and priority flags.' },
+      tag:'Missense effects across a protein',
+      what:'Visualizes the predicted effect of every possible amino-acid substitution across a protein using ESM protein-language-model scores, aligned to Pfam domains and predicted secondary structure. The PanEffect engine has not yet been ported to the Fusarium references and is on the roadmap.',
+      give:'A gene model and an ESM model.',
+      get:'A full-length substitution-effect heatmap with domain and secondary-structure context.' },
   ];
 
   /* ---- glossary ---- */
   const GLOSSARY = [
-    ['B73 RefGen v5', 'Every coordinate, gene model, and annotation in the suite is anchored to the B73 version 5 maize reference genome.'],
-    ['Genotype dosage', 'Each call is read as 0 (0/0, reference), 1 (heterozygous), or 2 (1/1, alternate homozygous). Missing calls (./.) are left out of a comparison rather than counted as a match.'],
+    ['Reference genomes', 'Coordinates, gene models, and annotations are anchored to one of three Fusarium references: F. graminearum PH-1 (FGSG, chr1-chr4, 36.4 Mb, 512 isolates), F. verticillioides 7600 (FVEG, chr1-chr11, 41.1 Mb, 113 isolates), and F. verticillioides MRC826 (FVERT4, chr1-chr12, 42.9 Mb, 113 isolates).'],
+    ['Genotype (haploid)', 'Fusarium isolates are haploid, so each call is a single allele: 0 (reference), a non-zero index (an alternate allele), or missing (shown as N). There is no heterozygous state. Missing calls are left out of a comparison rather than counted as a match.'],
     ['IBS distance / % identity', 'Identity-by-state compares two accessions site by site over the calls they share. Distance is the mean allele difference; % identity is 100 − distance. Used by SNPTree, SNPMatrix, and SNPCompare.'],
     ['Predicted effect & impact', 'Each variant carries a predicted consequence (missense, LOF, splice, indel, synonymous, …) rolled up into an impact tier: HIGH, MODERATE, LOW, or MODIFIER, most severe wins when a site lists several.'],
-    ['PlantCAD score', 'A DNA language-model prediction of how disruptive a change is. MaizeGDB 2026 carries a second-generation PlantCAD2; older datasets carry a single DNA score.'],
-    ['ESM score', 'A protein language-model prediction of the effect of an amino-acid change. MaizeGDB 2026 carries ESM2 and ESM3 alongside the original; older datasets carry a single AA score.'],
+    ['DNA scores (FunDLM, EVO2)', 'Two DNA language-model predictions of how disruptive a nucleotide change is, from the VCF FUNDLM_SCORE and EVO2_SCORE fields. Both abstain on INDELs (shown as N/A). Present for all three references.'],
+    ['Protein scores (ESM1, ESM2, ESM3, ESM-C)', 'Four protein language-model predictions of the effect of an amino-acid change, from the VCF ESM1_SCORE / ESM2_SCORE / ESM3_SCORE / ESMC_SCORE fields. Populated for coding (missense) variants across all three references.'],
     ['MAF', 'Minor allele frequency, the frequency of the less common allele. SNPVersity can filter a region by a minimum MAF.'],
     ['Pfam domain', 'When a variant falls inside a known protein domain, that domain is shown and linked to InterPro. Domain annotation is still being loaded for some regions, where it reads as \u2014.'],
     ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection.'],
-    ['Gene Ontology (GO)', 'Standardized terms describing a gene product\u2019s biological process, molecular function, and cellular component. SNPFunction groups them by aspect and tags each by source: MaizeGDB and UniProt are curated, InterPro2GO is predicted from domains.'],
-    ['Curated vs predicted', 'Annotation provenance. Curated evidence (MaizeGDB, UniProt) is human-reviewed; predicted evidence (InterPro / InterPro2GO) is inferred from protein domains. SNPFunction labels each description and GO term accordingly and can hide predicted-only terms.'],
-    ['Heterotic group', 'A maize breeding classification (stiff-stalk, non-stiff-stalk, Iodent, Lancaster, tropical, teosinte, and others). PanEffect colors the pan-genome rows by the assembly\u2019s heterotic group.'],
+    ['Gene Ontology (GO)', 'Standardized terms describing a gene product\u2019s biological process, molecular function, and cellular component. SNPFunction groups them by aspect and tags each by source: UniProt is curated; InterPro2GO is predicted from domains.'],
+    ['Curated vs predicted', 'Annotation provenance. Curated evidence (UniProt and curated sources) is human-reviewed; predicted evidence (InterPro / InterPro2GO) is inferred from protein domains. SNPFunction labels each description and GO term accordingly and can hide predicted-only terms.'],
+    ['Population structure', 'F. graminearum isolates are grouped into population-structure clusters: NA1, NA2, NA3, Admixture, Outgroups, and Unknown. SNPTrait and the accession picker group and colour isolates by these.'],
   ];
 
 
@@ -101,31 +81,31 @@ const SNPHelp = (function () {
    */
   const DEFINITIONS = [
     { tool:'Shared terms', color:'#64748b', items:[
-      ['Accession', 'A named maize line, sample, or sequencing run represented by one genotype column.'],
-      ['Allele', 'One observed DNA state at a genomic position. REF is the B73 v5 reference allele; ALT is an alternate allele.'],
-      ['Variant', 'A genomic position where at least one accession differs from the B73 v5 reference.'],
+      ['Accession', 'A Fusarium isolate (or sequencing run) represented by one genotype column.'],
+      ['Allele', 'One observed DNA state at a genomic position. REF is the reference-genome allele; ALT is an alternate allele.'],
+      ['Variant', 'A genomic position where at least one isolate differs from the reference genome.'],
       ['SNP', 'Single-nucleotide polymorphism: a one-base substitution.'],
       ['INDEL', 'Insertion or deletion relative to the reference sequence.'],
-      ['Gene model', 'The B73 v5 identifier and annotated exon, intron, CDS, and transcript structure assigned to a gene.'],
+      ['Gene model', 'The reference gene-model identifier (FGSG / FVEG / FVERT4) and its annotated exon, intron, CDS, and transcript structure.'],
       ['Consequence / Effect', 'The predicted molecular result of a variant, such as synonymous, missense, splice-site, frameshift, stop gained, or intronic.'],
       ['Impact', 'A broad severity class assigned from the consequence: HIGH, MODERATE, LOW, or MODIFIER.'],
       ['Priority', 'The SNPTools ranking tier (TOP, HIGH, MODERATE, or LOW) produced by combining consequence, model scores, and domain context.'],
       ['Domain', 'A Pfam-annotated protein domain overlapping the affected residue; — means no loaded domain hit.'],
-      ['Het', 'Heterozygous: the accession carries one reference and one alternate allele, usually displayed as 0/1 or 1/0.'],
-      ['Hom', 'Alternate homozygous: the accession carries two alternate alleles, displayed as 1/1.'],
-      ['Missing / ./.', 'No usable genotype call. Missing calls are excluded from pairwise similarity calculations.'],
+      ['Het', 'Heterozygous state — not applicable to Fusarium. Isolates are haploid, so each genotype is a single allele (0 or an alternate index). The SNPFunction Het column reads 0 for these datasets.'],
+      ['Hom', 'For haploid Fusarium isolates this is simply the count of isolates carrying an alternate allele (there is no true homozygous state).'],
+      ['Missing / ./.', 'No usable genotype call (shown as N). Missing calls are excluded from pairwise similarity calculations.'],
       ['AF', 'Alternate-allele frequency: the frequency of the ALT allele among called chromosomes in the analyzed panel.'],
       ['MAF', 'Minor-allele frequency: the frequency of the less common allele, constrained to 0–0.5.'],
       ['Carrier', 'An accession with at least one copy of the alternate allele.'],
       ['Co-called sites', 'Sites where both accessions in a pair have non-missing genotype calls.'],
-      ['B73 RefGen v5', 'The maize reference assembly used for coordinates, REF alleles, gene models, and annotations throughout SNPTools.'],
+      ['Reference genome', 'The Fusarium reference assembly (PH-1, 7600, or MRC826) used for coordinates, REF alleles, gene models, and annotations throughout SNPTools.'],
     ]},
     { tool:'SNPVersity', color:'#2563eb', items:[
       ['CHR', 'Reference chromosome containing the variant.'],
-      ['POS', 'One-based genomic coordinate on B73 v5.'],
-      ['REF', 'Reference allele in B73 v5.'],
+      ['POS', 'One-based genomic coordinate on the reference genome.'],
+      ['REF', 'Reference allele in the reference genome.'],
       ['ALT', 'Alternate allele represented by the row.'],
-      ['Gene model', 'B73 v5 gene model overlapping or associated with the variant.'],
+      ['Gene model', 'Reference gene model overlapping or associated with the variant.'],
       ['Effect', 'Predicted variant consequence from the annotation source.'],
       ['Impact', 'Predicted severity category: HIGH, MODERATE, LOW, or MODIFIER.'],
       ['Domain', 'Pfam protein domain overlapping the affected coding residue, when available.'],
@@ -133,9 +113,9 @@ const SNPHelp = (function () {
       ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
       ['maxR²', 'Maximum linkage-disequilibrium r² used by the dataset filter or imputation-quality workflow; values closer to 1 indicate stronger correlation.'],
       ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
-      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores. PlantCAD2 is available for MaizeGDB 2026 datasets. More extreme disruptive scores are prioritized according to the score convention used by the data pipeline.'],
-      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions. ESM2 and ESM3 are available for MaizeGDB 2026 datasets.'],
-      ['Accession genotype columns', 'Each accession column shows its genotype at the site: 0/0 reference homozygous, 0/1 heterozygous, 1/1 alternate homozygous, or ./. missing.'],
+      ['FunDLM / EVO2', 'The two DNA language-model variant scores (VCF FUNDLM_SCORE / EVO2_SCORE). More extreme scores are more disruptive; both abstain on INDELs.'],
+      ['ESM1 / ESM2 / ESM3 / ESM-C', 'The four protein language-model scores for amino-acid substitutions (VCF ESM1_SCORE / ESM2_SCORE / ESM3_SCORE / ESMC_SCORE), populated for coding variants.'],
+      ['Isolate genotype columns', 'Each isolate column shows its haploid genotype at the site: 0 reference (green), a non-zero allele index (orange), or N missing (grey).'],
       ['Dataset', 'A defined variant collection with its own accession panel, filters, included variant types, and score columns.'],
       ['Sites', 'Number of variant positions in the complete dataset, not necessarily the number returned by the current query.'],
       ['Imputed', 'Whether missing genotypes were statistically inferred in that dataset.'],
@@ -145,8 +125,8 @@ const SNPHelp = (function () {
       ['Variant', 'Genomic change, generally shown as position and REF→ALT alleles.'],
       ['Consequence', 'Specific predicted molecular consequence of the change.'],
       ['Domain', 'Pfam domain containing the affected amino acid, when present.'],
-      ['PlantCAD1 / PlantCAD2', 'DNA language-model scores used to estimate regulatory or sequence disruption.'],
-      ['ESM / ESM2 / ESM3', 'Protein language-model scores used to estimate the effect of an amino-acid substitution.'],
+      ['FunDLM / EVO2', 'The two DNA language-model scores used to estimate sequence disruption (abstain on INDELs).'],
+      ['ESM1 / ESM2 / ESM3 / ESM-C', 'The four protein language-model scores used to estimate the effect of an amino-acid substitution.'],
       ['Priority', 'Integrated candidate tier. TOP is the strongest prioritization, followed by HIGH, MODERATE, and LOW.'],
       ['Shortlist / flag', 'A user-selected marker for retaining a candidate variant for later review or export.'],
       ['Gene-model diagram', 'A compact display of exons, introns, coding sequence, strand, and the variant position.'],
@@ -162,30 +142,30 @@ const SNPHelp = (function () {
       ['Exon : intron', 'The number or ratio of variants in annotated exons to variants in introns of the gene model. Infinity (∞) means exon variants were observed but no intron variants were counted.'],
       ['Domain-disrupting', 'Coding variants that alter an amino acid located inside an annotated Pfam domain.'],
       ['Knockout alleles', 'Alleles predicted to strongly disrupt gene function, such as frameshift, stop-gained, essential splice, or other loss-of-function changes.'],
-      ['Mean PlantCAD1 / Mean PlantCAD2', 'Average DNA language-model score across the gene variants included in the burden summary.'],
-      ['Mean ESM / Mean ESM2 / Mean ESM3', 'Average protein language-model score across scored amino-acid-changing variants in the gene.'],
+      ['Mean FunDLM / Mean EVO2', 'Average DNA language-model score across the gene variants included in the burden summary.'],
+      ['Mean ESM1 / ESM2 / ESM3 / ESM-C', 'Average protein language-model score across scored amino-acid-changing variants in the gene.'],
       ['Allele', 'The specific genomic REF→ALT change represented by a damaging-allele row.'],
       ['Consequence', 'Predicted molecular effect of that allele.'],
       ['Domain', 'Pfam domain overlapping the affected residue.'],
-      ['PlantCAD1 / PlantCAD2', 'DNA language-model score for the allele.'],
-      ['ESM / ESM2 / ESM3', 'Protein language-model score for the resulting amino-acid change.'],
+      ['FunDLM / EVO2', 'DNA language-model scores for the allele.'],
+      ['ESM1 / ESM2 / ESM3 / ESM-C', 'Protein language-model scores for the resulting amino-acid change.'],
       ['Priority', 'Integrated SNPTools evidence tier for the allele.'],
       ['Het', 'Number of accessions carrying the allele heterozygously.'],
       ['Hom', 'Number of accessions carrying the allele as alternate homozygous.'],
       ['AF', 'Alternate-allele frequency across the whole analyzed panel.'],
       ['Variant burden', 'The count and composition of variants assigned to the gene across the full dataset panel.'],
       ['Damaging allele', 'An allele selected because its consequence and/or prediction scores indicate a potentially important functional effect.'],
-      ['Functional annotation', 'A per-gene dossier assembled for the 39,756 canonical B73 v5 gene models: identity, description, protein domains, Gene Ontology, pathways, and cross-references.'],
+      ['Functional annotation', 'A per-gene dossier: identity, description, protein domains, Gene Ontology, pathways, and cross-references, where the reference annotation provides them.'],
       ['Gene symbol / aliases', 'The primary gene symbol and any additional names or synonyms recorded for the model.'],
-      ['Description source', 'Provenance of the functional description, shown as a badge: MaizeGDB (curated), UniProt, InterPro (predicted from domains), or no informative source.'],
+      ['Description source', 'Provenance of the functional description, shown as a badge: curated (UniProt and curated sources), InterPro (predicted from domains), or no informative source.'],
       ['Evidence chips', 'An at-a-glance row of what is annotated for the gene: GO, Pfam, KEGG KO, Pathway, UniProt, Symbol.'],
       ['Protein domain architecture', 'A to-scale diagram of the protein with Pfam domains as positioned blocks, plus a list giving Pfam and InterPro IDs, residue span, percent of protein covered, and InterProScan E-value.'],
       ['Gene Ontology (BP / MF / CC)', 'GO terms grouped by aspect — Biological process, Molecular function, Cellular component — each linking out to AmiGO.'],
-      ['GO source (MaizeGDB / UniProt / InterPro2GO)', 'Provenance of each GO term. MaizeGDB and UniProt are curated; InterPro2GO is predicted from protein domains.'],
+      ['GO source (UniProt / InterPro2GO)', 'Provenance of each GO term. UniProt and curated sources are human-reviewed; InterPro2GO is predicted from protein domains.'],
       ['Curated only', 'A toggle that hides GO terms supported only by prediction (InterPro2GO), leaving curated evidence.'],
       ['Obsolete term', 'A GO term whose status is no longer current; it is retained but flagged.'],
       ['KEGG orthology (KO) / Pathways', 'KEGG orthology assignments, pathway memberships, and KEGG gene IDs, where the gene cross-references to UniProt or Entrez.'],
-      ['Cross-references', 'External identifiers for the gene: UniProt, NCBI Gene, and B73 v4 / v3 gene models.'],
+      ['Cross-references', 'External identifiers for the gene: UniProt, NCBI Gene, and FungiDB.'],
       ['Annotation build', 'The build date, assembly, and annotation version the functional record was generated from.'],
     ]},
     { tool:'SNPCompare', color:'#0e7490', items:[
@@ -207,7 +187,7 @@ const SNPHelp = (function () {
       ['Both', 'Side-by-side display of global and local values plus their difference.'],
     ]},
     { tool:'SNPTree', color:'#15803d', items:[
-      ['IBS allele distance', 'Mean pairwise allele-dosage difference across co-called sites. Identical genotypes contribute 0, opposite homozygotes 1, and a homozygote-versus-heterozygote comparison 0.5.'],
+      ['IBS allele distance', 'Mean pairwise allele difference across co-called sites. For haploid isolates, two isolates with the same allele contribute 0 and different alleles contribute 1 (there is no half-step heterozygous comparison).'],
       ['Informative sites', 'Variant sites that contain more than one observed genotype state among the selected accessions.'],
       ['Shared sites', 'Sites with non-missing calls for both accessions in a pair.'],
       ['UPGMA', 'Unweighted Pair Group Method with Arithmetic Mean, an agglomerative clustering method that assumes an ultrametric tree.'],
@@ -235,10 +215,10 @@ const SNPHelp = (function () {
       ['Consequence', 'Predicted molecular effect of the coding change.'],
       ['Residue', 'One-based amino-acid position in the displayed protein sequence.'],
       ['Domain', 'Pfam domain overlapping the residue.'],
-      ['Local pLDDT', 'AlphaFold confidence score near the affected residue, from 0 to 100. Higher values indicate greater confidence in the local predicted structure.'],
+      ['Local pLDDT', 'Predicted-structure confidence near the affected residue, from 0 to 100, from the loaded model (Boltz2 or ESMFold). Higher values indicate greater confidence in the local fold.'],
       ['Structure', 'DSSP-style secondary-structure assignment at the residue: α-helix, β-strand, or loop/coil.'],
-      ['PlantCAD / PlantCAD2', 'DNA language-model scores for the underlying nucleotide variant.'],
-      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for the amino-acid substitution.'],
+      ['FunDLM / EVO2', 'DNA language-model scores for the underlying nucleotide variant.'],
+      ['ESM1 / ESM2 / ESM3 / ESM-C', 'Protein language-model scores for the amino-acid substitution.'],
       ['IUPred2', 'Predicted intrinsic disorder at the residue, from 0 to 1 (IUPred2). Higher values mean the residue is more likely to be intrinsically disordered than to adopt a fixed fold.'],
       ['Anchor2', 'Predicted probability (0 to 1) that a disordered residue lies in a protein-binding region (ANCHOR2). Higher values flag disordered segments likely to become ordered upon binding a partner.'],
       ['Activity', 'Annotated functional site overlapping the residue, drawn from InterProScan member databases (for example an active site, binding site, or conserved functional feature), when present.'],
@@ -258,17 +238,17 @@ const SNPHelp = (function () {
       ['SFLD (Structure–Function Linkage Database)', 'The Structure–Function Linkage Database links protein structural features to specific chemical functions and contributes conserved functional-site residues, chiefly for enzyme superfamilies.'],
     ]},
     { tool:'PanEffect', color:'#b45309', items:[
-      ['B73 Reference View', 'The substitution heatmap computed on the B73 v5 protein: every residue (columns) against all 20 possible amino acids (rows).'],
-      ['Pan-genome View', 'The same substitution heatmap projected onto a protein multiple-sequence alignment across the maize assemblies, so natural variation and its predicted effect can be read together. Available for canonical transcripts.'],
+      ['Reference View', 'The substitution heatmap computed on the reference protein: every residue (columns) against all 20 possible amino acids (rows).'],
+      ['Pan-genome View', 'The same substitution heatmap projected onto a protein multiple-sequence alignment across related assemblies, so natural variation and its predicted effect can be read together. Available for canonical transcripts.'],
       ['ESM score', 'A protein-language-model estimate of how tolerated an amino-acid substitution is; more negative is more disruptive.'],
       ['ESM model (ESM1 / ESM2 / ESM3)', 'The protein language model used to score substitutions, selectable in the panel.'],
       ['Substitution heatmap', 'A per-residue grid colored by predicted effect. Hover a cell to read the position, wild-type → substitution, and score.'],
       ['Zoomed region', 'A 50-residue window of the full heatmap, positioned with the slider, showing per-cell substitution letters and the wild-type residue track.'],
-      ['MaizeGDB 2026 view', 'Colors the B73 heatmap using substitutions observed in the MaizeGDB 2026 High-Coverage set. Hand-offs from SNPVersity or SNPFold open in this view; "Show all variant effects" colors every possible substitution.'],
+      ['Observed-variants view', 'Colors the reference heatmap using substitutions observed in the dataset. Hand-offs from SNPVersity or SNPFold open in this view; "Show all variant effects" colors every possible substitution.'],
       ['PFAM Domains track', 'Pfam domains drawn to scale along the protein and linked to InterPro, shared with the SNPFold and SNPFunction views.'],
       ['Secondary structure', 'Predicted per-residue secondary structure (helix / strand / coil) drawn above the heatmap for context.'],
-      ['Species / Gene model', 'In the pan-genome zoomed view, switches the row labels between assembly (species) names and their gene-model IDs.'],
-      ['Heterotic group color', 'Pan-genome rows are colored by the assembly\u2019s heterotic group (stiff-stalk, non-stiff-stalk, Iodent, Lancaster, tropical, teosinte, and others).'],
+      ['Species / Gene model', 'In a pan-genome view, switches the row labels between assembly (species) names and their gene-model IDs.'],
+      ['Row grouping color', 'In a pan-genome view, rows can be colored by grouping metadata for the assemblies.'],
       ['Variant effects file', 'The per-substitution ESM score table for the gene, downloadable from the summary.'],
     ]},
     { tool:'Dataset table', color:'#475569', items:[
@@ -293,13 +273,13 @@ const SNPHelp = (function () {
     ['Why did a wide region give me a download instead of a table?',
      'Regions larger than one million bases skip the in-browser table and return a downloadable VCF instead, so the page stays responsive. Narrow the interval to get the interactive table back.'],
     ['Why are some cells \u2014 or N/A?',
-     'A \u2014 in a domain column means Pfam annotation for that position hasn\u2019t been loaded yet. Blank second-generation scores (PlantCAD2, ESM2, ESM3) mean the dataset is not MaizeGDB 2026 — only that family carries them. MQ and coverage read N/A when the source didn\u2019t record them.'],
+     'A \u2014 in a domain column means Pfam annotation for that position hasn\u2019t been loaded yet. The DNA scores (FunDLM, EVO2) read N/A on INDELs, and the protein scores (ESM1/ESM2/ESM3/ESM-C) are only defined for coding (missense) changes, so they are blank on non-coding or intergenic sites. MQ and coverage read N/A when the source didn\u2019t record them.'],
     ['Is there a limit on how many accessions I can compare?',
      'The distance tools warn before doing very large computations in the browser: SNPTree above 250 accessions and SNPMatrix above 400. You can build anyway, it just may be slow. SNPImpact renders up to 1,500 variants at a time.'],
     ['What can I download?',
      'A VCF from SNPVersity; a CSV distance matrix, PHYLIP, PNG, and SVG from SNPMatrix; Newick, MEGA, and PHYLIP trees from SNPTree. Comparison and impact tables can be exported from their own pages.'],
     ['Which tools are ready to use now?',
-     'SNPVersity, SNPImpact, SNPFunction, SNPCompare, SNPTree, SNPMatrix, SNPFold, and PanEffect are live. SNPTrait, SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap and marked in development in the sidebar.'],
+     'SNPVersity, SNPImpact, SNPFunction, SNPCompare, SNPTree, SNPMatrix, SNPFold, and SNPTrait are live. PanEffect, SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap and marked in development in the sidebar.'],
   ];
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -329,124 +309,65 @@ const SNPHelp = (function () {
         <th>Dataset</th><th>Reference</th><th>Accessions</th><th>Sites</th>
         <th>Filters</th><th>Het</th><th>INDELs</th><th>Imputed</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hp-fine">Accessions are grouped into families (MaizeGDB 2026, MaizeGDB 2024, Schnable 2023, NAM 2021). Only the <b>MaizeGDB 2026</b> family carries the second-generation language-model scores (PlantCAD2, ESM2, ESM3); the others provide a single DNA score and a single protein score.</p>`;
+      <p class="hp-fine">Isolates are grouped by reference genome — F. graminearum (FGSG), F. verticillioides 7600 (FVEG), and F. verticillioides MRC826 (FVERT4) — and, for F. graminearum, by population structure (NA1, NA2, NA3, Admixture, Outgroups, Unknown). Every dataset carries six AI variant-effect scores: two DNA language models (FunDLM, EVO2) and four protein language models (ESM1, ESM2, ESM3, ESM-C). Site counts are the complete per-genome totals across all chromosomes.</p>`;
   }
 
-  /* ---- in-depth MaizeGDB 2026 dataset description ---- */
-  const MGDB2026_PROJECTS = [
-    [539,'PRJCA009749','WGS resequencing of 1,604 maize inbred lines','10.1038/s41477-022-01190-2'],
-    [521,'PRJNA531553','Deep DNA resequencing of the association mapping panel','10.1038/s41588-019-0427-6'],
-    [453,'PRJNA609577','Zea mays genome sequencing','10.1038/s41588-020-0671-9'],
-    [340,'PRJNA783885','Maize landrace whole-genome resequencing','10.1038/s41467-022-32180-9'],
-    [232,'PRJEB56320','Maize Wisconsin Diversity Panel resequencing','10.1111/tpj.16123'],
-    [183,'PRJEB56320','Zea mays sequences (teosinte)','10.1038/s41588-022-01184-y'],
-    [77,'PRJNA641489','Maize Nested Association Mapping (NAM)','10.1126/science.abg5289'],
-    [76,'PRJEB31061','Maize Haplotype Map version 3','10.1093/gigascience/gix134'],
-    [67,'PRJNA399729','Maize landraces from six highland and lowland populations','10.1093/gigascience/gix134'],
-    [67,'PRJNA300309','European maize diversity','10.1371/journal.pgen.1006666'],
-    [57,'PRJNA783885','Genetic diversity of Zea (teosinte)','10.1038/ng.2313'],
-    [49,'PRJNA389800','Whole-genome sequencing of the maize 282 panel','10.1093/gigascience/gix134'],
-    [33,'PRJNA260788','European maize genomes','10.1038/s41588-020-0671-9'],
-    [7,'PRJNA479960','South American maize genome sequencing','10.1126/science.aav0207'],
-    [4,'PRJEB32225','Zm-B73-REFERENCE-NAM-5.0','10.1126/science.abg5289'],
-    [3,'PRJEB56265','Resequencing of three Polish maize inbred lines','10.1111/tpj.16123'],
-    [1,'PRJEB61159','Coastal preceramic maize from Paredones, Peru','10.7554/eLife.83149'],
-    [1,'PRJNA352392','A 5,310-year-old maize cob from the Tehuacan Valley, Mexico','10.1016/j.cub.2016.09.036']
-  ];
-
-  const MGDB2026_EFFECTS = [
-    ['Intergenic',274890726,90284097],
-    ["5' UTR",836712,398940],
-    ['Synonymous',1409639,670709],
-    ['Missense',1767459,747451],
-    ['Stop-related',84653,26405],
-    ['Frameshift',222401,71174],
-    ['Intron',12043697,5916121],
-    ['Non-coding',6777,3133],
-    ["3' UTR",1231422,640830],
-    ['Other',120889,46629],
-    ['Total',290043644,97572347]
-  ];
-
-  const MGDB2026_CHR = [
-    ['Chr1',308452471,51382911,41928591,14262099],
-    ['Chr2',243675191,40457547,32643386,11008991],
-    ['Chr3',238017767,39598148,32693292,10861052],
-    ['Chr4',250330460,42142813,35830675,12496251],
-    ['Chr5',226353449,36679188,30747268,10298954],
-    ['Chr6',181357234,28914586,23742034,8001535],
-    ['Chr7',185808916,30391975,24862777,8231456],
-    ['Chr8',182411202,29883638,24964435,8054636],
-    ['Chr9',163004744,26922259,21747152,7278487],
-    ['Chr10',152435371,25319421,20883764,7078616],
-    ['Total',2131846805,351692486,290043374,97572077]
-  ];
 
   function fmtInt(n){ return Number(n).toLocaleString('en-US'); }
 
-  function maize2026Details(){
-    const projects = MGDB2026_PROJECTS.map(r=>`<tr>
-      <td class="hp-num">${fmtInt(r[0])}</td>
-      <td class="hp-mono">${esc(r[1])}</td>
-      <td>${esc(r[2])}</td>
-      <td class="hp-mono">${esc(r[3])}</td>
-    </tr>`).join('');
-
-    const effects = MGDB2026_EFFECTS.map((r,i)=>`<tr${i===MGDB2026_EFFECTS.length-1?' class="hp-total"':''}>
-      <td>${esc(r[0])}</td><td class="hp-num">${fmtInt(r[1])}</td><td class="hp-num">${fmtInt(r[2])}</td>
-    </tr>`).join('');
-
-    const chr = MGDB2026_CHR.map((r,i)=>`<tr${i===MGDB2026_CHR.length-1?' class="hp-total"':''}>
-      <td class="hp-mono">${esc(r[0])}</td><td class="hp-num">${fmtInt(r[1])}</td>
-      <td class="hp-num">${fmtInt(r[2])}</td><td class="hp-num">${fmtInt(r[3])}</td><td class="hp-num">${fmtInt(r[4])}</td>
-    </tr>`).join('');
-
+  function fusariumDatasetDetails(){
     return `
         <br>
       <details class="hp-data-detail" open>
-        <summary><b>MaizeGDB 2026 dataset: composition, processing, and scale</b><span class="hp-chev">${ico('caret')}</span></summary>
+        <summary><b>Fusarium datasets: references, populations, and processing</b><span class="hp-chev">${ico('caret')}</span></summary>
         <div class="hp-data-body">
-          <p>The MaizeGDB 2026 resource combines public whole-genome resequencing from <b>2,710 maize accessions</b>, including diverse inbred lines, landraces, teosintes, association panels, NAM founders and related materials, and several historically important samples. All reads were processed through a standardized variant-calling workflow against <b>B73 RefGen_v5</b>, so coordinates, reference alleles, gene models, and downstream annotations use one common reference system.</p>
+          <p>SNPTools for Fusarium serves variant data for three reference genomes. Pick the reference that matches the
+             isolates you want to study; gene-model IDs and coordinates are specific to each reference.</p>
 
-          <h3>How the two MaizeGDB 2026 datasets differ</h3>
           <div class="hp-comparegrid">
-            <div class="hp-dcard"><b>High Coverage</b><p>Contains approximately 290 million loci that passed mapping-quality and genotypic-coverage requirements. This version retains broader variation and is useful when sensitivity and variant discovery are the main goals.</p></div>
-            <div class="hp-dcard"><b>High Quality</b><p>Contains approximately 98 million loci. It applies the same mapping-quality and coverage filters plus an additional high-confidence linkage-disequilibrium criterion. This more conservative set is useful when specificity and confidence are priorities.</p></div>
+            <div class="hp-dcard"><b>F. graminearum PH-1 (2026)</b><p><span class="hp-mono">FGSG_</span> gene models across chr1&ndash;chr4 (36.4 Mb). <b>512 isolates</b>, grouped by population structure (NA1, NA2, NA3, Admixture, Outgroups, Unknown). Variants: <b>2,485,599</b> High Coverage (2,339,005 SNPs + 146,594 INDELs), <b>2,126,508</b> High Quality (111,754 SNPs + 8,636 INDELs).</p></div>
+            <div class="hp-dcard"><b>F. verticillioides 7600</b><p><span class="hp-mono">FVEG_</span> gene models across chr1&ndash;chr11 (41.1 Mb). <b>113 isolates</b>. Variants: <b>1,227,771</b> High Coverage (1,139,829 SNPs + 87,942 INDELs), <b>937,497</b> High Quality (872,140 SNPs + 65,357 INDELs).</p></div>
+            <div class="hp-dcard"><b>F. verticillioides MRC826</b><p><span class="hp-mono">FVERT4_</span> gene models across chr1&ndash;chr12 (42.9 Mb). <b>113 isolates</b>. Variants: <b>1,402,131</b> High Coverage (1,304,907 SNPs + 97,224 INDELs), <b>1,064,463</b> High Quality (990,183 SNPs + 74,280 INDELs).</p></div>
           </div>
-          <p class="hp-fine">“High Coverage” describes the broader filtered set; “High Quality” is the stricter subset. A locus count refers to a genomic variant position in the complete dataset, not the number of rows returned for a particular region or accession selection.</p>
+
+          <h3>High Quality vs High Coverage</h3>
+          <div class="hp-comparegrid">
+            <div class="hp-dcard"><b>High Coverage (HC)</b><p>The broader filtered set (mapping-quality and genotype-coverage requirements). Retains more variation &mdash; useful for discovery and sensitivity.</p></div>
+            <div class="hp-dcard"><b>High Quality (HQ)</b><p>The stricter subset &mdash; the same filters plus a high-confidence linkage-disequilibrium criterion (LD max R&sup2; &gt; 0.5). Useful when specificity and confidence matter most.</p></div>
+          </div>
+          <p class="hp-fine"><b>F. graminearum</b> retains 2,126,508 HQ of 2,485,599 HC sites (~85%), and the two <b>F. verticillioides</b> genomes retain slightly fewer variation (7600: 937,497 of 1,227,771, ~76%; MRC826: 1,064,463 of 1,402,131, ~76%).</p>
+
+          <h3>Haploid genotypes</h3>
+          <p>Fusarium isolates are <b>haploid</b>, so each genotype is a single allele: <b>0</b> is the reference allele
+             (green), any non-zero index is an alternate allele (orange), and a missing or uncalled genotype reads as
+             <b>N</b> (grey). There is no heterozygous state, so the identity-by-state tools (SNPTree, SNPMatrix,
+             SNPCompare) score a site as a full difference when two isolates carry different alleles and as a match
+             otherwise.</p>
 
           <h3>What is stored and displayed</h3>
-          <p>The underlying resource is maintained in VCF and HDF5 forms. SNPVersity sends the selected dataset, genomic interval, and accession list to the server, which extracts the requested slice and returns a VCF. SNPTools then reuses that same genotype matrix in SNPImpact, SNPCompare, SNPTree, SNPMatrix, and related pages. Each site may include REF and ALT alleles, accession genotypes, predicted molecular consequence, gene association, mapping quality, genotype completeness, linkage-disequilibrium support, allele frequency, Pfam domain context, and DNA- or protein-language-model scores when available.</p>
+          <p>The data is maintained as per-chromosome HDF5 stores. SNPVersity sends the selected dataset, genomic
+             interval, and isolate list to the server, which extracts the requested slice and returns a VCF. SNPTools
+             then reuses that same genotype matrix in SNPImpact, SNPCompare, SNPTree, SNPMatrix, and related pages. Each
+             site may include REF and ALT alleles, isolate genotypes, predicted molecular consequence, gene association,
+             mapping quality, genotype completeness, linkage-disequilibrium support (maxR&sup2;), minor-allele frequency,
+             Pfam domain context when available, and six AI variant-effect scores (two DNA and four protein language models).</p>
 
-          <h3>Source projects</h3>
-          <p>The panel was assembled from multiple public projects rather than one experiment. This increases biological and geographic diversity, but it also means sequencing depth, library preparation, and project design can differ among accessions. The standardized alignment, calling, and filtering workflow reduces—though does not completely remove—these study-to-study differences.</p>
-          <div class="hp-tablewrap"><table class="hp-table hp-compact">
-            <thead><tr><th>Accessions</th><th>BioProject</th><th>Project or population</th><th>DOI</th></tr></thead>
-            <tbody>${projects}</tbody>
-          </table></div>
-
-          <h3>Variant-effect composition</h3>
-          <p>Most loci are intergenic because much of the maize genome lies outside annotated coding regions. Coding and gene-associated categories are much smaller but are especially important for SNPImpact, SNPFunction, and SNPFold. “Stop-related” summarizes variants annotated in the source statistics as stop effects; the exact transcript-level consequence shown in a result may be more specific.</p>
-          <div class="hp-tablewrap"><table class="hp-table hp-compact">
-            <thead><tr><th>Effect category</th><th>High Coverage</th><th>High Quality</th></tr></thead>
-            <tbody>${effects}</tbody>
-          </table></div>
-
-          <h3>Distribution by chromosome</h3>
-          <p>Variant counts broadly track chromosome length, although local diversity, repetitive sequence, mappability, selection, and the composition of the accession panel also affect density. “Raw” is the pre-filter total reported in the source summary; the two filtered columns show the successive retained sets.</p>
-          <div class="hp-tablewrap"><table class="hp-table hp-compact">
-            <thead><tr><th>Chromosome</th><th>Length (bp)</th><th>Raw variants</th><th>High Coverage</th><th>High Quality</th></tr></thead>
-            <tbody>${chr}</tbody>
-          </table></div>
+          <h3>Language-model scores</h3>
+          <p>Every dataset carries <b>six</b> AI variant-effect scores. Two are <b>DNA</b> language models &mdash;
+             <b>FunDLM</b> (VCF <span class="hp-mono">FUNDLM_SCORE</span>) and <b>EVO2</b> (<span class="hp-mono">EVO2_SCORE</span>) &mdash;
+             which estimate how disruptive a nucleotide change is and both abstain on INDELs (shown as N/A). Four are
+             <b>protein</b> language models &mdash; <b>ESM1</b>, <b>ESM2</b>, <b>ESM3</b>, and <b>ESM-C</b>
+             (<span class="hp-mono">ESM1_SCORE</span> … <span class="hp-mono">ESMC_SCORE</span>) &mdash; scored for coding
+             (missense) substitutions. SNPImpact/SNPFold/SNPFunction combine the protein models into a composite used for
+             ranking.</p>
 
           <h3>Important interpretation notes</h3>
           <ul class="hp-notes">
-            <li><b>Reference-relative calls:</b> REF and ALT are defined relative to B73 v5; “alternate” does not mean rare, harmful, or derived.</li>
-            <li><b>Accessions are not all independent:</b> some projects include replicates, related lines, founders, or multiple runs. Project and accession metadata should be considered when interpreting similarity.</li>
-            <li><b>Missingness varies:</b> genotype completeness can differ by site and accession. Pairwise tools exclude sites where either member lacks a usable call.</li>
-            <li><b>Consequence is transcript dependent:</b> one genomic variant may receive several annotations when it overlaps multiple transcripts; interfaces generally display the most severe or most relevant consequence.</li>
-            <li><b>Model scores are predictions:</b> PlantCAD and ESM scores prioritize candidates but do not establish biological causality. Use them together with frequency, consequence, domain, structure, phenotype, and experimental evidence.</li>
-            <li><b>Counts can differ slightly among summaries:</b> totals generated at different pipeline stages or from differently normalized records may vary by a small number of sites. The live dataset metadata and downloadable files are authoritative for an analysis.</li>
+            <li><b>Reference-relative calls:</b> REF and ALT are defined relative to each reference genome; &ldquo;alternate&rdquo; does not mean rare, harmful, or derived.</li>
+            <li><b>Isolates are not all independent:</b> collections can include closely related isolates. Population, host, chemotype, and country metadata (available for F. graminearum) should be considered when interpreting similarity.</li>
+            <li><b>Missingness varies:</b> genotype completeness can differ by site and isolate. Pairwise tools exclude sites where either isolate lacks a usable call.</li>
+            <li><b>Consequence is model dependent:</b> one genomic variant may receive several annotations when it overlaps multiple gene models; interfaces generally display the most severe or most relevant consequence.</li>
+            <li><b>Model scores are predictions:</b> the DNA (FunDLM, EVO2) and protein (ESM1/ESM2/ESM3/ESM-C) scores prioritize candidates but do not establish biological causality. Use them together with frequency, consequence, domain, structure, and experimental evidence.</li>
           </ul>
         </div>
       </details>`;
@@ -501,9 +422,9 @@ const SNPHelp = (function () {
 
     page.innerHTML = `
       <section class="hp-hero">
-        <div class="hp-eyebrow">SNPTools · SNPVersity 2.1 · B73 RefGen v5</div>
+        <div class="hp-eyebrow">SNPTools · Fusarium · SNPVersity</div>
         <h1>Help &amp; FAQ</h1>
-        <p>SNPTools is an integrated suite for exploring maize sequence variation. Everything starts from a genomic
+        <p>SNPTools is an integrated suite for exploring Fusarium sequence variation. Everything starts from a genomic
            query and flows between tools without re-running it — this page explains each tool, the datasets behind
            them, and the vocabulary you\u2019ll meet along the way.</p>
         <div class="hp-jump">
@@ -541,10 +462,10 @@ const SNPHelp = (function () {
 
       <section id="hp-data" class="hp-sec">
         <div class="hp-h"><span class="hp-n">03</span><h2>Datasets</h2></div>
-        <p class="hp-lead">Each query runs against one dataset. All are called against the B73 v5 reference; they differ
+        <p class="hp-lead">Each query runs against one dataset. Each is called against its Fusarium reference genome; they differ
           in how they were filtered, how many accessions and sites they hold, and which score columns they carry.</p>
         ${datasetTable()}
-        ${maize2026Details()}
+        ${fusariumDatasetDetails()}
       </section>
 
       <section id="hp-definitions" class="hp-sec">
@@ -566,7 +487,7 @@ const SNPHelp = (function () {
       <section class="hp-foot">
         <div>
           <b>Still stuck?</b>
-          <p>SNPTools is part of MaizeGDB, the Maize Genetics and Genomics Database.</p>
+          <p>SNPTools is developed by MaizeGDB. This build serves Fusarium variant data.</p>
         </div>
         <div class="hp-foot-btns">
           <button class="hp-open" onclick="go('snpversity')">Start in SNPVersity ${ico('caret')}</button>

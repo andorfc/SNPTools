@@ -26,26 +26,117 @@
    * ------------------------------------------------------------------ */
   const PE = {
     cfg: {
-      /* 'native' renders PanEffect directly in the page via PanEffectEngine
-         (paneffect-engine.js). Falls back to 'embed' automatically if that
-         engine isn't loaded. Data is served same-origin from dataBase. */
       engine:     'native',
-      /* local data folder (same-origin) used by BOTH the native engine and
-         the panel's own canonical-transcript check */
-      dataBase:   './paneffect/',
-      /* only used by the 'embed' fallback */
-      baseUrl:    'https://maizegdb.org/effect/maize_v2/index.html',
-      esmModels:  ['ESM1', 'ESM2', 'ESM3'],
+      /* Fusarium PanEffect data is per-genome under ./paneffect/<refDir>/.
+         The reference is chosen from the gene-id prefix (FGSG_/FVEG_/FVERT4_),
+         the same convention SNPFold uses for structures/domains. `dataBase`
+         (state) is set per load; `dataRoot` is the shared parent. */
+      dataRoot:   './paneffect/',
+      refDirs:    { graminearum:'Fgram_ph1', vert7600:'Fvert_7600', vertMRC826:'Fvert_mrc' },
+      refLabels:  { graminearum:'F. graminearum PH-1', vert7600:'F. verticillioides 7600', vertMRC826:'F. verticillioides MRC826' },
+      /* four protein language models; ESM4 = ESM-C (shown as "ESM-C") */
+      esmModels:  ['ESM1', 'ESM2', 'ESM3', 'ESM4'],
+      esmLabel:   { ESM4:'ESM-C' },
       defaultESM: 'ESM2',
-      examples:   ['Zm00001eb260000', 'Zm00001eb268770_T001', 'lg1', 'wx1'],
+      examples:   ['FGSG_00134', 'FVEG_000452', 'FVERT4_000426'],
     },
     /* current panel state; hydrated from S.pe on each render() */
-    state: { gene: '', esm: 'ESM2', option: 'both', variant: null, wgs: null, resolved: null },
+    state: { gene: '', esm: 'ESM2', option: 'both', variant: null, wgs: null, resolved: null,
+             dataBase: './paneffect/Fgram_ph1/', refLabel: '', coverage: 'hq' },
   };
-  PE.cfg.dataBase = PE.cfg.dataBase ||
-    PE.cfg.baseUrl.replace(/[^\/]*$/, '');   /* …/index.html -> …/ */
 
-  const VIEW_LABEL = { both: 'Both views', b73: 'B73', pan: 'Pan-genome' };
+  const COVERAGE_LABELS = { hq: 'High Quality', hc: 'High Coverage' };
+  /* observed-variant cache keyed "gene|coverage" — the missense set for a gene
+     depends only on the gene + HQ/HC dataset, not on ESM or the active view */
+  const observedCache = {};
+
+  const VIEW_LABEL = { both: 'Both views', b73: 'Reference', pan: 'Across species' };
+
+  /* ---- reference (species) resolution from the gene-id prefix ---- */
+  function familyFromGene(gene) {
+    const g = String(gene || '').toUpperCase();
+    if (g.indexOf('FGSG')   === 0) return 'graminearum';
+    if (g.indexOf('FVERT4') === 0) return 'vertMRC826';   // test before FVEG
+    if (g.indexOf('FVEG')   === 0) return 'vert7600';
+    try { if (typeof Data !== 'undefined' && Data.familyOf && typeof S !== 'undefined' && S) return Data.familyOf(S.dataset); } catch (e) {}
+    return 'graminearum';
+  }
+  /* strip a transcript/protein suffix (_T001 / _P001 / -T1) to the gene model */
+  function geneModelOf(id) { return String(id == null ? '' : id).trim().replace(/[_-][TP]\d+$/, ''); }
+  /* canonical (padding-correct) gene id, via the app's shared normalizer */
+  function canonGene(id) {
+    try { if (typeof Data !== 'undefined' && Data.canonicalGeneId) return Data.canonicalGeneId(id); } catch (e) {}
+    return id;
+  }
+  /* point the engine's data + synonym + label at the gene's genome */
+  function applyRef(gene) {
+    const fam = familyFromGene(gene);
+    const dir = PE.cfg.refDirs[fam] || 'Fgram_ph1';
+    PE.state.dataBase = PE.cfg.dataRoot + dir + '/';
+    PE.state.refLabel = PE.cfg.refLabels[fam] || '';
+    window.__PE_SYNONYM = './synonym/' + dir + '_synonym.tsv';
+  }
+
+  /* ---- observed-variant filter: HDF5 missense set for the reference view ---- */
+  /* pick the HQ/HC dataset id for the gene's family (graminearum / vert7600 / vertMRC826) */
+  function datasetFor(fam, coverage) {
+    try {
+      const want = coverage === 'hc' ? 'High Coverage' : 'High Quality';
+      const ds = Data.datasets().find(d => d.family === fam && d.sub === want);
+      return ds || null;
+    } catch (e) { return null; }
+  }
+  /* Query the HDF5 (same path SNPVersity/SNPImpact use) for the gene's variants
+     and keep the missense substitutions as a Set of "resi|altAA" keys. Cached
+     per gene+coverage. Best-effort: any failure returns an empty set + error. */
+  async function getObserved(gene, coverage) {
+    const key = gene + '|' + coverage;
+    if (observedCache[key]) return observedCache[key];
+    const fam = familyFromGene(gene);
+    const ds = datasetFor(fam, coverage);
+    const datasetName = ds ? (ds.name + ' · ' + ds.sub) : '';
+    const set = new Set();
+    let error = null;
+    if (!ds) {
+      error = 'no-dataset';
+    } else {
+      try {
+        /* pass every accession so "observed" spans the whole dataset, not just
+           the default founder subset (variant rows are keyed on the genotypes sent) */
+        const allIds = Data.accessionsFor(ds.id).map(a => a.id);
+        const vars = await Data.queryFoldVariants(gene, ds.id, allIds);
+        (vars || []).forEach(v => {
+          if (v && v.consClass === 'missense' && v.resi != null &&
+              v.alt && v.alt !== '*' && !/fs/i.test(String(v.alt))) {
+            set.add(v.resi + '|' + v.alt);
+          }
+        });
+      } catch (e) {
+        error = (e && e.message) || 'query-failed';
+        console.warn('[paneffect] observed-variant query failed:', error);
+      }
+    }
+    const res = { set, count: set.size, datasetName, coverage, error };
+    observedCache[key] = res;
+    return res;
+  }
+  /* Build the config object the engine consumes (initial set + count + the
+     HQ/HC switch callback). Default to the observed view when the gene has
+     observed missense calls, else fall back to "all" so the view isn't blank. */
+  async function buildObservedConfig(gene) {
+    const res = await getObserved(gene, PE.state.coverage);
+    return {
+      set: res.set, count: res.count,
+      coverage: PE.state.coverage, coverageLabels: COVERAGE_LABELS,
+      datasetName: res.datasetName, error: res.error,
+      mode: (res.count > 0 ? 'observed' : 'all'),
+      onCoverage: async (cov) => {
+        PE.state.coverage = cov;
+        const r = await getObserved(gene, cov);
+        return { set: r.set, count: r.count, datasetName: r.datasetName, error: r.error };
+      },
+    };
+  }
 
   /* ------------------------------------------------------------------ *
    *  PUBLIC HANDOFF API                                                 *
@@ -64,8 +155,8 @@
          substitution ring lives), a plain gene jump defaults to Both */
       option:  (opts.option || (variant ? 'b73' : 'both')),
       variant: variant,
-      /* external modules open in the MaizeGDB 2026 view, not "all variants" */
-      wgs:     (opts.wgs || 'maize2026'),
+      /* Fusarium stores have a single "all variants" track */
+      wgs:     (opts.wgs || null),
     };
     go('paneffect');
   };
@@ -121,7 +212,7 @@
     const seg = (val, lbl) =>
       `<button class="pe-seg ${st.option === val ? 'on' : ''}" data-opt="${val}">${lbl}</button>`;
     const esmOpts = PE.cfg.esmModels
-      .map(m => `<option value="${m}" ${m === st.esm ? 'selected' : ''}>${m}</option>`).join('');
+      .map(m => `<option value="${m}" ${m === st.esm ? 'selected' : ''}>${PE.cfg.esmLabel[m] || m}</option>`).join('');
     const examples = PE.cfg.examples
       .map(g => `<a href="#" class="pe-ex" data-gene="${g}">${g}</a>`)
       .join('<span class="pe-ex-sep">·</span>');
@@ -131,19 +222,19 @@
     <style>${panelCSS()}</style>
 
     <div class="sec"><div class="bar"></div><div style="width:100%">
-      <div class="n">MISSENSE VARIANT EFFECTS · ESM · B73 v5</div>
+      <div class="n">MISSENSE VARIANT EFFECTS · ESM PROTEIN LANGUAGE MODELS · FUSARIUM</div>
       <h2>Predicted effects of amino-acid substitutions</h2>
       <p>Pick a gene model and a protein language-model, then read every possible
-         substitution as a heatmap — in B73 and across the pan-genome. Jump here
-         from SNPVersity or SNPFold on a specific missense call and it lands
-         pre-highlighted.</p>
+         substitution as a heatmap — in the reference genome and across related
+         Fusarium species. Jump here from SNPVersity or SNPFold on a specific
+         missense call and it lands pre-highlighted.</p>
     </div></div>
 
     <div class="card pe-controls">
       <div class="pe-row">
         <div class="field pe-gene">
           <label>Gene model, transcript, or protein</label>
-          <input type="text" id="peGene" class="mono-in" placeholder="Zm00001eb…"
+          <input type="text" id="peGene" class="mono-in" placeholder="FGSG_… / FVEG_… / FVERT4_…"
                  value="${escAttr(st.gene)}" autocomplete="off">
         </div>
         <div class="field pe-esm">
@@ -153,7 +244,7 @@
         <div class="field pe-view">
           <label>Views</label>
           <div class="pe-segwrap" id="peSeg">
-            ${seg('both', 'Both')}${seg('b73', 'B73 only')}${seg('pan', 'Pan-genome only')}
+            ${seg('both', 'Both')}${seg('b73', 'Reference only')}${seg('pan', 'Across species')}
           </div>
         </div>
         <button class="btn pe-load" id="peLoad">Load views</button>
@@ -226,11 +317,14 @@
    *  LOAD FLOW — resolve canonical, apply policy, then render          *
    * ------------------------------------------------------------------ */
   async function loadGene() {
-    status('Checking transcript…');
+    /* normalize to the canonical bare gene model, then point at its genome */
+    PE.state.gene = canonGene(geneModelOf(PE.state.gene));
+    const inp = document.getElementById('peGene'); if (inp && PE.state.gene) inp.value = PE.state.gene;
+    applyRef(PE.state.gene);
     let info = null;
     try { info = await resolveGene(PE.state.gene); } catch (e) { info = null; }
     PE.state.resolved = info;
-    applyCanonicalPolicy(info);   /* may coerce option + disable Pan */
+    applyCanonicalPolicy(info);   /* single-isoform → all views enabled */
     updateCrumb();
     loadViews();
   }
@@ -307,37 +401,15 @@
    *  CANONICAL RESOLUTION — small fetch against PanEffect's data dir    *
    *  (same host). Best-effort: any failure returns canonical:true.      *
    * ------------------------------------------------------------------ */
+  /* Fusarium genomes are single-isoform: the gene model has exactly one
+     transcript (_T001) and one protein (_P001), which is always canonical, so
+     the pan-genome (across-species) view is always available. No transcript
+     disambiguation or common-name synonym lookup is needed here. */
   async function resolveGene(rawId) {
-    const out = { rawId: rawId, geneModel: '', transcript: '', protein: '',
-                  canonicalTranscript: null, canonical: true };
-    let id = String(rawId || '').trim();
-    if (!id) return out;
-
-    let canFlag = false;
-    if (id.includes('_T'))      { out.geneModel = id.split('_')[0]; out.transcript = id;                       out.protein = id.replace('_T', '_P'); }
-    else if (id.includes('_P')) { out.geneModel = id.split('_')[0]; out.transcript = id.replace('_P', '_T');   out.protein = id; }
-    else                        { out.geneModel = id; canFlag = true; out.transcript = id + '_T001';           out.protein = id + '_P001'; }
-
-    /* names like lg1 / wx1 → gene model via the synonym table */
-    if (!/^zm\d/i.test(out.geneModel)) {
-      const syn = await lookupSynonym(out.geneModel);
-      if (syn) {
-        out.geneModel = syn;
-        if (canFlag) { out.transcript = syn + '_T001'; out.protein = syn + '_P001'; }
-      }
-    }
-
-    const gmCan = await fetchCanonicalTranscript(out.geneModel);
-    if (gmCan) {
-      out.canonicalTranscript = gmCan;
-      if (canFlag) {
-        /* a bare gene adopts the canonical transcript → always canonical */
-        out.transcript = gmCan; out.protein = gmCan.replace('_T', '_P'); out.canonical = true;
-      } else {
-        out.canonical = (out.protein === gmCan.replace('_T', '_P'));
-      }
-    }
-    return out;
+    const gm = canonGene(geneModelOf(rawId));
+    return { rawId: rawId, geneModel: gm,
+             transcript: gm ? gm + '_T001' : '', protein: gm ? gm + '_P001' : '',
+             canonicalTranscript: gm ? gm + '_T001' : null, canonical: true };
   }
 
   async function fetchCanonicalTranscript(geneModel) {
@@ -373,7 +445,7 @@
   /* ------------------------------------------------------------------ *
    *  ENGINE DISPATCH                                                    *
    * ------------------------------------------------------------------ */
-  function loadViews() {
+  async function loadViews() {
     const host = document.getElementById('peView');
     if (!host) return;
 
@@ -382,7 +454,12 @@
       typeof window.runPanEffect === 'function';   /* ported pipeline present */
 
     if (PE.cfg.engine === 'native' && nativeReady) {
-      renderNative(host);
+      /* fetch the observed-missense set for the reference-view filter before
+         rendering, so the initial paint already reflects the chosen mode */
+      let observed = null;
+      try { observed = await buildObservedConfig(PE.state.gene); }
+      catch (e) { console.warn('[paneffect] observed config failed:', e); }
+      renderNative(host, observed);
     } else {
       if (PE.cfg.engine === 'native') {
         status(window.PanEffectEngine
@@ -393,35 +470,20 @@
     }
   }
 
+  /* Fusarium has no external PanEffect site to embed — the native engine is the
+     only renderer. This only shows if the pe/*.js scripts failed to load. */
   function renderEmbed(host) {
-    const st = PE.state;
-    const p = new URLSearchParams();
-    p.set('id', st.gene);
-    p.set('option', st.option);
-    p.set('esm', st.esm);
-    p.set('embed', '1');
-    if (st.variant) {
-      p.set('highlight', variantLabel(st.variant));
-      if (st.variant.pos != null) p.set('pos', String(st.variant.pos));
-      if (st.variant.sub)         p.set('sub', st.variant.sub);
-    }
-    const url = PE.cfg.baseUrl + '?' + p.toString();
-
     host.innerHTML =
-      `<div class="pe-frame-wrap">
-         <iframe id="peFrame" class="pe-frame" title="PanEffect — ${escAttr(st.gene)}"
-                 src="${escAttr(url)}" loading="lazy"></iframe>
-       </div>
-       <div class="pe-embed-note">
-         Rendered by the PanEffect site in an isolated frame.
-         <a href="${escAttr(url)}" target="_blank" rel="noopener">Open full page ↗</a>
+      `<div class="pe-canon-hint" style="display:block">
+         The PanEffect engine scripts didn’t load, so the heatmap can’t be drawn.
+         Check that <span class="mono">js/pe/*.js</span>, <span class="mono">paneffect-heatmap.js</span>,
+         <span class="mono">paneffect-engine.js</span> and d3 are included in <span class="mono">index.html</span>
+         (see the browser console / Network tab for 404s).
        </div>`;
-    status('Loading ' + st.gene + ' …');
-    const frame = document.getElementById('peFrame');
-    if (frame) frame.addEventListener('load', () => status(''));
+    status('PanEffect engine not loaded.');
   }
 
-  function renderNative(host) {
+  function renderNative(host, observed) {
     host.innerHTML = '<div id="peNativeRoot" class="pe-native-root"></div>';
     const root = document.getElementById('peNativeRoot');
     onLoadingIcon_safe();
@@ -434,7 +496,9 @@
         option:   PE.state.option,
         variant:  PE.state.variant,
         wgs:      PE.state.wgs,
-        dataBase: PE.cfg.dataBase,
+        dataBase: PE.state.dataBase,
+        refLabel: PE.state.refLabel,
+        observed: observed || null,
       })
     ).then(() => { status(''); offLoadingIcon_safe(); })
      .catch(err => {
