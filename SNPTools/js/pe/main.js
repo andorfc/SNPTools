@@ -31,8 +31,8 @@ let synonym_filename = './synonym/maize_synonym.tsv';
 
 /* ---------------- ESM model toggle ---------------- */
 
-// Directory names exactly as you described:
-const ESM_MODELS = ["ESM1", "ESM2", "ESM3"];
+// Directory names exactly as stored. ESM4 = the ESM-C model (Fusarium).
+const ESM_MODELS = ["ESM1", "ESM2", "ESM3", "ESM4"];
 let currentESM = "ESM2"; // default
 
 function getESMFromUrlOrStorage() {
@@ -418,8 +418,9 @@ async function runPanEffect() {
 //This function checks the synonym file for gene names
 async function checkSynonym(id) {
   return new Promise((resolve, reject) => {
-    // Use the Fetch API to fetch the file content
-    fetch(synonym_filename)
+    // Per-genome synonym file (set by the engine/wrapper via window.__PE_SYNONYM);
+    // falls back to the module default for the standalone maize build.
+    fetch(window.__PE_SYNONYM || synonym_filename)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to fetch file: ${response.statusText}`);

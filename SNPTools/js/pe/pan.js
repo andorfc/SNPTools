@@ -1,3 +1,14 @@
+/* Gene-model display name. UniProt orthologs come through as pipe-delimited
+   IDs like "tr|A0A8H4K6Y9|A0A8H4K6Y9_9HYPO"; show the 3rd token (the entry
+   name, e.g. A0A8H4K6Y9_9HYPO). IDs without a "|" (FGSG_/FVEG_/FVERT4_/NCBI
+   accessions) are shown unchanged. Global so the engine's tooltip can reuse it. */
+function displayGeneModel(name) {
+  var s = String(name == null ? '' : name);
+  if (s.indexOf('|') === -1) return s;
+  var parts = s.split('|');
+  return parts[2] || parts[1] || s;   // prefer entry name, fall back to accession
+}
+
 //Draw the secondary protein structures
 function drawStructurePan(structure) {
     const canvas = document.getElementById('proteinStructure-pan');
@@ -544,7 +555,7 @@ function renderDomainsPan(geneModelElement, domainsArray) {
 
       zoomedHeatmapEl.innerHTML = ''; // clear
 
-      const ROW_OFFSET = 1; // ignore heatmap row 1 (B73_v5)
+      const ROW_OFFSET = 0; // Fusarium: no reference row to skip — render every ortholog row
 
       // --- heatmap cells ---
       data.forEach(cellData => {
@@ -632,20 +643,19 @@ function renderDomainsPan(geneModelElement, domainsArray) {
 
         // Use arrays with yRaw (because arrays are aligned to original Y indexing)
         let GN_name_text = String(GN_array[yRaw]);
-        if (GM_array[yRaw].startsWith("Zm00014ba")) GN_name_text = "Mo17_v2";
-        else if (GM_array[yRaw].startsWith("Zm00014a")) GN_name_text = "Mo17_v1";
 
+        const GM_name_text = displayGeneModel(GM_array[yRaw]);
         if (view_type === "Species") {
           cell.innerHTML =
             "<span class='species_option'>" + GN_name_text + "</span>" +
-            "<span class='protein_option' style='display:none;'>" + String(GM_array[yRaw]) + "</span>";
+            "<span class='protein_option' style='display:none;'>" + GM_name_text + "</span>";
         } else {
           cell.innerHTML =
             "<span class='species_option' style='display:none;'>" + GN_name_text + "</span>" +
-            "<span class='protein_option' style='display:inline;'>" + String(GM_array[yRaw]) + "</span>";
+            "<span class='protein_option' style='display:inline;'>" + GM_name_text + "</span>";
         }
 
-        cell.style.color = colorGenome(String(GN_array[yRaw]));
+        cell.style.color = "#1a1a1a"; // Fusarium: neutral label color (no heterotic-group coloring)
         zoomedHeatmapEl.appendChild(cell);
 
         save_top_px = cellHeight * y;  // first free row below last visible row

@@ -461,7 +461,11 @@ function loadDSSP() {
                 const wild_type = +cellData["WT"];
                 const mutation = +cellData["Sub"];
                 const wgs2024 = +cellData["WGS2024"];
-                const wgs2026 = +cellData["WGS2026"];
+                /* "Observed" flag: maize read it from a CSV column; Fusarium sources it
+                   from the HDF5 missense query (window.__PE_OBSERVED, keyed "resi|altAA"). */
+                const wgs2026 = window.__PE_OBSERVED
+                  ? (window.__PE_OBSERVED.has((+cellData["X"]) + '|' + String(cellData["Sub"] || '').trim()) ? 1 : 0)
+                  : +cellData["WGS2026"];
 
                 cell.style.width = (cellWidth + 0.5) + 'px';
                 cell.style.height = cellHeight + 'px';
