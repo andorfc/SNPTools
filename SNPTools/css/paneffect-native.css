@@ -131,6 +131,26 @@
 .pe-native-root #pfam-wrap-pan .geneModel { background: transparent; overflow: visible; }
 .pe-native-root .truncate { background: transparent; }
 
+/* (6) reference-view observed-variant filter bar */
+.pe-native-root .pe-observed {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px 10px;
+  width: auto; max-width: 640px; box-sizing: border-box;
+  margin: 10px 0 4px; padding: 9px 13px;
+  background: #f5f7fd; border: 1px solid #e6e9f2; border-radius: 10px;
+  font: 500 13px/1.2 'Inter', Arial, sans-serif; color: #3a4457;
+}
+.pe-native-root .pe-obs-lab { color: #7a8496; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.pe-native-root .pe-obs-from { margin-left: 2px; }
+.pe-native-root .pe-obs-opt { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+.pe-native-root .pe-obs-opt input { margin: 0; cursor: pointer; }
+.pe-native-root .pe-obs-cov-sel {
+  width: 150px; flex: 0 0 auto;
+  font: 500 13px/1 'Inter', Arial, sans-serif; padding: 5px 8px;
+  border: 1px solid #c7cfdd; border-radius: 7px; background: #fff; cursor: pointer;
+}
+/* count on its own line so the bar stays compact */
+.pe-native-root .pe-obs-count { flex-basis: 100%; margin: 1px 0 0; color: #62718a; font-size: 12.5px; font-weight: 500; font-style: italic; }
+
 /* (4) pan zoomed matrix: consistent light background + dropdown headroom */
 .pe-native-root #zoomed-heatmap-pan { position: relative; background: transparent; }
 .pe-native-root .heatmap-container-zoom-pan { margin-top: 50px; background: #f5f7fd; border-radius: 10px; }
