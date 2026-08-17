@@ -1,42 +1,21 @@
 <?php
 /* =====================================================================
- *  processForm.php — region + accession list  ->  VCF (via h5_to_vcf.py)
- *
- *  Local testing (MAMP) vs production (Linux/Docker): nothing in this file
- *  changes between machines. The Python interpreter is resolved from the
- *  PYTHON_PATH environment variable, falling back to 'python3' on PATH.
- *  Python deps are declared in requirements.txt (pip-installed at image build).
+ *  processForm.php — region + accession list -> VCF (via h5_to_vcf.py)
+ *  FUSARIUM build.  Three reference genomes; haploid genotypes are handled
+ *  inside h5_to_vcf.py.  The Python interpreter is resolved from PYTHON_PATH
+ *  (set per host) falling back to 'python3' on PATH.
  * ===================================================================== */
 
 header('Content-Type: application/json');
 
-/* ---------------------------------------------------------------------
- *  CONFIG — provided by the environment; no machine paths committed to git
- * ------------------------------------------------------------------- */
-// 1) Python interpreter that has h5py + numpy installed. Resolution order:
-//      a. PYTHON_PATH environment variable (first hit wins). Set it per host,
-//         not in code, so nothing here is machine-specific:
-//           - Docker:  ENV PYTHON_PATH=python3   (or just rely on the fallback)
-//           - MAMP:    SetEnv PYTHON_PATH /path/to/venv/bin/python  in an Apache
-//                      conf / .htaccess, or export it in the shell that starts MAMP
-//                      — keeps your local absolute path out of the repo.
-//      b. 'python3' on the system PATH (the default). In the Docker image the
-//         deps from requirements.txt are pip-installed globally, so python3 works
-//         out of the box with no configuration.
 $PYTHON_PATH = getenv('PYTHON_PATH');
-if (!$PYTHON_PATH) {
-    $PYTHON_PATH = 'python3';                     // resolved via PATH — portable across OSes
-}
+if (!$PYTHON_PATH) { $PYTHON_PATH = 'python3'; }
 
-// 2) Where the .h5 files live, relative to this PHP file.
-$VERSION_PATH = './hdf5/version3/';
-
-// 3) Where VCFs are written (must be web-served AND writable). Matches CFG.vcfDir in data.js.
+// Where the Fusarium .h5 files live, relative to this PHP file.
+$VERSION_PATH = './hdf5/fusarium/';
+// Where VCFs are written (web-served AND writable). Matches CFG.vcfDir in data.js.
 $VCF_DIR = './vcf/';
 
-/* ---------------------------------------------------------------------
- *  INPUT
- * ------------------------------------------------------------------- */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(array('status' => 'error', 'message' => 'POST required'));
     exit;
@@ -49,67 +28,67 @@ $dataset       = isset($_POST['dataSet'])   ? $_POST['dataSet']   : '';
 $genotypesJson = isset($_POST['genotypes']) ? $_POST['genotypes'] : '[]';
 $outName       = isset($_POST['outName'])   ? $_POST['outName']   : '';
 
-// numeric interval
 if (!is_numeric($start) || !is_numeric($end)) {
     echo json_encode(array('status' => 'error', 'message' => 'Invalid interval (start/end must be numeric).'));
     exit;
 }
-// chromosome token must look like chr10 (used verbatim in the .h5 filename)
-if (!preg_match('/^chr[0-9]{1,2}$/', $chr)) {
+// chromosome token: chr1 .. chr12 (used verbatim in the .h5 filename).
+// graminearum has chr1–4, verticillioides 7600 chr1–11, MRC826 chr1–12.
+if (!preg_match('/^chr(1[0-2]|[1-9])$/', $chr)) {
     echo json_encode(array('status' => 'error', 'message' => "Invalid chromosome '$chr'."));
     exit;
 }
 
-/* ---------------------------------------------------------------------
- *  DATASET  ->  (family, quality)  ->  <family>_<chr>_<quality>.h5
- * ------------------------------------------------------------------- */
-$ds_part0 = 'maizegdb2026';   // family
-$ds_part2 = 'HQ';             // quality tier
+/* DATASET -> (genome key, quality) -> <genome>_<chr>_<quality><suffix>.h5
+ * All three references are now the 2026 language-model rebuild (FunDLM/EVO2 +
+ * ESM1/2/3/ESM-C), currently the 500kb test subset (_test500kb). Genome-key file
+ * prefixes: graminearum = fusarium2026, verticillioides 7600 = Fvert_7600,
+ * verticillioides MRC826 = Fvert_mrc (match the hdf5/fusarium/ filenames). */
+$ds_part0   = 'fusarium2026';   // genome-key file prefix
+$ds_part2   = 'HQ';             // quality tier
+$ds_suffix  = '_test500kb';     // filename suffix
 
 switch ($dataset) {
-    case 'mgdb2026_hq':  $ds_part0 = 'maizegdb2026'; $ds_part2 = 'HQ';     break;
-    case 'mgdb2026_hc':  $ds_part0 = 'maizegdb2026'; $ds_part2 = 'HC';     break;
-    case 'mgdb2024_hq':  $ds_part0 = 'maizegdb2024'; $ds_part2 = 'HQ';     break;
-    case 'mgdb2024_hc':  $ds_part0 = 'maizegdb2024'; $ds_part2 = 'HC';     break;
-    case 'schnable2023': $ds_part0 = 'schnable2023'; $ds_part2 = 'impute'; break;
-    case 'nam2021':      // new UI sends the bare id
-    case 'nam2021_hq':   $ds_part0 = 'nam2021';      $ds_part2 = 'HQ';     break;
-    case 'nam2021_hc':   $ds_part0 = 'nam2021';      $ds_part2 = 'HC';     break;
+    case 'gram_hq':     $ds_part0 = 'fusarium2026'; $ds_part2 = 'HQ'; break;
+    case 'gram_hc':     $ds_part0 = 'fusarium2026'; $ds_part2 = 'HC'; break;
+    case 'vert7600_hq': $ds_part0 = 'Fvert_7600';   $ds_part2 = 'HQ'; break;
+    case 'vert7600_hc': $ds_part0 = 'Fvert_7600';   $ds_part2 = 'HC'; break;
+    case 'vertmrc_hq':  $ds_part0 = 'Fvert_mrc';    $ds_part2 = 'HQ'; break;
+    case 'vertmrc_hc':  $ds_part0 = 'Fvert_mrc';    $ds_part2 = 'HC'; break;
     default:
         echo json_encode(array('status' => 'error', 'message' => "Unknown dataset '$dataset'."));
         exit;
 }
 
-$db_filename = $VERSION_PATH . $ds_part0 . '_' . $chr . '_' . $ds_part2 . '.h5';
+$db_filename = $VERSION_PATH . $ds_part0 . '_' . $chr . '_' . $ds_part2 . $ds_suffix . '.h5';
+// The test stores ship gzip-compressed (.h5.gz). Prefer a decompressed .h5 if it
+// exists; otherwise fall back to the .h5.gz (h5_to_vcf.py expands it on the fly).
+if (!is_file($db_filename) && is_file($db_filename . '.gz')) {
+    $db_filename = $db_filename . '.gz';
+}
 if (!is_file($db_filename)) {
     echo json_encode(array('status' => 'error',
-        'message' => 'HDF5 file not found: ' . $db_filename));
+        'message' => 'HDF5 file not found: ' . $db_filename .
+                     ' (this reference/chromosome/quality combination has not been generated yet).'));
     exit;
 }
 
-/* ---------------------------------------------------------------------
- *  OUTPUT PATH — force it inside $VCF_DIR (no path traversal)
- * ------------------------------------------------------------------- */
+/* OUTPUT PATH — forced inside $VCF_DIR (no path traversal) */
 if (!is_dir($VCF_DIR)) { @mkdir($VCF_DIR, 0775, true); }
 if (!is_writable($VCF_DIR)) {
-    echo json_encode(array('status' => 'error',
-        'message' => 'VCF directory is not writable: ' . $VCF_DIR));
+    echo json_encode(array('status' => 'error', 'message' => 'VCF directory is not writable: ' . $VCF_DIR));
     exit;
 }
 $base = basename($outName ? $outName : ('snpv_' . time() . '_' . mt_rand() . '.vcf'));
 if (substr($base, -4) !== '.vcf') { $base .= '.vcf'; }
 $vcf_path = rtrim($VCF_DIR, '/') . '/' . $base;
 
-/* ---------------------------------------------------------------------
- *  GENOTYPES — pass the selected accession IDs through as a JSON array
- * ------------------------------------------------------------------- */
+/* GENOTYPES — selected accession IDs passed through as a JSON array */
 $genotypesArray = json_decode($genotypesJson);
 if (!is_array($genotypesArray)) { $genotypesArray = array(); }
 $jsonArray = escapeshellarg(json_encode(array_values($genotypesArray)));
 
-/* ---------------------------------------------------------------------
- *  RUN  h5_to_vcf.py  <db> <out.vcf> <start> <end> <genotypesJson>
- * ------------------------------------------------------------------- */
+/* RUN  h5_to_vcf.py <db> <out.vcf> <start> <end> <genotypesJson> */
 $command = escapeshellarg($PYTHON_PATH) . ' ' . escapeshellarg('h5_to_vcf.py') . ' '
          . escapeshellarg($db_filename) . ' '
          . escapeshellarg($vcf_path)    . ' '
@@ -119,28 +98,15 @@ $command = escapeshellarg($PYTHON_PATH) . ' ' . escapeshellarg('h5_to_vcf.py') .
 
 $output = shell_exec($command);
 
-// The script writes the VCF as a side effect; success = the file now exists.
 if (is_file($vcf_path)) {
-    echo json_encode(array(
-        'status'  => 'success',
-        'outFile' => $vcf_path,
-        'message' => 'VCF written',
-        'output'  => $output,
-    ));
+    echo json_encode(array('status' => 'success', 'outFile' => $vcf_path,
+        'message' => 'VCF written', 'output' => $output));
 } else if ($output !== null && strpos($output, 'No data found in the specified position range') !== false) {
-    // Python ran fine, the interval simply contained no variants.
-    echo json_encode(array(
-        'status'  => 'empty',
-        'message' => 'No variants in this interval.',
-        'output'  => $output,
-    ));
+    echo json_encode(array('status' => 'empty', 'message' => 'No variants in this interval.', 'output' => $output));
 } else {
-    // Real failure (bad Python path, missing h5py/numpy, dataset key error, ...).
-    echo json_encode(array(
-        'status'  => 'error',
+    echo json_encode(array('status' => 'error',
         'message' => 'No VCF produced (script error). See output.',
         'command' => $command,
-        'output'  => ($output === null ? '(no output — check that $PYTHON_PATH is correct and executable)' : $output),
-    ));
+        'output'  => ($output === null ? '(no output — check that $PYTHON_PATH is correct and executable)' : $output)));
 }
 ?>
