@@ -77,7 +77,7 @@
   const STRUCT_SOURCES = [
     { key: 'boltz',      sub: 'boltz',     label: 'Boltz2',     badge: 'B2'  },
     { key: 'esmfold',    sub: 'esmfold',   label: 'ESMFold',    badge: 'ESM' },
-    { key: 'alphafold',  sub: 'alphafold', label: 'AlphaFold2', badge: 'AF2' },
+  /*  { key: 'alphafold',  sub: 'alphafold', label: 'AlphaFold2', badge: 'AF2' }, */
   ];
   /* full folder for this gene+source; falls back to the flat layout if the gene's
      reference can't be determined from its prefix. */
