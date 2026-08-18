@@ -39,14 +39,14 @@ if (!preg_match('/^chr(1[0-2]|[1-9])$/', $chr)) {
     exit;
 }
 
-/* DATASET -> (genome key, quality) -> <genome>_<chr>_<quality><suffix>.h5
- * All three references are now the 2026 language-model rebuild (FunDLM/EVO2 +
- * ESM1/2/3/ESM-C), currently the 500kb test subset (_test500kb). Genome-key file
- * prefixes: graminearum = fusarium2026, verticillioides 7600 = Fvert_7600,
- * verticillioides MRC826 = Fvert_mrc (match the hdf5/fusarium/ filenames). */
+/* DATASET -> (genome key, quality) -> <genome>_<chr>_<quality>.h5
+ * All three references are the 2026 language-model rebuild (FunDLM/EVO2 +
+ * ESM1/2/3/ESM-C). The FULL per-chromosome store is preferred; if it is not
+ * present the 500kb test subset (_test500kb) is used instead (see resolution
+ * below). Genome-key file prefixes: graminearum = fusarium2026, verticillioides
+ * 7600 = Fvert_7600, verticillioides MRC826 = Fvert_mrc (match hdf5/fusarium/). */
 $ds_part0   = 'fusarium2026';   // genome-key file prefix
 $ds_part2   = 'HQ';             // quality tier
-$ds_suffix  = '_test500kb';     // filename suffix
 
 switch ($dataset) {
     case 'gram_hq':     $ds_part0 = 'fusarium2026'; $ds_part2 = 'HQ'; break;
@@ -60,16 +60,25 @@ switch ($dataset) {
         exit;
 }
 
-$db_filename = $VERSION_PATH . $ds_part0 . '_' . $chr . '_' . $ds_part2 . $ds_suffix . '.h5';
-// The test stores ship gzip-compressed (.h5.gz). Prefer a decompressed .h5 if it
-// exists; otherwise fall back to the .h5.gz (h5_to_vcf.py expands it on the fly).
-if (!is_file($db_filename) && is_file($db_filename . '.gz')) {
-    $db_filename = $db_filename . '.gz';
+$db_base = $VERSION_PATH . $ds_part0 . '_' . $chr . '_' . $ds_part2;
+/* Resolution order: prefer the FULL store, fall back to the 500kb test subset.
+ * Within each, prefer a decompressed .h5, else the gzip (.h5.gz) which
+ * h5_to_vcf.py expands on the fly. First existing candidate wins. */
+$db_candidates = array(
+    $db_base . '.h5',              // full, decompressed
+    $db_base . '.h5.gz',           // full, gzipped
+    $db_base . '_test500kb.h5',    // test subset, decompressed
+    $db_base . '_test500kb.h5.gz', // test subset, gzipped
+);
+$db_filename = null;
+foreach ($db_candidates as $cand) {
+    if (is_file($cand)) { $db_filename = $cand; break; }
 }
-if (!is_file($db_filename)) {
+if ($db_filename === null) {
     echo json_encode(array('status' => 'error',
-        'message' => 'HDF5 file not found: ' . $db_filename .
-                     ' (this reference/chromosome/quality combination has not been generated yet).'));
+        'message' => 'HDF5 file not found for ' . $db_base .
+                     ' (.h5 / .h5.gz, full or _test500kb) — this reference/chromosome/quality ' .
+                     'combination has not been generated yet.'));
     exit;
 }
 
