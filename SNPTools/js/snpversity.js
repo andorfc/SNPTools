@@ -18,7 +18,7 @@ const CENTRO      = Data.centromeres();
 Data.defaultSelectionFor(S.dataset).forEach(id=>S.selected.add(id));
 
 /* default query region */
-S.chr='chr1'; S.start=2520531; S.end=2524130;
+S.chr='chr1'; S.start=163229; S.end=165578;
 
 /* ================= SNPVERSITY PAGE ================= */
 function renderVersity(){
@@ -818,6 +818,7 @@ function renderResults(){
         <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" onclick="sendToImpact()">${ICONS.star||''} Send to SNPImpact</button>
           <button class="btn" onclick="sendToCompare()">${ICONS.compare||ICONS.grid||''} Send to SNPCompare</button>
+          <button class="btn" onclick="sendToGeo()">${ICONS.map||''} Send to SNPGeo</button>
           <button class="btn" onclick="sendToTree()">${ICONS.tree} Send data to SNPTree</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
         </div>
@@ -884,6 +885,19 @@ function sendToImpact(){
     };
   }
   go('snpimpact');
+}
+/* hand the region's variants to SNPGeo for geographic analysis */
+function sendToGeo(){
+  if(S.results&&S.results.rows&&S.results.rows.length){
+    S.geoInput={
+      rows:S.results.rows, accs:S.results.accs,
+      chr:S.chr, start:Math.min(S.start,S.end), end:Math.max(S.start,S.end),
+      dataset:S.dataset,
+      datasetName:(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset,
+      vcfUrl:S.results.vcfUrl
+    };
+  }
+  go('snpgeo');
 }
 
 function setMaf(el){

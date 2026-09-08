@@ -24,12 +24,13 @@ const ICONS = {
   download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M9 9v11" stroke="currentColor" stroke-width="1.6"/></svg>',
   effect:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 4v16M13 4v16M3 9h18M3 14h18" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 4l6 4 6-4 6 4v14l-6-4-6 4-6-4V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v11M6 8v10M18 8v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></svg>',
 };
 
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold', 'snpgeo']},
   {label:'Compare & Relate', tools:['snpcompare','snptree']},
   {label:'External plugin', tools:['paneffect']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
@@ -75,6 +76,8 @@ const TOOLS = {
     tag:'Link variants to protein structure',
     desc:'Link coding variants to protein structure, domain architecture, and AI-based folding or effect predictions.',
     feats:[['fold','Structure view','Map variants onto folded protein models.'],['func','Domain architecture','See which domains a change disrupts.'],['star','Effect prediction','AI predictions of structural impact.']]},
+  snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
+    tag:'Geographic distribution of SNPs across isolates'},
   snpdensity:{name:'SNPDensity', icon:'density', color:'#9333ea', cat:'Collection',
     tag:'SNP and INDEL density and burden',
     desc:'Measure SNP and INDEL density, burden, and distribution across genes and genomic regions to highlight mutational load, constraint, and diversification.',
@@ -121,7 +124,7 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
 const S = {
   tool:'snpversity',
   dataset:'gram_hq',
-  chr:'chr1', start:2520531, end:2524130, perPage:100,
+  chr:'chr1', start:163229, end:165578, perPage:100,
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,
@@ -138,7 +141,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpversity:'updated',snptrait:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
+        const _bl={snpversity:'updated',snptrait:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',snpgeo:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">

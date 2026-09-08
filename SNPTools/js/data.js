@@ -99,9 +99,9 @@ const Data = (function () {
   // tolerance as a gene ID pasted straight from FungiDB. All resolve to placed (chr) genes.
   // Canonical (reference-GFF) display forms: FGSG 5-digit; FVEG / FVERT4 6-digit.
   const EXAMPLE_GENES_BY_FAMILY = {
-    graminearum: ['FGSG_00777','FGSG_00778','FGSG_03537','FGSG_10375'],
-    vert7600:    ['FVEG_003144','FVEG_000765','FVEG_014423','FVEG_005000'],
-    vertMRC826:  ['FVERT4_000001','FVERT4_000765','FVERT4_005000','FVERT4_010000'],
+    graminearum: ['FGSG_00025','FGSG_00040','FGSG_11662','FGSG_11669','FGSG_00130'],
+    vert7600:    ['FVEG_000018','FVEG_000019','FVEG_000022','FVEG_000023','FVEG_000025'],
+    vertMRC826:  ['FVERT4_000021','FVERT4_000023','FVERT4_000025','FVERT4_000031','FVERT4_000032'],
   };
   const CATALOG = (typeof window !== 'undefined' && window.SNP_CATALOG) || null;
   const REAL    = (typeof window !== 'undefined' && window.SNP_REAL_ACCESSIONS) || {};
@@ -466,6 +466,42 @@ const Data = (function () {
     await ensureDomains(fam);
     const {rows} = parseVcf(vcfText, ids, fam);
     return {rows, accs, chr, vcfUrl, span, wide:false, empty: rows.length === 0};
+  }
+
+  /* SNPGeo gene lookup: given a gene name, look up its coordinates and query variants in that region */
+  async function queryVariantsByGene(dataset, geneId, ids){
+    dataset = dataset || DATASETS[0].id;
+    const db = dbOf(dataset);
+    
+    // Look up gene coordinates
+    const gene = await lookupGene(geneId, db);
+    if (!gene){
+      throw new Error('Gene not found: ' + geneId);
+    }
+    if (gene.chr == null){
+      // Gene is on unplaced scaffold, not in variant store
+      throw new Error('Gene ' + geneId + ' is on scaffold "' + gene.scaffold + '", not in variant database');
+    }
+    
+    // Use default accession selection if none provided
+    ids = ids || defaultSelectionFor(dataset);
+    
+    // Query variants in the gene region
+    const result = await queryVariants(dataset, gene.chr, gene.start, gene.end, ids);
+    
+    // Return with gene context
+    return {
+      rows: result.rows,
+      accs: result.accs,
+      chr: gene.chr,
+      start: gene.start,
+      end: gene.end,
+      gene: geneId,
+      vcfUrl: result.vcfUrl,
+      span: result.span,
+      wide: result.wide,
+      empty: result.empty
+    };
   }
 
   /* SNPImpact ranks REAL variants: the tool queries a region via queryVariants()
@@ -868,7 +904,7 @@ const Data = (function () {
     chromLengths: chromLengths,
     centromeres: () => CENTRO,
     accessionById,
-    queryVariants,
+    queryVariants, queryVariantsByGene,
     structureFor, pdbFor, ensureStructure, queryFoldVariants, rankImpact,
     ensureDomains, domainAt,
     ensureGeneDomains, geneDomains, ensureGeneModels, geneModelOf, geneFunction,
