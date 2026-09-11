@@ -294,8 +294,13 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .pill.modifier{background:#e6eeff;color:#3358bf}
 .dom-tag{font-size:10px;font-family:var(--mono);background:#f1ebfb;color:#6d28d9;padding:2px 7px;border-radius:6px}
 
+/* Score columns render an .imp-score pill (see gScorePill in snpversity.js);
+   the cell itself stays unfilled. .score/.score.na are the pre-pill full-bleed
+   styling, kept only so any stray markup still renders sanely. */
 .score{text-align:center;color:#fff;font-family:var(--mono);font-size:11px;font-weight:600;min-width:46px}
 .score.na{background:#e7ebf1!important;color:#9aa6b8!important}
+.score-na{color:var(--faint);font-family:var(--mono);font-size:11px}
+table.vcf td.num .imp-score{min-width:46px}
 
 .gt{width:30px;min-width:30px;text-align:center;font-family:var(--mono);font-weight:600;font-size:11px;cursor:default}
 .gt-00{background:#e9f4ec;color:#2f7a4d}
