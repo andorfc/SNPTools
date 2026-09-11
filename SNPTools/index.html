@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SNPTools — SNPVersity 2.1</title>
+<title>Fusarium SNPTools — SNPVersity</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
@@ -69,13 +69,18 @@
     <!-- ======= MAIZEGDB MASTHEAD ======= -->
     <div class="mg-mast">
       <a class="mg-brand" href="https://maizegdb.org" target="_blank" rel="noopener"
-         aria-label="MaizeGDB — Maize Genetics and Genomics Database (opens in a new tab)">
-        <img src="./images/maizegdb_logo.png" alt="MaizeGDB — Maize Genetics and Genomics Database">
+         aria-label="SNPTools — developed by MaizeGDB (opens in a new tab)">
+        <svg viewBox="0 0 48 48" width="48" height="48" role="img" aria-hidden="true">
+          <rect width="48" height="48" rx="11" fill="rgb(8,44,148)"/>
+          <path d="M15 12c8 6 10 6 18 0M15 36c8-6 10-6 18 0M15 12v24M33 12v24"
+                stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+          <circle cx="15" cy="12" r="2.2" fill="#fff"/><circle cx="33" cy="36" r="2.2" fill="#fff"/>
+        </svg>
       </a>
       <div class="mg-divider"></div>
       <div class="mg-titles">
         <div class="mg-kicker">SNP<b>Tools</b></div>
-        <div class="mg-sub">Explore variant diversity across maize genomes</div>
+        <div class="mg-sub">Explore variant diversity across Fusarium genomes</div>
       </div>
       <div class="mg-spacer"></div>
       <nav class="mg-nav">
@@ -103,7 +108,7 @@
         </button>
         <div class="menu" id="sendMenu">
           <div class="mh">Move this set into another tool</div>
-          <div class="mi" onclick="go('snptrait')"><span data-ico="leaf"></span> SNPTrait — link traits</div>
+          <div class="mi" onclick="go('snptrait')"><span data-ico="leaf"></span> SNPTrait — Strain Selector</div>
           <div class="mi" onclick="sendToImpact()"><span data-ico="star"></span> SNPImpact — rank variants</div>
           <div class="mi" onclick="sendToCompare()"><span data-ico="compare"></span> SNPCompare — compare accessions</div>
           <div class="mi" onclick="sendToTree()"><span data-ico="tree"></span> SNPTree — build phylogeny tree</div>
@@ -119,20 +124,26 @@
 
 <div class="tt" id="tt"></div>
 
+<!-- Fusarium SNPTools — load order: core -> catalog -> data -> tools -->
 <script src="./js/core.js"></script>
 <script src="./js/snphandoff.js"></script>
-<script src="./js/accessions.catalog.js"></script>
+<script src="./js/strains.catalog.js"></script>   <!-- window.SNP_CATALOG + window.FUSARIUM_STRAINS -->
 <script src="./js/data.js"></script>
-<script src="./data/structures/alphafold/structure-Zm00001eb378140.js"></script>
-<script src="./js/snpgwas.js"></script>
 <script src="./js/snpversity.js"></script>
+<script src="./js/snptrait.js"></script>          <!-- Strain Selector -->
 <script src="./js/snpimpact.js"></script>
 <script src="./js/snpfold.js"></script>
+<script src="./js/snptree.js"></script>
+<script src="./js/snpmatrix.js"></script>
+<script src="./js/snpcompare.js"></script>
+<script src="./js/snpfunction.js"></script>
+<script src="./js/snphelp.js"></script>
+<script src="./js/snpgeo.regions.js"></script>  <!-- window.SNPGEO_REGIONS: isolate -> {country, iso3, state, ...} -->
+<script src="./js/snpgeo.js"></script>
 
-<!-- ===== Native PanEffect engine =====================================
-     PanEffect's ported scripts (classic scripts, shared global scope) +
-     the canvas heatmap + the engine. Data is served from ./paneffect/
-     (same-origin). Must load before snppaneffect.js. -->
+<!-- PanEffect: missense variant-effect heatmap browser (per Fusarium genome).
+     d3 must load first, then the pe/* pipeline, then the engine + wrapper.
+     Data is served per-genome from ./paneffect/<refDir>/. -->
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="./js/pe/support.js"></script>
 <script src="./js/pe/genome.js"></script>
@@ -140,14 +151,8 @@
 <script src="./js/pe/dom.js"></script>
 <script src="./js/pe/main.js"></script>
 <script src="./js/paneffect-heatmap.js"></script>
+<script src="./js/paneffect-theme.js"></script>
 <script src="./js/paneffect-engine.js"></script>
-<!-- =================================================================== -->
-
 <script src="./js/snppaneffect.js"></script>
-<script src="./js/snptree.js"></script>
-<script src="./js/snpmatrix.js"></script>
-<script src="./js/snpcompare.js"></script>
-<script src="./js/snpfunction.js"></script>
-<script src="./js/snphelp.js"></script>
 </body>
 </html>
