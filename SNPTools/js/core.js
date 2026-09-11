@@ -124,7 +124,7 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
 const S = {
   tool:'snpversity',
   dataset:'gram_hq',
-  chr:'chr1', start:163229, end:165578, perPage:100,
+  chr:'chr1', start:2520531, end:2524130, perPage:100,
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,

@@ -241,6 +241,12 @@
     return n == null ? '—' : `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
   }
 
+  /* Shared score colour + pill, exposed so SNPGeo renders scores with the SAME
+     ramp and chip form as SNPFold. SNPFold owns the definition; consumers wrap
+     .cell() (the inner <span>) in whatever table cell they need. Kept off the
+     SNPVersity path deliberately — SNPVersity keeps its own legacy gColor(). */
+  window.ScorePill = { color: scoreColor, cell: scoreCell, text: scoreText, textColor: contrastTextColor };
+
   /* Support both the established fields and common 2026 aliases. */
   const SCORE_KEYS = {
     plantcad:  ['plantcad', 'plantcad1', 'plantcad_1', 'PLANTCAD', 'PLANTCAD1'],

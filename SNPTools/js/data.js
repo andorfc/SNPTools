@@ -99,9 +99,9 @@ const Data = (function () {
   // tolerance as a gene ID pasted straight from FungiDB. All resolve to placed (chr) genes.
   // Canonical (reference-GFF) display forms: FGSG 5-digit; FVEG / FVERT4 6-digit.
   const EXAMPLE_GENES_BY_FAMILY = {
-    graminearum: ['FGSG_00025','FGSG_00040','FGSG_11662','FGSG_11669','FGSG_00130'],
-    vert7600:    ['FVEG_000018','FVEG_000019','FVEG_000022','FVEG_000023','FVEG_000025'],
-    vertMRC826:  ['FVERT4_000021','FVERT4_000023','FVERT4_000025','FVERT4_000031','FVERT4_000032'],
+    graminearum: ['FGSG_00777','FGSG_00778','FGSG_03537','FGSG_10375'],
+    vert7600:    ['FVEG_003144','FVEG_000765','FVEG_014423','FVEG_005000'],
+    vertMRC826:  ['FVERT4_000001','FVERT4_000765','FVERT4_005000','FVERT4_010000'],
   };
   const CATALOG = (typeof window !== 'undefined' && window.SNP_CATALOG) || null;
   const REAL    = (typeof window !== 'undefined' && window.SNP_REAL_ACCESSIONS) || {};

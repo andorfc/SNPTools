@@ -18,7 +18,7 @@ const CENTRO      = Data.centromeres();
 Data.defaultSelectionFor(S.dataset).forEach(id=>S.selected.add(id));
 
 /* default query region */
-S.chr='chr1'; S.start=163229; S.end=165578;
+S.chr='chr1'; S.start=2520531; S.end=2524130;
 
 /* ================= SNPVERSITY PAGE ================= */
 function renderVersity(){
@@ -886,6 +886,7 @@ function sendToImpact(){
   }
   go('snpimpact');
 }
+
 /* hand the region's variants to SNPGeo for geographic analysis */
 function sendToGeo(){
   if(S.results&&S.results.rows&&S.results.rows.length){
