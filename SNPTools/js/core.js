@@ -24,30 +24,34 @@ const ICONS = {
   download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M9 9v11" stroke="currentColor" stroke-width="1.6"/></svg>',
   effect:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 4v16M13 4v16M3 9h18M3 14h18" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>',
-  map:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 4l6 4 6-4 6 4v14l-6-4-6 4-6-4V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v11M6 8v10M18 8v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></svg>',
+  gwas:'<svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2" opacity=".55"/><circle cx="6" cy="16" r="1.3" fill="currentColor"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="12" cy="6" r="1.6" fill="currentColor"/><circle cx="15" cy="14" r="1.3" fill="currentColor"/><circle cx="18" cy="10" r="1.3" fill="currentColor"/></svg>',
 };
 
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
-  {label:'Visualization & Search', tools:['snpversity','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold', 'snpgeo']},
+  {label:'Visualization & Search', tools:['snpversity','snpgwas','snptrait']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
   {label:'Compare & Relate', tools:['snpcompare','snptree']},
   {label:'External plugin', tools:['paneffect']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
   //{label:'Collection', tools:['snpgermplasm']},
 ];
 const TOOLS = {
+  snpgwas:{name:'GWAS Explorer', icon:'gwas', color:'#cf8a12', cat:'Visualization & Search',
+    tag:'Scan the genome for trait-associated SNPs',
+    desc:'Genome-wide Manhattan plot for NAM GWAS results — pan and zoom across all 10 chromosomes, search by SNP ID, and drag-select a peak to inspect its variants. Hand a selected region straight off to SNPVersity to keep exploring.',
+    feats:[['gwas','Genome-wide scan','Canvas Manhattan plot across all NAM chromosomes.'],['search','Select a region','Drag a peak to list and filter its SNPs.'],['compare','Hand off region','Send the selected interval to SNPVersity.']]},
   snpversity:{name:'SNPVersity', icon:'dna', color:'#2563eb', cat:'Visualization & Search',
-    tag:'Explore variation across Fusarium isolates',
-    desc:'Explore variant datasets across Fusarium isolates and reference genomes. Enter a genomic interval, choose isolates, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
+    tag:'Explore variation across lines and populations',
+    desc:'Explore extensive variant datasets across maize accessions. Enter a genomic interval, choose accessions, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
-    tag:'Strain Selector — pick isolates by metadata',
-    desc:'An interactive catalogue of the Fusarium isolates, pre-grouped by population structure (NA1, NA2, NA3, Admixture, Outgroups, Unknown). Filter by population, country, host, chemotype, species, or free text; batch-select; then send the selected isolates straight to SNPVersity to build a VCF.',
-    feats:[['search','Metadata facets','Filter isolates by population, country, host, chemotype and species.'],['leaf','Population structure','Isolates grouped and colour-coded by NA1/NA2/NA3/Admixture/Outgroups.'],['compare','Hand off sets','Send the selected isolates directly to SNPVersity.']]},
+    tag:'Connect variation to phenotype and trait data',
+    desc:'Connect genomic variation to phenotype and trait records from the National Germplasm collection. Search, sort, and filter accessions by trait values and metadata, then move selected sets straight into other SNPTools.',
+    feats:[['search','Search & filter','Filter 20,000+ accessions by trait, phenotype, and metadata.'],['leaf','Trait records','Disease resistance, yield, composition, and evaluation data.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
   snpimpact:{name:'SNPImpact', icon:'star', color:'#7c3aed', cat:'Explore & Analyze',
     tag:'Prioritize candidate variants using AI',
-    desc:'Rank variants using AI-based allele scores together with functional annotations. Combine DNABERT and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
-    feats:[['star','Rank by impact','Order variants by combined AI score and consequence.'],['func','Score + effect','DNABERT / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
+    desc:'Rank variants using AI-based allele scores together with functional annotations. Combine PlantCAD and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
+    feats:[['star','Rank by impact','Order variants by combined AI score and consequence.'],['func','Score + effect','PlantCAD / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
   snpfunction:{name:'SNPFunction', icon:'func', color:'#2563eb', cat:'Explore & Analyze',
     tag:'Give variants biological and genomic context',
     desc:'Add biological context by integrating gene models, regulatory features, conservation, and nearby genomic evidence — interpreting variants within their local genomic region.',
@@ -66,8 +70,8 @@ const TOOLS = {
     feats:[['grid','Identity matrix','Pairwise identity-by-state across the set.'],['search','Nearest neighbors','Rank closest lines to any accession.'],['density','Similarity heatmap','Read structure at a glance.']]},
   paneffect:{name:'PanEffect', icon:'effect', color:'#b45309', cat:'Explore & Analyze',
     tag:'Predict missense variant effects on proteins',
-    desc:'Visualize the predicted effect of every amino-acid substitution across a protein — across the Fusarium pan-genome — using ESM protein language-model scores, with Pfam domains and secondary structure for context.',
-    feats:[['star','Every substitution','ESM scores for all 20 substitutions at each residue.'],['grid','B73 + pan-genome','Reference view plus natural variation across isolates.'],['func','Domain context','Pfam domains and predicted secondary structure overlaid.']]},
+    desc:'Visualize the predicted effect of every amino-acid substitution across a protein — in B73 and across the maize pan-genome — using ESM protein language-model scores, with Pfam domains and secondary structure for context.',
+    feats:[['star','Every substitution','ESM scores for all 20 substitutions at each residue.'],['grid','B73 + pan-genome','Reference view plus natural variation across the pan-genome.'],['func','Domain context','Pfam domains and predicted secondary structure overlaid.']]},
   snpimpute:{name:'SNPImpute', icon:'impute', color:'#0891b2', cat:'Impute & Predict',
     tag:'Impute sequence and function',
     desc:'Pan-genome–guided imputation that fills missing genotypes and predicts function across varying depths of sequencing.',
@@ -76,8 +80,6 @@ const TOOLS = {
     tag:'Link variants to protein structure',
     desc:'Link coding variants to protein structure, domain architecture, and AI-based folding or effect predictions.',
     feats:[['fold','Structure view','Map variants onto folded protein models.'],['func','Domain architecture','See which domains a change disrupts.'],['star','Effect prediction','AI predictions of structural impact.']]},
-  snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
-    tag:'Geographic distribution of SNPs across isolates'},
   snpdensity:{name:'SNPDensity', icon:'density', color:'#9333ea', cat:'Collection',
     tag:'SNP and INDEL density and burden',
     desc:'Measure SNP and INDEL density, burden, and distribution across genes and genomic regions to highlight mutational load, constraint, and diversification.',
@@ -93,26 +95,9 @@ const TOOLS = {
 function rnd(a,b){return a+Math.random()*(b-a)}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 
-/* ---- Fusarium gene model links — shared across tools ----
-   FGSG_ (F. graminearum) and FVEG_/FVERT4_ (F. verticillioides) IDs resolve on
-   NCBI Gene / FungiDB. maizegdbGeneURL is kept as an alias so the ported tool
-   modules keep working without edits. */
-const FUNGIDB_GENE_BASE = 'https://fungidb.org/fungidb/app/record/gene/';
-const NCBI_GENE_SEARCH  = 'https://www.ncbi.nlm.nih.gov/gene/?term=';
-function fusariumGeneURL(g){
-  g = String(g||'').trim();
-  var m = g.match(/^(FVEG|FGSG)_0*(\d+)$/i);
-  if (m){
-    // FungiDB hosts F. graminearum PH-1 (FGSG_) and F. verticillioides 7600 (FVEG_)
-    // with 5-digit IDs (e.g. FVEG_03144); normalize the store's padding to match.
-    var id = m[1].toUpperCase() + '_' + String(parseInt(m[2],10)).padStart(5,'0');
-    return FUNGIDB_GENE_BASE + encodeURIComponent(id);
-  }
-  // FVERT4_ (F. verticillioides MRC826) and anything else -> NCBI Gene search.
-  return NCBI_GENE_SEARCH + encodeURIComponent(g);
-}
-const MAIZEGDB_GENE_BASE = FUNGIDB_GENE_BASE;           // legacy alias (name kept for ported modules)
-function maizegdbGeneURL(g){ return fusariumGeneURL(g); }
+/* ---- MaizeGDB gene model links — shared across tools ---- */
+const MAIZEGDB_GENE_BASE = 'https://www.maizegdb.org/gene_center/gene/';
+function maizegdbGeneURL(g){ return MAIZEGDB_GENE_BASE + encodeURIComponent(g); }
 /* True only for a bare single gene model id — intergenic / boundary loci are
    encoded as ranges (contain "..") and are not single gene models. */
 function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('..') && !/\s/.test(g); }
@@ -123,8 +108,8 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
    should live inside that tool\u2019s own file (see IMP in snpimpact.js). */
 const S = {
   tool:'snpversity',
-  dataset:'gram_hq',
-  chr:'chr1', start:2520531, end:2524130, perPage:100,
+  dataset:'mgdb2026_hq',
+  chr:'chr10', start:9788000, end:9826500, perPage:100,
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,
@@ -141,7 +126,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpversity:'updated',snptrait:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',snpgeo:'new',paneffect:'new'}[id]||'soon';
+        const _bl={snpgwas:'new',snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">
@@ -193,9 +178,37 @@ function renderToolPage(id){
     </div>
     <div class="mock-strip">
       <div class="ms-h">Part of the integrated SNPTools platform</div>
-      <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and the Fusarium reference coordinates.</p>
+      <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and B73 v5 coordinates.</p>
     </div>`;
 }
+
+
+/* ================= IBS COST MODEL =================
+   Work is measured in (variants × accessions²). Two per-unit rates, calibrated
+   2026-09 against real parsed results:
+     SNPTree / SNPMatrix distance matrix : ~4.5 ns/unit
+     SNPCompare (region) all-pairs       : ~1.2 ns/unit  (~3.8x cheaper)
+   Used to (a) warn in each tool before a long synchronous compute and (b) grey
+   out the SNPVersity send buttons when a query would essentially kill the tab.
+   SNPImpact never touches genotypes, so it scales on variant count alone. */
+const IBS_COST = {
+  // SNPTree / SNPMatrix (≈4.5 ns/unit)
+  workWarn:    2e9,      // ≈ 9 s  -> tool shows a "build anyway" notice
+  workBlock:   1.5e10,   // ≈ 65 s -> SNPVersity greys the send button
+  // SNPCompare region all-pairs (≈1.2 ns/unit)
+  cmpWorkWarn: 7.5e9,    // ≈ 9 s
+  cmpWorkBlock: 5e10,    // ≈ 60 s
+  cmpMemWarn:  1.5e8,    // variants × accessions bytes ≈ 150 MB genotype matrix
+  cmpMemBlock: 3e8,      //                             ≈ 300 MB
+  // SNPMatrix render
+  mtxAccWarn:  450,      // an A×A SVG heatmap past here is slow to draw and hard to read
+  // SNPImpact (variant count only)
+  impactSoft:  600000,   // ranking starts to lag
+  impactBlock: 2000000,  // too many to rank in the browser
+};
+function ibsWork(v, a){ return v * a * a; }
+function ibsSeconds(v, a){ return Math.round(4.5e-9 * v * a * a); }   // SNPTree / SNPMatrix
+function cmpSeconds(v, a){ return Math.round(1.2e-9 * v * a * a); }   // SNPCompare region
 
 
 /* ================= TOOLTIPS ================= */
