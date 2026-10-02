@@ -186,8 +186,19 @@ as pending.
 `SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933
 GRIN-linked lines) before writing anything; SNPVersity's run bar warns ahead of time and the
 failed-query card shows the server's message. It now reads the store in chunk-aligned blocks with
-no HDF5 chunk cache, so memory no longer scales with the interval: chr2 whole for 5 lines peaked at
-7.1 GB and now ~1.0 GB; chr2:100-130 Mb for 933 lines 2.9 GB -> 0.6 GB (byte-identical VCFs).
+no HDF5 chunk cache, so memory no longer scales with the interval. Peak physical footprint
+(`/usr/bin/time -l`, "peak memory footprint"): chr2 whole for 5 lines 6.6 GB -> 0.29 GB;
+chr2:100-130 Mb for 933 lines 1.9 GB -> 0.35 GB; 100-160 Mb for 933 lines 0.35 GB (byte-identical
+VCFs). On macOS the *resident size* still climbs to ~0.6-0.9 GB over a long request: that is freed
+memory the allocator keeps mapped as reusable (`vmmap`: MALLOC_LARGE_REUSABLE), reclaimed by the
+OS on demand, not a leak; live malloc memory stays near 70 MB. Not measured on Linux.
+
+**Gene lookups (patch 0039).** `lookupGeneModel.php` binary-searches `gff/genes_index.txt` (sorted,
+fixed-width, 1.8 MB) instead of unserializing the 5.7 MB `gff/genes_data.serialized` for every
+call: 8.6 ms and 34 MB -> 0.04 ms and 0.5 MB per lookup, identical answers for all 39,756 genes.
+The index header records the store's byte size; if the store changes, the endpoint rebuilds the
+index (when `gff/` is writable) or reads the store as before. `php tools/build_gene_index.php`
+rebuilds it by hand.
 `processForm.php` deletes its own `vcf/snpv_*` files older than `SNPTOOLS_VCF_TTL_HOURS` (default
 24; 0 turns it off), at most once every 10 minutes (`vcf/.last_prune`). Running the harness or the
 local server therefore clears day-old query VCFs from `vcf/`.

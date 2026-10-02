@@ -22,8 +22,10 @@ MAF, plantcad1/2_score, ESM1/2/3_score -- survives unchanged.
 Memory is bounded by a block of rows, not by the request: the fixed columns
 and the genotypes are read one block at a time (blocks aligned to the
 store's 65,536-row chunks). Reading the whole slice at once held every
-column for the whole interval -- 7.1 GB for chromosome 2 with only 5 lines,
-the INFO column alone padded to its longest entry over 5.18 M rows.
+column for the whole interval -- a 6.6 GB peak footprint for chromosome 2
+with only 5 lines, the INFO column alone padded to its longest entry over
+5.18 M rows; now ~0.3 GB for any interval. (On macOS the resident size reads
+higher: freed memory stays mapped as reusable until the OS reclaims it.)
 
 A request larger than SNPTOOLS_MAX_CELLS (variants x accessions, default
 2e9, about 8 GB of genotype text) is refused before anything is written:
@@ -83,7 +85,8 @@ def as_bytes_col(arr):
 # Locate the requested slice in the HDF5 store
 # ---------------------------------------------------------------------------
 # No chunk cache: blocks are cut on chunk boundaries, so each chunk is read once, and the
-# default 1 MB cache per dataset held up to ~1 GB for a full panel's 933 genotype columns.
+# default 1 MB cache per dataset doubled the footprint for a full panel's 933 genotype
+# columns (chr2:100-130 Mb: 711 MB with it, 356 MB without).
 hdf5_file = h5py.File(hdf5_file_path, 'r', rdcc_nbytes=0)
 if 'POS' not in hdf5_file:
     print("No 'POS' dataset found in the file.")

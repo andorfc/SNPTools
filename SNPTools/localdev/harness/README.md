@@ -73,7 +73,10 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    temporary site root (the real `vcf/` is not pruned): `processForm.php` refusing a request over
    `SNPTOOLS_MAX_CELLS`, keeping string ids once each, filling a reserved name (INFO) with ./.,
    never reusing a file name, ignoring a path in `outName`, refusing `start=1e5`, pruning its own
-   VCFs past the TTL; `ibsCompare.php` rebuilding a torn `.offidx`.
+   VCFs past the TTL; `ibsCompare.php` rebuilding a torn `.offidx`. Gene lookups (patch 0039):
+   all 39,756 genes read back from `gff/genes_index.txt` exactly as from the store, misses stay
+   misses; `lookupGeneModel.php` leaves a current index alone, rebuilds a stale, missing or
+   truncated one, and reads the store itself when the index is stale and `gff/` is read-only.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.

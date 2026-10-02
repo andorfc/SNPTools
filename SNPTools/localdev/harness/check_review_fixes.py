@@ -15,6 +15,11 @@ On the server, in a temporary site root (so the real vcf/ folder is not pruned):
   file, keeps string ids once each and fills a reserved name (INFO) with ./., never reuses an
   existing file name, ignores a path in outName, refuses a non-integer interval, and removes
   its own VCFs older than the TTL; ibsCompare.php rebuilds an unreadable offset index.
+
+Gene lookups (patch 0039): every gene of gff/genes_data.serialized reads back identically from
+gff/genes_index.txt, and misses stay misses; in a temporary root, lookupGeneModel.php answers
+from a current index without touching it, rebuilds a stale, missing or truncated one, and reads
+the store itself when the index is stale and gff/ is read-only.
 """
 import gzip, json, math, os, shutil, subprocess, sys, tempfile, time
 
@@ -141,6 +146,60 @@ try:
           and not leftovers, f"ibsCompare.php with a torn .offidx: {rows}, temp files left {leftovers}")
     jb2 = php(tmp, 'ibsCompare.php', get={'focal': 'c', 'dataset': 'zz'}, env={'SNPTOOLS_DISTANCE_DIR': os.path.join(tmp, 'distance')})
     check([x['similarity'] for x in jb2.get('rows') or []] == [0.25, 0.75, 1.0], "the rebuilt index reads back")
+
+    # ---- gene lookups: gff/genes_index.txt (gene_index_lib.php) ----
+    probe = subprocess.run([PHP, '-r', r"""
+        require $argv[1] . '/gene_index_lib.php';
+        list($s, $i) = gene_index_paths($argv[1] . '/gff');
+        $d = unserialize(file_get_contents($s)); $ix = gene_index_open($s, $i); $bad = 0;
+        if (!$ix) { echo json_encode(['open' => false]); exit; }
+        foreach ($d as $id => $g) if (json_encode(gene_index_find($ix, $id)) !== json_encode($g)) $bad++;
+        foreach (['', 'zm00001eb067740', 'Zm00001eb06774', 'Zm00001eb0677400', 'Zm00001eb067740 ', 'AAAA', 'zzzz'] as $m)
+            if (gene_index_find($ix, $m) !== null) $bad++;
+        echo json_encode(['open' => true, 'n' => count($d), 'bad' => $bad]);""", ROOT], capture_output=True, text=True)
+    gi = json.loads(probe.stdout or '{}')
+    check(gi.get('open') and gi.get('n') == 39756 and gi.get('bad') == 0,
+          f"gff/genes_index.txt is current and answers every gene of the store like the store does ({gi})")
+
+    gdir = os.path.join(tmp, 'gff'); os.makedirs(gdir)
+    for f in ('lookupGeneModel.php', 'gene_index_lib.php'):
+        shutil.copy(os.path.join(ROOT, f), tmp)
+    src, idx = os.path.join(gdir, 'genes_data.serialized'), os.path.join(gdir, 'genes_index.txt')
+    shutil.copy(os.path.join(ROOT, 'gff', 'genes_data.serialized'), src)
+    shutil.copy(os.path.join(ROOT, 'gff', 'genes_index.txt'), idx)
+    look = lambda g: php(tmp, 'lookupGeneModel.php', get={'geneModelId': g})
+    want = {'chromosome': 'chr2', 'start': '4493424', 'end': '4497434', 'ID': 'Zm00001eb067740'}
+    m0 = os.stat(idx).st_mtime_ns
+    check(look('Zm00001eb067740') == want and os.stat(idx).st_mtime_ns == m0
+          and look('Zm00001eb06774') == {'chromosome': 'chr1', 'start': '0', 'end': '0', 'id': 'empty'},
+          "lookupGeneModel.php answers from the current index and leaves it alone")
+
+    def add_gene(gid, chrom):      # change the store (its byte size changes, so the index is stale)
+        subprocess.run([PHP, '-r', '$d = unserialize(file_get_contents($argv[1])); '
+                        '$d[$argv[2]] = ["chromosome" => $argv[3], "start" => "100", "end" => "200", "ID" => $argv[2]]; '
+                        'file_put_contents($argv[1], serialize($d));', src, gid, chrom], check=True)
+    add_gene('Zm00001eb999990', 'chr10')
+    r1 = look('Zm00001eb999990')
+    head = open(idx).readline()
+    check(r1.get('chromosome') == 'chr10' and f"source_bytes={os.path.getsize(src)} records=39757" in head,
+          f"store changed: the index is rebuilt ({head.strip()[24:]})")
+    add_gene('Zm00001eb999991', 'chr3')
+    m1 = os.stat(idx).st_mtime_ns
+    os.chmod(gdir, 0o555)
+    try:
+        r2 = look('Zm00001eb999991'); r2b = look('Zm00001eb067740')
+    finally:
+        os.chmod(gdir, 0o755)
+    check(r2.get('chromosome') == 'chr3' and r2b == want and os.stat(idx).st_mtime_ns == m1,
+          "store changed, gff/ read-only: the store itself answers, the stale index is left alone")
+    os.remove(idx)
+    check(look('Zm00001eb999991').get('chromosome') == 'chr3' and os.path.exists(idx), "missing index: rebuilt")
+    with open(idx, 'r+b') as fh:
+        fh.truncate(os.path.getsize(idx) - 7)
+    check(look('Zm00001eb067740') == want and open(idx).readline() == head.replace('39757', '39758').replace(
+          f"source_bytes={head.split('source_bytes=')[1].split()[0]}", f"source_bytes={os.path.getsize(src)}"),
+          "truncated index: rebuilt")
+    check(not [f for f in os.listdir(gdir) if f.endswith('.tmp')], "no temporary index files left")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

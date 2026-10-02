@@ -195,7 +195,7 @@ These were **not** part of this code drop — add them or point the config at yo
 | Endpoint | Called by | Purpose |
 | --- | --- | --- |
 | `processForm.php` | `Data.queryVariants` | Accepts `chr`, `start`, `end`, `dataSet`, `genotypes` (JSON list), `outName`. Runs `h5_to_vcf.py` against the `.h5` store, writes a VCF into `vcf/`, and returns JSON `{ status, outFile, … }`. |
-| `lookupGeneModel.php` | `Data.lookupGene` | Resolves a B73 v5 gene-model ID (`?geneModelId=…`) to `{ chromosome, start, end }` from the serialized GFF store. |
+| `lookupGeneModel.php` | `Data.lookupGene` | Resolves a B73 v5 gene-model ID (`?geneModelId=…`) to `{ chromosome, start, end }` by a binary search of `gff/genes_index.txt`, the sorted fixed-width index of the serialized GFF store `gff/genes_data.serialized` (`gene_index_lib.php`). The index is rebuilt by itself when the store changes and `gff/` is writable, or with `php tools/build_gene_index.php`; without a current index the store is read directly. |
 | `ibsCompare.php` | SNPCompare (global mode) | Returns precomputed genome-wide IBS similarity rows for a focal accession (`?focal=<ID>` → `{ rows: [{ id, similarity, missing }] }`). |
 
 VCF `INFO` tags the parser understands include: `GENEMODEL`, `TYPE`, `SUB`, `MQ`, `CVP`,
