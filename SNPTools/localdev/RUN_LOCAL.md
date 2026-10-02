@@ -62,16 +62,23 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
      **Select region** and drag across the visible window (the view is padded by ~8 %, so the
      panel shows roughly Chr2:4.490–4.500 Mb; the headless test selects exactly
      4,491,424–4,499,434: 85 SNPs, 11 above the threshold, lead S2_4498985, p = 3.6e-14).
-   - **Send to SNPVersity →** -> in the popup set **VCF set in SNPVersity** to
-     *MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites) (zmgrin2026_imp)*. The popup
-     reports "25 of 26 NAM lines ... → 25 samples (ZmG_*)" and "Not available in this set: CML103".
-     Tick **Send accessions — replace ...** (keep *Send this genomic region* ticked) -> **Send**.
+   - **Send to SNPVersity →**. *Send this genomic region* and **Send accessions — replace ...** are
+     pre-ticked. Each entry of **VCF set in SNPVersity** shows how many of the 26 NAM lines
+     (B73 + 25 founders) it contains, and the text under the checkboxes names the missing ones:
+     - *MaizeGDB 2026 · High Quality* / *High Coverage*: "24 of 26 ... → 81 samples (all runs);
+       B73 = 4 samples" and "Not available in this set: CML52, NC358";
+     - *MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites) (zmgrin2026_imp)*:
+       "25 of 26 ... → 25 samples (ZmG_*); B73 = 1 sample" and "Not available in this set: CML103".
+     Choose the GRIN-linked set -> **Send**.
    - SNPVersity opens on the GRIN-linked set with chr2:4,491,424-4,499,434 and the 25 ZmG_* NAM
      lines; the banner repeats the CML103 note. **Build VCF & view** -> 249 variants.
    - **Send to SNPGeo** (re-queries all 932 lines) -> click the row `4494625 ...` (a GWAS SNP with
      p = 6.6e-9 that is also a release site) to map it.
-   With the VCF set left at *MaizeGDB 2026 · High Quality* the hand-off is unchanged (81 NAM runs of
-   that catalogue; there is no local HDF5 for it, so the query itself fails locally).
+   With *MaizeGDB 2026 · High Quality* SNPVersity receives 81 accessions = all runs of the 24 NAM
+   lines in that catalogue, including the 4 B73 reference runs (there is no local HDF5 for it, so
+   the query itself fails locally). Note: SNPVersity's own default selection on page load is 23
+   accessions (one run per tagged NAM founder, no B73); that is what remains if the accession
+   checkbox is unticked.
 
 Anything outside the fixture windows returns "No variants"; chromosomes 3, 4 and 6 have no
 store ("HDF5 file not found"). Score/consequence columns read "—" because the release INFO

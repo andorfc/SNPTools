@@ -166,10 +166,20 @@ async function until(site, expr, ms = 8000){
   W.regionStats = {total: $('document.getElementById("gwxStatTotal").textContent'), sig: $('document.getElementById("gwxStatSig").textContent')};
   W.options = $('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>[o.value,o.textContent,o.selected])');
   W.defaultMapText = $('document.getElementById("gwxSendMap").textContent');
+  W.replacePreticked = $('document.getElementById("gwxSendAccReplaceChk").checked');
+  W.perSet = {};
+  for (const ds of ['mgdb2026_hq', 'mgdb2026_hc', 'zmgrin2026_imp']){
+    $(`(()=>{const s=document.getElementById("gwxSendDataset"); s.value="${ds}"; s.dispatchEvent(new Event("change"));})()`);
+    W.perSet[ds] = {map: $('document.getElementById("gwxSendMap").textContent'),
+                    missing: $('(document.querySelector("#gwxSendMap .gwx-ho-miss")||{}).textContent||""'),
+                    replaceChecked: $('document.getElementById("gwxSendAccReplaceChk").checked')};
+  }
+  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value="mgdb2026_hq"; s.dispatchEvent(new Event("change"));})()');
   // (a) default VCF set: behaviour unchanged (all NAM runs of the MaizeGDB 2026 catalogue)
   $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change")); document.getElementById("gwxSendConfirmBtn").click();})()');
   await site.wait(300);
-  W.defaultSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('S.selected.size'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+  W.defaultSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('S.selected.size'), ids: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+                   banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 400),
                    founders: $('[...new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder))].sort()')};
   // (b) GRIN-linked release: NAM names translated to ZmG_* sample ids
   $('go("snpgwas")'); await until(site, 'document.getElementById("gwxOpenSendBtn")', 10000);
@@ -195,12 +205,36 @@ async function until(site, expr, ms = 8000){
     W.geo.nam = $('(()=>{const ids=new Set(Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)); const r=GEO.rows[GEO.snpIndex]; let c=0,n=0; GEO.accs.forEach((a,i)=>{ if(ids.has(a.id)&&r.gts[i]!==3){n++; if(r.gts[i]>0)c++;} }); return {carriers:c, called:n};})()');
     W.geo.png = mapPNG(site, 'snpgeo_from_gwas_tpbn_chr2_4494625_NA_freq'); }
 
+  /* ---------- fresh page: GWAS -> SNPVersity on the default set (the path a user takes first) ---------- */
+  {
+    const f = await openSite(ROOT); const $f = f.$eval;
+    const F = R.gwas_fresh = {selectedBefore: $f('S.selected.size'), datasetBefore: $f('S.dataset'),
+      b73InDefault: $f('[...S.selected].some(id=>/^B73_/.test(id))')};
+    $f('go("snpgwas")');
+    const u = async (e, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms){ if ($f(e)) return; await f.wait(50); } };
+    await u('document.querySelector(".gwx-trait-dd-opt")');
+    $f('[...document.querySelectorAll(".gwx-trait-dd-opt")].find(b=>b.getAttribute("data-value")==="Tassel Branch Number").click()');
+    await u('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\')');
+    $f('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\').click()');
+    await u('SNPTools.registry.snpgwas.activeEntryId()==="tibbscortes2024_nam_tpbn_intcp" && document.getElementById("gwxOpenSendBtn")');
+    $f('SNPTools.registry.snpgwas.selectRegion(2, 4491424, 4499434)'); await f.wait(50);
+    $f('document.getElementById("gwxOpenSendBtn").click()'); await f.wait(50);
+    F.popupDefault = {value: $f('document.getElementById("gwxSendDataset").value'), replace: $f('document.getElementById("gwxSendAccReplaceChk").checked'),
+                      map: $f('document.getElementById("gwxSendMap").textContent'),
+                      options: $f('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>o.textContent)')};
+    $f('document.getElementById("gwxSendConfirmBtn").click()'); await f.wait(300);
+    F.after = {tool: $f('S.tool'), dataset: $f('S.dataset'), selected: $f('S.selected.size'),
+               b73: $f('[...S.selected].filter(id=>/^B73_/.test(id)).length'),
+               lines: $f('new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder)).size')};
+    f.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(R));
   const brief = JSON.parse(JSON.stringify(R)); delete brief.snpgeo_gene.allStats; delete brief.snpgeo_gene.accOrder;
-  brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length;
+  brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length; delete brief.gwas.defaultSend.ids;
   brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();

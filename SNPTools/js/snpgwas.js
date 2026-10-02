@@ -1170,60 +1170,55 @@
     return list.filter(function (d) { return d.id === def || d.family === defFam || d.family === GRIN_FAMILY; });
   }
 
-  /* GRIN-linked release: translate NAM line names to release sample ids
-     (ZmG_*) through the catalogue (namFounder, genotypeId, name, VCF name).
-     Names without a sample in this set are returned in `missing` so the
-     popup and SNPVersity's banner can say so instead of dropping them. */
-  function namGrinInfo(ds) {
-    const accs = Data.accessionsFor(ds) || [];
-    const byKey = new Map();
+  /* Other names the same NAM line carries in some catalogue (normalised on
+     match). B73 is the reference and recurrent parent; its runs in the
+     MaizeGDB 2026 reference project have founder 'B73' but no namFounder tag,
+     and in the GRIN-linked release it is ZmG_B73 / PI 550473. */
+  const NAM_ALIASES = { B73: ['B73_RefGen', 'B73 RefGen_v5', 'PI 550473', 'ZmG:B73'] };
+  const NAM_PROJECT_RE = /nested association mapping|Zm-B73-REFERENCE-NAM|\bNAM founders\b/i;
+
+  /* NAM lines of the GWAS in one VCF set, derived from that set's own sample
+     list (Data.accessionsFor): for each of B73 + the 25 founders, every sample
+     whose namFounder / founder / genotypeId / name / VCF name / GRIN accession
+     matches the line name or an alias. Samples in a NAM project (the B73
+     reference + NAM founder bioprojects, or the release's "NAM founders + B73"
+     project) are preferred; other projects are used only for a line that has
+     no sample in a NAM project. Lines with no sample at all are returned in
+     `missing` so the popup and SNPVersity's banner name them. */
+  function namLineInfo(ds) {
+    if (!ds) return null;
+    const namProj = new Set((Data.projectsFor(ds) || []).filter(function (p) { return NAM_PROJECT_RE.test(p.title || ''); })
+      .map(function (p) { return p.id; }));
+    const byKey = new Map();   // normalised name -> {rank, ids}
     const add = function (key, a, rank) {
       const k = normName(key); if (!k) return;
       const cur = byKey.get(k);
       if (!cur || rank < cur.rank) byKey.set(k, {rank: rank, ids: [a.id]});
       else if (rank === cur.rank && cur.ids.indexOf(a.id) < 0) cur.ids.push(a.id);
     };
-    accs.forEach(function (a) {
-      add(a.namFounder, a, 0); add(a.genotypeId, a, 1); add(a.founder, a, 1);
-      add(a.strain, a, 2); add(a.run, a, 3);
+    (Data.accessionsFor(ds) || []).forEach(function (a) {
+      const base = (namProj.has(a.proj) || a.namFounder) ? 0 : 10;   // NAM project first
+      add(a.namFounder, a, base); add(a.founder, a, base + 1); add(a.genotypeId, a, base + 1);
+      add(a.strain, a, base + 2); add(a.run, a, base + 3); add(a.grin, a, base + 4);
     });
-    const names = NAM_LINES.slice();
-    const defInfo = namCatalogInfo(defaultVersityDatasetId());
-    if (defInfo) defInfo.names.forEach(function (n) { if (!names.some(function (x) { return normName(x) === normName(n); })) names.push(n); });
     const mapped = [], missing = [], ids = [];
-    names.forEach(function (n) {
-      const hit = byKey.get(normName(n));
-      if (hit) { mapped.push({name: n, ids: hit.ids}); hit.ids.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); }
+    NAM_LINES.forEach(function (n) {
+      let hit = null;
+      [n].concat(NAM_ALIASES[n] || []).forEach(function (k) {
+        const h = byKey.get(normName(k));
+        if (h && (!hit || h.rank < hit.rank)) hit = h;
+      });
+      if (hit) { mapped.push({name: n, ids: hit.ids.slice()}); hit.ids.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); }
       else missing.push(n);
     });
     if (!ids.length) return null;
-    return { dataset: ds, ids: ids, names: names, mapped: mapped, missing: missing, translated: true };
+    return { dataset: ds, ids: ids, names: NAM_LINES.slice(), mapped: mapped, missing: missing,
+             translated: familyOfDs(ds) === GRIN_FAMILY };
   }
 
   function namAccessionInfo(dsArg) {
     if (typeof Data === 'undefined' || !Data.datasets || !Data.projectsFor || !Data.accessionsFor) return null;
-    const ds = dsArg || chosenVersityDatasetId();
-    if (!ds) return null;
-    if (familyOfDs(ds) === GRIN_FAMILY) return namGrinInfo(ds);
-    return namCatalogInfo(ds);
-  }
-
-  /* Catalogue families with NAM bioprojects (MaizeGDB 2026): every run of the
-     B73 reference and NAM founder projects — the original behaviour. */
-  function namCatalogInfo(ds) {
-    if (!ds) return null;
-    const projects = Data.projectsFor(ds) || [];
-    const wantProjIds = projects
-      .filter(function (p) { return NAM_FOUNDER_PROJECT_RE.test(p.title) || NAM_REFERENCE_PROJECT_RE.test(p.title); })
-      .map(function (p) { return p.id; });
-    if (!wantProjIds.length) return null;
-    const nam = (Data.accessionsFor(ds) || [])
-      .filter(function (a) { return wantProjIds.indexOf(a.proj) !== -1; });
-    const ids = nam.map(function (a) { return a.id; });
-    if (!ids.length) return null;
-    const names = [];
-    nam.forEach(function (a) { const n = a.founder || a.namFounder; if (n && names.indexOf(n) < 0) names.push(n); });
-    return { dataset: ds, ids: ids, names: names, missing: [], translated: false };
+    return namLineInfo(dsArg || chosenVersityDatasetId());
   }
 
   function regionSendable() { return !!currentRegion && currentRegion.chrsTouched.length === 1; }
@@ -1237,8 +1232,10 @@
   function datasetOptionsHTML() {
     const cur = chosenVersityDatasetId();
     return versityDatasetChoices().map(function (d) {
+      const info = namAccessionInfo(d.id);
+      const cnt = info ? ' — ' + info.mapped.length + '/' + info.names.length + ' NAM lines' : ' — no NAM lines';
       return '<option value="' + escAttr(d.id) + '"' + (d.id === cur ? ' selected' : '') + '>' +
-        escAttr(d.name + (d.sub ? ' · ' + d.sub : '')) + (d.family === GRIN_FAMILY ? ' (' + escAttr(d.id) + ')' : '') + '</option>';
+        escAttr(d.name + (d.sub ? ' · ' + d.sub : '')) + (d.family === GRIN_FAMILY ? ' (' + escAttr(d.id) + ')' : '') + escAttr(cnt) + '</option>';
     }).join('');
   }
   /* Below the accession checkboxes: what "the NAM accessions" means for the
@@ -1246,9 +1243,11 @@
   function renderSendMap() {
     if (!DOM.sendMap) return;
     const info = (activeEntry && activeEntry.population === 'NAM') ? namAccessionInfo() : null;
-    if (!info || !info.translated) { DOM.sendMap.innerHTML = ''; return; }
-    let h = '<b>' + info.mapped.length + ' of ' + info.names.length + '</b> NAM lines (B73 + founders) have a sample in this set → ' +
-      info.ids.length + ' sample' + (info.ids.length === 1 ? '' : 's') + ' (ZmG_*).';
+    if (!info) { DOM.sendMap.innerHTML = activeEntry && activeEntry.population === 'NAM' ? '<span class="gwx-ho-miss">No NAM line has a sample in this set.</span>' : ''; return; }
+    const b73 = info.mapped.filter(function (m) { return m.name === 'B73'; })[0];
+    let h = '<b>' + info.mapped.length + ' of ' + info.names.length + '</b> NAM lines (B73 + 25 founders) are in this set → ' +
+      info.ids.length + ' sample' + (info.ids.length === 1 ? '' : 's') + (info.translated ? ' (ZmG_*)' : ' (all runs)') +
+      (b73 ? '; B73 = ' + b73.ids.length + ' sample' + (b73.ids.length === 1 ? '' : 's') : '') + '.';
     if (info.missing.length) h += '<br><span class="gwx-ho-miss">Not available in this set: <b>' + info.missing.map(escAttr).join(', ') + '</b></span>';
     DOM.sendMap.innerHTML = h;
   }
@@ -1256,6 +1255,7 @@
     sendDatasetId = DOM.sendDatasetSel ? DOM.sendDatasetSel.value : null;
     const canAcc = accessionsOfferable();
     [DOM.sendAccReplaceChk, DOM.sendAccAddChk].forEach(function (c) { if (c) { c.disabled = !canAcc; if (!canAcc) c.checked = false; } });
+    if (canAcc && DOM.sendAccReplaceChk && DOM.sendAccAddChk && !DOM.sendAccAddChk.checked) DOM.sendAccReplaceChk.checked = true;
     renderSendMap();
     updateSendPopupState();
   }
@@ -1270,7 +1270,9 @@
     const canAcc = accessionsOfferable();
 
     if (DOM.sendRegionChk) { DOM.sendRegionChk.disabled = !canRegion; DOM.sendRegionChk.checked = canRegion; }
-    if (DOM.sendAccReplaceChk) { DOM.sendAccReplaceChk.disabled = !canAcc; DOM.sendAccReplaceChk.checked = false; }
+    /* NAM GWAS: sending the NAM lines is the expected hand-off, so "replace" is
+       pre-ticked whenever they can be offered; untick it for a region-only send. */
+    if (DOM.sendAccReplaceChk) { DOM.sendAccReplaceChk.disabled = !canAcc; DOM.sendAccReplaceChk.checked = canAcc; }
     if (DOM.sendAccAddChk) { DOM.sendAccAddChk.disabled = !canAcc; DOM.sendAccAddChk.checked = false; }
 
     const n = (typeof S !== 'undefined' && S.selected) ? S.selected.size : 0;
@@ -1342,13 +1344,10 @@
       payload.dataset = info.dataset;
       payload.accessions = info.ids;
       payload.merge = wantsReplace ? 'replace' : 'add';
-      if (info.translated) {
-        noteParts.push('NAM lines translated to ' + info.ids.length + ' GRIN-linked release samples (' + info.mapped.length + ' of ' + info.names.length + ' NAM lines)'
-          + (info.missing.length ? '; not available in this set: ' + info.missing.join(', ') : ''));
-        payload.notAvailable = info.missing.slice();
-      } else {
-        noteParts.push('NAM population accessions (B73 v5 reference + NAM founder panel)');
-      }
+      noteParts.push(info.mapped.length + ' of ' + info.names.length + ' NAM lines incl. B73 (' + info.ids.length + ' sample' + (info.ids.length === 1 ? '' : 's')
+        + (info.translated ? ', GRIN-linked release ids' : '') + ')'
+        + (info.missing.length ? '; not available in this set: ' + info.missing.join(', ') : ''));
+      payload.notAvailable = info.missing.slice();
     } else {
       /* No accessions in this payload — never let a leftover merge choice
          apply to (and potentially wipe) the user's existing accession
