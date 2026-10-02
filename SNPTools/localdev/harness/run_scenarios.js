@@ -595,6 +595,38 @@ async function until(site, expr, ms = 8000){
            if (a) a.res(stub(a)); await new Promise(r=>setTimeout(r,200));
            return {calls:calls.map(c=>c.g), shown:(document.querySelector('.fold-context .g')||{}).textContent||null}; }
       finally { Data.geneFunction=real; } })()`);
+    /* patch 0040 */
+    // (i) tooltips: no per-element listeners however often a page is shown; one delegated set
+    F.ttListeners = await $r(`(async()=>{ const orig=EventTarget.prototype.addEventListener; let n=0;
+      EventTarget.prototype.addEventListener=function(t,...a){ if(/^mouse(enter|leave|move)$/.test(t) && this.nodeType===1 && this.hasAttribute && this.hasAttribute('data-tt')) n++; return orig.call(this,t,...a); };
+      try{ for (let i=0;i<3;i++){ go('snpfunction'); go('snpfold'); go('snpversity'); await new Promise(r=>setTimeout(r,30)); } return n; }
+      finally{ EventTarget.prototype.addEventListener=orig; } })()`);
+    F.ttBehaviour = $r(`(()=>{ const host=document.createElement('div');
+      host.innerHTML='<span id="ttA" data-tt="outer <b>A</b>">a<i id="ttB" data-tt="inner B">b</i></span><span id="ttC">c</span>';
+      document.body.appendChild(host); const tt=document.getElementById('tt'), out=[];
+      const over=el=>el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+      over(document.getElementById('ttA')); out.push(tt.classList.contains('show')&&tt.textContent);
+      over(document.getElementById('ttB')); out.push(tt.textContent);
+      over(document.getElementById('ttC')); out.push(tt.classList.contains('show'));
+      over(document.getElementById('ttA')); host.remove(); document.dispatchEvent(new MouseEvent('mousemove',{clientX:5,clientY:5})); out.push(tt.classList.contains('show'));
+      return out; })()`);
+    // (j) SNPFold's confidence legend names the model shown
+    F.foldLegend = {};
+    for (const pref of ['alphafold', 'esmfold']){
+      $r(`go("snpfold"); FOLD.setModelPref ? FOLD.setModelPref(${JSON.stringify(pref)}) : null; document.getElementById('foldGeneInput').value='Zm00001eb406050'; FOLD.loadGene();`);
+      await until(s6, 'S.tool==="snpfold" && !document.querySelector("#page .spinner") && document.querySelector(".fold-context")', 30000); await s6.wait(200);
+      F.foldLegend[pref] = $r(`({badge:(document.querySelector('.fold-src-badge')||{}).textContent||null,
+        legend:[...document.querySelectorAll('.lg-title')].map(e=>e.textContent.trim()).find(t=>/pLDDT/.test(t))||null})`);
+    }
+    // (k) score columns of the GRIN-linked set, now that every chromosome's store carries them
+    F.fieldStatus = $r('Object.fromEntries(Data.annotationFields("zmgrin2026_imp").map(f=>[f.key,f.status]))');
+    // (l) SNPFunction's default gene has variants in the local stores (a fresh page: the race
+    //     tests above typed other genes into this one)
+    { const s7 = await openSite(ROOT);
+      s7.$eval('go("snpfunction")');
+      F.functionDefault = await s7.$eval(`(async()=>{ const g=(document.getElementById('fnGeneInput')||{}).value;
+        const d=await Data.geneFunction(g, "zmgrin2026_imp"); return {gene:g, n:d.nVariants, missense:(d.burden.byClass||{}).missense||0, error:d.error||null}; })()`);
+      s7.window.close(); }
     F.consoleErrors = s6.errors.filter(e => !/favicon/.test(e));
     s6.window.close();
   }

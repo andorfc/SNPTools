@@ -50,6 +50,14 @@ $VCF_TTL_HOURS = ($VCF_TTL_HOURS === false || trim($VCF_TTL_HOURS) === '') ? 24.
 //    read by the script itself (default 2e9). A list longer than this many ids is refused here.
 $MAX_IDS = 20000;
 
+// 6) Replies never name server paths. The script's command line and output (which do) go to
+//    the PHP error log; SNPTOOLS_DEBUG=1 also returns them in the reply, for local debugging.
+$DEBUG = getenv('SNPTOOLS_DEBUG') === '1';
+function reply($fields, $debug = array()) {
+    global $DEBUG;
+    echo json_encode($DEBUG ? array_merge($fields, $debug) : $fields);
+}
+
 /* ---------------------------------------------------------------------
  *  INPUT
  * ------------------------------------------------------------------- */
@@ -80,8 +88,8 @@ if (!preg_match('/^chr[0-9]{1,2}$/', $chr)) {
 /* ---------------------------------------------------------------------
  *  DATASET  ->  (family, quality)  ->  <family>_<chr>_<quality>.h5
  * ------------------------------------------------------------------- */
-$ds_part0 = 'maizegdb2026';   // family
-$ds_part2 = 'HQ';             // quality tier
+$ds_part0 = null;   // family        (every dataset id is listed below; anything else is refused)
+$ds_part2 = null;   // quality tier
 
 switch ($dataset) {
     case 'mgdb2026_hq':  $ds_part0 = 'maizegdb2026'; $ds_part2 = 'HQ';     break;
@@ -103,8 +111,9 @@ switch ($dataset) {
 
 $db_filename = $VERSION_PATH . $ds_part0 . '_' . $chr . '_' . $ds_part2 . '.h5';
 if (!is_file($db_filename)) {
-    echo json_encode(array('status' => 'error',
-        'message' => 'HDF5 file not found: ' . $db_filename));
+    error_log("processForm.php: no store $db_filename");
+    reply(array('status' => 'error',
+        'message' => "No variant store for $dataset $chr on this server."), array('store' => $db_filename));
     exit;
 }
 
@@ -113,8 +122,9 @@ if (!is_file($db_filename)) {
  * ------------------------------------------------------------------- */
 if (!is_dir($VCF_DIR)) { @mkdir($VCF_DIR, 0775, true); }
 if (!is_writable($VCF_DIR)) {
-    echo json_encode(array('status' => 'error',
-        'message' => 'VCF directory is not writable: ' . $VCF_DIR));
+    error_log("processForm.php: VCF directory not writable: $VCF_DIR");
+    reply(array('status' => 'error',
+        'message' => 'The server cannot write the VCF (its output folder is not writable).'), array('vcfDir' => $VCF_DIR));
     exit;
 }
 prune_old_vcfs($VCF_DIR, $VCF_TTL_HOURS);
@@ -172,35 +182,33 @@ if (is_file($vcf_path)) {
     if ($output !== null && preg_match('/^variants:\s*(\d+)/m', $output, $mm)) {
         $variants = (int) $mm[1];
     }
-    echo json_encode(array(
+    reply(array(
         'status'   => 'success',
-        'outFile'  => $vcf_path,
+        'outFile'  => $vcf_path,   // the web path the browser fetches (./vcf/...)
         'variants' => $variants,   // exact site count — lets the client size the result before parsing
         'message'  => 'VCF written',
-        'output'   => $output,
-    ));
+    ), array('output' => $output));
 } else if ($output !== null && preg_match('/^TOO_LARGE:\s*(.+)$/m', $output, $tl)) {
     // Over the server's build limit (h5_to_vcf.py checks variants x accessions first).
-    echo json_encode(array(
+    reply(array(
         'status'  => 'error',
         'message' => 'This query is too large to build here: ' . trim($tl[1]),
         'tooLarge'=> true,
     ));
 } else if ($output !== null && strpos($output, 'No data found in the specified position range') !== false) {
     // Python ran fine, the interval simply contained no variants.
-    echo json_encode(array(
+    reply(array(
         'status'  => 'empty',
         'message' => 'No variants in this interval.',
-        'output'  => $output,
-    ));
+    ), array('output' => $output));
 } else {
     // Real failure (bad Python path, missing h5py/numpy, dataset key error, ...).
-    echo json_encode(array(
+    $detail = ($output === null ? '(no output — check that $PYTHON_PATH is correct and executable)' : $output);
+    error_log('processForm.php: no VCF produced. command: ' . $command . ' | output: ' . substr($detail, 0, 4000));
+    reply(array(
         'status'  => 'error',
-        'message' => 'No VCF produced (script error). See output.',
-        'command' => $command,
-        'output'  => ($output === null ? '(no output — check that $PYTHON_PATH is correct and executable)' : $output),
-    ));
+        'message' => 'No VCF produced: the variant extraction failed on the server.',
+    ), array('command' => $command, 'output' => $detail));
 }
 
 /* Remove VCFs (and stray accession lists) older than $ttlHours from the output folder. Runs

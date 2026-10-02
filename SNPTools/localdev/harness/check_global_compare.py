@@ -48,9 +48,10 @@ if not R['zmgrin_all'].get('sitesSelect'):
 n3 = None
 if 'mgdb' in R:
     n3 = check('mgdb2026', R['mgdb'], dd, 'maizegdb_allchr_final_similarity.csv', 'maizegdb_allchr_final_missing_pct.csv')
+    # SNPCompare names the family on every request (ibsCompare.php's default is the release's set)
     mq = [q for q in R['requests'] if 'focal=' in q and R['mgdb']['focal'] in q]
-    if not mq or any('dataset=' in q for q in mq):
-        bad += 1; print('mgdb2026 request URL changed', mq)
+    if not mq or not all('dataset=mgdb2026' in q for q in mq):
+        bad += 1; print('mgdb2026 request does not name its family', mq)
 if not any('dataset=zmgrin2026' in q and 'sites=snp' in q for q in R['requests']):
     bad += 1; print('no SNP-only zmgrin2026 request', R['requests'])
 if 'real' in R:   # installed matrices (./distance/zmgrin2026/)

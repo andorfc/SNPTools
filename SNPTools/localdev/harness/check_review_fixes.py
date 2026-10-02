@@ -20,6 +20,13 @@ Gene lookups (patch 0039): every gene of gff/genes_data.serialized reads back id
 gff/genes_index.txt, and misses stay misses; in a temporary root, lookupGeneModel.php answers
 from a current index without touching it, rebuilds a stale, missing or truncated one, and reads
 the store itself when the index is stale and gff/ is read-only.
+
+Patch 0040: no tooltip listeners are added to [data-tt] elements however often pages are shown,
+and the delegated tooltip shows the innermost element's text, hides off it and when its element
+is re-rendered away; SNPFold's pLDDT legend names the model shown (AlphaFold2, ESMFold);
+PlantCAD1/2, Evo2 and ESM-C are available columns of the GRIN-linked set; SNPFunction's default
+gene has variants; processForm.php and ibsCompare.php replies name no server path (the details
+come back only with SNPTOOLS_DEBUG=1), and ibsCompare.php without a dataset serves zmgrin2026.
 """
 import gzip, json, math, os, shutil, subprocess, sys, tempfile, time
 
@@ -76,6 +83,19 @@ check(fq['processForm'] == 1 and fq['lookupGeneModel'] == 1 and fq['shown'] == '
 fo = F['foldRace']
 check(fo['calls'] == ['Zm00001eb378140', 'Zm00001eb406050'] and fo['shown'] == 'Zm00001eb406050',
       f"SNPFold: both genes waiting on variants, A answering last: B stands ({fo})")
+check(F['ttListeners'] == 0, f"tooltip listeners added to [data-tt] elements over 3 visits of 3 tools: {F['ttListeners']}")
+tb = F['ttBehaviour']
+check(tb == ['outer A', 'inner B', False, False], f"delegated tooltip: outer, inner, off, element removed -> {tb}")
+fl = F['foldLegend']
+check(fl.get('alphafold', {}).get('legend') == 'AlphaFold2 confidence score (pLDDT):'
+      and fl.get('esmfold', {}).get('legend') == 'ESMFold confidence score (pLDDT):',
+      f"SNPFold pLDDT legend names the model shown: {fl}")
+fs = F['fieldStatus']
+check(all(fs.get(k) == 'ok' for k in ('pc1', 'pc2', 'evo2', 'esmc')) and fs.get('mq') == 'hidden' and fs.get('comp') == 'hidden',
+      f"GRIN-linked score columns available: {fs}")
+fd = F['functionDefault']
+check(fd['gene'] == 'Zm00001eb406050' and fd['n'] > 0 and not fd['error'],
+      f"SNPFunction default gene has variants: {fd}")
 errs = [x for x in F.get('consoleErrors', []) if 'TypeError' in x or 'is not a function' in x or 'ReferenceError' in x]
 check(not errs, f"no script errors in the scenarios ({errs[:2]})")
 
@@ -200,6 +220,32 @@ try:
           f"source_bytes={head.split('source_bytes=')[1].split()[0]}", f"source_bytes={os.path.getsize(src)}"),
           "truncated index: rebuilt")
     check(not [f for f in os.listdir(gdir) if f.endswith('.tmp')], "no temporary index files left")
+
+    # ---- replies name no server path (patch 0040) ----
+    def pathless(j):
+        txt = json.dumps(j)
+        return not any(k in j for k in ('command', 'output', 'store', 'vcfDir')) and 'hdf5/' not in txt \
+            and tmp not in txt and 'h5_to_vcf' not in txt and 'distance/' not in txt
+    p1 = php(tmp, 'processForm.php', 'POST', post=dict(win, chr='chr11', genotypes='[]', outName=''))
+    p2 = php(tmp, 'processForm.php', 'POST', post=dict(win, genotypes=json.dumps(['ZmG_B73']), outName=''),
+             env={'PYTHON_PATH': '/nonexistent/python'})
+    p3 = php(tmp, 'processForm.php', 'POST', post=dict(win, genotypes=json.dumps(['ZmG_B73']), outName=''))
+    check(p1.get('status') == 'error' and 'No variant store for zmgrin2026_imp chr11' in p1.get('message', '') and pathless(p1)
+          and p2.get('status') == 'error' and 'extraction failed' in p2.get('message', '') and pathless(p2)
+          and p3.get('status') == 'success' and pathless(p3),
+          f"processForm.php replies name no path: {p1.get('message')} | {p2.get('message')} | {sorted(p3)}")
+    p4 = php(tmp, 'processForm.php', 'POST', post=dict(win, chr='chr11', genotypes='[]', outName=''), env={'SNPTOOLS_DEBUG': '1'})
+    p5 = php(tmp, 'processForm.php', 'POST', post=dict(win, genotypes=json.dumps(['ZmG_B73']), outName=''),
+             env={'PYTHON_PATH': '/nonexistent/python', 'SNPTOOLS_DEBUG': '1'})
+    check('hdf5/' in p4.get('store', '') and 'h5_to_vcf' in p5.get('command', ''), "SNPTOOLS_DEBUG=1 returns the details")
+    denv = {'SNPTOOLS_DISTANCE_DIR': os.path.join(tmp, 'distance')}
+    i1 = php(tmp, 'ibsCompare.php', get={'focal': 'a', 'dataset': 'nosuchset'}, env=denv)
+    i2 = php(tmp, 'ibsCompare.php', get={'focal': 'zz9', 'dataset': 'zz'}, env=denv)
+    check(i1.get('error') == 'Genome-wide matrices for nosuchset are not installed on this server.' and pathless(i1)
+          and i2.get('error') == 'Focal id not found in the zz matrices.' and pathless(i2),
+          f"ibsCompare.php errors name no path: {i1.get('error')} | {i2.get('error')}")
+    i3 = php(tmp, 'ibsCompare.php', get={'probe': '1'}, env=denv)
+    check(i3.get('dataset') == 'zmgrin2026', f"ibsCompare.php without a dataset serves zmgrin2026: {i3}")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

@@ -339,7 +339,8 @@ const SNPCompare = (function () {
     let res;
     if(CFG.useDemoGlobal){ res={rows:globalDemo(ds,focalId), demo:true}; }
     else {
-      const q=fam==='mgdb2026' ? '' : `&dataset=${encodeURIComponent(fam)}${sites==='snp'?'&sites=snp':''}`;
+      // the family is always named: ibsCompare.php's default is this release's set, not MaizeGDB 2026
+      const q=`&dataset=${encodeURIComponent(fam)}${(fam!=='mgdb2026' && sites==='snp')?'&sites=snp':''}`;
       const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}${q}`,{cache:'no-store'});
       if(!resp.ok) throw new Error('ibsCompare.php failed (HTTP '+resp.status+')');
       const raw=await resp.text(); let j;

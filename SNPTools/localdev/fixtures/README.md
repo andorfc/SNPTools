@@ -57,4 +57,7 @@ the MaizeGDB 2026 sets without a local store.
 | chr8:163,450,112-163,454,880 | old GENE_MODELS interval for Zm00001eb374090 (no annotated gene) | 268 |
 
 Gene intervals are from `gff/genes_data.serialized` (what lookupGeneModel.php returns).
-Queries outside these windows return "No variants"; chromosomes 3, 4 and 6 have no store.
+With only the test stores built from these files (`make local-store`), queries outside these
+windows return "No variants" and chromosomes 3, 4 and 6 have no store. Since 2026-10-02 the full
+stores of all ten chromosomes are installed locally; the checks then read each window from the
+store (`harness/store_windows.py`), after confirming it matches these fixtures site by site.

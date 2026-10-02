@@ -56,13 +56,21 @@
   const CONS_FILL = { lof:'#d6322a', missense:'#2f5bbf', lod:'#b54708', splice:'#6d28d9', indel:'#176c3a', syn:'#8a93a3' };
   const SS_LABEL = { H:'α-helix', E:'β-strand', C:'loop / coil' };
 
-  /* ---------- structure source (AlphaFold2 vs Boltz2) ----------
+  /* ---------- structure source (AlphaFold2 / Boltz2 / ESMFold) ----------
      Checked in this order — first folder that actually has the gene's file wins. */
   const STRUCT_SOURCES = [
     { key: 'alphafold', dir: './data/structures/alphafold', label: 'AlphaFold2', badge: 'AF2' },
     { key: 'boltz',      dir: './data/structures/boltz',     label: 'Boltz2',     badge: 'B2'  },
     { key: 'esmfold',    dir: './data/structures/esmfold',   label: 'ESMFold',    badge: 'ESM'  },
   ];
+
+  /* The model the current structure came from, for labels: "AlphaFold2", "Boltz2", "ESMFold".
+     Every source carries its own per-residue pLDDT, so the confidence legend names the model
+     shown instead of always saying AlphaFold. */
+  function structModelLabel(){
+    const src = STRUCT_SOURCES.find(s => s.key === FD.structSource);
+    return src ? src.label : 'Model';
+  }
 
   /* Loads structure-<gene>.js as a <script> tag (same mechanism the app already uses to
      bring in per-gene structure files) and resolves true once it has run, or rejects if
@@ -655,10 +663,11 @@
       }
     }
 
-    /* Fallback accepts labels/IDs such as MaizeGDB2026, maizegdb_2026_hq,
-       or "MaizeGDB 2026 (High Coverage)". */
+    /* Fallback, when Data.hasSecondaryScores is unavailable: the sets that carry the
+       second-generation scores, by id or label (zmgrin2026_imp, "MaizeGDB GRIN-linked 2026",
+       MaizeGDB2026, maizegdb_2026_hq, "MaizeGDB 2026 (High Coverage)"). */
     const normalized = datasetText(dataset).toLowerCase().replace(/[^a-z0-9]+/g, '');
-    return normalized.includes('maizegdb2026');
+    return /maizegdb2026|zmgrin2026|grinlinked2026/.test(normalized);
   }
 
   /* ---------- dataset chooser (compact; shares Data.datasets() with SNPVersity) ---------- */
@@ -1137,7 +1146,7 @@
             <span class="lg"><span class="sw" style="background:#cbd4e1"></span>coil</span>
           </div>
           <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-            <div class="lg-title" style="font-weight:600;color:var(--ink)">AlphaFold confidence score (pLDDT):</div>
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">${escFold(structModelLabel())} confidence score (pLDDT):</div>
             <span class="lg"><span class="sw" style="background:#0053d6"></span>≥90</span>
             <span class="lg"><span class="sw" style="background:#65cbf3"></span>70–90</span>
             <span class="lg"><span class="sw" style="background:#ffdb13"></span>50–70</span>
@@ -1642,7 +1651,7 @@
     consequence:'Predicted molecular consequence of the change.',
     resi:'Residue — protein position of the affected amino acid.',
     domain:'Pfam domain overlapping the affected residue, when present.',
-    plddt:'Local pLDDT — AlphaFold per-residue confidence (0 to 100); higher is more reliable.',
+    plddt:'Local pLDDT — per-residue confidence (0 to 100) of the structure model shown (AlphaFold2, Boltz2 or ESMFold); higher is more reliable.',
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
     plantcad:'PlantCAD DNA language-model score for the change.',
     plantcad2:'Second-generation PlantCAD DNA score.',

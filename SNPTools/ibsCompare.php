@@ -8,7 +8,8 @@
  *  Also:      ibsCompare.php?probe=1&dataset=<family>  -> {"dataset","available","n","sites":[..],"trees":[..]}
  *             ibsCompare.php?tree=nj|upgma&dataset=<family> -> the precomputed genome-wide Newick
  *
- *  dataset = SNPTools dataset FAMILY (Data.familyOf), default mgdb2026.
+ *  dataset = SNPTools dataset FAMILY (Data.familyOf); SNPCompare and SNPTree always send it.
+ *  Without it the release's family is assumed: zmgrin2026 (MaizeGDB GRIN-linked 2026).
  *  mgdb2026 (unchanged layout), files in ./distance/ :
  *    maizegdb_allchr_final_similarity.csv   dense 2710x2710, headerless, symmetric, 0..1
  *    maizegdb_allchr_final_missing_pct.csv  dense 2710x2710, headerless, fraction 0..1
@@ -34,7 +35,7 @@ header('Content-Type: application/json');
 
 $ROOT = getenv('SNPTOOLS_DISTANCE_DIR');
 $ROOT = $ROOT ? rtrim($ROOT, '/') . '/' : './distance/';
-$family = isset($_GET['dataset']) && $_GET['dataset'] !== '' ? $_GET['dataset'] : 'mgdb2026';
+$family = isset($_GET['dataset']) && $_GET['dataset'] !== '' ? (string) $_GET['dataset'] : 'zmgrin2026';
 if (!preg_match('/^[a-z0-9_]+$/', $family)) {
     echo json_encode(array('error' => 'Invalid dataset')); exit;
 }
@@ -79,14 +80,17 @@ if (!preg_match('/^[A-Za-z0-9_.-]+$/', $focal)) {
     echo json_encode(array('error' => 'Invalid focal id')); exit;
 }
 foreach (array($SIM, $MIS, $IDS) as $f) {
-    if (!is_file($f)) { echo json_encode(array('error' => 'Missing file: ' . $f)); exit; }
+    if (!is_file($f)) {   // the path goes to the server log, not to the browser
+        error_log("ibsCompare.php: missing $f");
+        echo json_encode(array('error' => "Genome-wide matrices for $family are not installed on this server.")); exit;
+    }
 }
 
 $ids = file($IDS, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 $pos = array_search($focal, $ids, true);
 if ($pos === false) {
     echo json_encode(array('focal' => $focal, 'rows' => array(),
-        'error' => 'Focal id not found in ' . $IDS)); exit;
+        'error' => "Focal id not found in the $family matrices.")); exit;
 }
 
 /* The index is written to a temporary file and renamed into place, so a request reading

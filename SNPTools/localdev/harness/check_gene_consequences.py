@@ -18,8 +18,13 @@ the first on a tie), not the row's first entry:
     one, else the row's first entry.
 (e) SNPVersity: "+N" counts the other distinct entries of a site; the region's gene list
     names every single gene model with an entry, not only first-listed ones.
-Standard library only."""
-import csv, glob, gzip, io, json, re, sys
+With full-chromosome stores installed, the app also reads PlantCAD, Evo2, ESM-C and MAXR2,
+which the test-region fixtures predate: chr2 uses its window cut from the annotated release
+VCF on Ceres, the other chromosomes their fixture windows read from the store
+(store_windows.py), each checked first against the fixture's sites, genotypes and INFO.
+Standard library only (the store windows run h5_to_vcf.py with PYTHON_PATH)."""
+import csv, glob, gzip, io, json, os, re, sys
+from store_windows import window_rows, StoreMismatch
 
 res, root = sys.argv[1:3]
 P = json.load(open(res))['pergene']
@@ -62,16 +67,41 @@ def num(v):
 
 
 ROWS = {}                  # chrom -> [(pos, ref, alt, info dict, genotype cells)]
-# a full chr2 store (Evo2, ESM-C) is queried through its own window, cut from the same release VCF
-FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
+# which zmgrin2026 stores run_scenarios.js found installed (chrom -> sites): a full store carries
+# the score fields the fixtures lack
+STORE = json.load(open(res)).get('store') or {}
+FULL = {c for c, n in STORE.items() if isinstance(n, int) and n > 100000}
+FULL_CHR2 = 'chr2' in FULL
 SOURCES = [f for f in glob.glob(f'{FX}/zmgrin2026_v1.4_chr*_testregions.vcf.gz') if not (FULL_CHR2 and '_chr2_' in f)]
 if FULL_CHR2: SOURCES.append(f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz')
+store_notes = []
 for f in SOURCES:
+    chrom = re.search(r'_(chr\d+)_', os.path.basename(f)).group(1)
+    if chrom in FULL and f.endswith('_testregions.vcf.gz'):
+        try:
+            # plus the whole interval of every tested gene on this chromosome: the fixture windows
+            # were cut around a few genes, and the app reads the store's every site in the gene
+            spans = [(g['interval']['start'], g['interval']['end']) for g in P['genes'].values()
+                     if (g.get('interval') or {}).get('chr') == chrom]
+            rows, extra = window_rows(root, f, f'{root}/hdf5/version3/zmgrin2026_{chrom}_impute.h5', spans)
+        except StoreMismatch as e:
+            bad += 1; print('store window:', e); continue
+        store_notes.append(f"{chrom} {len(rows) - extra}" + (f" (+{extra} outside the fixture)" if extra else ''))
+        for c, pos, ref, alt, I, gts in rows:
+            ROWS.setdefault(c, []).append((pos, ref, alt, I, gts))
+        continue
     for line in gzip.open(f, 'rt'):
         if line[0] == '#': continue
         t = line.rstrip('\n').split('\t')
         I = dict(kv.split('=', 1) for kv in t[7].split(';') if '=' in kv)
         ROWS.setdefault(t[0], []).append((int(t[1]), t[3], t[4], I, t[9:]))
+# sites of the release fixtures: the ESM table covers these; sites read from a store beyond them
+# (a tested gene's whole interval) still follow the one-entry rule, but have no table row
+FIXTURE_SITES = set()
+for f in glob.glob(f'{FX}/zmgrin2026_v1.4_chr*_testregions.vcf.gz'):
+    for line in gzip.open(f, 'rt'):
+        if line[0] != '#':
+            t = line.split('\t', 5); FIXTURE_SITES.add((t[0], int(t[1]), t[3], t[4]))
 ESM = {}
 for r in csv.DictReader(io.TextIOWrapper(gzip.open(f'{FX}/annotation/grz2023_missense_esm_testregions.tsv.gz')), delimiter='\t'):
     ESM[(r['chrom'], int(r['pos']), r['ref'], r['alt'], r['vcf_protein'], r['variant'])] = r
@@ -127,7 +157,7 @@ for gene, got in P['genes'].items():
         if fold_coding(e[1]) and residue(e[3]) is not None:
             exp_fold.append({'pos': pos, 'resi': residue(e[3]), 'esm': esm[0]})
         # (c) a score shown for this gene must be the ESM table's score for this gene's substitution
-        if esm[0] is not None and cls == 'missense':
+        if esm[0] is not None and cls == 'missense' and (chrom, pos, ref, alt) in FIXTURE_SITES:
             r = ESM.get((chrom, pos, ref, alt, gene, e[3]))
             if r is None or f'{round(float(r["llr_esm1b"]), 1):.1f}' != f'{esm[0]:.1f}':
                 bad += 1; print('ESM misattributed', gene, pos, e[3], esm[0], r and r['llr_esm1b'])
@@ -205,6 +235,8 @@ if sorted(V['genes']) != sorted(genes):
     bad += 1; print('SNPVersity gene list', V['genes'], sorted(genes))
 
 for s in summary: print(s)
+if store_notes:
+    print('store windows (sites, genotypes and fixture INFO equal to the release fixtures): ' + ', '.join(store_notes))
 print(f"SNPGeo Zm00001eb374230: {len(geo)} sites, 13120567 reads {geo.get(13120567)}; "
       f"SNPVersity {chrom}:{lo}-{hi}: {sum(bool(m) for m in marks)} of {len(rows)} sites marked +N, genes {', '.join(sorted(genes))}; mismatches={bad}")
 sys.exit(1 if bad else 0)

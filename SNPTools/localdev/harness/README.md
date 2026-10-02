@@ -63,6 +63,12 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    Evo2 / ESM-C cells against the INFO.
 10. With a full chr2 store installed: the chr2 checks use its window
    (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
+   With full stores for the other chromosomes, `check_gene_consequences.py` reads each fixture
+   window (and each tested gene's whole interval) from the store through `store_windows.py`, which
+   first confirms the store matches the release fixture there: same sites and REF/ALT, same
+   genotypes, same value for every INFO key the fixture has. The scores the fixtures predate
+   (PlantCAD, Evo2, ESM-C, maxR²) then come from the store; the ESM table check applies at fixture
+   sites.
 11. The code-review fixes (patch 0038), `check_review_fixes.py`: SNPTrait's Random % with no line
    visible; `randomSample()` drawing distinct ids flat over catalogue order; a SNPVersity result
    keeping its queried region (CHR column, JBrowse link, heading, Send to SNPTree) after the form

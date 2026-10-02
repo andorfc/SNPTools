@@ -22,25 +22,25 @@ or create your own with any conda/mamba:
 
 Versions used here: PHP 8.5.9 (CLI built-in server), Python 3.12 + h5py + numpy, Node 24 (tests only).
 
-## 2. Test store (already built; rebuild if `hdf5/version3/` is empty)
+## 2. Variant stores
 
-    cd ~/Documents/code/SNPTools_maize_port/SNPTools
-    make local-store PYTHON_PATH=$PYTHON_PATH      # 7 files hdf5/version3/zmgrin2026_chr{1,2,5,7,8,9,10}_impute.h5
-
-The store is built from `localdev/fixtures/zmgrin2026_v1.4_chr*_testregions.vcf.gz` (3,495 sites x
-933 samples; ZmG_CML103 is the last column). A store built before release v1.4 has 932 columns and
-does not match the v1.4 catalogue: rerun `make local-store` once (a running server picks up the new
-files; no restart needed).
-
-**Full chromosome 2 (pilot of the per-chromosome build).** `hdf5/version3/zmgrin2026_chr2_impute.h5`
-is the full Ceres build (5,179,690 sites x 933 samples, 2.0 GB; INFO with SnpEff fields, MAF, MAXR2
-(4,665,215 sites), PlantCAD1/PlantCAD2 (4,865,809 SNPs) and Evo2 (665,539) rounded to 0.1, ESM1/2/3
-and ESM-C (50,780 missense sites)), copied on 2026-09-30 from
+**All ten chromosomes (2026-10-02).** `hdf5/version3/zmgrin2026_chr{1..10}_impute.h5` are the full
+release v1.4 builds: 46,054,265 sites x 933 samples in all (chr1 6,706,560; chr2 5,179,690; chr3
+5,192,152; chr4 5,793,751; chr5 4,774,127; chr6 3,625,217; chr7 3,893,628; chr8 3,886,650; chr9
+3,589,160; chr10 3,413,330), 1.3-2.6 GB each, with INFO for SnpEff fields, MAF, MAXR2,
+PlantCAD1/PlantCAD2 and Evo2 rounded to 0.1, ESM1/2/3 and ESM-C on every chromosome. Every region
+works. chr2 is the Ceres build copied on 2026-09-30 from
 `/90daydata/maizegdb/carson/grz2023/snptools_build/chr2/` (md5 9b8a52df8d08df7a875f3c84f4bf7d3b, as in
-its `logs/MD5SUMS.txt`); the 3,495-site
-demo cut is kept as `zmgrin2026_chr2_impute.demo.h5`. `make local-store` skips any store larger than
-50 MB (`FORCE=1` replaces it with the demo cut). With the full chr2 store every chr2 region works,
-not only the fixture windows. Measured through processForm.php -> h5_to_vcf.py (PHP CLI, this Mac):
+its `logs/MD5SUMS.txt`). The earlier test stores are kept beside them as
+`zmgrin2026_<chr>_impute.testregions.h5` (chr2's as `.demo.h5`); the app does not read them.
+
+**Without the full stores**, `make local-store PYTHON_PATH=$PYTHON_PATH` builds small test stores
+from `localdev/fixtures/zmgrin2026_v1.4_chr*_testregions.vcf.gz` (3,495 sites x 933 samples in the
+windows of `fixtures/README.md`; ZmG_CML103 is the last column). It skips any store larger than
+50 MB (`FORCE=1` replaces it with the test cut). Queries outside the fixture windows then return
+"No variants", and the score columns other than ESM1-3 are empty.
+
+Measured through processForm.php -> h5_to_vcf.py (PHP CLI, this Mac), on the full chr2 store:
 gene Zm00001eb067740 (127 variants) 0.26 s for 26 NAM lines / 0.49 s for all 933; chr2:4-5 Mb
 (16,583 variants) 0.43 s / 2.6 s including the browser-side parse (0.33 s / 0.85 s in PHP + Python);
 the first query after installing the file is slower (0.41 s / 0.71 s for the gene) while the OS
@@ -93,7 +93,7 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    (Reference ↔ Alternative = carriers among called, the default since patch 0036; variant
    frequency = carrier fraction; alternative allele frequency). The Overview takes about a third
    of the row (300-480 px); the variant table has PlantCAD1 | PlantCAD2 | Evo2 | ESM1-3 | ESM-C
-   (Evo2 / ESM-C empty on the demo stores; Zm00001eb067740 on the full chr2 store fills them). Click a country
+   (filled wherever the store has a score). Click a country
    for the state table and carrier list; arrow keys step through variants; PNG/SVG export.
    Other genes in the test store: Zm00001eb374230, Zm00001eb067740, Zm00001eb056510,
    Zm00001eb233650, Zm00001eb313510, Zm00001eb404740, Zm00001eb404760.
@@ -127,8 +127,8 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    accessions (one run per tagged NAM founder, no B73); that is what remains if the accession
    checkbox is unticked.
 
-Anything outside the fixture windows returns "No variants"; chromosomes 3, 4 and 6 have no
-store ("HDF5 file not found"). The two `mgdb2026_*` datasets (commented out) have no HDF5 locally.
+With the full stores every region of every chromosome answers. The two `mgdb2026_*` datasets
+(commented out) have no HDF5 locally.
 
 **Sites with several consequences (patch 0029).** SnpEff writes one consequence per gene: 1,464 of
 the 3,744 GRIN-linked fixture sites list more than one (`GENEMODEL=Zm00001eb374100,Zm00001eb374090;
@@ -147,24 +147,21 @@ Grzybowski et al. 2023 call set records no per-site MQ or coverage. Filled: Gene
 Impact (SnpEff 5.2a fields of the MaizeGDB Schnable scored VCFs), MAF (from the 933 release
 genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_store_score`).
 Evo2 (INFO `evo2_score`: SNPs within 1 kb of a gene) and ESM-C (`ESMC_score`: missense) are
-columns after PlantCAD2 and ESM3 (patch 0033); the full chr2 store fills them (chr2 GWAS window:
-120 and 10 of 249 sites), the demo stores of the other chromosomes predate them, so they read
-pending there. SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
+columns after PlantCAD2 and ESM3 (patch 0033), filled on every chromosome (chr2 GWAS window:
+120 and 10 of 249 sites). SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
 them beside PlantCAD and ESM (patches 0036-0037), empty where the store has no score
 (Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
 Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
 domains mapped to the genome); "—" is the usual answer, since the blocks cover 0.8-1.0% of each
 chromosome (46,930 of chr2's 5,179,690 sites fall in one). On the fixture sites the lookup agrees
 with the protein-coordinate domains (`domains.by_gene.json`) on 232 of 237 coding sites; the other 5
-lie 1-4 residues from a domain edge (residue numbering of another isoform, or the edge codon). Empty with a dashed header and a note above the
-table: PlantCAD1/PlantCAD2 where a store has no scores yet.
-maxR² is available for this set (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the
-933 release genotypes, no filtering; blank = no partner variant in range or monomorphic); the
-full chr2 store carries it (chr2 GWAS window: 233 of 249 sites); the demo stores of the other
-chromosomes predate it, so their cells read NA until the rebuilt stores arrive. PlantCAD1/PlantCAD2
-and Evo2 are rounded to 0.1 like the ESM scores. With the full chr2 store PlantCAD1/PlantCAD2 are
-filled on chr2 (SNPs; indels read N/A); the other chromosomes still use the demo cut and show them
-as pending.
+lie 1-4 residues from a domain edge (residue numbering of another isoform, or the edge codon).
+maxR² (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the 933 release genotypes, no
+filtering; blank = no partner variant in range or monomorphic), PlantCAD1/PlantCAD2 (SNPs; indels
+read N/A) and Evo2 are filled on every chromosome (chr2 GWAS window: maxR² on 233 of 249 sites);
+PlantCAD and Evo2 are rounded to 0.1 like the ESM scores. Since patch 0040 no column of this set is
+'pending' (`Data.annotationFields`); the pending mechanism stays for a set whose scores arrive
+chromosome by chromosome (a dashed header and a note above the table).
 
 5. **SNPCompare genome-wide (GRIN-linked set)**: open *SNPCompare*, choose **Dataset = MaizeGDB
    GRIN-linked 2026** (or arrive from SNPVersity with that set), focal `ZmG_B73`, scope
@@ -200,7 +197,10 @@ The index header records the store's byte size; if the store changes, the endpoi
 index (when `gff/` is writable) or reads the store as before. `php tools/build_gene_index.php`
 rebuilds it by hand.
 `processForm.php` deletes its own `vcf/snpv_*` files older than `SNPTOOLS_VCF_TTL_HOURS` (default
-24; 0 turns it off), at most once every 10 minutes (`vcf/.last_prune`). Running the harness or the
+24; 0 turns it off), at most once every 10 minutes (`vcf/.last_prune`). Its replies name no server
+path (patch 0040): a failed build answers "the variant extraction failed on the server" and logs
+the command and output to the PHP error log (`localdev/server.log` here); start the server with
+`SNPTOOLS_DEBUG=1` to get them back in the reply and the browser console. Running the harness or the
 local server therefore clears day-old query VCFs from `vcf/`.
 
 ## 5. Headless checks (no browser)

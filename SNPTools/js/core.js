@@ -226,14 +226,28 @@ function cmpSeconds(v, a){ return Math.round(1.2e-9 * v * a * a); }   // SNPComp
 
 
 /* ================= TOOLTIPS ================= */
+/* One set of listeners on the document serves every [data-tt] element, present or added
+   later. attachTT() used to add three listeners to each element on every call, and pages that
+   keep their DOM between visits (SNPFunction, SNPFold) called it on each one, so an element
+   could carry dozens of copies. It is kept, as a no-op, for the tools that still call it.
+   The innermost [data-tt] under the pointer wins, and an element re-rendered away from under
+   the pointer takes its tooltip with it. */
 const tt=document.getElementById('tt');
-function attachTT(){
-  document.querySelectorAll('[data-tt]').forEach(el=>{
-    el.addEventListener('mouseenter',e=>{tt.innerHTML=el.dataset.tt;tt.classList.add('show');});
-    el.addEventListener('mousemove',e=>{tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY+14)+'px';});
-    el.addEventListener('mouseleave',()=>tt.classList.remove('show'));
-  });
-}
+let ttEl=null;
+function ttHide(){ if(ttEl){ ttEl=null; tt.classList.remove('show'); } }
+document.addEventListener('mouseover',e=>{
+  const el=(e.target && e.target.closest) ? e.target.closest('[data-tt]') : null;
+  if(el===ttEl) return;
+  if(!el){ ttHide(); return; }
+  ttEl=el; tt.innerHTML=el.dataset.tt; tt.classList.add('show');
+});
+document.addEventListener('mousemove',e=>{
+  if(!ttEl) return;
+  if(!ttEl.isConnected){ ttHide(); return; }
+  tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY+14)+'px';
+});
+document.addEventListener('mouseout',e=>{ if(!e.relatedTarget) ttHide(); });   // left the window
+function attachTT(){}
 
 
 /* ================= MENUS / RAIL ================= */
