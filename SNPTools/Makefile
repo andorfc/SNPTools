@@ -1,7 +1,9 @@
 SHELL := /bin/bash
 # SNPTools maize (zmgrin2026) data build + local instance.   make help
-PY        ?= python3
-PHP_BIN   ?= php
+# Default to the conda env built for this port when it exists; override with PHP_BIN=/PYTHON_PATH=.
+LOCAL_ENV ?= $(HOME)/.claude-science/conda/envs/snptools-local
+PY        ?= $(if $(wildcard $(LOCAL_ENV)/bin/python),$(LOCAL_ENV)/bin/python,python3)
+PHP_BIN   ?= $(if $(wildcard $(LOCAL_ENV)/bin/php),$(LOCAL_ENV)/bin/php,php)
 PYTHON_PATH ?= $(PY)
 NE_TAG    ?= f1890d9f152c896d250a77557a5751a93d494776   # natural-earth-vector v5.1.2
 NE_RAW    := https://raw.githubusercontent.com/nvkelso/natural-earth-vector/$(strip $(NE_TAG))/geojson
@@ -26,7 +28,7 @@ help:
 	@echo "geo-layers  data/geo/*.geo.json from Natural Earth v5.1.2"
 	@echo "store       hdf5/version3/zmgrin2026_chr*_impute.h5 from RELEASE_VCF_DIR (full release; large)"
 	@echo "local-store small test store from localdev/fixtures"
-	@echo "start/stop  local PHP server on 127.0.0.1:8765;  test  headless end-to-end checks"
+	@echo "start/stop  local PHP server on 127.0.0.1:8877;  test  headless end-to-end checks"
 
 samples:
 	$(PY) tools/build_maize_samples.py --t0 $(T0) --crosswalk $(CROSSWALK) \

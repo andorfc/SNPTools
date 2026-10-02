@@ -7,7 +7,7 @@
  * Exposes openSite() -> {window, $eval, wait, php log}. */
 const fs = require('fs'), path = require('path'), {execFileSync} = require('child_process');
 const {JSDOM, ResourceLoader, VirtualConsole} = require('jsdom');
-const BASE = 'http://127.0.0.1:8765/';
+const BASE = 'http://127.0.0.1:8877/';
 
 function mime(p){ return p.endsWith('.json') ? 'application/json' : p.endsWith('.js') ? 'text/javascript'
   : p.endsWith('.gz') ? 'application/gzip' : p.endsWith('.css') ? 'text/css' : 'text/plain'; }

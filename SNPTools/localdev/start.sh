@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Start a local SNPTools instance: PHP built-in web server on 127.0.0.1:${PORT:-8765},
+# Start a local SNPTools instance: PHP built-in web server on 127.0.0.1:${PORT:-8877},
 # document root = SNPTools/ (so processForm.php and lookupGeneModel.php run for real).
 #   PHP_BIN      php executable (default: php on PATH)
 #   PYTHON_PATH  python with h5py + numpy, used by processForm.php -> h5_to_vcf.py
-#   PORT         default 8765
+#   PORT         default 8877
 # Logs to localdev/server.log; PID in localdev/server.pid.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; root="$(dirname "$here")"
-PHP="${PHP_BIN:-php}"; PORT="${PORT:-8765}"
+PHP="${PHP_BIN:-php}"; PORT="${PORT:-8877}"
 export PYTHON_PATH="${PYTHON_PATH:-python3}"
 if [ -f "$here/server.pid" ] && kill -0 "$(cat "$here/server.pid")" 2>/dev/null; then
   echo "already running (pid $(cat "$here/server.pid")) on port $(cat "$here/server.port" 2>/dev/null || echo "$PORT")"; exit 0

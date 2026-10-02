@@ -29,12 +29,12 @@ Versions used here: PHP 8.5.9 (CLI built-in server), Python 3.12 + h5py + numpy,
 
     cd ~/Documents/code/SNPTools_maize_port/SNPTools
     make start PHP_BIN=$PHP_BIN PYTHON_PATH=$PYTHON_PATH      # = localdev/start.sh
-    open http://127.0.0.1:8765/index.html
+    open http://127.0.0.1:8877/index.html
     ...
     make stop                                                 # = localdev/stop.sh
 
-`PORT=8877 make start` changes the port. Log: `localdev/server.log`; PID: `localdev/server.pid`.
-If `stop` reports no PID but the port is busy: `lsof -iTCP:8765 -sTCP:LISTEN` and `kill <pid>`.
+`PORT=8899 make start` changes the port (8765 is used by Claude Science). Log: `localdev/server.log`; PID: `localdev/server.pid`.
+If `stop` reports no PID but the port is busy: `lsof -iTCP:8877 -sTCP:LISTEN` and `kill <pid>`.
 The page loads d3 v5 and fonts from public CDNs, so the browser needs internet access.
 
 ## 4. What to try
