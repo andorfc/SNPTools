@@ -21,8 +21,23 @@ Data.defaultSelectionFor(S.dataset).forEach(id=>S.selected.add(id));
 S.chr='chr10'; S.start=3750832; S.end=3755732;
 
 /* ================= SNPVERSITY PAGE ================= */
+/* Other tools (SNPTrait, SNPGeo, SNPFold dataset pills) set S.dataset directly.
+   Rebind this page's catalogue when that happened, otherwise an inbound
+   hand-off is resolved against the previous dataset's accessions and every
+   id is reported missing. Data.accessionsFor() caches one array per family,
+   so an identity check is enough. */
+function syncDatasetBinding(){
+  const acc = Data.accessionsFor(S.dataset);
+  if (ACCESSIONS !== acc){
+    PROJECTS = Data.projectsFor(S.dataset);
+    ACCESSIONS = acc;
+    const known = new Set(acc.map(a => a.id));
+    [...S.selected].forEach(id => { if (!known.has(id)) S.selected.delete(id); });
+  }
+}
 function renderVersity(){
   injectVersityCSS();
+  syncDatasetBinding();
   const inbound = applyPendingRequest();   // e.g. carriers handed over from SNPFunction
   const p=document.getElementById('page');
   p.className='page fade';
