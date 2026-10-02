@@ -24,13 +24,14 @@ const ICONS = {
   download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M9 9v11" stroke="currentColor" stroke-width="1.6"/></svg>',
   effect:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 4v16M13 4v16M3 9h18M3 14h18" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 4l6 4 6-4 6 4v14l-6-4-6 4-6-4V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v11M6 8v10M18 8v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></svg>',
   gwas:'<svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2" opacity=".55"/><circle cx="6" cy="16" r="1.3" fill="currentColor"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="12" cy="6" r="1.6" fill="currentColor"/><circle cx="15" cy="14" r="1.3" fill="currentColor"/><circle cx="18" cy="10" r="1.3" fill="currentColor"/></svg>',
 };
 
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snpgwas','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold', 'snpgeo']},
   {label:'Compare & Relate', tools:['snpcompare','snptree']},
   {label:'External plugin', tools:['paneffect']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
@@ -45,9 +46,13 @@ const TOOLS = {
     tag:'Explore variation across lines and populations',
     desc:'Explore extensive variant datasets across maize accessions. Enter a genomic interval, choose accessions, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
-    tag:'Connect variation to phenotype and trait data',
-    desc:'Connect genomic variation to phenotype and trait records from the National Germplasm collection. Search, sort, and filter accessions by trait values and metadata, then move selected sets straight into other SNPTools.',
-    feats:[['search','Search & filter','Filter 20,000+ accessions by trait, phenotype, and metadata.'],['leaf','Trait records','Disease resistance, yield, composition, and evaluation data.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+    tag:'Select lines by passport and trait metadata',
+    desc:'Browse the lines of a dataset with their GRIN passport and evaluation metadata — panel, subpopulation, country and state of origin, improvement status, kernel type, and binned trait values. Filter with facets and search, batch-select, export, and send the selection straight to SNPVersity.',
+    feats:[['search','Search & filter','Facet the 932 GRIN-linked lines of the 2026 release by panel, origin, and trait class.'],['leaf','GRIN records','Passport data and evaluation summaries from the U.S. National Plant Germplasm System.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+  snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
+    tag:'Map where each allele is found',
+    desc:'Map the geographic distribution of variants: for a gene or a region handed off from SNPVersity, colour countries (and U.S. states, Canadian provinces, Mexican states) by carrier fraction, reference/alternative composition, or alternative-allele frequency over the lines with known origin.',
+    feats:[['search','Gene or region','Search a B73 v5 gene model or receive a SNPVersity region.'],['dna','Diploid-aware','Carrier fraction and allele frequency from 0/0, 0/1, 1/1 calls.'],['table','Per-region tables','Per-country and per-state counts with the carrier lines listed.']]},
   snpimpact:{name:'SNPImpact', icon:'star', color:'#7c3aed', cat:'Explore & Analyze',
     tag:'Prioritize candidate variants using AI',
     desc:'Rank variants using AI-based allele scores together with functional annotations. Combine PlantCAD and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
@@ -126,7 +131,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpgwas:'new',snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
+        const _bl={snpgwas:'new',snpversity:'updated',snptrait:'new',snpgeo:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">
