@@ -78,6 +78,10 @@ switch ($dataset) {
     case 'mgdb2024_hq':  $ds_part0 = 'maizegdb2024'; $ds_part2 = 'HQ';     break;
     case 'mgdb2024_hc':  $ds_part0 = 'maizegdb2024'; $ds_part2 = 'HC';     break;
     case 'schnable2023': $ds_part0 = 'schnable2023'; $ds_part2 = 'impute'; break;
+    // MaizeGDB GRIN-linked 2026 release (v1.3): Grzybowski et al. 2023 sites,
+    // Beagle-imputed; sample columns are release sample_ids (ZmG_<genotype>).
+    // Store: hdf5/version3/zmgrin2026_<chr>_impute.h5
+    case 'zmgrin2026_imp': $ds_part0 = 'zmgrin2026'; $ds_part2 = 'impute'; break;
     case 'nam2021':      // new UI sends the bare id
     case 'nam2021_hq':   $ds_part0 = 'nam2021';      $ds_part2 = 'HQ';     break;
     case 'nam2021_hc':   $ds_part0 = 'nam2021';      $ds_part2 = 'HC';     break;
