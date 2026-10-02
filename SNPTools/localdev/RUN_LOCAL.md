@@ -130,6 +130,14 @@ as pending.
    ZmG_SEAGULLSEVENTEEN (0.95391). Without `distance/zmgrin2026/` the scope stays disabled with a note.
 6. **SNPTree**: with the GRIN-linked set, a *Genome-wide tree* card offers the precomputed
    Neighbour-Joining and UPGMA trees (933 tips) as Newick downloads; region trees are unchanged.
+7. **SNPFunction Gene Ontology & pathways** (needs internet): pick the GRIN-linked dataset and
+   analyze `Zm00001eb056510` (adh1). The *Gene Ontology & pathways* card is MaizeGDB's own view,
+   read live from `https://claude.maizegdb.org/api/v1/records/gene/<id>?fields=function` (CORS
+   open, ~0.4 s): 10 GO terms, 11 of 94 plant-slim categories lit, the ancestry graph per aspect;
+   *Pathways* shows 6 E2P2 pathways (adh1's step in gold) and 4 KEGG maps. Set
+   `window.SNPTOOLS_MAIZEGDB_BASE` before `js/snpfunction-ontology.js` loads to read another
+   MaizeGDB host. Offline, or if MaizeGDB fails, the card says so and the old GO/KEGG lists from
+   `data/function/annotations/` are shown instead.
 
 ## 5. Headless checks (no browser)
 

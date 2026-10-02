@@ -5,6 +5,9 @@
  *  dossier (Pfam domains, size, links), the gene's variant burden across
  *  the WHOLE panel, and a damaging / knockout allele catalog listing which
  *  accessions carry each damaging allele. Pulls Data.geneFunction(gene).
+ *  Gene Ontology and pathways are MaizeGDB's own views, read live from
+ *  its record API (js/snpfunction-ontology.js); the local annotation
+ *  file is the fallback when MaizeGDB cannot be reached.
  * ===================================================================== */
 (function () {
 
@@ -15,7 +18,9 @@
     loaded:false,                  // a gene's content is (being) rendered into root
     loadedGene:null,               // which gene that content is for
     annotation:undefined,          // functional-annotation record: undefined=loading, null=none, object=loaded
-    goCurated:false,               // GO filter: false = all terms, true = curated only (drops predicted-only)
+    goCurated:false,               // fallback GO filter: true = hide terms only InterPro2GO suggests
+    onto:null,                     // MaizeGDB GO + pathways: {gene, status:'loading'|'ok'|'missing'|'error', fn, el, handle}
+    ontoView:null,                 // 'go' | 'pathways' once the user picks one (kept across genes)
   };
 
   /* directory of per-gene functional-annotation JSON (one file per canonical model) */
@@ -279,6 +284,7 @@
     FN.loading = true;
     FN.goCurated = false;            // reset GO filter for the new gene
     loadAnnotation(FN.gene);         // fetch functional annotation in parallel (independent of variant data)
+    loadOntology(FN.gene);           // and MaizeGDB's GO + pathways, also in parallel
     FN.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:44px;text-align:center"><div class="spinner"></div><div>Analyzing <b>${esc(FN.gene)}</b> across the panel…</div></div>`;
     Data.geneFunction(FN.gene, FN.dataset)
       .then(d => { FN.data = d; FN.loading = false; paint(); })
@@ -298,6 +304,46 @@
       .catch(() => { if (FN.gene !== g) return; FN.annotation = null; if (FN.data) paint(); });
   }
 
+  /* MaizeGDB's Gene Ontology and pathway views, read live from its record API
+     (js/snpfunction-ontology.js). Independent of the variant analysis like the
+     annotation file: a 404 means MaizeGDB has no such gene, a failure means
+     the API could not be reached, and both fall back to the local file. */
+  function loadOntology(gene){
+    if (FN.onto && FN.onto.handle) FN.onto.handle.destroy();
+    const g = gene;
+    FN.onto = { gene:g, status:'loading' };
+    if (typeof SNPFunctionOntology === 'undefined'){
+      FN.onto = { gene:g, status:'error', error:'js/snpfunction-ontology.js is not loaded' };
+      return;
+    }
+    SNPFunctionOntology.fetch(g)
+      .then(r => { if (!FN.onto || FN.onto.gene !== g) return;
+        FN.onto = { gene:g, status:r.status, fn:r.fn, id:r.id }; if (FN.data) paint(); })
+      .catch(e => { if (!FN.onto || FN.onto.gene !== g) return;
+        FN.onto = { gene:g, status:'error', error:(e && e.message) || 'request failed' }; if (FN.data) paint(); });
+  }
+
+  /* paint() rewrites FN.root, so the views are built once per gene into their
+     own element and re-attached to the fresh mount point on every paint: the
+     pinned highlight, the open view and the fitted strips all survive a
+     catalog row being toggled. */
+  function mountOntology(){
+    const o = FN.onto;
+    if (!o || o.status !== 'ok') return;
+    const mount = FN.root && FN.root.querySelector('#fnOntoMount');
+    if (!mount) return;
+    if (!o.el){
+      o.el = document.createElement('div');
+      mount.appendChild(o.el);
+      o.handle = SNPFunctionOntology.render(o.el, {
+        gene: o.id || o.gene, fn: o.fn, view: FN.ontoView || undefined,
+        onView: v => { FN.ontoView = v; }
+      });
+    } else {
+      mount.appendChild(o.el);
+    }
+  }
+
   /* render the loaded content from cached FN.data (used after analysis + on toggle) */
   function paint(){
     const d = FN.data;
@@ -307,10 +353,12 @@
       FN.root.innerHTML = datasetChooser() + searchBar()
         + notice(`Couldn’t analyze “${esc(FN.gene)}” across the panel: ${esc(d.error)}`)
         + annotationSection();
+      mountOntology();
       if (typeof attachTT==='function') attachTT();
       return;
     }
     FN.root.innerHTML = datasetChooser() + searchBar() + hero(d) + dossier(d) + annotationSection() + burden(d) + catalog(d);
+    mountOntology();
     if (typeof Handoff!=='undefined') Handoff.sync(FN.root);
     if (typeof attachTT==='function') attachTT();
   }
@@ -327,8 +375,9 @@
   function emptyState(){
     return `<div class="empty-state"><div class="ei">${ICONS.leaf||ICONS.star||''}</div>
       <h3>Pick a gene to mine its functional variation</h3>
-      <p>SNPFunction summarizes a gene across the whole panel: its Pfam domains, the burden of
-      coding variation, and a catalog of damaging / knockout alleles with the accessions that carry them.
+      <p>SNPFunction summarizes a gene across the whole panel: its Pfam domains, its Gene Ontology and
+      pathways from MaizeGDB, the burden of coding variation, and a catalog of damaging / knockout
+      alleles with the accessions that carry them.
       Choose a dataset above and a gene model, then press <b>Analyze gene</b>.</p>
       <div style="margin-top:14px"><button class="btn primary" onclick="FUNCTION.load()">Analyze ${esc(FN.gene||'')}</button></div></div>`;
   }
@@ -500,10 +549,15 @@
     else if (src==='none'){ cls='none'; label='no informative source'; }
     return `<span class="ann-srcbadge ${cls}" title="functional_description.source = ${esc(src)}">${esc(label)}</span>`;
   }
-  /* one small badge per GO evidence source */
+  /* one small badge per GO evidence source. The file's "MaizeGDB" terms are
+     MaizeGDB's gene-model GO, which is computational (PANNZER, the NAM
+     annotation, UniProt imports) -- not curated; MaizeGDB's experimentally
+     supported terms sit on locus records, which the file does not carry. */
   function goSourceBadges(sources){
-    const meta = {MaizeGDB:'curated', UniProt:'uniprot', InterPro2GO:'pred'};
-    return (sources||[]).map(s=>`<span class="go-src ${meta[s]||'pred'}" title="${esc(s)}${s==='InterPro2GO'?' (predicted from domain)':''}">${esc(s)}</span>`).join('');
+    const meta = {MaizeGDB:'mgdb', UniProt:'uniprot', InterPro2GO:'pred'};
+    const tip  = {MaizeGDB:'MaizeGDB gene-model GO (computational: PANNZER, NAM annotation, UniProt)',
+                  UniProt:'UniProt GO', InterPro2GO:'InterPro2GO (predicted from a domain)'};
+    return (sources||[]).map(s=>`<span class="go-src ${meta[s]||'pred'}" title="${esc(tip[s]||s)}">${esc(s)}</span>`).join('');
   }
   function isPredictedOnly(t){ const s=t.sources||[]; return s.length>0 && s.every(x=>x==='InterPro2GO'); }
   function xrefChip(text, href, title){
@@ -512,19 +566,49 @@
       : `<span class="xref" title="${esc(title||text)}">${esc(text)}</span>`;
   }
 
-  /* ---------- top-level annotation section ---------- */
+  /* ---------- top-level annotation section ----------
+     Identity, domains and cross-references come from the local annotation
+     file; Gene Ontology and pathways from MaizeGDB (ontologySection), with the
+     local file's GO and KEGG lists as the fallback. */
   function annotationSection(){
     const a = FN.annotation;
+    let local;
     if (a === undefined){
-      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
+      local = `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
         <div class="ann-load"><div class="spinner sm"></div><span>Loading functional annotation…</span></div></div>`;
-    }
-    if (a === null){
-      return `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
+    } else if (a === null){
+      local = `<div class="card pad" style="margin-bottom:16px"><div class="fn-h">Functional annotation</div>
         <div class="muted" style="padding:4px 0">No functional-annotation record for <span class="mono">${esc(FN.gene)}</span>.
         Records exist for the 39,756 canonical B73 v5 gene models (<span class="mono">Zm00001eb…</span>).</div></div>`;
+    } else {
+      local = annHeader(a) + annDomains(a);
     }
-    return annHeader(a) + annDomains(a) + annGO(a) + annPathways(a) + annXrefs(a);
+    return local + ontologySection(a) + (a ? annXrefs(a) : '');
+  }
+
+  /* ---------- Gene Ontology & pathways, from MaizeGDB ---------- */
+  function ontologySection(a){
+    const o = FN.onto || { status:'loading' };
+    const src = (typeof SNPFunctionOntology !== 'undefined') ? SNPFunctionOntology.base.replace(/^https?:\/\//, '') : 'MaizeGDB';
+    const head = `<div class="fn-h fn-onto-h">Gene Ontology &amp; pathways
+      <span class="muted" style="font-weight:400;font-size:12px">from MaizeGDB (${esc(src)}) · the views on the MaizeGDB gene page</span></div>`;
+    if (o.status === 'loading'){
+      return `<div class="card pad" style="margin-bottom:16px">${head}
+        <div class="ann-load"><div class="spinner sm"></div><span>Loading GO and pathways from MaizeGDB…</span></div></div>`;
+    }
+    if (o.status === 'ok'){
+      return `<div class="card pad fn-onto" style="margin-bottom:16px">${head}<div id="fnOntoMount"></div></div>`;
+    }
+    const why = o.status === 'missing'
+      ? `MaizeGDB has no gene record for <span class="mono">${esc(FN.gene)}</span>.`
+      : `Couldn’t load GO and pathways from MaizeGDB: ${esc(o.error || 'request failed')}.`;
+    const fallback = a
+      ? ' Showing SNPTools’ own annotation file below instead: its GO terms are listed but not placed in the ontology, and its KEGG pathways come from UniProt/Entrez cross-references only.'
+      : '';
+    return `<div class="card pad fn-onto-note" style="margin-bottom:16px">${head}
+        <div class="muted" style="font-size:13px">${why}${fallback}
+        ${o.status === 'error' ? `<button class="btn tiny" style="margin-left:6px" onclick="FUNCTION.retryOntology()">Try again</button>` : ''}</div>
+      </div>` + (a ? annGO(a) + annPathways(a) : '');
   }
 
   /* ---------- identity header: symbol, name, description, evidence ---------- */
@@ -663,12 +747,12 @@
     const nPred = all.filter(isPredictedOnly).length;
     return `<div class="card pad" style="margin-bottom:16px">
       <div class="fn-h" style="display:flex;align-items:center;gap:10px">Gene Ontology
-        <span class="muted" style="font-weight:400;font-size:12px">${terms.length} of ${all.length} terms${curatedOnly?' · curated only':''}</span>
-        ${nPred?`<button class="btn" style="margin-left:auto;font-size:12px;padding:6px 11px" onclick="FUNCTION.toggleGO()">${curatedOnly?'Show all evidence':'Curated only'}</button>`:''}
+        <span class="muted" style="font-weight:400;font-size:12px">${terms.length} of ${all.length} terms${curatedOnly?' · domain-only terms hidden':''} · SNPTools annotation file</span>
+        ${nPred?`<button class="btn" style="margin-left:auto;font-size:12px;padding:6px 11px" onclick="FUNCTION.toggleGO()">${curatedOnly?'Show domain-only terms':'Hide domain-only terms'}</button>`:''}
       </div>
       <div class="go-summary"><div class="go-bar">${summary}</div><div class="go-legend">${legend}</div></div>
       ${group('BP')}${group('MF')}${group('CC')}
-      <div class="go-note muted">Source confidence: <span class="go-src curated">MaizeGDB</span>/<span class="go-src uniprot">UniProt</span> are curated; <span class="go-src pred">InterPro2GO</span> is predicted from domains.</div>
+      <div class="go-note muted">Sources: <span class="go-src mgdb">MaizeGDB</span> gene-model GO is computational (PANNZER, the NAM annotation, UniProt imports); <span class="go-src uniprot">UniProt</span> GO comes from UniProt entries; <span class="go-src pred">InterPro2GO</span> is suggested by a Pfam domain.</div>
     </div>`;
   }
 
@@ -771,6 +855,7 @@
       }
     },
     toggleGO(){ FN.goCurated = !FN.goCurated; paint(); },
+    retryOntology(){ loadOntology(FN.gene); paint(); },
     /* compact dataset chooser — selecting a dataset only records the choice + moves the
        highlight. The page is NOT re-analyzed here; the new dataset is applied on the next
        "Analyze gene" click (FUNCTION.load), which reads the current FN.dataset. */
@@ -915,6 +1000,9 @@
       .go-srcs{display:inline-flex;gap:4px}
       .go-src{font:600 9.5px/1 var(--body,'Inter',sans-serif);padding:3px 6px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
       .go-src.curated{background:#e7f3ec;color:#176c3a} .go-src.uniprot{background:#eaf1fc;color:#274b8f} .go-src.pred{background:#f2f0ea;color:#7a5b12}
+      .go-src.mgdb{background:#eef0f4;color:#4b5563}
+      /* MaizeGDB GO + pathways card (views: css/snpfunction-ontology.css) */
+      .fn-onto-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
       .go-obs{font-size:10px;color:#a23b2c;background:#fbeae7;border-radius:5px;padding:2px 6px}
       .go-note{font-size:11.5px;margin-top:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
       /* aspect colors: BP green, MF blue, CC purple */
