@@ -87,7 +87,91 @@ function traitUnit(n){ const o = TRAIT.org || TRAIT_ORGANISM._default; return n 
 const TRAIT = {
   dataset:null, schema:TRAIT_NEUTRAL_SCHEMA, org:TRAIT_ORGANISM._default,
   rows:[], selected:new Set(), q:'', facets:{}, openGroups:new Set(), hasMeta:false,
+  ranges:[],          // active numeric trait ranges [{code, min, max}] (design change 10)
+  traitData:{},       // family -> parsed data/traits/<family>.traits.json | null (absent) | 'loading'
 };
+
+/* ---- numeric trait ranges from the trait side-file ----
+   data/traits/<family>.traits.json (build_maize_trait_catalog.py) carries, per
+   sample, GRIN evaluation summaries: numeric traits as [n_obs, mean, sd, min, max],
+   coded traits as [n_obs, mode]. A range filter keeps lines whose per-accession
+   MEAN lies in [min, max]; lines without a record for that trait are excluded
+   while the range is active. Loaded lazily, only for families that have a file. */
+function traitSideFile(){ const f = traitFamily(TRAIT.dataset); return f ? TRAIT.traitData[f] : null; }
+function traitEnsureSideFile(dataset){
+  const fam = traitFamily(dataset);
+  if (!fam || TRAIT.traitData[fam] !== undefined || typeof fetch !== 'function') return;
+  if (!traitHasSchema(dataset) || TRAIT_SCHEMA[fam]) return;      // only generated (maize) schemas ship a side-file
+  TRAIT.traitData[fam] = 'loading';
+  fetch(`./data/traits/${encodeURIComponent(fam)}.traits.json`)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => { TRAIT.traitData[fam] = j; if (TRAIT.dataset === dataset && document.getElementById('traitFacets')) traitRenderFacets(); })
+    .catch(() => { TRAIT.traitData[fam] = null; });
+}
+function traitNumericTraits(){
+  const tf = traitSideFile(); if (!tf || tf === 'loading') return [];
+  const n = {};
+  Object.values(tf.samples || {}).forEach(s => Object.entries(s.traits || {}).forEach(([k, v]) => {
+    if (Array.isArray(v) && v.length === 5 && typeof v[1] === 'number') n[k] = (n[k] || 0) + 1; }));
+  return Object.entries(n).filter(([k]) => ((tf.dictionary || {})[k] || {}).scale === 'numeric')
+    .map(([k, c]) => ({code: k, n: c, name: ((tf.dictionary || {})[k] || {}).name || k, unit: ((tf.dictionary || {})[k] || {}).unit || ''}))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+function traitValue(id, code){
+  const tf = traitSideFile(); if (!tf || tf === 'loading') return null;
+  const s = (tf.samples || {})[id]; const v = s && s.traits && s.traits[code];
+  return (Array.isArray(v) && v.length === 5 && typeof v[1] === 'number') ? v[1] : null;
+}
+function traitAddRange(code, min, max){
+  if (code == null){
+    const sel = document.getElementById('trRangeTrait'); if (!sel) return;
+    code = sel.value;
+    min = document.getElementById('trRangeMin').value; max = document.getElementById('trRangeMax').value;
+  }
+  const lo = (min === '' || min == null) ? -Infinity : +min, hi = (max === '' || max == null) ? Infinity : +max;
+  if (!code || Number.isNaN(lo) || Number.isNaN(hi)) return;
+  TRAIT.ranges = TRAIT.ranges.filter(r => r.code !== code).concat([{code, min: lo, max: hi}]);
+  traitRenderFacets(); traitRenderTable(); traitStatus();
+}
+function traitRemoveRange(code){
+  TRAIT.ranges = TRAIT.ranges.filter(r => r.code !== code);
+  traitRenderFacets(); traitRenderTable(); traitStatus();
+}
+function traitRangeStats(code){
+  const vals = TRAIT.rows.map(r => traitValue(r.id, code)).filter(v => v != null).sort((a, b) => a - b);
+  if (!vals.length) return null;
+  const q = f => vals[Math.min(vals.length - 1, Math.floor(f * (vals.length - 1)))];
+  return {n: vals.length, min: vals[0], q1: q(.25), med: q(.5), q3: q(.75), max: vals[vals.length - 1]};
+}
+function traitFmt(v){ return (v == null || !isFinite(v)) ? '' : (Math.abs(v) >= 100 ? v.toFixed(0) : +v.toPrecision(3)); }
+function traitRangeBlockHTML(){
+  const tf = traitSideFile();
+  if (!tf) return '';
+  if (tf === 'loading') return `<div class="facet-block"><h4>GRIN trait ranges</h4><em>Loading trait records…</em></div>`;
+  const list = traitNumericTraits(); if (!list.length) return '';
+  const opts = list.map(t => `<option value="${escAttrT(t.code)}">${escT(t.name)}${t.unit ? ' (' + escT(t.unit) + ')' : ''} · ${t.n}</option>`).join('');
+  const active = TRAIT.ranges.map(r => {
+    const t = list.find(x => x.code === r.code) || {name: r.code, unit: ''};
+    const lab = `${isFinite(r.min) ? traitFmt(r.min) : '−∞'} – ${isFinite(r.max) ? traitFmt(r.max) : '∞'}${t.unit ? ' ' + t.unit : ''}`;
+    return `<div class="tr-chip"><span><b>${escT(t.name)}</b> ${escT(lab)}</span>
+      <button class="link-btn" onclick="traitRemoveRange('${escAttrT(r.code)}')" title="Remove this range">×</button></div>`;
+  }).join('');
+  return `<div class="facet-block tr-range"><h4>GRIN trait ranges</h4>
+    <select id="trRangeTrait" class="tr-sel" onchange="traitRangeHint()">${opts}</select>
+    <div class="tr-mm"><input id="trRangeMin" type="number" step="any" placeholder="min">
+      <span>–</span><input id="trRangeMax" type="number" step="any" placeholder="max">
+      <button class="qbtn" onclick="traitAddRange()">Add</button></div>
+    <div class="tr-hint" id="trRangeHint"></div>
+    ${active}
+    <div class="tr-note">Per-accession mean of GRIN evaluation records. Lines without a record for a trait are excluded while its range is active.</div>
+  </div>`;
+}
+function traitRangeHint(){
+  const el = document.getElementById('trRangeHint'), sel = document.getElementById('trRangeTrait');
+  if (!el || !sel) return;
+  const st = traitRangeStats(sel.value);
+  el.textContent = st ? `${st.n} lines with data · min ${traitFmt(st.min)} · median ${traitFmt(st.med)} · max ${traitFmt(st.max)}` : 'No lines with data';
+}
 
 function traitLoad(dataset){
   TRAIT.dataset = dataset;
@@ -102,7 +186,8 @@ function traitLoad(dataset){
     return row;
   });
   TRAIT.facets = {}; sc.facets.forEach(([k]) => TRAIT.facets[k] = new Set());
-  TRAIT.q = ''; TRAIT.openGroups = new Set();
+  TRAIT.q = ''; TRAIT.openGroups = new Set(); TRAIT.ranges = [];
+  traitEnsureSideFile(dataset);
   TRAIT.hasMeta = TRAIT.rows.some(r => sc.facets.some(([k]) => r[k] && r[k]!=='Unknown' && r[k]!=='unknown'));
   TRAIT.selected = new Set([...S.selected].filter(id => TRAIT.rows.some(r => r.id === id)));
 }
@@ -113,6 +198,10 @@ function traitMatch(r){
   if (TRAIT.q){
     const hay = sc.search.map(k=>r[k]||'').join(' ').toLowerCase();
     if (!hay.includes(TRAIT.q)) return false;
+  }
+  for (const rg of TRAIT.ranges){
+    const v = traitValue(r.id, rg.code);
+    if (v == null || v < rg.min || v > rg.max) return false;
   }
   return true;
 }
@@ -213,7 +302,9 @@ function traitRenderFacets(){
       <span>Filters</span>
       <button class="link-btn" onclick="traitClearFacets()">Clear all</button>
     </div>
+    ${traitRangeBlockHTML()}
     ${blocks || '<div class="facet-empty">No metadata to filter.</div>'}`;
+  traitRangeHint();
 }
 function traitToggleFacet(k,v,on){
   if(!TRAIT.facets[k]) return;
@@ -221,7 +312,7 @@ function traitToggleFacet(k,v,on){
   traitRenderTable(); traitRenderFacets(); traitStatus();
 }
 function traitClearFacets(){
-  Object.values(TRAIT.facets).forEach(s=>s.clear());
+  Object.values(TRAIT.facets).forEach(s=>s.clear()); TRAIT.ranges = [];
   traitRenderTable(); traitRenderFacets(); traitStatus();
 }
 
@@ -238,9 +329,10 @@ function traitRenderTable(){
   });
   if(!rows.length){ grid.innerHTML=`<div class="trait-empty">No ${escT(TRAIT.org.many)} match the current filters.</div>`; traitStatus(); return; }
   const showMeta=TRAIT.hasMeta, cols=sc.columns;
+  const rcols = TRAIT.ranges.map(rg => { const t = traitNumericTraits().find(x => x.code === rg.code); return [rg.code, t ? t.name : rg.code]; });
   grid.innerHTML = keys.map(gv=>{
     const items=groups[gv];
-    const open = TRAIT.openGroups.has(gv) || TRAIT.q || Object.values(TRAIT.facets).some(s=>s.size);
+    const open = TRAIT.openGroups.has(gv) || TRAIT.q || TRAIT.ranges.length || Object.values(TRAIT.facets).some(s=>s.size);
     const selN = items.reduce((n,r)=>n+(TRAIT.selected.has(r.id)?1:0),0);
     const color = (sc.groupColors&&sc.groupColors[gv])||'#888';
     const gname = (sc.groupNames&&sc.groupNames[gv])||gv;
@@ -259,9 +351,10 @@ function traitRenderTable(){
         <td class="tcb"><span class="cb">${ICONS.check}</span></td>
         <td class="mono">${escT(r.id)}</td>
         ${showMeta?cols.map(([k])=>`<td>${escT(r[k]==null?'':r[k])}</td>`).join(''):''}
+        ${rcols.map(([c])=>`<td class="num">${escT(traitFmt(traitValue(r.id, c)))}</td>`).join('')}
       </tr>`).join('');
     const thead = showMeta
-      ? `<tr><th></th><th>ID</th>${cols.map(([,lbl])=>`<th>${escT(lbl)}</th>`).join('')}</tr>`
+      ? `<tr><th></th><th>ID</th>${cols.map(([,lbl])=>`<th>${escT(lbl)}</th>`).join('')}${rcols.map(([,lbl])=>`<th>${escT(lbl)} (mean)</th>`).join('')}</tr>`
       : `<tr><th></th><th>ID</th></tr>`;
     return `<div class="tg">${head}<table class="tg-table"><thead>${thead}</thead><tbody>${rowsHtml}</tbody></table></div>`;
   }).join('');
@@ -330,6 +423,7 @@ function traitExport(kind){
   if(!sel.length){ return; }
   const sc=TRAIT.schema;
   const hdr=[...new Set(['id', sc.groupBy].concat(sc.columns.map(c=>c[0]), sc.facets.map(f=>f[0])))];
+  TRAIT.ranges.forEach(rg => { hdr.push(rg.code); sel.forEach(r => { r[rg.code] = traitValue(r.id, rg.code); }); });
   let blob, name;
   if(kind==='json'){
     blob=new Blob([JSON.stringify(sel.map(r=>{const o={};hdr.forEach(h=>o[h]=r[h]);return o;}),null,2)],{type:'application/json'});
@@ -377,6 +471,12 @@ function injectTraitCSS(){
   .qbtn.solid{background:var(--blue-600,#2563eb);border-color:var(--blue-600,#2563eb);color:#fff}
   .trait-grid{display:flex;flex-direction:column;gap:8px}
   .ds-pill.nometa{opacity:.55}
+  .tr-range .tr-sel{width:100%;font-size:12px;padding:5px;border:1px solid var(--line);border-radius:7px;background:#fff}
+  .tr-range .tr-mm{display:flex;gap:5px;align-items:center;margin-top:6px}
+  .tr-range .tr-mm input{width:70px;font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+  .tr-range .tr-hint,.tr-range .tr-note{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.35}
+  .tr-chip{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px;padding:4px 8px;border:1px solid #cfe3d6;background:#f3faf5;border-radius:8px;font-size:12px}
+  .tg-table td.num{text-align:right;font-family:var(--mono)}
   .tg{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .tg-head{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;background:#fbfcfe}
   .tg-head .caret{transition:transform .15s;display:inline-flex;color:var(--muted)}
