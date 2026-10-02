@@ -29,6 +29,22 @@ function mapPNG(site, name){
   fs.writeFileSync(path.join(OUT, name + '.png'), png);
   return {w: built.W, h: built.H, bytes: png.length};
 }
+/* SNPVersity annotation columns as rendered: header labels + status, and per column the
+   number of body cells with a value (every page of the current filter, via rowHTML). */
+function annotStats(site){
+  return site.$eval(`(()=>{
+    const th=[...document.querySelectorAll('#rtBody table.vcf thead th')].map(t=>t.textContent.trim());
+    const cols=[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')].map(t=>({key:t.dataset.col, label:t.textContent.trim(), status:t.dataset.status}));
+    const first=th.indexOf('Gene model');
+    const host=document.createElement('tbody');
+    host.innerHTML=tableView(S.results.rows).fr.map(r=>rowHTML(r)).join('');
+    const filled={};
+    cols.forEach((c,j)=>{ let n=0; host.querySelectorAll('tr').forEach(tr=>{ const td=tr.children[first+j];
+      const v=td?td.textContent.trim():''; if(v && !/^(—|N\\/A|NA|\\.|intergenic)$/.test(v)) n++; }); filled[c.key]=n; });
+    return {dataset:S.dataset, headers:th.slice(0, first+cols.length), cols, rows:S.results.rows.length, filled,
+            note:(document.getElementById('annotNote')||{}).textContent||''};
+  })()`);
+}
 async function until(site, expr, ms = 8000){
   const t0 = Date.now();
   while (Date.now() - t0 < ms){ if (site.$eval(expr)) return true; await site.wait(50); }
@@ -195,6 +211,7 @@ async function until(site, expr, ms = 8000){
   W.pageHasNotAvailable = $('/not available in this set/i.test(document.getElementById("page").textContent)');
   await $('runQuery()');
   W.versity = {rows: $('S.results && S.results.rows.length'), accs: $('S.results && S.results.accs.length')};
+  R.annot = {zmgrin2026_imp: annotStats(site)};
   snapshot(site, 'snpversity_from_gwas_grin', 'SNPVersity - GWAS region chr2:4,491,424-4,499,434, 26 NAM lines (GRIN-linked, release v1.4)');
   await $('sendToGeo()');
   await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
@@ -227,6 +244,23 @@ async function until(site, expr, ms = 8000){
                b73: $f('[...S.selected].filter(id=>/^B73_/.test(id)).length'),
                lines: $f('new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder)).size')};
     f.window.close();
+  }
+
+  /* ---------- SNPVersity annotation columns for MaizeGDB 2026 HQ / HC ----------
+     No MaizeGDB 2026 HDF5 store exists locally, so the table is rendered from the real INFO
+     of the MaizeGDB 2026 VCFs at the same chr2 window (sites only; fixtures/mgdb2026_*). The
+     rows go through the same Data.parseVcf() + renderResults() path as a store query. */
+  for (const [ds, fx] of [['mgdb2026_hq', 'mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz'],
+                          ['mgdb2026_hc', 'mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz']]){
+    const text = require('zlib').gunzipSync(fs.readFileSync(path.join(ROOT, 'localdev/fixtures', fx))).toString('utf8');
+    site.window.__fixtureVcf = text;
+    $(`go("snpversity"); S.dataset=${JSON.stringify(ds)}; S.chr="chr2"; S.start=4491424; S.end=4499434;
+       (()=>{ const ids=Data.defaultSelectionFor(S.dataset).slice(0,5);
+              const acc=new Map(Data.accessionsFor(S.dataset).map(a=>[a.id,a]));
+              S.results={rows:Data.parseVcf(window.__fixtureVcf, ids).rows, accs:ids.map(id=>acc.get(id)||{id}), vcfUrl:'fixture:${ds}'};
+              S.page=1; renderResults(); })()`);
+    R.annot[ds] = annotStats(site);
+    snapshot(site, 'snpversity_annotation_' + ds, 'SNPVersity - annotation columns, ' + ds + ' (MaizeGDB 2026 INFO, chr2 window)');
   }
 
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));

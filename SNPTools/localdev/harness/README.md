@@ -22,6 +22,13 @@ Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.
    the GRIN-linked set (release v1.4: all 26 NAM names translated to 26 ZmG_* samples, none
    reported as not available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
+7. SNPVersity annotation columns: the 13 columns (Gene model ... ESM3) for the GRIN-linked set
+   (chr2 GWAS window from the store) and for MaizeGDB 2026 HQ and HC (their real INFO at the same
+   window, `../fixtures/mgdb2026_*`, rendered through Data.parseVcf + renderResults);
+   `check_annotation_columns.py` recomputes the filled-cell counts from the INFO, checks that
+   unavailable/pending columns stay in the table empty, and checks the GRIN-linked INFO against
+   its sources (SnpEff fields, MAF from the genotypes, ESM1/2/3 from the missense ESM table).
+
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
 `check_snptrait.py`, `check_snpgeo_counts.py` and `check_gwas_handoff.py` recompute the numbers independently from

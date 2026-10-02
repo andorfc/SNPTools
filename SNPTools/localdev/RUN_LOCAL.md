@@ -1,7 +1,7 @@
 # Running the maize SNPTools instance locally (SNPTrait + SNPGeo port)
 
 Tree: `~/Documents/code/SNPTools_maize_port` (branch content `maize-snptrait-snpgeo` =
-`main` @ `4bf370d8` + the 21 patches in `patches/`). Dataset with metadata and a local
+`main` @ `4bf370d8` + the 22 patches in `patches/`). Dataset with metadata and a local
 test store: **MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites)** (`zmgrin2026_imp`,
 933 lines, release v1.4 = 926 imputed + 7 separately called, incl. NAM founder CML103). The server is a PHP built-in web server bound to 127.0.0.1 only; no admin rights needed.
 
@@ -87,8 +87,15 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    checkbox is unticked.
 
 Anything outside the fixture windows returns "No variants"; chromosomes 3, 4 and 6 have no
-store ("HDF5 file not found"). Score/consequence columns read "—" because the release INFO
-does not yet carry the annotation keys. The two `mgdb2026_*` datasets have no HDF5 locally.
+store ("HDF5 file not found"). The two `mgdb2026_*` datasets have no HDF5 locally.
+
+**SNPVersity annotation columns (GRIN-linked set).** All 13 columns (Gene model ... ESM3) are always
+shown. Filled: Gene model, Effect, SNPEff Impact (SnpEff 5.2a fields of the MaizeGDB Schnable
+scored VCFs), MAF (from the 933 release genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 =
+store ESM-2 650M, `esm2_store_score`). Domain uses the same position lookup as every set
+(`data/domains/`, not part of this tree, so "—" locally for all sets). Empty with a dashed header
+and a note above the table: MQ, COMP, maxR² (no per-site value exists for the Grzybowski call
+set) and PlantCAD1/PlantCAD2 (pending the Atlas merge). Hover a header for the reason.
 
 ## 5. Headless checks (no browser)
 
@@ -99,7 +106,7 @@ does not yet carry the annotation keys. The two `mgdb2026_*` datasets have no HD
 ## 6. Turning the tree into the git branch
 
 The sandbox that built this could not create `.git` directories, so the folder is a plain tree.
-To get the branch with its 21 commits:
+To get the branch with its 22 commits:
 
     git clone https://github.com/andorfc/SNPTools.git SNPTools_git && cd SNPTools_git
     git checkout -b maize-snptrait-snpgeo 4bf370d892615783aa52bcec979ad6340b30e4da

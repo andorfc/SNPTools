@@ -12,9 +12,26 @@ Ceres; GT only, same matching; 3,495/3,495 sites matched: 2,833 0/0, 67 0/1, 377
 The per-sample FT field is not applied: its 41 GRZHARD genotypes are already ./. and its 14
 LowQual genotypes are 0/0 reference calls, which are kept. The demo regions do not overlap the
 chr10 30-130 Mb segment flagged in the release's CML103 identity caveat. Sample columns = the
-933 `sample_id`s of `data/zmgrin2026_samples.tsv`, in that order (CML103 last). INFO is the release INFO (AC/AN/AF/DR2/IMP); the
-annotation keys SNPTools shows (GENEMODEL, TYPE, EFFECT, plantcad*/ESM* scores) are not
-merged yet, so those columns read "—".
+933 `sample_id`s of `data/zmgrin2026_samples.tsv`, in that order (CML103 last). INFO carries the SNPVersity annotation keys written by `tools/annotate_release_info.py` (2026-09-29):
+TYPE/EFFECT/GENEMODEL/SUB copied from the MaizeGDB Schnable scored VCFs (SnpEff 5.2a; the
+3,495/3,495 sites matched on CHROM/POS/REF/ALT), MAF from the 933 genotypes of the file, and
+ESM1_score/ESM2_score/ESM3_score for the 133 missense sites (grz2023_missense_esm llr_esm1b /
+llr_esm2 = store ESM-2 650M, i.e. esm2_store_score / llr_esm3, 1 decimal). No MQ/CVC/CVP/MAXR2
+and no PlantCAD scores (pending). Inputs for re-running it are in `annotation/`:
+
+    for f in zmgrin2026_v1.4_chr*_testregions.vcf.gz; do
+      python3 ../../tools/annotate_release_info.py --vcf $f \
+        --snpeff annotation/schnable_scored_testregions.sites.vcf.gz \
+        --esm annotation/grz2023_missense_esm_testregions.tsv.gz --out /tmp/a.vcf.gz && mv /tmp/a.vcf.gz $f
+    done
+
+`annotation/schnable_scored_testregions.sites.vcf.gz`: columns 1-8 of Atlas
+`/90daydata/maizegdb/carson/grz2023_scoring/protein/vcf/chr<N>_schnable_scored.vcf.gz` in the
+fixture windows. `annotation/grz2023_missense_esm_testregions.tsv.gz`: the 147 rows of
+grz2023_missense_esm.tsv.gz at fixture sites. `mgdb2026_{hq,hc}_chr2_4491424_4499434.sites.vcf.gz`:
+columns 1-8 of Atlas `MaizeGDB2026_AI_scores/VCF/chr2_high_{quality,coverage}.vcf` in the chr2
+window (414 / 942 sites, no genotypes), used by the harness to render the annotation columns of
+the MaizeGDB 2026 sets without a local store.
 
 | Region | Why | Sites |
 |---|---|---|

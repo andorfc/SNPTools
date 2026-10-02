@@ -23,5 +23,13 @@ regenerating the whole file would change those 776 records, which is left as a f
 with proposed patches; they are superseded by `localdev/harness/` now that the changes are
 applied. `validate_maize_port.py` is kept for its structural checks of the catalogue shape.
 
+## annotate_release_info.py (SNPVersity annotation INFO for zmgrin2026_imp)
+
+Adds TYPE/EFFECT/GENEMODEL/SUB (from the MaizeGDB Schnable scored VCFs, SnpEff 5.2a), MAF (from
+the release genotypes) and ESM1_score/ESM2_score/ESM3_score (missense ESM table; ESM2 = store
+ESM-2 650M = esm2_store_score) to a release VCF before `vcf_to_h5.py`. Streams both sorted VCFs
+(one chromosome per run); run it per chromosome on the full release to annotate the 46M-site
+store. MQ/CVC/CVP/MAXR2 and PlantCAD scores are deliberately not written (see the docstring).
+
 Natural Earth: https://github.com/nvkelso/natural-earth-vector tag v5.1.2
 (f1890d9f152c896d250a77557a5751a93d494776), public domain.

@@ -56,6 +56,42 @@ const Data = (function () {
      filters:['Grzybowski 2023 GATK filters','Beagle 5 imputation','GRIN-linked'], het:true, indel:true, impute:true},
   ];
 
+  /* SNPVersity annotation columns, in table order. Every column is always shown;
+     annotationFields(datasetId) says, per set, whether a column is filled ('ok'),
+     not available for that set ('na') or waiting for a data merge ('pending'), with
+     the reason shown in the header tooltip and in the note above the table. */
+  const ANNOTATION_COLUMNS = [
+    {key:'gene',   label:'Gene model'},   {key:'effect', label:'Effect'},
+    {key:'impact', label:'SNPEff Impact'},{key:'domain', label:'Domain'},
+    {key:'mq',     label:'MQ'},           {key:'comp',   label:'COMP'},
+    {key:'r2',     label:'maxR²'},        {key:'maf',    label:'MAF'},
+    {key:'pc1',    label:'PlantCAD1'},    {key:'pc2',    label:'PlantCAD2'},
+    {key:'esm1',   label:'ESM1'},         {key:'esm2',   label:'ESM2'},
+    {key:'esm3',   label:'ESM3'},
+  ];
+  const ZMGRIN_NA_QC = 'The Grzybowski et al. 2023 call set has no per-site value for it (the MaizeGDB '
+    + 'Schnable scored VCFs carry "."), and values from the MaizeGDB 2026 call set describe other reads and samples.';
+  const FIELD_STATUS = {
+    mgdb2026_hc: {
+      r2: {status:'na', note:'maxR² is computed only for the High Quality set (its LD filter); the High Coverage set has no MAXR2.'},
+    },
+    zmgrin2026_imp: {
+      mq:   {status:'na', note:'Mapping quality: ' + ZMGRIN_NA_QC},
+      comp: {status:'na', note:'Completeness: ' + ZMGRIN_NA_QC + ' The release genotypes are Beagle-imputed, so a call rate computed from them would not measure coverage.'},
+      r2:   {status:'na', note:'maxR²: ' + ZMGRIN_NA_QC},
+      pc1:  {status:'pending', note:'PlantCAD1 scores for the Grzybowski sites are being merged on Atlas (expected about Oct 1-3, 2026).'},
+      pc2:  {status:'pending', note:'PlantCAD2 scores for the Grzybowski sites are being merged on Atlas (expected about Oct 1-3, 2026).'},
+      esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
+      esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
+      esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
+      maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
+    },
+  };
+  function annotationFields(datasetId){
+    const over = FIELD_STATUS[datasetId] || {};
+    return ANNOTATION_COLUMNS.map(c => Object.assign({key:c.key, label:c.label, status:'ok', note:''}, over[c.key] || {}));
+  }
+
   /*const DATASETS = [
     {id:'mgdb2026_hq', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Quality',   ref:'B73 v5', acc:'2,710', sites:'98M',
      filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
@@ -371,7 +407,7 @@ const Data = (function () {
         mq:     (mq != null) ? Math.round(mq) : 'N/A',
         comp:   (cvp != null) ? cvp : 'N/A',
         r2:     firstNum(II.MAXR2),
-        maf:    (firstNum(II.MAF) != null) ? firstNum(II.MAF) : 0,
+        maf:    firstNum(II.MAF),         // null when the store has no MAF (shown empty, not 0)
         // 2026 uses plantcad1/2 + ESM1/2/3; older projects (2024/Schnable/NAM)
         // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
         pc1:    numOrNull(II.plantcad1_score != null ? II.plantcad1_score : II.DNA_SCORE),
@@ -917,6 +953,7 @@ const Data = (function () {
     familyMeta:  () => FAMILY_META,
     // parsing helpers shared with SNPGeo (and the Node smoke test)
     parseVcf, parseSub, classifyConsequence,
+    annotationFields,       // per-set status of the SNPVersity annotation columns
     // backwards-compatible defaults (first dataset)
     projects:    () => projectsFor(DEFAULT_DS),
     accessions:  () => accessionsFor(DEFAULT_DS),

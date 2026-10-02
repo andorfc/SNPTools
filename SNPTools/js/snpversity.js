@@ -718,7 +718,14 @@ function injectVersityCSS(){
     /* per-row jump links in the Effect column (matches .pe-jump) */
     .effect-cell .fold-jump{font-size:11px;white-space:nowrap;margin-left:2px;
       color:#176c3a;text-decoration:none;border-bottom:1px dotted #9ecdb1}
-    .effect-cell .fold-jump:hover{color:#0f4f2a;border-bottom-style:solid}`;
+    .effect-cell .fold-jump:hover{color:#0f4f2a;border-bottom-style:solid}
+    table.vcf thead th.annot-off{opacity:.62;font-style:italic}
+    table.vcf tbody td.annot-off{background:repeating-linear-gradient(135deg,#f6f8fb 0 6px,#eef1f6 6px 12px)}
+    .annot-note{margin:6px 0 10px;padding:8px 11px;border:1px solid var(--line);border-left:3px solid #c9a227;
+      border-radius:6px;background:#fffdf4;font-size:12px;color:var(--ink);line-height:1.5}
+    .annot-note .annot-k{font-weight:600}
+    .annot-note summary{cursor:pointer;color:var(--muted);margin-top:3px}
+    .annot-note .annot-why{margin-top:4px;color:var(--muted)}`;
   document.head.appendChild(s);
 }
 
@@ -1024,13 +1031,12 @@ function renderTable(){
       <span style="margin-left:14px;font-weight:600;color:var(--ink)">LM score</span>
       <span class="li"><span class="sw" style="width:54px;background:linear-gradient(90deg,rgb(255,0,0),#aab4be,rgb(0,255,0))"></span>deleterious → tolerated</span>
     </div>
+    ${annotNoteHTML()}
     ${genesPanel()}
     <div class="tbl-wrap"><table class="vcf">
       <thead><tr>
         <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on B73 v5.">POS</th><th class="num" data-tt="Reference allele in B73 v5.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>
-        <th data-tt="B73 v5 gene model overlapping the variant.">Gene model</th><th data-tt="Predicted consequence — e.g. missense, synonymous, intron, frameshift.">Effect</th><th data-tt="Predicted severity — HIGH, MODERATE, LOW, or MODIFIER.">SNPEff Impact</th><th data-tt="Pfam protein domain overlapping the affected residue, when available.">Domain</th>
-        <th class="num" data-tt="Mapping quality — confidence that reads aligned to the correct location; higher is better.">MQ</th><th class="num" data-tt="Completeness — fraction of accessions with a non-missing call at this site.">COMP</th><th class="num" data-tt="Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.">maxR²</th><th class="num" data-tt="Minor-allele frequency — frequency of the less common allele (0 to 0.5).">MAF</th>
-        <th class="num" data-tt="PlantCAD DNA language-model score; more extreme values are more disruptive.">PlantCAD1</th><th class="num" data-tt="Second-generation PlantCAD DNA score (MaizeGDB 2026 datasets).">PlantCAD2</th><th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM1</th><th class="num" data-tt="ESM2 protein language-model score (MaizeGDB 2026 datasets).">ESM2</th><th class="num" data-tt="ESM3 protein language-model score (MaizeGDB 2026 datasets).">ESM3</th>
+        ${annotHeaderHTML()}
         ${accs.map(a=>`<th class="acc-th" style="height:${thH}px" title="${escAttr((a.projTitle||a.proj||'')+' — '+a.id)}"><span class="proj-bar" style="background:${a.projColor};height:8px" title="${escAttr(a.projTitle||a.proj||'')}"></span><span class="v">${a.id}</span></th>`).join('')}
       </tr></thead>
       <tbody>
@@ -1046,6 +1052,47 @@ function renderTable(){
       </div>
     </div>`;
   attachTT();
+}
+/* Annotation columns: always all 13, in this order. Per-set availability comes from
+   Data.annotationFields(); a column that a set lacks stays in the table with empty
+   cells, a dashed header and the reason in its tooltip (never removed). */
+const ANNOT_TT={
+  gene:'B73 v5 gene model overlapping the variant.',
+  effect:'Predicted consequence — e.g. missense, synonymous, intron, frameshift.',
+  impact:'Predicted severity — HIGH, MODERATE, LOW, or MODIFIER.',
+  domain:'Pfam protein domain overlapping the affected residue, when available.',
+  mq:'Mapping quality — confidence that reads aligned to the correct location; higher is better.',
+  comp:'Completeness — fraction of accessions with a non-missing call at this site.',
+  r2:'Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.',
+  maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
+  pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
+  pc2:'Second-generation PlantCAD DNA score (MaizeGDB 2026 datasets).',
+  esm1:'ESM protein language-model score for the amino-acid change.',
+  esm2:'ESM2 protein language-model score (MaizeGDB 2026 datasets).',
+  esm3:'ESM3 protein language-model score (MaizeGDB 2026 datasets).'};
+const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,esm1:1,esm2:1,esm3:1};
+function annotFields(){
+  return (Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
+}
+function annotFieldMap(){ const m={}; annotFields().forEach(f=>{m[f.key]=f;}); return m; }
+function annotHeaderHTML(){
+  return annotFields().map(f=>{
+    const tt=ANNOT_TT[f.key]+(f.status==='pending'?' Pending for this set: '+f.note
+      :(f.status==='na'?' Not available for this set: '+f.note:(f.note?' '+f.note:'')));
+    const cls=[ANNOT_NUM[f.key]?'num':'', f.status!=='ok'?'annot-off':''].filter(Boolean).join(' ');
+    return `<th${cls?` class="${cls}"`:''} data-col="${f.key}" data-status="${f.status}" data-tt="${escAttr(tt)}">${f.label}</th>`;
+  }).join('');
+}
+function annotNoteHTML(){
+  const F=annotFields(), na=F.filter(f=>f.status==='na'), pend=F.filter(f=>f.status==='pending');
+  if(!na.length && !pend.length) return '';
+  const ds=(Data.datasets().find(d=>d.id===S.dataset)||{});
+  const nm=escAttr((ds.name||S.dataset)+(ds.sub?' · '+ds.sub:''));
+  const li=L=>L.map(f=>`<b>${f.label}</b> — ${escAttr(f.note)}`).join('<br>');
+  return `<div class="annot-note" id="annotNote">`+
+    (na.length?`<div><span class="annot-k">Not available for this set (${nm}):</span> ${na.map(f=>f.label).join(', ')}. The columns stay in the table with empty cells.</div>`:'')+
+    (pend.length?`<div><span class="annot-k">Pending for this set:</span> ${pend.map(f=>f.label).join(', ')} — empty until the merge lands.</div>`:'')+
+    `<details><summary>Why</summary><div class="annot-why">${li(na.concat(pend))}</div></details></div>`;
 }
 function rowHTML(r){
   const lo=r.pos-10000,hi=r.pos+10000;
@@ -1065,7 +1112,10 @@ function rowHTML(r){
     ? ` <a class="fold-jump" href="#" title="Show this variant on the predicted protein structure in SNPFold" onclick="goFold('${r.gene}',{chr:'${escAttr(S.chr)}',pos:${r.pos},ref:'${escAttr(r.ref)}',alt:'${escAttr(r.alt)}',sub:'${escAttr(r.sub||'')}',effect:'${escAttr(r.effect||'')}'});return false;">fold ↗</a>`
     : '';
   const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump + foldJump;
-  const sc=(v)=>`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
+  const F=annotFieldMap();
+  const off=k=>F[k] && F[k].status!=='ok';           // column not available / pending for this set
+  const blank=k=>`<td class="num annot-off" data-tt="${escAttr(F[k].note)}"></td>`;
+  const sc=(v,k)=>off(k)?blank(k):`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>
     <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
@@ -1075,11 +1125,11 @@ function rowHTML(r){
     <td class="effect-cell">${eff}</td>
     <td><span class="pill ${r.impact.toLowerCase()}">${r.impact}</span></td>
     <td>${domTag(r.domain)}</td>
-    <td class="num">${r.mq}</td>
-    <td class="num">${r.comp}</td>
-    <td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>
-    <td class="num">${r.maf}</td>
-    ${sc(r.pc1)}${sc(r.pc2)}${sc(r.esm1)}${sc(r.esm2)}${sc(r.esm3)}
+    ${off('mq')?blank('mq'):`<td class="num">${r.mq}</td>`}
+    ${off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`}
+    ${off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`}
+    ${off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`}
+    ${sc(r.pc1,'pc1')}${sc(r.pc2,'pc2')}${sc(r.esm1,'esm1')}${sc(r.esm2,'esm2')}${sc(r.esm3,'esm3')}
     ${gtCells(r.gts)}
   </tr>`;
 }
