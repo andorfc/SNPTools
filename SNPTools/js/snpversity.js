@@ -827,6 +827,10 @@ function sendGate(tool){
     return (ibsWork(V,A) > IBS_COST.cmpWorkBlock || V*A > IBS_COST.cmpMemBlock)
       ? {ok:false, msg:'Selected data too large for SNPCompare - choose a smaller region, a lower-density SNP set, or fewer accessions'}
       : {ok:true};
+  if(tool==='geo')
+    return !(typeof SNPTools!=='undefined' && SNPTools.registry && SNPTools.registry.snpgeo)
+      ? {ok:false, msg:'SNPGeo is not loaded on this deployment'}
+      : (V > 400000 ? {ok:false, msg:'Too many variants for SNPGeo - choose a smaller region'} : {ok:true});
   return {ok:true};
 }
 function sendBtnHTML(fn, gate, label, icon){
@@ -845,6 +849,7 @@ function renderResults(){
           ${sendBtnHTML('sendToImpact()',  sendGate('impact'),  'Send to SNPImpact',   ICONS.star)}
           ${sendBtnHTML('sendToCompare()', sendGate('compare'), 'Send to SNPCompare',  ICONS.compare||ICONS.grid)}
           ${sendBtnHTML('sendToTree()',    sendGate('tree'),    'Send data to SNPTree', ICONS.tree)}
+          ${sendBtnHTML('sendToGeo()',     sendGate('geo'),     'Send to SNPGeo',      ICONS.map||'')}
           <button class="btn${pgOK?'':' off'}" ${pgOK?'':'aria-disabled="true" data-tt="Selected region too large for Pangenome viewer - choose a region under 10 kb"'} onclick="openPangenomeRegion()">${ICONS.grid||''} Pangenome viewer ↗</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
         </div>
@@ -898,6 +903,38 @@ function sendToCompare(){
     };
   }
   go('snpcompare');
+}
+/* hand the region's variants to SNPGeo for the geographic view.
+   SNPGeo's carrier percentages are over EVERY sample of the dataset known from a
+   country, so a partial selection would understate them. When the current result
+   covers only part of the dataset, re-query the same region for all of the
+   dataset's samples (as SNPGeo's own gene search does), provided the table
+   budget allows it; otherwise hand off what we have and SNPGeo shows a
+   partial-selection warning. */
+const GEO_HANDOFF_WORK_MAX = 4e7;   // = Data TABLE_WORK_MAX (variants x samples)
+async function sendToGeo(){
+  if(!(S.results&&S.results.rows&&S.results.rows.length)){ go('snpgeo'); return; }
+  const lo=Math.min(S.start,S.end), hi=Math.max(S.start,S.end);
+  const dsName=(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset;
+  const allIds=(Data.accessionsFor(S.dataset)||[]).map(a=>a.id);
+  let res=S.results, requeried=false;
+  const partial=(S.results.accs||[]).length < allIds.length;
+  if(partial && S.results.rows.length*allIds.length <= GEO_HANDOFF_WORK_MAX){
+    const btns=[...document.querySelectorAll('button')].filter(b=>/Send to SNPGeo/.test(b.textContent));
+    btns.forEach(b=>{b.dataset.lbl=b.innerHTML; b.innerHTML='Querying all '+allIds.length+' samples…'; b.disabled=true;});
+    try{
+      const r=await Data.queryVariants(S.dataset, S.chr, lo, hi, allIds);
+      if(r && !r.wide && r.rows && r.rows.length){ res=r; requeried=true; }
+    }catch(e){ console.warn('[sendToGeo] full-dataset re-query failed; handing off the selection only', e); }
+    btns.forEach(b=>{b.innerHTML=b.dataset.lbl; b.disabled=false;});
+  }
+  S.geoInput={
+    rows:res.rows, accs:res.accs,
+    chr:S.chr, start:lo, end:hi,
+    dataset:S.dataset, datasetName:dsName,
+    vcfUrl:res.vcfUrl, requeried
+  };
+  go('snpgeo');
 }
 /* hand the region's variants to SNPImpact for ranking (accessions irrelevant there) */
 function sendToImpact(){
