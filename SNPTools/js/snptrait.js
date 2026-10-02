@@ -197,10 +197,13 @@ function traitLoad(dataset){
   TRAIT.selected = new Set();
 }
 
-function traitMatch(r){
+/* A row passes when, in every section with ticked values, its value is one of them: OR within a
+   section, AND between sections. `skip` leaves one section out, for that section's own counts. */
+function traitMatch(r){ return traitMatchExcept(r, null); }
+function traitMatchExcept(r, skip){
   const sc = TRAIT.schema, f = TRAIT.facets;
   if (TRAIT.onlySel && !TRAIT.selected.has(r.id)) return false;
-  for (const [k] of sc.facets){ if (f[k] && f[k].size && !f[k].has(r[k])) return false; }
+  for (const [k] of sc.facets){ if (k !== skip && f[k] && f[k].size && !f[k].has(r[k])) return false; }
   if (TRAIT.q){
     const hay = sc.search.map(k=>r[k]||'').join(' ').toLowerCase();
     if (!hay.includes(TRAIT.q)) return false;
@@ -299,6 +302,25 @@ function facetCounts(rows){
   rows.forEach(r => sc.facets.forEach(([k]) => { const v = r[k]||'Unknown'; z[k][v] = (z[k][v]||0)+1; }));
   return z;
 }
+/* Each section counted under every filter but its own ("disjunctive" counts). Counting a section
+   under its own filter made ticking one value drop the section's other values to 0, and a 0 is
+   not listed, so a section read as pick-one: to get SS or NSS you had to untick, retick and
+   reselect. Now a section's other values stay, each with the lines it would add. A ticked value
+   stays listed even at 0 (the other sections may exclude it), so it can always be unticked. */
+function traitFacetCounts(){
+  const sc = TRAIT.schema, z = {};
+  sc.facets.forEach(([k]) => {
+    const c = {};
+    TRAIT.rows.forEach(r => { if (traitMatchExcept(r, k)){ const v = r[k]||'Unknown'; c[v] = (c[v]||0)+1; } });
+    (TRAIT.facets[k] || new Set()).forEach(v => { if (!(v in c)) c[v] = 0; });
+    z[k] = c;
+  });
+  return z;
+}
+function traitClearFacet(k){
+  if (TRAIT.facets[k]) TRAIT.facets[k].clear();
+  traitRenderTable(); traitRenderFacets(); traitStatus();
+}
 function facetLabel(k, v){
   const sc = TRAIT.schema;
   if (k===sc.groupBy && sc.groupNames[v]) return sc.groupNames[v];
@@ -306,24 +328,29 @@ function facetLabel(k, v){
 }
 function traitRenderFacets(){
   const box=document.getElementById('traitFacets'); if(!box) return;
-  const sc=TRAIT.schema, C=facetCounts(traitVisible());
+  const sc=TRAIT.schema, C=traitFacetCounts();
   const blocks = sc.facets.map(([k,label])=>{
     const entries=Object.entries(C[k]).sort((a,b)=>b[1]-a[1]);
     if(!entries.length) return '';
     const sel=TRAIT.facets[k];
     const items=entries.map(([v,n])=>`
-      <label class="facet-row">
+      <label class="facet-row${n?'':' zero'}">
         <input type="checkbox" ${sel.has(v)?'checked':''}
           onchange="traitToggleFacet('${escAttrT(k)}', this.value, this.checked)" value="${escAttrT(v)}">
         <span class="fv" title="${escAttrT(facetLabel(k,v))}">${escT(facetLabel(k,v))}</span>
-        <span class="fn">${n}</span></label>`).join('');
-    return `<div class="facet-block"><h4>${escT(label)}</h4>${items}</div>`;
+        <span class="fn">${sel.size && !sel.has(v) ? '+' : ''}${n}</span></label>`).join('');
+    const ticked = sel.size ? `<span class="facet-any">any of ${sel.size}
+        <button class="link-btn" onclick="traitClearFacet('${escAttrT(k)}')" aria-label="Clear ${escAttrT(label)}">clear</button></span>` : '';
+    return `<div class="facet-block" data-facet="${escAttrT(k)}"><h4>${escT(label)}${ticked}</h4>${items}</div>`;
   }).filter(Boolean).join('');
   box.innerHTML = `
     <div class="facet-head">
       <span>Filters</span>
       <button class="link-btn" onclick="traitClearFacets()">Clear all</button>
     </div>
+    <div class="facet-logic">Tick several values in a section to keep lines with <b>any</b> of them;
+      sections combine, so a line must match <b>every</b> section you use. A <b>+n</b> count is what an
+      unticked value would add.</div>
     ${traitRangeBlockHTML()}
     ${blocks || '<div class="facet-empty">No metadata to filter.</div>'}`;
   traitRangeHint();
@@ -641,6 +668,12 @@ function injectTraitCSS(){
   .facet-row .fv{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .facet-row .fn{color:var(--faint);font-family:var(--mono);font-size:11px}
   .facet-empty,.facet-block em{color:var(--faint);font-size:12px}
+  .facet-logic{font-size:11.5px;line-height:1.45;color:var(--muted);background:#f6f8fc;border:1px solid var(--line);
+    border-radius:8px;padding:7px 9px;margin:2px 0 6px}
+  .facet-logic b{color:var(--ink);font-weight:600}
+  .facet-any{float:right;text-transform:none;letter-spacing:0;font-weight:600;color:var(--blue-600,#2563eb)}
+  .facet-any .link-btn{font-size:11px;margin-left:4px}
+  .facet-row.zero .fv,.facet-row.zero .fn{color:var(--faint)}
   .trait-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
   .trait-search{flex:1;min-width:200px;display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:#fff}
   .trait-search svg{width:16px;height:16px;color:var(--muted)}

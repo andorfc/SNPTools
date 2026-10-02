@@ -69,6 +69,9 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    Lines are grouped by panel (NAM 26, Ames 282 254, WiDiv 623, Other GRIN 30). Try
    Subpopulation = SS, In Ames 282 = yes, Kernel type = Dent (14 lines), then search `iowa` (6).
    Under *GRIN trait ranges* pick *1000 Kernel Weight*, min 250, max 300, Add (299 lines).
+   Within a filter section, ticked values combine with OR (SS and NSS: 182 + 117 = 299 lines);
+   sections combine with AND. Each section is counted under the other sections' filters, so its
+   other values stay listed with +n (patch 0035); before, ticking one value hid the rest.
    The same selector opens from SNPVersity (prototype, patch 0032): step 3 shows the selection
    (count, panel bar, subpopulation mix, chips), quick picks (NAM founders + B73 26, Ames 282 280,
    WiDiv 831, Other GRIN 30 -- panel membership, so a line can be in several -- random 2-25 %, All),

@@ -10,7 +10,9 @@ Scenarios (dataset `zmgrin2026_imp`, the only set offered in the initial release
 from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, switched off):
 1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
-   and hand-off to SNPVersity (replace), then the Send dialog: replace pre-ticked, add unticks
+   and hand-off to SNPVersity (replace); while SS x Ames282 x Dent is ticked every section's counts
+   are taken under the other sections' filters (Subpopulation still lists its values) and SS or NSS
+   is the union; then the Send dialog: replace pre-ticked, add unticks
    it, and *add* keeps SNPVersity's 5 lines and adds the 14 (19). SNPTrait starts with nothing
    selected (not SNPVersity's selection). (The neutral-schema case for
    `mgdb2026_hq` is off with that set.)

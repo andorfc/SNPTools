@@ -16,6 +16,22 @@ for k, _ in sch['facets']:
     if exp != T['facetCounts'][k]: bad += 1; print('facet differs:', k)
 f = [a for a in rows if val(a, 'subpop') == 'SS' and val(a, 'inAmes282') == 'yes' and val(a, 'kernelType') == 'Dent']
 if sorted(a['id'] for a in f) != T['filterSS_Ames_Dent']: bad += 1; print('compound filter differs')
+# section counts while filtered: each section under every filter but its own; ticked values listed
+F = {'subpop': {'SS'}, 'inAmes282': {'yes'}, 'kernelType': {'Dent'}}
+exp_counts = {}
+for k, _ in sch['facets']:
+    c = {}
+    for a in rows:
+        if all(val(a, kk) in vs for kk, vs in F.items() if kk != k):
+            c[val(a, k)] = c.get(val(a, k), 0) + 1
+    for v in F.get(k, ()): c.setdefault(v, 0)
+    exp_counts[k] = c
+if T['facetsWhileFiltered'] != exp_counts:
+    bad += 1; print('section counts while filtered differ:', [k for k in exp_counts if T['facetsWhileFiltered'].get(k) != exp_counts[k]])
+if sorted(T['subpopListed']) != sorted(exp_counts['subpop']): bad += 1; print('subpopulations listed', T['subpopListed'])
+orf = [a for a in rows if val(a, 'subpop') in ('SS', 'NSS') and val(a, 'inAmes282') == 'yes' and val(a, 'kernelType') == 'Dent']
+if sorted(a['id'] for a in orf) != T['filterSSorNSS_Ames_Dent']: bad += 1; print('SS or NSS x Ames282 x Dent differs', len(orf), len(T['filterSSorNSS_Ames_Dent']))
+print(f"while SS x Ames282 x Dent is ticked, Subpopulation still lists {len(exp_counts['subpop'])} values; SS or NSS -> {len(orf)} lines")
 hay = lambda a: ' '.join(str(a.get(k) or (a.get('label') or a['id'] if k == 'strain' else '')) for k in sch['search']).lower()
 fi = [a for a in f if 'iowa' in hay(a)]
 if sorted(a['id'] for a in fi) != T['filterPlusIowa']: bad += 1; print('search differs', len(fi), len(T['filterPlusIowa']))

@@ -83,6 +83,13 @@ async function until(site, expr, ms = 8000){
   T.filterSS_Ames_Dent = $('traitVisible().map(r=>r.id).sort()');
   T.domRowsFiltered = $('document.querySelectorAll("#traitGrid tbody tr").length');
   T.statusFiltered = $('document.getElementById("traitStatus").textContent');
+  /* OR within a section, AND between sections: each section is counted under the OTHER
+     sections' filters, so ticking SS leaves the other subpopulations listed (+n) */
+  T.facetsWhileFiltered = $('JSON.parse(JSON.stringify(traitFacetCounts()))');
+  T.subpopListed = $('[...document.querySelectorAll(\'[data-facet="subpop"] .facet-row .fv\')].map(e=>e.textContent)');
+  $('traitToggleFacet("subpop","NSS",true)');
+  T.filterSSorNSS_Ames_Dent = $('traitVisible().map(r=>r.id).sort()');
+  $('traitToggleFacet("subpop","NSS",false)');
   $('TRAIT.q="iowa"; traitRenderTable(); traitRenderFacets(); traitStatus()');
   T.filterPlusIowa = $('traitVisible().map(r=>r.id).sort()');
   T.statusIowa = $('document.getElementById("traitStatus").textContent');
