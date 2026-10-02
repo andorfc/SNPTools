@@ -122,6 +122,10 @@
 <script src="./js/core.js"></script>
 <script src="./js/snphandoff.js"></script>
 <script src="./js/accessions.catalog.js"></script>
+<!-- zmgrin.catalog.js adds SNP_CATALOG.families.zmgrin2026: AFTER accessions.catalog.js
+     (which assigns window.SNP_CATALOG wholesale) and BEFORE data.js (which captures
+     the catalogue when its IIFE runs). -->
+<script src="./js/zmgrin.catalog.js"></script>
 <script src="./js/data.js"></script>
 <script src="./data/structures/alphafold/structure-Zm00001eb378140.js"></script>
 <script src="./js/snpgwas.js"></script>
@@ -148,6 +152,12 @@
 <script src="./js/snpmatrix.js"></script>
 <script src="./js/snpcompare.js"></script>
 <script src="./js/snpfunction.js"></script>
+<!-- SNPTrait (metadata selector) and SNPGeo (geographic distribution; needs d3 v5,
+     loaded above for PanEffect). snpgeo.regions.js must precede snpgeo.js. Both read
+     ./data/ at run time: data/geo/*.geo.json and data/traits/<family>.traits.json. -->
+<script src="./js/snptrait.js"></script>
+<script src="./js/snpgeo.regions.js"></script>
+<script src="./js/snpgeo.js"></script>
 <script src="./js/snphelp.js"></script>
 </body>
 </html>
