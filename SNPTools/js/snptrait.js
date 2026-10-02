@@ -189,7 +189,10 @@ function traitLoad(dataset){
   TRAIT.q = ''; TRAIT.openGroups = new Set(); TRAIT.ranges = [];
   traitEnsureSideFile(dataset);
   TRAIT.hasMeta = TRAIT.rows.some(r => sc.facets.some(([k]) => r[k] && r[k]!=='Unknown' && r[k]!=='unknown'));
-  TRAIT.selected = new Set([...S.selected].filter(id => TRAIT.rows.some(r => r.id === id)));
+  /* Starts empty: it was seeded with SNPVersity's selection, so "replace" in the Send dialog
+     sent those lines back unless they were unticked here. Kept between visits (traitLoad runs
+     only when the dataset changes). */
+  TRAIT.selected = new Set();
 }
 
 function traitMatch(r){

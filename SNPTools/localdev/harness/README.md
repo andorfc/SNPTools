@@ -11,7 +11,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
 1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
    and hand-off to SNPVersity (replace), then the Send dialog: replace pre-ticked, add unticks
-   it, and *add* keeps SNPVersity's 5 lines and adds the 39 (44). (The neutral-schema case for
+   it, and *add* keeps SNPVersity's 5 lines and adds the 14 (19). SNPTrait starts with nothing
+   selected (not SNPVersity's selection). (The neutral-schema case for
    `mgdb2026_hq` is off with that set.)
 2. Help page lists SNPTrait (live) and SNPGeo.
 3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and

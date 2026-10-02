@@ -35,7 +35,8 @@ if D['afterAdd'] != {'replace': False, 'add': True, 'sendDisabled': False}: bad 
 if f"replace the {len(B['versity'])} accessions" not in D['text'] or f"({new} new" not in D['text']: bad += 1; print('dialog text', D['text'])
 if H['tool'] != 'snpversity' or not H['dialogClosed'] or H['selected'] != union: bad += 1; print('add hand-off', len(H['selected']), len(union))
 if f"+{new} added" not in H['banner']: bad += 1; print('arrival banner', H['banner'])
-if T['handoff']['selected'] != T['selectedAfterSelectVisible']: bad += 1; print('replace hand-off', T['handoff'])   # SNPTrait starts from SNPVersity's selection
+if T['selectedAfterSelectVisible'] != len(f): bad += 1; print('SNPTrait did not start empty', T['selectedAfterSelectVisible'], len(f))
+if T['handoff']['selected'] != len(f): bad += 1; print('replace hand-off', T['handoff'])
 print(f"Send dialog: replace {T['handoff']['selected']} lines; add {len(B['trait'])} to {len(B['versity'])} -> {len(H['selected'])} ({new} new)")
 print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
 print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')

@@ -71,7 +71,7 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    Under *GRIN trait ranges* pick *1000 Kernel Weight*, min 250, max 300, Add (299 lines).
    *Send N lines to SNPVersity…* opens a dialog like GWAS Explorer's: *replace* the accessions
    selected in SNPVersity (pre-ticked) or *keep them and add* (it says how many lines are new).
-   SNPTrait starts from SNPVersity's current selection, so those lines are ticked on arrival.
+   SNPTrait starts with nothing selected and keeps its own selection between visits.
 2. **SNPGeo** ("Explore & Analyze"): pick the GRIN-linked dataset card; the gene box is
    pre-filled with `Zm00001eb374090` (chr9:12,838,008-12,843,999; 164 variants x 933 lines).
    Switch *North America (states / provinces)* / *World*, and the colour modes
