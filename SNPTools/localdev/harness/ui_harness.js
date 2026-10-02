@@ -27,7 +27,7 @@ function makeFetch(root, log){
       const out = execFileSync(process.env.PHP_BIN || 'php', [path.join(__dirname, 'php_shim.php')], {
         env: Object.assign({}, process.env, {SNPT_REQ: JSON.stringify({method: (init.method||'GET').toUpperCase(),
              get, post, root, script: rel})}), maxBuffer: 1 << 28});
-      log.push({url: rel, method: init.method || 'GET', ms: Date.now() - t0, bytes: out.length,
+      log.push({url: rel, query: u.search, method: init.method || 'GET', ms: Date.now() - t0, bytes: out.length,
                 post: Object.keys(post), n_genotypes: post.genotypes ? JSON.parse(post.genotypes).length : undefined,
                 reply: out.toString().slice(0, 300)});
       return new Response(out, {status: 200, headers: {'Content-Type': 'application/json'}});

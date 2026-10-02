@@ -87,6 +87,24 @@ const Data = (function () {
       maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
     },
   };
+  /* Precomputed genome-wide IBS files per dataset family (ibsCompare.php?probe=1).
+     mgdb2026 keeps its fixed files in ./distance/ and is always offered, as before;
+     any other family is offered only when ./distance/<family>/ has the files.
+     Resolves {dataset, available, n, sites:['all','snp'?], trees:['nj','upgma'?]}. */
+  const _gdProbe = {};
+  function globalDistance(family){
+    if (family === 'mgdb2026') return Promise.resolve({dataset:family, available:true, sites:['all'], trees:[], legacy:true});
+    if (!_gdProbe[family]) _gdProbe[family] = fetch('ibsCompare.php?probe=1&dataset=' + encodeURIComponent(family), {cache:'no-store'})
+      .then(r => r.ok ? r.json() : {available:false})
+      .catch(() => ({available:false}))
+      .then(j => { const v = Object.assign({dataset:family, available:false, sites:[], trees:[]}, j || {});
+                   _gdProbe[family]._v = v; return v; });
+    return _gdProbe[family];
+  }
+  function globalDistanceKnown(family){
+    if (family === 'mgdb2026') return {dataset:family, available:true, sites:['all'], trees:[], legacy:true};
+    return _gdProbe[family] && _gdProbe[family]._v || null;
+  }
   function annotationFields(datasetId){
     const over = FIELD_STATUS[datasetId] || {};
     return ANNOTATION_COLUMNS.map(c => Object.assign({key:c.key, label:c.label, status:'ok', note:''}, over[c.key] || {}));
@@ -954,6 +972,7 @@ const Data = (function () {
     // parsing helpers shared with SNPGeo (and the Node smoke test)
     parseVcf, parseSub, classifyConsequence,
     annotationFields,       // per-set status of the SNPVersity annotation columns
+    globalDistance, globalDistanceKnown,   // precomputed genome-wide IBS / trees per family
     // backwards-compatible defaults (first dataset)
     projects:    () => projectsFor(DEFAULT_DS),
     accessions:  () => accessionsFor(DEFAULT_DS),

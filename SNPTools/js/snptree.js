@@ -191,18 +191,41 @@ const SNPTree = (function () {
     ST.input = inp;
     if (!inp || !inp.rows || !inp.rows.length){
       page.innerHTML = emptyState();
+      fillGenomeWide((S && S.dataset) || null);
       return;
     }
     // metadata lookup by accession id (= tree label)
     ST.metaMap = {}; inp.accs.forEach(a=>{ ST.metaMap[a.id]=a; });
     ST._pi = null;   // recompute project->shape mapping for this dataset
     page.innerHTML = shell(inp);
+    fillGenomeWide(inp.dataset);
     draw();
+  }
+
+  /* Precomputed genome-wide trees (NJ / UPGMA over the whole release) are offered as
+     Newick downloads when ./distance/<family>/tree_*.nwk exist (ibsCompare.php?probe=1).
+     They are not drawn here: SNPTree draws trees it computes from a region. */
+  function fillGenomeWide(ds){
+    const el = document.getElementById('treeGW');
+    if (!el || !ds || !Data.globalDistance) return;
+    const fam = Data.familyOf(ds);
+    if (fam === 'mgdb2026') return;
+    Data.globalDistance(fam).then(p => {
+      const e = document.getElementById('treeGW');
+      if (!e || !p || !(p.trees || []).length) return;
+      const name = {nj:'Neighbour-Joining', upgma:'UPGMA'};
+      e.innerHTML = `<div class="card pad" style="margin-bottom:16px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b>Genome-wide tree</b><span style="color:var(--muted);font-size:12.5px">precomputed from all sites of the release${p.n ? ' · ' + p.n.toLocaleString() + ' lines' : ''} (Newick)</span>
+        <span style="margin-left:auto;display:flex;gap:8px">${p.trees.map(t =>
+          `<a class="qbtn" id="treeGW_${t}" href="ibsCompare.php?tree=${t}&dataset=${encodeURIComponent(fam)}" download="${fam}_genomewide_${t}.nwk">Download ${name[t] || t}</a>`).join('')}</span>
+      </div></div>`;
+    });
   }
 
   function emptyState(){
     return `<section class="sec"><div class="bar"></div><div>
       <h1>SNPTree</h1><p>Local phylogeny &amp; similarity from a SNPVersity result.</p></div></section>
+      <div id="treeGW"></div>
       <div class="card pad fade" style="text-align:center">
         <div style="max-width:560px;margin:0 auto">
           <h3 style="font-family:var(--disp);margin:0 0 8px">No data yet</h3>
@@ -249,6 +272,7 @@ const SNPTree = (function () {
       </div>
     </div>
 
+    <div id="treeGW"></div>
     <div id="treeMeta" class="meta-strip"></div>
     <div class="card pad fade" id="treeStage" style="overflow:auto"></div>
     <div class="card pad" style="margin-top:16px">

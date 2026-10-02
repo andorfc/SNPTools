@@ -29,6 +29,15 @@ Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.
    unavailable/pending columns stay in the table empty, and checks the GRIN-linked INFO against
    its sources (SnpEff fields, MAF from the genotypes, ESM1/2/3 from the missense ESM table).
 
+8. SNPCompare genome-wide scope per dataset family, with synthetic matrices written by
+   `make_synthetic_distance.py` to a temp dir (`SNPTOOLS_DISTANCE_DIR`): zmgrin2026 (933 ids, all +
+   SNP-only), the unchanged MaizeGDB 2026 layout (60 ids, same request URL as before), an empty
+   dir (scope disabled), and SNPTree's genome-wide Newick downloads; then, if installed, the real
+   `distance/zmgrin2026/` files (`check_global_compare.py`, `check_ibs_files.py`: ids = catalogue,
+   shapes, symmetry, diagonals, fractions, tree tips).
+9. With a full chr2 store installed: the chr2 checks use its window
+   (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
+
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
 `check_snptrait.py`, `check_snpgeo_counts.py` and `check_gwas_handoff.py` recompute the numbers independently from

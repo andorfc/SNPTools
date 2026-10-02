@@ -268,6 +268,72 @@ async function until(site, expr, ms = 8000){
     snapshot(site, 'snpversity_annotation_' + ds, 'SNPVersity - annotation columns, ' + ds + ' (MaizeGDB 2026 INFO, chr2 window)');
   }
 
+  /* ---------- SNPCompare genome-wide scope + SNPTree genome-wide Newick ----------
+     Synthetic distance files (make_synthetic_distance.py) in a temp dir, served by the real
+     ibsCompare.php through SNPTOOLS_DISTANCE_DIR: zmgrin2026 (933 ids, all + SNP-only
+     matrices, 2 trees) and the unchanged MaizeGDB 2026 layout (60 ids). Then the same page
+     with an empty distance dir (genome-wide scope must be disabled for zmgrin2026). */
+  {
+    const os = require('os'), {execFileSync} = require('child_process');
+    const dd = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-dist-')), empty = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-nodist-'));
+    const gen = JSON.parse(execFileSync(process.env.PYTHON_PATH || 'python3', [path.join(__dirname, 'make_synthetic_distance.py'), dd, ROOT]).toString());
+    const prevDD = process.env.SNPTOOLS_DISTANCE_DIR;
+    const C = R.compare = {gen, distanceDir: dd};
+    const cmpRun = async (s, ds, focal, sites) => {
+      const $s = s.$eval;
+      $s(`S.dataset=${JSON.stringify(ds)}; S.compareInput=null; go("snpcompare")`);
+      await until(s, 'document.getElementById("cmpFocal")', 20000);
+      const out = {gAvail: $s('SNPCompare.globalAvailable()'),
+        scopeDisabled: $s('[...document.querySelectorAll("button")].filter(b=>b.textContent.trim()==="Genome-wide").map(b=>b.disabled)[0]'),
+        sitesSelect: $s('!!document.getElementById("cmpGSites")'),
+        note: $s('[...document.querySelectorAll(".mtx-note")].map(n=>n.textContent.replace(/\\s+/g," ").trim()).join(" | ")')};
+      if (out.gAvail && focal){
+        if (sites) $s(`SNPCompare.setGSites(${JSON.stringify(sites)})`);
+        $s(`SNPCompare.pickFocal(${JSON.stringify(focal)}); SNPCompare.setMode("global"); SNPCompare.setView("table")`);
+        await until(s, 'SNPCompare._ST.ran', 20000);
+        out.focal = focal;
+        out.rows = $s('SNPCompare._ST.allRows.map(r=>[r.id, r.gsim, r.gmiss])');
+        out.tableRows = $s('document.querySelectorAll("#cmpViewWrap tbody tr").length');
+        out.count = $s('(document.getElementById("cmpCount")||{}).textContent||""');
+      }
+      return out;
+    };
+    process.env.SNPTOOLS_DISTANCE_DIR = dd;
+    const s2 = await openSite(ROOT);
+    C.zmgrin_all = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_B73');
+    C.zmgrin_snp = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_CML103', 'snp');
+    snapshot(s2, 'snpcompare_zmgrin2026_global', 'SNPCompare - zmgrin2026_imp genome-wide (synthetic matrices)');
+    const mFocal = fs.readFileSync(path.join(dd, 'ids.txt'), 'utf8').split('\n')[3];
+    C.mgdb = await cmpRun(s2, 'mgdb2026_hq', mFocal);
+    s2.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")');
+    await until(s2, 'document.querySelector("#treeGW a")', 20000);
+    C.tree = {links: s2.$eval('[...document.querySelectorAll("#treeGW a")].map(a=>[a.textContent.trim(), a.getAttribute("href"), a.getAttribute("download")])'),
+              nj: await s2.$eval('fetch(document.getElementById("treeGW_nj").getAttribute("href")).then(r=>r.text())'),
+              upgma: await s2.$eval('fetch(document.getElementById("treeGW_upgma").getAttribute("href")).then(r=>r.text())')};
+    C.requests = s2.log.filter(x => x.url === 'ibsCompare.php').map(x => x.query);
+    s2.window.close();
+    process.env.SNPTOOLS_DISTANCE_DIR = empty;
+    const s3 = await openSite(ROOT);
+    C.zmgrin_nofiles = await cmpRun(s3, 'zmgrin2026_imp', null);
+    s3.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")'); await s3.wait(300);
+    C.tree_nofiles = s3.$eval('(document.getElementById("treeGW")||{}).innerHTML||""');
+    s3.window.close();
+    if (prevDD === undefined) delete process.env.SNPTOOLS_DISTANCE_DIR; else process.env.SNPTOOLS_DISTANCE_DIR = prevDD;
+    // the installed files, when present (./distance/zmgrin2026/, not part of the tree)
+    if (fs.existsSync(path.join(ROOT, 'distance/zmgrin2026/similarity.csv'))){
+      const s4 = await openSite(ROOT);
+      C.real = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_B73');
+      C.real_mo17 = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_MO17');
+      C.real_snp = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_B73', 'snp');
+      snapshot(s4, 'snpcompare_zmgrin2026_global_real', 'SNPCompare - zmgrin2026_imp genome-wide, ZmG_B73 (installed matrices, SNPs only)');
+      s4.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")');
+      await until(s4, 'document.querySelector("#treeGW a")', 20000);
+      C.real_tree = {links: s4.$eval('[...document.querySelectorAll("#treeGW a")].map(a=>a.getAttribute("href"))'),
+                     njBytes: (await s4.$eval('fetch("ibsCompare.php?tree=nj&dataset=zmgrin2026").then(r=>r.text())')).length};
+      s4.window.close();
+    }
+  }
+
   /* ---------- query timing on a full-chromosome store (chr2), when installed ---------- */
   if ((R.store || {}).chr2 > 100000){
     const s5 = await openSite(ROOT); const $t = s5.$eval;
@@ -299,6 +365,7 @@ async function until(site, expr, ms = 8000){
   const brief = JSON.parse(JSON.stringify(R)); delete brief.snpgeo_gene.allStats; delete brief.snpgeo_gene.accOrder;
   brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length; delete brief.gwas.defaultSend.ids;
   brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
+  if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();
   console.log('done');

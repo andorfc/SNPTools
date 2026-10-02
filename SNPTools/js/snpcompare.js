@@ -47,7 +47,7 @@
 const SNPCompare = (function () {
 
   const CFG = {
-    globalEndpoint : 'ibsCompare.php', // ?focal=<ID> -> {rows:[{id,similarity,missing}]}
+    globalEndpoint : 'ibsCompare.php', // ?focal=<ID>&dataset=<family>[&sites=snp] -> {rows:[{id,similarity,missing}]}
     useDemoGlobal  : false,
     defaultDataset : 'mgdb2026_hq',
     minSitesFloor  : 20,               // never mask below this many sites
@@ -64,7 +64,8 @@ const SNPCompare = (function () {
     ran:false, ranFocal:null, ranMode:null, force:false,
     mdsLabels:'auto',      // PCoA label strategy: auto | all | focal | none
     input:null,            // local hand-off {rows, accs, chr, start, end, dataset,...}
-    globalCache:{},        // focalId -> {rows, demo}
+    globalCache:{},        // '<family>|<sites>|<focalId>' -> {rows, demo}
+    gsites:'all',          // genome-wide matrix: 'all' variant sites or 'snp' (when the family has it)
     allRows:[], gdemo:false, _meta:null, _metaDs:null,
 
     /* --- matrix / scale state --- */
@@ -333,19 +334,22 @@ const SNPCompare = (function () {
     });
   }
   async function getGlobal(ds, focalId){
-    if(ST.globalCache[focalId]) return ST.globalCache[focalId];
+    const fam=Data.familyOf(ds), sites=gSitesFor(fam), ck=fam+'|'+sites+'|'+focalId;
+    if(ST.globalCache[ck]) return ST.globalCache[ck];
     let res;
     if(CFG.useDemoGlobal){ res={rows:globalDemo(ds,focalId), demo:true}; }
     else {
-      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}`,{cache:'no-store'});
+      const q=fam==='mgdb2026' ? '' : `&dataset=${encodeURIComponent(fam)}${sites==='snp'?'&sites=snp':''}`;
+      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}${q}`,{cache:'no-store'});
       if(!resp.ok) throw new Error('ibsCompare.php failed (HTTP '+resp.status+')');
       const raw=await resp.text(); let j;
       try{ j=JSON.parse(raw); }catch(e){ throw new Error('ibsCompare.php did not return JSON:\n'+raw.slice(0,500)); }
       const rows=(j.rows|| (j.ids? j.ids.map((id,i)=>({id, similarity:j.sim[i], missing:j.miss[i]})):[]))
         .map(r=>({id:r.id, sim:+(r.similarity!=null?r.similarity:r.sim), miss:Math.max(0,+(r.missing!=null?r.missing:r.miss))}));
+      if(!rows.length && j.error) throw new Error(j.error);
       res={rows, demo:false};
     }
-    ST.globalCache[focalId]=res; return res;
+    ST.globalCache[ck]=res; return res;
   }
 
   /* ---------------- build the combined row set ---------------- */
@@ -384,7 +388,20 @@ const SNPCompare = (function () {
   }
 
   /* ---------------- shell ---------------- */
-  function globalAvailable(){ try{ return Data.familyOf(ST.dataset)==='mgdb2026'; }catch(e){ return true; } }
+  /* Genome-wide scope: MaizeGDB 2026 always (fixed ./distance/ files, unchanged); any other
+     family once ibsCompare.php?probe=1&dataset=<family> finds ./distance/<family>/ files. */
+  function globalAvailable(){
+    try{ const fam=Data.familyOf(ST.dataset); if(fam==='mgdb2026') return true;
+         const p=Data.globalDistanceKnown && Data.globalDistanceKnown(fam); return !!(p && p.available); }
+    catch(e){ return true; }
+  }
+  /* the site-wide dataset (S.dataset, set by SNPVersity / the dataset pickers), if valid */
+  function pageDataset(){ try{ return (S.dataset && Data.datasets().some(d=>d.id===S.dataset)) ? S.dataset : null; }catch(e){ return null; } }
+  function setDataset(id){ if(!Data.datasets().some(d=>d.id===id)) return; S.dataset=id; S.compareInput=null; ST.input=null; render(); }
+  function gProbe(){ try{ return Data.globalDistanceKnown(Data.familyOf(ST.dataset)); }catch(e){ return null; } }
+  function gSitesFor(fam){ const p=Data.globalDistanceKnown&&Data.globalDistanceKnown(fam);
+    return (ST.gsites==='snp' && p && (p.sites||[]).indexOf('snp')>=0) ? 'snp' : 'all'; }
+  function setGSites(v){ ST.gsites=(v==='snp')?'snp':'all'; ST.allRows=[]; showIdle(); }
   function hasLocal(){ return !!(ST.input&&ST.input.accs&&ST.input.accs.length>1); }
 
   function render(){
@@ -397,8 +414,18 @@ const SNPCompare = (function () {
     const request=S.compareRequest||null;
     S.compareRequest=null;
     const prevDs=ST.dataset;
+    // Genome-wide availability of a non-MaizeGDB-2026 family is probed once (async);
+    // render again when it is known, keeping any pending hand-off request.
+    { const fam0=Data.familyOf((S.compareInput&&S.compareInput.dataset)||pageDataset()||ST.dataset);
+      if(fam0!=='mgdb2026' && Data.globalDistance && !Data.globalDistanceKnown(fam0)){
+        page.className='page fade';
+        page.innerHTML=`<div class="card pad"><div class="loading"><div class="spinner"></div><div>Checking genome-wide matrices…</div></div></div>`;
+        Data.globalDistance(fam0).then(()=>{ S.compareRequest=request; if(S.tool==='snpcompare') render(); });
+        return;
+      } }
     if(S.compareInput){ if(S.compareInput!==ST.input){ ST._pairs=null; ST._layout=null; ST.force=false; } ST.input=S.compareInput; }
     if(ST.input){ ST.dataset=ST.input.dataset||ST.dataset; }
+    else if(pageDataset()) ST.dataset=pageDataset();   // no region hand-off: the site-wide dataset
     if(ST.dataset!==prevDs){ ST.focal=null; ST._meta=null; ST.globalCache={}; ST.allRows=[]; ST._pairs=null; }
     const gAvail=globalAvailable();
     if(!ST.focal){
@@ -463,15 +490,23 @@ const SNPCompare = (function () {
             <datalist id="cmpFocalList">${ids.slice(0,4000).map(i=>`<option value="${esc(i)}">`).join('')}</datalist>
           </div>
         </div>
+        ${!local?`<div><div class="fl-lbl">Dataset</div>
+          <select id="cmpDataset" onchange="SNPCompare.setDataset(this.value)" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px;max-width:320px">
+            ${Data.datasets().map(d=>`<option value="${esc(d.id)}" ${d.id===ds?'selected':''}>${esc(d.name+(d.sub?' · '+d.sub:''))}</option>`).join('')}</select></div>`:''}
         <div>
           <div class="fl-lbl">Scope</div>
-          ${scopeBtn('global','Genome-wide',gAvail,'Genome-wide matrix available for MaizeGDB 2026 only')}
+          ${scopeBtn('global','Genome-wide',gAvail,'No precomputed genome-wide matrix for this dataset')}
           ${scopeBtn('local','This region',local,'Send a result from SNPVersity to enable')}
-          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'Genome-wide matrix available for MaizeGDB 2026 only':'Send a result from SNPVersity to enable')}
+          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'No precomputed genome-wide matrix for this dataset':'Send a result from SNPVersity to enable')}
         </div>
+        ${gAvail && ((gProbe()||{}).sites||[]).indexOf('snp')>=0 ? `<div><div class="fl-lbl">Genome-wide sites</div>
+          <select id="cmpGSites" onchange="SNPCompare.setGSites(this.value)" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px">
+            <option value="all" ${ST.gsites!=='snp'?'selected':''}>All variants</option>
+            <option value="snp" ${ST.gsites==='snp'?'selected':''}>SNPs only</option></select></div>` : ''}
         ${region?`<div><div class="fl-lbl">Region</div><div class="c-mono" style="color:var(--blue-600);font-size:13px;padding:8px 0">${region}</div></div>`:''}
       </div>
-      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">Genome-wide precomputed IBS is available for <b>MaizeGDB 2026</b> only. For <b>${esc(dsName)}</b>, use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`:''}
+      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">No precomputed genome-wide IBS matrix is installed for <b>${esc(dsName)}</b> (expected in <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>). Use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`
+        :(Data.familyOf(ds)!=='mgdb2026'?`<div class="mtx-note" id="cmpGNote" style="margin-top:12px">Genome-wide: precomputed IBS over the whole release (${((gProbe()||{}).n||0).toLocaleString()} lines${ST.gsites==='snp'?', SNPs only':', all variant sites'}), <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>.</div>`:'')}
 
       ${accListHTML()}
 
@@ -1295,7 +1330,7 @@ const SNPCompare = (function () {
 
   if(typeof SNPTools!=='undefined') SNPTools.register('snpcompare', { render });
 
-  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setView,
+  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setView, setGSites, setDataset, globalAvailable,
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
            clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage, forceRun,
            // testing / debugging

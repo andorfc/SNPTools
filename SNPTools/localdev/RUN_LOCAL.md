@@ -1,7 +1,7 @@
 # Running the maize SNPTools instance locally (SNPTrait + SNPGeo port)
 
 Tree: `~/Documents/code/SNPTools_maize_port` (branch content `maize-snptrait-snpgeo` =
-`main` @ `4bf370d8` + the 22 patches in `patches/`). Dataset with metadata and a local
+`main` @ `4bf370d8` + the 25 patches in `patches/`). Dataset with metadata and a local
 test store: **MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites)** (`zmgrin2026_imp`,
 933 lines, release v1.4 = 926 imputed + 7 separately called, incl. NAM founder CML103). The server is a PHP built-in web server bound to 127.0.0.1 only; no admin rights needed.
 
@@ -29,6 +29,21 @@ The store is built from `localdev/fixtures/zmgrin2026_v1.4_chr*_testregions.vcf.
 933 samples; ZmG_CML103 is the last column). A store built before release v1.4 has 932 columns and
 does not match the v1.4 catalogue: rerun `make local-store` once (a running server picks up the new
 files; no restart needed).
+
+**Full chromosome 2 (pilot of the per-chromosome build).** `hdf5/version3/zmgrin2026_chr2_impute.h5`
+can be the full Ceres build (5,179,690 sites x 933 samples, 1.97 GB; INFO with SnpEff fields, MAF,
+PlantCAD1/PlantCAD2, Evo2, ESM1/2/3, ESM-C), copied from
+`/90daydata/maizegdb/carson/grz2023/snptools_build/chr2/` (sha256 6e6eae31...3615023); the 3,495-site
+demo cut is kept as `zmgrin2026_chr2_impute.demo.h5`. `make local-store` skips any store larger than
+50 MB (`FORCE=1` replaces it with the demo cut). With the full chr2 store every chr2 region works,
+not only the fixture windows. Measured through processForm.php -> h5_to_vcf.py (PHP CLI, this Mac):
+gene Zm00001eb067740 (127 variants) 0.26 s for 26 NAM lines / 0.48 s for all 933; chr2:4-5 Mb
+(16,583 variants) 0.44 s / 2.4 s including the browser-side parse (0.35 s / 0.92 s in PHP + Python).
+
+**Genome-wide IBS for SNPCompare / SNPTree (GRIN-linked set).** Copy the Ceres matrices to
+`distance/zmgrin2026/` (similarity.csv, missing_pct.csv, similarity_snp.csv, missing_pct_snp.csv,
+ids.txt, tree_nj.nwk, tree_upgma.nwk; allele_distance.csv / co_called_sites.csv may sit there too).
+They are data, not part of the patches. MaizeGDB 2026 keeps its files directly in `distance/`.
 
 ## 3. Start / stop
 
@@ -96,6 +111,16 @@ store ESM-2 650M, `esm2_store_score`). Domain uses the same position lookup as e
 (`data/domains/`, not part of this tree, so "—" locally for all sets). Empty with a dashed header
 and a note above the table: MQ, COMP, maxR² (no per-site value exists for the Grzybowski call
 set) and PlantCAD1/PlantCAD2 (pending the Atlas merge). Hover a header for the reason.
+With the full chr2 store PlantCAD1/PlantCAD2 are filled on chr2 (SNPs; indels read N/A); the
+other chromosomes still use the demo cut and show them as pending.
+
+5. **SNPCompare genome-wide (GRIN-linked set)**: open *SNPCompare*, choose **Dataset = MaizeGDB
+   GRIN-linked 2026** (or arrive from SNPVersity with that set), focal `ZmG_B73`, scope
+   **Genome-wide** -> **Table**: 933 lines; nearest ZmG_DJ7 (0.99823), ZmG_F42 (0.99575).
+   *Genome-wide sites* switches between all 46,054,265 sites and SNPs only. `ZmG_MO17` -> nearest
+   ZmG_SEAGULLSEVENTEEN (0.95391). Without `distance/zmgrin2026/` the scope stays disabled with a note.
+6. **SNPTree**: with the GRIN-linked set, a *Genome-wide tree* card offers the precomputed
+   Neighbour-Joining and UPGMA trees (933 tips) as Newick downloads; region trees are unchanged.
 
 ## 5. Headless checks (no browser)
 
@@ -106,7 +131,7 @@ set) and PlantCAD1/PlantCAD2 (pending the Atlas merge). Hover a header for the r
 ## 6. Turning the tree into the git branch
 
 The sandbox that built this could not create `.git` directories, so the folder is a plain tree.
-To get the branch with its 22 commits:
+To get the branch with its 25 commits:
 
     git clone https://github.com/andorfc/SNPTools.git SNPTools_git && cd SNPTools_git
     git checkout -b maize-snptrait-snpgeo 4bf370d892615783aa52bcec979ad6340b30e4da
