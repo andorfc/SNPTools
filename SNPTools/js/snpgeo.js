@@ -36,6 +36,8 @@ const GEO = {
   geoJson: null,         // loaded countries.geo.json
   mapSvg: null,          // d3 selection of map container
   colorMode: 'freq',     // 'freq' | 'refalt' | 'af' — see GEO_MODES
+  mapView: null,         // 'world' | 'na' (US states / Canadian provinces / Mexican states); null = auto
+  admin1Json: null,      // loaded data/geo/admin1_na.geo.json
 };
 
 /* ================= HELPERS ================= */
@@ -114,6 +116,8 @@ function renderGeo(page){
     <div class="geo-shell">
       <div class="geo-map-wrap">
         <div class="geo-map-tools">
+          <select id="geoMapView" class="geo-mode-sel" onchange="geoSetMapView(this.value)"
+                  data-tt="World countries, or North America by state / province (USA, Canada, Mexico).">${geoViewOptionsHTML()}</select>
           <select id="geoColorMode" class="geo-mode-sel" onchange="geoSetColorMode(this.value)"
                   data-tt="Choose what the country colours encode.">${geoModeOptionsHTML()}</select>
           <button class="geo-tool-btn" onclick="geoExportPNG()" data-tt="Download the map as a PNG image (2x resolution).">PNG</button>
@@ -151,11 +155,14 @@ function renderGeo(page){
   // Results loaded: render map + table in main area
   geoLoad();
 
-  // Load GeoJSON and render
+  // Load GeoJSON (and the admin-1 layer when the North America view is active) and render
   loadCountriesGeoJSON(() => {
-    geoRenderTable();
-    geoRenderMap();
-    geoRenderOverview();   // right pane opens on the country overview
+    const draw = () => {
+      geoRenderTable();
+      geoRenderMap();
+      geoRenderOverview();   // right pane opens on the country overview
+    };
+    if (geoView() === 'na') loadAdmin1GeoJSON(draw, draw); else draw();
   });
 }
 
@@ -645,6 +652,41 @@ function geoModeOptionsHTML(){
     `<option value="${k}"${GEO.colorMode === k ? ' selected' : ''}>${escGeo(m.label)}</option>`).join('');
 }
 
+/* ---- map view: world countries, or North America by admin-1 ----
+   The GRIN-linked maize set is ~80% of U.S. origin, so a country choropleth is
+   nearly uniform; the 'na' view colours U.S. states, Canadian provinces and
+   Mexican states from SNPGEO_REGIONS[...].admin1Code (ISO 3166-2). Auto-selected
+   when at least half of the dataset's mapped samples come from those countries. */
+const GEO_NA_ISO = ['USA', 'CAN', 'MEX'];
+function geoView(){
+  if (GEO.mapView) return GEO.mapView;
+  const REGIONS = window.SNPGEO_REGIONS || {};
+  const ds = (typeof Data !== 'undefined' && Data.accessionsFor) ? (Data.accessionsFor(GEO.dataset || S.dataset) || []) : [];
+  let n = 0, na = 0;
+  ds.forEach(a => { const g = REGIONS[a.id]; if (g && g.iso3){ n++; if (GEO_NA_ISO.indexOf(g.iso3) >= 0) na++; } });
+  return (n && na / n >= 0.5) ? 'na' : 'world';
+}
+function geoViewOptionsHTML(){
+  const v = geoView();
+  return [['world', 'World (countries)'], ['na', 'North America (states / provinces)']].map(([k, l]) =>
+    `<option value="${k}"${v === k ? ' selected' : ''}>${escGeo(l)}</option>`).join('');
+}
+function geoSetMapView(v){
+  GEO.mapView = (v === 'na') ? 'na' : 'world';
+  if (GEO.mapView === 'na' && !GEO.admin1Json) loadAdmin1GeoJSON(geoRenderMap, () => { GEO.mapView = 'world'; geoRenderMap(); });
+  else geoRenderMap();
+}
+/* Per-admin-1 statistics keyed by ISO 3166-2 code, from the per-country
+   `states` buckets (which carry the admin1Code of their samples). */
+function geoAdmin1Stats(stats){
+  const out = {};
+  Object.values(stats).forEach(c => Object.entries(c.states || {}).forEach(([name, st]) => {
+    if (!st.code) return;
+    out[st.code] = Object.assign({}, st, {country: `${name}, ${c.iso3}`, iso3: c.iso3, stateName: name});
+  }));
+  return out;
+}
+
 /* Label for the variant currently driving the map. */
 function geoVariantLabel(row){
   if (!row) return '';
@@ -689,6 +731,8 @@ function geoRenderMap(){
     return;
   }
   
+  if (geoView() === 'na' && GEO.admin1Json) return geoRenderMapNA(mapDiv, stats);
+
   mapDiv.innerHTML = '';
   const width = mapDiv.clientWidth || 600;
   const height = mapDiv.clientHeight || 400;
@@ -751,6 +795,61 @@ function geoRenderMap(){
     });
   
   // Legend
+  geoRenderLegend();
+}
+
+/* North America view: countries as context (coloured by their own statistic),
+   admin-1 units of USA / CAN / MEX on top, coloured by the per-state statistic.
+   A state with no samples of this dataset is drawn as "no calls". */
+function geoRenderMapNA(mapDiv, stats){
+  mapDiv.innerHTML = '';
+  const width = mapDiv.clientWidth || 600;
+  const height = mapDiv.clientHeight || 400;
+  const svg = d3.select(mapDiv).append('svg')
+    .attr('width', width).attr('height', height).attr('viewBox', `0 0 ${width} ${height}`);
+  GEO.mapSvg = svg;
+  const a1 = GEO.admin1Json;
+  const projection = d3.geoConicEqualArea().parallels([20, 60]).rotate([100, 0]).fitSize([width, height], a1);
+  const path = d3.geoPath().projection(projection);
+  const s1 = geoAdmin1Stats(stats);
+  const tt = document.getElementById('tt');
+  const move = () => { const ev = d3.event; if (tt && ev){ tt.style.left = (ev.clientX + 12) + 'px'; tt.style.top = (ev.clientY + 14) + 'px'; } };
+
+  // context: countries of the western hemisphere (clipped to the view by the SVG box)
+  const ctx = (GEO.geoJson.features || []).filter(f => {
+    const b = d3.geoBounds(f); return b[0][0] < -30 && b[1][1] > 0 && GEO_NA_ISO.indexOf(f.properties.iso3) < 0;
+  });
+  svg.append('g').attr('class', 'geo-ctx').selectAll('path').data(ctx).enter().append('path')
+    .attr('class', 'country').attr('d', path)
+    .style('fill', d => geoFill(stats[d.properties.iso3])).style('stroke', '#ddd').style('stroke-width', '0.5px')
+    .on('mouseenter', function(d){ const st = stats[d.properties.iso3]; if (!st || !tt) return;
+      tt.innerHTML = geoTipHTML(st); tt.classList.add('show'); })
+    .on('mousemove', move)
+    .on('mouseleave', function(){ if (tt) tt.classList.remove('show'); })
+    .on('click', function(d){ if (stats[d.properties.iso3]) geoShowDetail(d.properties.iso3); });
+
+  svg.append('g').attr('class', 'geo-admin1').selectAll('path').data(a1.features).enter().append('path')
+    .attr('class', 'admin1').attr('d', path)
+    .attr('data-code', d => d.properties.code)
+    .style('fill', d => geoFill(s1[d.properties.code]))
+    .style('stroke', '#fff').style('stroke-width', '0.6px').style('cursor', 'pointer')
+    .on('mouseenter', function(d){
+      d3.select(this).style('stroke', '#000').style('stroke-width', '1.3px');
+      if (!tt) return;
+      const st = s1[d.properties.code];
+      tt.innerHTML = st ? geoTipHTML(st)
+        : `<b>${escGeo(d.properties.name)}, ${escGeo(d.properties.iso3)}</b><br/><span style="opacity:.7">No ${escGeo(geoUnits().many)} of this dataset from here</span>`;
+      tt.classList.add('show');
+    })
+    .on('mousemove', move)
+    .on('mouseleave', function(){ d3.select(this).style('stroke', '#fff').style('stroke-width', '0.6px'); if (tt) tt.classList.remove('show'); })
+    .on('click', function(d){ if (stats[d.properties.iso3]) geoShowDetail(d.properties.iso3); });
+
+  // country outlines over the admin-1 fill
+  const naC = (GEO.geoJson.features || []).filter(f => GEO_NA_ISO.indexOf(f.properties.iso3) >= 0);
+  svg.append('g').attr('class', 'geo-na-outline').selectAll('path').data(naC).enter().append('path')
+    .attr('d', path).style('fill', 'none').style('stroke', '#6b7280').style('stroke-width', '0.8px').style('pointer-events', 'none');
+
   geoRenderLegend();
 }
 
@@ -846,7 +945,7 @@ function geoBuildExportSVG(){
 }
 
 function geoExportName(ext){
-  const parts = ['SNPGeo', geoScopeLabel(), geoVariantLabel(GEO.rows[GEO.snpIndex]), GEO.colorMode];
+  const parts = ['SNPGeo', geoScopeLabel(), geoVariantLabel(GEO.rows[GEO.snpIndex]), GEO.colorMode, geoView()];
   return parts.join('_').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_') + '.' + ext;
 }
 function geoDownloadBlob(blob, name){
@@ -1095,6 +1194,20 @@ function loadCountriesGeoJSON(callback){
       console.error('[SNPGeo] Failed to load geojson:', err);
       const mapDiv = document.getElementById('geoMap');
       if (mapDiv) mapDiv.innerHTML = '<div class="geo-error">Failed to load geographic data</div>';
+    });
+}
+
+/* data/geo/admin1_na.geo.json — Natural Earth 10 m admin-1 for USA/CAN/MEX,
+   simplified (tools/build_geo_layers.py). Loaded only for the 'na' view. */
+function loadAdmin1GeoJSON(callback, onError){
+  if (GEO.admin1Json){ callback(); return; }
+  fetch('./data/geo/admin1_na.geo.json')
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(gj => { GEO.admin1Json = gj; callback(); })
+    .catch(err => {
+      console.warn('[SNPGeo] admin-1 layer unavailable, using the world view:', err);
+      GEO.mapView = 'world';
+      (onError || callback)();
     });
 }
 
