@@ -126,6 +126,52 @@ async function until(site, expr, ms = 8000){
   T.mgdb2026 = {groupBy: $('TRAIT.schema.groupBy'), facets: $('TRAIT.schema.facets.map(f=>f[0])'), rows: $('TRAIT.rows.length'), header: $('document.querySelector("#page h2").textContent')};
   */
 
+  /* ---------- SNPVersity step 3: quick picks, the SNPTrait drawer, a pasted list ----------
+     Step 3 shows the selection (count, panel mix, chips) with one-click picks and a pasted or
+     uploaded list; "Browse & filter lines…" opens SNPTrait over the page on a draft of the
+     selection (TraitDrawer). check_snptrait.py recomputes every expected set from the catalogue. */
+  {
+    const Q = R.step3 = {};
+    // the SNPTrait page's own selection, which the drawer must leave alone
+    $('go("snptrait"); traitClearFacets(); TRAIT.q=""; TRAIT.onlySel=false; TRAIT.selected=new Set(["ZmG_B73"]); traitRenderTable()');
+    Q.pageSel = $('[...TRAIT.selected]');
+    $('S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")'); await site.wait(100);
+    Q.before = $('[...S.selected].sort()');
+    Q.initial = {count: $('document.getElementById("selCount").textContent'), oldPicker: $('!!document.getElementById("accList")'),
+                 picks: $('[...document.querySelectorAll("#accPicks .qbtn")].map(b=>[b.textContent.replace(/\\s+/g," ").trim(), b.classList.contains("on")])'),
+                 mix: $('(document.querySelector(".acc2-legend")||{}).textContent||""').replace(/\s+/g, ' ').trim()};
+    snapshot(site, 'snpversity_step3', 'SNPVersity - step 3: selection summary and quick picks');
+    // a quick pick replaces the selection and offers Undo
+    $('applyPick("inAmes282")');
+    Q.pick = {selected: $('[...S.selected].sort()'), on: $('[...document.querySelectorAll("#accPicks .qbtn.on")].map(b=>b.textContent.replace(/\\s+/g," ").trim())'),
+              say: $('document.getElementById("accSay").textContent').replace(/\s+/g, ' ').trim()};
+    $('document.querySelector("#accSay .ho-undo").click()');
+    Q.undo = $('[...S.selected].sort()');
+    // the drawer: SNPTrait on a draft of the selection; Apply writes it back
+    $('openLineSelector()');
+    Q.drawer = {open: $('!!document.querySelector("#traitDrawer .tdr")'), mode: $('TRAIT.mode'), draft: $('[...TRAIT.selected].sort()'),
+                facetBlocks: $('document.querySelectorAll("#traitDrawer .facet-block").length')};
+    $('traitToggleFacet("subpop","SS",true); traitToggleFacet("inAmes282","yes",true); traitToggleFacet("kernelType","Dent",true); traitSelectVisible(true)');
+    Q.drawer.visible = $('traitVisible().map(r=>r.id).sort()');
+    Q.drawer.foot = $('document.getElementById("tdrFoot").textContent').replace(/\s+/g, ' ').trim();
+    snapshot(site, 'snpversity_drawer', 'SNPVersity - Browse & filter lines (SNPTrait drawer)');
+    $('document.getElementById("tdrApply").click()');
+    Q.applied = {selected: $('[...S.selected].sort()'), closed: $('!document.getElementById("traitDrawer")'), mode: $('TRAIT.mode'),
+                 say: $('document.getElementById("accSay").textContent').replace(/\s+/g, ' ').trim()};
+    // Escape cancels; the drawer keeps its own filters for the next opening
+    $('openLineSelector()');
+    Q.reopenFilters = $('[...(TRAIT.facets.subpop||[])]');
+    $('traitSelectGroup("WiDiv",true); document.dispatchEvent(new window.KeyboardEvent("keydown",{key:"Escape"}))');
+    Q.afterCancel = {selected: $('[...S.selected].sort()'), closed: $('!document.getElementById("traitDrawer")')};
+    $('go("snptrait")');
+    Q.pageAfter = {selected: $('[...TRAIT.selected]'), filtered: $('Object.values(TRAIT.facets).some(x=>x.size)')};
+    // a pasted list: GRIN accession numbers and line names resolve
+    $('go("snpversity")'); await site.wait(100);
+    $('Handoff.setMode("replace"); applyAccList("PI 550473\\nMo17\\nnot-a-line", "pasted list")');
+    Q.paste = {selected: $('[...S.selected].sort()'), unmatched: $('[...document.querySelectorAll("#uplReport li .mono")].map(e=>e.textContent)')};
+    $('Handoff.setMode("add")');
+  }
+
   /* ---------- Help page ---------- */
   $('openHelp()'); await site.wait(150);
   R.help = {hasSNPGeo: $('/SNPGeo/.test(document.getElementById("page").textContent)'),

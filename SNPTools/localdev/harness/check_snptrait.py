@@ -38,6 +38,33 @@ if f"+{new} added" not in H['banner']: bad += 1; print('arrival banner', H['bann
 if T['selectedAfterSelectVisible'] != len(f): bad += 1; print('SNPTrait did not start empty', T['selectedAfterSelectVisible'], len(f))
 if T['handoff']['selected'] != len(f): bad += 1; print('replace hand-off', T['handoff'])
 print(f"Send dialog: replace {T['handoff']['selected']} lines; add {len(B['trait'])} to {len(B['versity'])} -> {len(H['selected'])} ({new} new)")
+# SNPVersity step 3 and the SNPTrait drawer
+Q = json.load(open(res))['step3']
+nam = sorted(a['id'] for a in rows if a.get('namFounder'))
+ames = sorted(a['id'] for a in rows if a.get('inAmes282') == 'yes')
+if Q['before'] != nam: bad += 1; print('step 3 start (NAM founders)', len(Q['before']), len(nam))
+if Q['initial']['oldPicker'] or Q['initial']['count'] != str(len(nam)): bad += 1; print('step 3 initial', Q['initial'])
+picks = dict((t.rsplit(' ', 1)[0], on) for t, on in Q['initial']['picks'] if t != 'Clear')
+if not picks.get('NAM founders + B73') or f"Ames 282 {len(ames)}" not in [t for t, _ in Q['initial']['picks']]:
+    bad += 1; print('quick picks', Q['initial']['picks'])
+if Q['pick']['selected'] != ames or not Q['pick']['on'] or 'Ames 282' not in Q['pick']['say'] or 'Undo' not in Q['pick']['say']:
+    bad += 1; print('quick pick Ames 282', len(Q['pick']['selected']), len(ames), Q['pick']['say'])
+if Q['undo'] != nam: bad += 1; print('undo after quick pick', len(Q['undo']))
+D = Q['drawer']
+if not D['open'] or D['mode'] != 'drawer' or D['draft'] != nam or D['facetBlocks'] < 10: bad += 1; print('drawer open', {k: v for k, v in D.items() if k != 'visible'})
+if D['visible'] != sorted(a['id'] for a in f): bad += 1; print('drawer filter', len(D['visible']), len(f))
+exp_applied = sorted(set(nam) | set(D['visible']))
+added = len(set(D['visible']) - set(nam))
+if f"+{added} vs the {len(nam)} selected in SNPVersity" not in D['foot']: bad += 1; print('drawer footer', D['foot'])
+A = Q['applied']
+if A['selected'] != exp_applied or not A['closed'] or A['mode'] != 'page' or f"+{added}" not in A['say']: bad += 1; print('drawer apply', len(A['selected']), len(exp_applied), A['say'])
+if Q['reopenFilters'] != ['SS']: bad += 1; print('drawer filters not kept', Q['reopenFilters'])
+if Q['afterCancel'] != {'selected': exp_applied, 'closed': True}: bad += 1; print('Escape changed the selection', len(Q['afterCancel']['selected']))
+if Q['pageAfter'] != {'selected': Q['pageSel'], 'filtered': False}: bad += 1; print('SNPTrait page state disturbed', Q['pageAfter'])
+mo17 = [a['id'] for a in rows if a.get('strain') == 'Mo17']
+if Q['paste']['selected'] != sorted(['ZmG_B73'] + mo17) or Q['paste']['unmatched'] != ['not-a-line']: bad += 1; print('pasted list', Q['paste'])
+print(f"step 3: quick pick Ames 282 = {len(ames)}, undo -> {len(Q['undo'])}; drawer +{added} -> {len(exp_applied)}; "
+      f"pasted 'PI 550473', 'Mo17' -> {', '.join(Q['paste']['selected'])}")
 print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
 print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')
 sys.exit(1 if bad else 0)

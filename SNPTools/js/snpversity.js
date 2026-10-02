@@ -59,7 +59,7 @@ function renderVersity(){
 
     <!-- ACCESSIONS -->
     <div class="sec"><div class="bar"></div><div><h2 style="font-size:16px">3 · Choose accessions</h2>
-      <p>Search and toggle accessions, grab a random sample, or upload a list. Selected lines collect on the right.</p></div></div>
+      <p>Browse and filter the lines by panel, origin, subpopulation and GRIN traits, take a quick pick, or paste a list.</p></div></div>
     <div class="card acc-card" id="accCard"></div>
 
     <!-- RUN -->
@@ -149,7 +149,6 @@ function applyPendingRequest(){
   resolved.forEach(id=>{ if(before.has(id)) already++; else added++; });
   if(merge==='replace') before.forEach(id=>{ if(!resolved.has(id)) removed++; });
 
-  accFilter='';
   S.page=1;
   return {gene:req.gene||'', from:req.from||'SNPFunction', note:req.note||'',
           merge, crossDataset, requested:wanted.length,
@@ -209,10 +208,9 @@ function undoLastChange(){
   S.selected.clear(); (u.selected||[]).forEach(id=>S.selected.add(id));
   S.results=null;
   const b=document.getElementById('inboundBanner'); if(b) b.remove();
-  accFilter='';
   renderDatasets(); renderRegion(); renderAccPicker(); renderRunbar();
   const n=S.selected.size;
-  uplSay('ok', `Undone — ${escAttr(u.what)} was reverted. Selection is back to <b>${n}</b> accession${n===1?'':'s'}.`);
+  accSay(`Undone — ${escAttr(u.what)} was reverted. Selection is back to <b>${n}</b> accession${n===1?'':'s'}.`);
 }
 
 function renderDatasets(){
@@ -240,7 +238,6 @@ function selectDataset(id){
   ACCESSIONS = Data.accessionsFor(id);
   S.selected.clear();
   Data.defaultSelectionFor(id).forEach(x=>S.selected.add(x));
-  accFilter='';
   renderDatasets(); renderAccPicker(); renderRunbar();
   const m=document.getElementById('mAcc'); if(m)m.textContent=S.selected.size;
 }
@@ -361,8 +358,6 @@ function exampleGene(){
 }
 
 /* ---- accession picker ---- */
-let accFilter='';
-const openProjects=new Set();   // project ids currently expanded (persists across re-renders)
 function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 /* REF/ALT sequences can be long indels; truncate the visible text to keep the
    table columns from stretching, while the full sequence stays available on
@@ -375,37 +370,40 @@ function alleleTT(seq,label){
   const s=String(seq==null?'':seq);
   return s.length>10 ? `${label}: ${s}` : label;
 }
+/* ---- step 3: the selection, quick picks, and the full selector in a drawer ----
+   SNPVersity no longer carries its own browser of the catalogue (it was a list of projects of
+   accession chips, a lesser copy of SNPTrait). "Browse & filter lines…" opens SNPTrait over the
+   page (TraitDrawer, js/snptrait.js) on a draft of this selection; Apply writes it back. Step 3
+   keeps the quick jobs: what is selected (count, panel mix, chips), one-click picks, and a
+   pasted or uploaded list (below). */
+let accShowAll=false;               // show every selected chip, not the first ACC_CHIPS
+const ACC_CHIPS=40;
 function renderAccPicker(){
   document.getElementById('accCard').innerHTML=`
-    <div class="acc-top">
-      <div class="acc-search">
-        ${ICONS.search}
-        <input type="text" id="accSearch" placeholder="Search accession, run, or founder…" oninput="accFilter=this.value.toLowerCase();renderAccList()">
-      </div>
-      <div class="quick">
-        <button class="qbtn" onclick="randomSel(.02)">Random 2%</button>
-        <button class="qbtn" onclick="randomSel(.05)">5%</button>
-        <button class="qbtn" onclick="randomSel(.10)">10%</button>
-        <button class="qbtn" onclick="randomSel(.25)">25%</button>
-        <button class="qbtn" onclick="onePerFounder()">All unique accessions</button>
-        ${Data.namFoundersFor(S.dataset).length?`<button class="qbtn" onclick="oneNAMEach()">One per NAM founder</button>`:''}
-        <button class="qbtn solid" onclick="allSel(true)">Select all</button>
-        <button class="qbtn" onclick="allSel(false)">Clear</button>
-      </div>
-    </div>
     <div class="acc-body">
-      <div class="acc-list" id="accList"></div>
+      <div class="acc2">
+        <div class="acc2-top">
+          <div class="acc2-count"><span class="acc2-n" id="selCount">0</span> <span class="acc2-of" id="selOf"></span></div>
+          <button class="btn primary" id="browseLinesBtn" onclick="openLineSelector()" aria-haspopup="dialog">
+            ${ICONS.search||''} Browse &amp; filter lines…</button>
+        </div>
+        <div class="acc2-mix" id="selMix"></div>
+        <div class="sel-chips acc2-chips" id="selChips"></div>
+        <div class="acc2-picks">
+          <div class="acc2-k">Quick picks <span>replace the selection · Undo is offered</span></div>
+          <div class="acc2-pickrow" id="accPicks"></div>
+          <div class="acc2-say" id="accSay" role="status" aria-live="polite"></div>
+        </div>
+      </div>
       <div class="acc-side">
-        <div class="sh"><span class="ttl">Selected</span><span class="ct" id="selCount"></span></div>
-        <div class="sel-chips" id="selChips"></div>
         <div class="upl">
-          <label>Or upload a list (one accession per line)</label>
+          <label>Or paste / upload a list (one accession per line)</label>
           <div class="file-row">
             <input type="file" id="fileUpload" accept=".txt,.tsv,.csv,.list,text/plain" onchange="onAccFilePicked(this)">
           </div>
           <div class="upl-name" id="uplName">No file chosen — you can also paste a list below.</div>
           <textarea id="accPaste" class="upl-paste" spellcheck="false"
-            placeholder="ACC.8750_SRR12460455&#10;ACC.8782_SRR12460453&#10;SRR12460421&#10;…"
+            placeholder="ZmG_B73&#10;PI 550473&#10;Mo17&#10;…"
             oninput="refreshUplButtons()"></textarea>
           <div class="upl-actions">
             <button class="btn primary" id="uplLoadBtn" onclick="loadAccList()" disabled>Load accessions</button>
@@ -417,105 +415,105 @@ function renderAccPicker(){
         </div>
       </div>
     </div>`;
-  // fresh picker (first open or dataset switch): start with the first section open
-  openProjects.clear();
-  if(PROJECTS[0] && PROJECTS[0].count<=250) openProjects.add(PROJECTS[0].id);
+  accShowAll=false;
   // same control, same wording, same session state as the handoff checkbox in
   // SNPFunction / SNPFold — setting it in one place sets it in all of them
   if(typeof Handoff!=='undefined') Handoff.sync();
   renderAccList(); renderSelected();
 }
-function accMatch(a){
-  if(!accFilter) return true;
-  return a.id.toLowerCase().includes(accFilter)
-      || (a.founder||'').toLowerCase().includes(accFilter)
-      || (a.run||'').toLowerCase().includes(accFilter)
-      || (a.label||'').toLowerCase().includes(accFilter);
+/* The drawer: SNPTrait on a draft of the selection. */
+function openLineSelector(){
+  if(typeof TraitDrawer==='undefined'){ go('snptrait'); return; }
+  TraitDrawer.open({dataset:S.dataset, selected:[...S.selected], title:'Choose accessions for SNPVersity',
+    onApply:ids=>{
+      const before=new Set(S.selected);
+      const same=ids.length===before.size && ids.every(id=>before.has(id));
+      if(same){ accSay('No change to the selection.'); return; }
+      snapshotQuery('the selection from Browse & filter');
+      S.selected=new Set(ids);
+      let added=0, removed=0;
+      ids.forEach(id=>{ if(!before.has(id)) added++; });
+      before.forEach(id=>{ if(!S.selected.has(id)) removed++; });
+      renderAccList(); renderSelected(); renderRunbar();
+      accSay(`Applied from Browse &amp; filter: ${added?`<b>+${added}</b>`:''}${added&&removed?' · ':''}${removed?`<b>−${removed}</b>`:''}`+
+             ` · selection is now <b>${S.selected.size}</b>. ${undoChip()}`);
+    }});
 }
-function projAccIds(p){
-  const ids=[]; p.groups.forEach(g=>g.accessions.forEach(a=>ids.push(a.id))); return ids;
-}
-function findProject(pid){ return PROJECTS.find(p=>p.id===pid); }
-function accChipHTML(a){
-  return `<span class="acc-chip ${S.selected.has(a.id)?'on':''}" onclick="toggleAcc('${a.id}')">
-    <span class="cb">${ICONS.check}</span>
-    <span>${a.run}</span><span class="founder">${a.founder}${a.reps>1?' · r'+a.rep:''}</span>
-  </span>`;
-}
-function renderAccList(){
-  const html=PROJECTS.map((p,i)=>{
-    const groups=p.groups.map(g=>({name:g.name, items:g.accessions.filter(accMatch)}))
-                         .filter(g=>g.items.length);
-    const shown=groups.reduce((n,g)=>n+g.items.length,0);
-    if(accFilter && !shown) return '';
-    const selN=projAccIds(p).reduce((n,id)=>n+(S.selected.has(id)?1:0),0);
-    const open=((accFilter && shown) || openProjects.has(p.id))?'open':'';
-    const meta=[
-      (p.bioprojects&&p.bioprojects.length)?p.bioprojects.join(', '):'',
-      p.ncbiUrl?`<a href="${p.ncbiUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">NCBI</a>`:'',
-      p.referenceUrl?`<a href="${p.referenceUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">reference</a>`:''
-    ].filter(Boolean).join(' · ');
-    return `<div class="proj ${open}" id="proj_${p.id}">
-      <div class="proj-h" onclick="toggleProj('${p.id}')">
-        <span class="caret">${ICONS.caret}</span>
-        <span class="swatch" style="background:${p.color}"></span>
-        <div style="min-width:0">
-          <div class="pt">${p.title}</div>
-          <div class="pm">${p.count} accessions${meta?' · '+meta:''}</div>
-        </div>
-        <span class="pc">${selN}/${p.count}</span>
-      </div>
-      <div class="proj-items">
-        <div style="flex:0 0 100%;display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px">
-          <button class="qbtn" onclick="event.stopPropagation();selProject('${p.id}',0)">None</button>
-          <button class="qbtn" onclick="event.stopPropagation();selProject('${p.id}',.25)">Random 25%</button>
-          <button class="qbtn" onclick="event.stopPropagation();selProject('${p.id}',.5)">Random 50%</button>
-          <button class="qbtn solid" onclick="event.stopPropagation();selProject('${p.id}',1)">Select all</button>
-        </div>
-        ${groups.map(g=>`
-          ${g.name?`<div style="flex:0 0 100%;font-weight:600;font-size:11.5px;color:var(--muted);margin:8px 0 2px">Group: ${g.name}</div>`:''}
-          <div style="flex:0 0 100%;display:flex;flex-wrap:wrap;gap:6px">${g.items.map(accChipHTML).join('')}</div>
-        `).join('')}
-      </div></div>`;
-  }).join('');
-  document.getElementById('accList').innerHTML=html||'<div class="empty" style="padding:30px;text-align:center;color:var(--faint)">No accessions match that search.</div>';
-}
-function toggleProj(pid){
-  const el=document.getElementById('proj_'+pid); if(!el)return;
-  el.classList.toggle('open');
-  if(el.classList.contains('open')) openProjects.add(pid); else openProjects.delete(pid);
-}
-function selProject(pid,frac){
-  const p=findProject(pid); if(!p)return;
-  const ids=projAccIds(p);
-  if(frac<=0){ ids.forEach(id=>S.selected.delete(id)); }
-  else if(frac>=1){ ids.forEach(id=>S.selected.add(id)); }
-  else {
-    ids.forEach(id=>S.selected.delete(id));
-    const shuffled=ids.slice().sort(()=>Math.random()-.5);
-    const n=Math.ceil(ids.length*frac);
-    for(let i=0;i<n;i++) S.selected.add(shuffled[i]);
+function accSay(html){ const el=document.getElementById('accSay'); if(el) el.innerHTML=html||''; }
+/* Quick picks. A release with panel-membership flags (GRIN-linked: inNAM, inAmes282, inWiDiv;
+   a line can be in several) offers each panel as a whole; otherwise each project of the
+   catalogue, and one run per NAM founder where founders are tagged. */
+function accPicks(){
+  const A=ACCESSIONS, picks=[];
+  const flags=[['inNAM','NAM founders + B73'],['inAmes282','Ames 282'],['inWiDiv','WiDiv']];
+  if(A.some(a=>a.inNAM!=null || a.inAmes282!=null || a.inWiDiv!=null)){
+    flags.forEach(([k,label])=>{ const ids=A.filter(a=>a[k]==='yes').map(a=>a.id); if(ids.length) picks.push({key:k, label, ids}); });
+    const other=A.filter(a=>a.panel==='Other GRIN').map(a=>a.id);
+    if(other.length) picks.push({key:'other', label:'Other GRIN', ids:other});
+  } else {
+    PROJECTS.forEach(p=>{ const ids=[]; p.groups.forEach(g=>g.accessions.forEach(a=>ids.push(a.id))); picks.push({key:'p:'+p.id, label:p.title, ids}); });
+    if(Data.namFoundersFor(S.dataset).length){
+      const seen=new Set(), ids=[];
+      A.forEach(a=>{ if(a.namFounder && !seen.has(a.namFounder)){ seen.add(a.namFounder); ids.push(a.id); } });
+      picks.push({key:'nam1', label:'One per NAM founder', ids});
+    }
   }
-  renderAccList(); renderSelected(); renderRunbar();
+  [.02,.05,.10,.25].forEach(f=>picks.push({key:'r'+f, label:`Random ${Math.round(f*100)}%`, random:f, n:Math.ceil(A.length*f)}));
+  picks.push({key:'all', label:'All', ids:A.map(a=>a.id)});
+  return picks;
 }
-function oneNAMEach(){
-  // add one accession per tagged NAM founder (2026 dataset)
-  touchSelection();
-  const seen=new Set();
-  ACCESSIONS.forEach(a=>{ if(a.namFounder && !seen.has(a.namFounder)){ seen.add(a.namFounder); S.selected.add(a.id); } });
-  renderAccList(); renderSelected(); renderRunbar();
+function sameSet(ids){ return ids.length===S.selected.size && ids.every(id=>S.selected.has(id)); }
+/* renderAccList (the name the upload and hand-off code call) draws the quick picks */
+function renderAccList(){
+  const box=document.getElementById('accPicks'); if(!box) return;
+  box.innerHTML=accPicks().map(pk=>{
+    const n=pk.ids ? pk.ids.length : pk.n;
+    const on=pk.ids && pk.ids.length && sameSet(pk.ids);
+    return `<button class="qbtn${on?' on':''}" onclick="applyPick('${pk.key}')" ${on?'aria-pressed="true"':''}>${escAttr(pk.label)} <span class="qn">${n}</span></button>`;
+  }).join('')+`<button class="qbtn" onclick="applyPick('clear')" ${S.selected.size?'':'disabled'}>Clear</button>`;
 }
+function applyPick(key){
+  let ids, label;
+  if(key==='clear'){ ids=[]; label='nothing (cleared)'; }
+  else {
+    const pk=accPicks().find(x=>x.key===key); if(!pk) return;
+    label=pk.label;
+    ids = pk.random ? ACCESSIONS.map(a=>a.id).sort(()=>Math.random()-.5).slice(0, pk.n) : pk.ids;
+  }
+  if(sameSet(ids)){ accSay(`The selection already is ${escAttr(label)}.`); return; }
+  snapshotQuery(`the quick pick “${label}”`);
+  S.selected=new Set(ids);
+  renderAccList(); renderSelected(); renderRunbar();
+  accSay(`Selection replaced with <b>${escAttr(label)}</b> — <b>${ids.length}</b> accession${ids.length===1?'':'s'}. ${undoChip()}`);
+}
+/* the selection: count, a bar of its make-up by panel / project, then the chips */
 function renderSelected(){
   const arr=[...S.selected];
-  const c=document.getElementById('selCount'); if(c)c.textContent=arr.length+' / '+ACCESSIONS.length;
-  const box=document.getElementById('selChips'); if(!box)return;
-  if(!arr.length){box.innerHTML='<div class="empty">Nothing selected yet.<br>Toggle accessions or grab a random sample.</div>';}
-  else{
-    box.innerHTML=arr.map(id=>{const a=ACCESSIONS.find(x=>x.id===id);
-      return `<span class="sel-chip"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${a?a.run:id}<button onclick="toggleAcc('${id}')" aria-label="remove">×</button></span>`;
-    }).join('');
+  const c=document.getElementById('selCount'); if(c) c.textContent=arr.length.toLocaleString();
+  const of=document.getElementById('selOf'); if(of) of.textContent=`of ${ACCESSIONS.length.toLocaleString()} accessions selected`;
+  const m=document.getElementById('mAcc'); if(m) m.textContent=arr.length;
+  const byId=new Map(ACCESSIONS.map(a=>[a.id,a]));
+  const mixBox=document.getElementById('selMix');
+  if(mixBox){
+    const mix=new Map();
+    arr.forEach(id=>{ const a=byId.get(id); const k=a?(a.projTitle||a.proj):'not in this dataset';
+      const cur=mix.get(k)||{n:0,color:a?a.projColor:'#999'}; cur.n++; mix.set(k,cur); });
+    const sub=new Map();
+    arr.forEach(id=>{ const a=byId.get(id); if(a && a.subpop) sub.set(a.subpop,(sub.get(a.subpop)||0)+1); });
+    const subTop=[...sub.entries()].sort((x,y)=>y[1]-x[1]);
+    mixBox.innerHTML = arr.length ? `
+      <div class="acc2-bar" role="img" aria-label="Selection by panel: ${escAttr([...mix.entries()].map(([k,v])=>k+' '+v.n).join(', '))}">
+        ${[...mix.entries()].map(([k,v])=>`<span style="flex:${v.n};background:${v.color}" title="${escAttr(k)}: ${v.n}"></span>`).join('')}</div>
+      <div class="acc2-legend">${[...mix.entries()].map(([k,v])=>`<span><i style="background:${v.color}"></i>${escAttr(k)} <b>${v.n}</b></span>`).join('')}</div>
+      ${subTop.length?`<div class="acc2-sub">Subpopulation: ${subTop.slice(0,6).map(([k,n])=>`${escAttr(k)} <b>${n}</b>`).join(' · ')}${subTop.length>6?` · +${subTop.length-6} more`:''}</div>`:''}` : '';
   }
-  const m=document.getElementById('mAcc'); if(m)m.textContent=arr.length;
+  const box=document.getElementById('selChips'); if(!box) return;
+  if(!arr.length){ box.innerHTML='<div class="empty">Nothing selected yet — browse &amp; filter the lines, take a quick pick, or paste a list.</div>'; return; }
+  const show=accShowAll ? arr : arr.slice(0, ACC_CHIPS);
+  box.innerHTML=show.map(id=>{ const a=byId.get(id);
+      return `<span class="sel-chip" title="${escAttr(a?(a.label||a.id)+' · '+(a.projTitle||''):id)}"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${escAttr(a?a.run:id)}<button onclick="toggleAcc('${escAttr(id)}')" aria-label="Remove ${escAttr(a?a.run:id)}">×</button></span>`;
+    }).join('')
+    + (arr.length>ACC_CHIPS ? `<button class="link-more" onclick="accShowAll=!accShowAll;renderSelected()">${accShowAll?'Show fewer':`+${arr.length-ACC_CHIPS} more — show all`}</button>` : '');
 }
 /* =====================================================================
  *  ACCESSION LIST UPLOAD  (file or paste)
@@ -539,7 +537,8 @@ function buildAccIndex(){
   const idx=new Map();
   const add=(k,id)=>{ if(!k) return; if(!idx.has(k)) idx.set(k,new Set()); idx.get(k).add(id); };
   ACCESSIONS.forEach(a=>{
-    const keys=[a.id, a.run, a.founder, a.label];
+    // GRIN-linked lines also answer to their GRIN accession (PI 550473), line name and genotype id
+    const keys=[a.id, a.run, a.founder, a.label, a.grin, a.strain, a.genotypeId];
     if(a.founder&&a.run){ keys.push(a.founder+'_'+a.run, a.run+'_'+a.founder); }
     keys.filter(Boolean).forEach(v=>{ add(normKey(v),a.id); add(looseKey(v),a.id); });
   });
@@ -684,7 +683,7 @@ function renderUplReport(r){
     bits.push(`<details class="upl-bad" open><summary>${r.unmatched.length} entr${r.unmatched.length>1?'ies':'y'} not found in this dataset</summary>
       <ul>${show.map(u=>`<li><span class="ln">line ${u.line}</span> <span class="mono">${escAttr(u.text)}</span></li>`).join('')}</ul>
       ${r.unmatched.length>show.length?`<div class="upl-note">…and ${r.unmatched.length-show.length} more.</div>`:''}
-      <div class="upl-note">Accepted forms: SNPVersity ID, run accession (SRR/ERR/DRR/CRR…), founder name, or <span class="mono">FOUNDER_RUN</span>.</div>
+      <div class="upl-note">Accepted forms: SNPVersity ID, run accession (SRR/ERR/DRR/CRR…), founder or line name, GRIN accession (PI…), or <span class="mono">FOUNDER_RUN</span>.</div>
     </details>`);
   }
   box.innerHTML=bits.join('');
@@ -715,6 +714,29 @@ function injectVersityCSS(){
     .from-fn .mono{font-family:var(--mono)}
     .from-fn-acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .from-fn .ho-hint{color:#4a6ca8}
+    /* step 3 (selection summary + quick picks; the full selector is SNPTrait's drawer) */
+    .acc2{padding:16px 20px;display:flex;flex-direction:column;gap:13px;min-width:0}
+    .acc2-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .acc2-count{flex:1;min-width:180px}
+    .acc2-n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ink)}
+    .acc2-of{font-size:13px;color:var(--muted)}
+    .acc2-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:#eef1f5}
+    .acc2-bar span{display:block;min-width:3px}
+    .acc2-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:7px;font-size:12px;color:var(--muted)}
+    .acc2-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+    .acc2-legend b,.acc2-sub b{color:var(--ink);font-family:var(--mono);font-weight:600}
+    .acc2-sub{font-size:12px;color:var(--muted);margin-top:4px}
+    .acc2-chips{max-height:150px;padding:0}
+    .acc2-chips .empty{text-align:left;padding:6px 0}
+    .link-more{border:0;background:none;color:var(--blue-600);font:600 12px var(--body);cursor:pointer;padding:4px 6px}
+    .acc2-picks{border-top:1px solid var(--line);padding-top:12px}
+    .acc2-k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+    .acc2-k span{text-transform:none;letter-spacing:0;font-weight:400;color:var(--faint);margin-left:6px}
+    .acc2-pickrow{display:flex;flex-wrap:wrap;gap:6px}
+    .acc2-pickrow .qn{font-family:var(--mono);color:var(--faint);margin-left:3px;font-weight:500}
+    .acc2-pickrow .qbtn.on{background:var(--blue-50);border-color:#a9c5fb;color:var(--blue-600)}
+    .acc2-pickrow .qbtn:disabled{opacity:.45;cursor:not-allowed}
+    .acc2-say{font-size:12px;color:var(--muted);margin-top:8px;min-height:16px}
     .gene-more{display:inline-block;margin-left:4px;padding:0 5px;border-radius:5px;background:#eef2f8;
       color:var(--muted);font-size:10.5px;font-weight:600;cursor:help;vertical-align:1px}
     /* per-row jump links in the Effect column (matches .pe-jump) */
@@ -732,10 +754,7 @@ function injectVersityCSS(){
 }
 
 /* every one of these is a hand edit, so it expires the pending Undo */
-function toggleAcc(id){touchSelection();S.selected.has(id)?S.selected.delete(id):S.selected.add(id);renderAccList();renderSelected();renderRunbar();}
-function allSel(on){touchSelection();ACCESSIONS.forEach(a=>on?S.selected.add(a.id):S.selected.delete(a.id));renderAccList();renderSelected();renderRunbar();}
-function randomSel(p){touchSelection();S.selected.clear();const idx=[...ACCESSIONS.keys()].sort(()=>Math.random()-.5);const n=Math.ceil(ACCESSIONS.length*p);for(let i=0;i<n;i++)S.selected.add(ACCESSIONS[idx[i]].id);renderAccList();renderSelected();renderRunbar();}
-function onePerFounder(){touchSelection();S.selected.clear();const seen=new Set();ACCESSIONS.forEach(a=>{if(!seen.has(a.founder)){seen.add(a.founder);S.selected.add(a.id);}});renderAccList();renderSelected();renderRunbar();}
+function toggleAcc(id){touchSelection();accSay('');S.selected.has(id)?S.selected.delete(id):S.selected.add(id);renderAccList();renderSelected();renderRunbar();}
 
 /* ---- run bar ---- */
 function renderRunbar(){

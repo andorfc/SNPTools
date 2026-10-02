@@ -88,6 +88,8 @@ const TRAIT = {
   dataset:null, schema:TRAIT_NEUTRAL_SCHEMA, org:TRAIT_ORGANISM._default,
   rows:[], selected:new Set(), q:'', facets:{}, openGroups:new Set(), hasMeta:false,
   ranges:[],          // active numeric trait ranges [{code, min, max}] (design change 10)
+  onlySel:false,      // "Selected only": show just the ticked lines
+  mode:'page',        // 'page' (the SNPTrait tool) or 'drawer' (opened over SNPVersity, TraitDrawer)
   traitData:{},       // family -> parsed data/traits/<family>.traits.json | null (absent) | 'loading'
 };
 
@@ -197,6 +199,7 @@ function traitLoad(dataset){
 
 function traitMatch(r){
   const sc = TRAIT.schema, f = TRAIT.facets;
+  if (TRAIT.onlySel && !TRAIT.selected.has(r.id)) return false;
   for (const [k] of sc.facets){ if (f[k] && f[k].size && !f[k].has(r[k])) return false; }
   if (TRAIT.q){
     const hay = sc.search.map(k=>r[k]||'').join(' ').toLowerCase();
@@ -232,12 +235,27 @@ function renderTrait(){
 
     ${TRAIT.hasMeta ? '' : `<div class="trait-note">No metadata is available for this dataset yet — showing ${escT(TRAIT.org.one)} IDs only.</div>`}
 
-    <div class="trait-shell">
+    ${traitShellHTML()}
+
+    <div class="runbar" id="traitRunbar"></div>
+  `;
+  renderTraitDsPicker();
+  traitRenderFacets();
+  traitRenderTable();
+  traitRenderRunbar();
+}
+
+/* Facets, search, quick selections and the grouped table: the same markup on the SNPTrait
+   page and in the drawer SNPVersity opens over itself (TraitDrawer below). */
+function traitShellHTML(){
+  const sc = TRAIT.schema;
+  return `<div class="trait-shell">
       <aside class="trait-facets" id="traitFacets"></aside>
       <div class="trait-main">
         <div class="trait-toolbar">
           <div class="trait-search">${ICONS.search}
             <input id="traitSearch" type="search" placeholder="Search ${escAttrT(sc.search.slice(1,5).join(', '))}…"
+                   value="${escAttrT(TRAIT.q)}" aria-label="Search ${escAttrT(TRAIT.org.many)}"
                    oninput="TRAIT.q=this.value.trim().toLowerCase();traitRenderTable();traitRenderFacets();traitStatus()">
           </div>
           <div class="trait-qbtns">
@@ -246,19 +264,20 @@ function renderTrait(){
             <button class="qbtn" onclick="traitRandom(.25)">25%</button>
             <button class="qbtn" onclick="traitRandom(.50)">50%</button>
             <button class="qbtn solid" onclick="traitSelectVisible(true)">Select visible</button>
-            <button class="qbtn" onclick="traitSelectVisible(false)">Clear</button>
+            <button class="qbtn" onclick="traitSelectVisible(false)">Clear visible</button>
+            <button class="qbtn ${TRAIT.onlySel?'on':''}" id="traitOnlySel" aria-pressed="${TRAIT.onlySel}" onclick="traitToggleOnlySel()"
+              title="Show only the ticked ${escAttrT(TRAIT.org.many)}">Selected only</button>
           </div>
         </div>
         <div class="trait-grid" id="traitGrid"></div>
       </div>
-    </div>
-
-    <div class="runbar" id="traitRunbar"></div>
-  `;
-  renderTraitDsPicker();
-  traitRenderFacets();
-  traitRenderTable();
-  traitRenderRunbar();
+    </div>`;
+}
+function traitToggleOnlySel(){
+  TRAIT.onlySel = !TRAIT.onlySel;
+  const b = document.getElementById('traitOnlySel');
+  if (b){ b.classList.toggle('on', TRAIT.onlySel); b.setAttribute('aria-pressed', String(TRAIT.onlySel)); }
+  traitRenderTable(); traitRenderFacets(); traitStatus();
 }
 
 function renderTraitDsPicker(){
@@ -335,7 +354,7 @@ function traitRenderTable(){
   const rcols = TRAIT.ranges.map(rg => { const t = traitNumericTraits().find(x => x.code === rg.code); return [rg.code, t ? t.name : rg.code]; });
   grid.innerHTML = keys.map(gv=>{
     const items=groups[gv];
-    const open = TRAIT.openGroups.has(gv) || TRAIT.q || TRAIT.ranges.length || Object.values(TRAIT.facets).some(s=>s.size);
+    const open = TRAIT.openGroups.has(gv) || TRAIT.q || TRAIT.onlySel || TRAIT.ranges.length || Object.values(TRAIT.facets).some(s=>s.size);
     const selN = items.reduce((n,r)=>n+(TRAIT.selected.has(r.id)?1:0),0);
     const color = (sc.groupColors&&sc.groupColors[gv])||'#888';
     const gname = (sc.groupNames&&sc.groupNames[gv])||gv;
@@ -395,6 +414,7 @@ function traitStatus(){
 
 /* ---- run bar: export + hand off to SNPVersity ---- */
 function traitRenderRunbar(){
+  if(TRAIT.mode==='drawer'){ TraitDrawer.renderFoot(); return; }
   const rb=document.getElementById('traitRunbar'); if(!rb) return;
   const n=TRAIT.selected.size;
   rb.innerHTML=`
@@ -498,6 +518,96 @@ function traitExport(kind){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
 }
 
+/* =====================================================================
+ *  TraitDrawer -- SNPTrait opened over SNPVersity to edit its selection in
+ *  place: the same facets, trait ranges, search and grouped table, on a DRAFT
+ *  of the selection it is given. Apply hands the draft to opts.onApply; Cancel,
+ *  Escape and the backdrop drop it. While the drawer is open the SNPTrait
+ *  page's own state (its selection and filters) is set aside and put back on
+ *  close, and the drawer keeps its own filters between openings (per dataset).
+ *
+ *    TraitDrawer.open({dataset, selected:[ids], onApply(ids), title})
+ * ===================================================================== */
+const TraitDrawer = (function(){
+  const KEYS = ['selected','q','facets','ranges','openGroups','onlySel'];
+  let pageState = null, opts = null, base = new Set(), returnFocus = null;
+  const drawerState = {};                              // dataset -> its filters, kept between openings
+  const take = () => { const o = {}; KEYS.forEach(k => { o[k] = TRAIT[k]; }); return o; };
+  const put  = o => KEYS.forEach(k => { TRAIT[k] = o[k]; });
+  function freshFilters(){
+    const f = {}; TRAIT.schema.facets.forEach(([k]) => { f[k] = new Set(); });
+    return {q:'', facets:f, ranges:[], openGroups:new Set(), onlySel:false};
+  }
+  function isOpen(){ return !!document.getElementById('traitDrawer'); }
+
+  function open(o){
+    if (isOpen()) return;
+    opts = o || {};
+    injectTraitCSS();
+    const ds = opts.dataset || S.dataset;
+    if (TRAIT.dataset !== ds) traitLoad(ds);
+    pageState = take();
+    const known = new Set(TRAIT.rows.map(r => r.id));
+    base = new Set((opts.selected || []).filter(id => known.has(id)));
+    put(Object.assign({}, drawerState[ds] || freshFilters(), {selected: new Set(base)}));
+    TRAIT.mode = 'drawer';
+    returnFocus = document.activeElement;
+    const dsName = (Data.datasets().find(d => d.id === ds) || {}).name || ds;
+    const host = document.createElement('div'); host.id = 'traitDrawer';
+    host.innerHTML = `<div class="tdr-backdrop" onclick="TraitDrawer.close(false)"></div>
+      <section class="tdr" role="dialog" aria-modal="true" aria-labelledby="tdrTitle">
+        <header class="tdr-head">
+          <div><h2 id="tdrTitle">${escT(opts.title || 'Choose ' + TRAIT.org.many)}</h2>
+            <div class="tdr-sub">${escT(dsName)} · filter by panel, origin, subpopulation and GRIN traits, then tick
+              ${escT(TRAIT.org.many)}. The selection in SNPVersity changes only when you apply.</div></div>
+          <button type="button" class="tdr-x" onclick="TraitDrawer.close(false)" aria-label="Close without applying">&times;</button>
+        </header>
+        <div class="tdr-body">
+          ${TRAIT.hasMeta ? '' : `<div class="trait-note">No metadata is available for this dataset yet — showing ${escT(TRAIT.org.one)} IDs only.</div>`}
+          ${traitShellHTML()}
+        </div>
+        <footer class="tdr-foot" id="tdrFoot"></footer>
+      </section>`;
+    document.body.appendChild(host);
+    document.body.classList.add('tdr-lock');
+    document.addEventListener('keydown', onKey);
+    traitRenderFacets(); traitRenderTable(); renderFoot();
+    const q = document.getElementById('traitSearch'); if (q) q.focus();
+  }
+  function onKey(e){ if (e.key === 'Escape'){ e.preventDefault(); close(false); } }
+  function renderFoot(){
+    const f = document.getElementById('tdrFoot'); if (!f) return;
+    const n = TRAIT.selected.size;
+    let add = 0, rem = 0;
+    TRAIT.selected.forEach(id => { if (!base.has(id)) add++; });
+    base.forEach(id => { if (!TRAIT.selected.has(id)) rem++; });
+    const change = (add || rem)
+      ? `${add ? `<b class="tdr-add">+${add}</b>` : ''}${add && rem ? ' · ' : ''}${rem ? `<b class="tdr-rem">−${rem}</b>` : ''} vs the ${base.size} selected in SNPVersity`
+      : `same as the ${base.size} selected in SNPVersity`;
+    f.innerHTML = `<div class="tdr-summ"><span class="tdr-n">${n}</span> ${escT(traitUnit(n))} selected
+        <span class="tdr-delta">${change}</span><div class="tdr-status" id="traitStatus"></div></div>
+      <div class="tdr-acts">
+        <button type="button" class="btn" onclick="TraitDrawer.close(false)">Cancel</button>
+        <button type="button" class="btn primary" id="tdrApply" onclick="TraitDrawer.close(true)">Apply to SNPVersity</button>
+      </div>`;
+    traitStatus();
+  }
+  function close(apply){
+    if (!isOpen()) return;
+    const chosen = [...TRAIT.selected];
+    const st = take(); delete st.selected; drawerState[TRAIT.dataset] = st;
+    put(pageState); pageState = null; TRAIT.mode = 'page';
+    document.getElementById('traitDrawer').remove();
+    document.body.classList.remove('tdr-lock');
+    document.removeEventListener('keydown', onKey);
+    const cb = opts && opts.onApply; opts = null;
+    if (apply && typeof cb === 'function') cb(chosen);
+    if (returnFocus && document.body.contains(returnFocus) && returnFocus.focus) returnFocus.focus();
+    returnFocus = null;
+  }
+  return {open, close, renderFoot, isOpen};
+})();
+
 /* ---- helpers ---- */
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttrT(s){return escT(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -558,6 +668,30 @@ function injectTraitCSS(){
   .tg-table tr.on .cb{background:var(--blue-600);border-color:var(--blue-600)}
   .tg-table tr.on .cb svg{opacity:1}
   .trait-empty{padding:26px;text-align:center;color:var(--faint);border:1px dashed var(--line);border-radius:10px}
+  .qbtn.on{background:#eef4ff;border-color:var(--blue-600,#2563eb);color:var(--blue-600,#2563eb)}
+  /* drawer: SNPTrait over SNPVersity (TraitDrawer) */
+  body.tdr-lock{overflow:hidden}
+  .tdr-backdrop{position:fixed;inset:0;background:rgba(10,15,28,.38);z-index:60}
+  .tdr{position:fixed;top:0;right:0;bottom:0;width:min(1180px,calc(100vw - 56px));background:var(--paper);z-index:61;
+    display:flex;flex-direction:column;box-shadow:var(--shadow-lg);animation:tdrIn .18s ease-out}
+  @keyframes tdrIn{from{transform:translateX(28px);opacity:.5}to{transform:none;opacity:1}}
+  @media (prefers-reduced-motion:reduce){.tdr{animation:none}}
+  .tdr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px 22px 13px;background:#fff;border-bottom:1px solid var(--line)}
+  .tdr-head h2{font-family:var(--disp);font-size:18px;font-weight:600;margin:0;letter-spacing:-.2px}
+  .tdr-sub{font-size:12.5px;color:var(--muted);margin-top:3px;max-width:75ch}
+  .tdr-x{border:0;background:none;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+  .tdr-x:hover{color:var(--ink)}
+  .tdr-body{flex:1;overflow:auto;padding:14px 22px 18px}
+  .tdr-body .trait-shell{margin-top:4px}
+  .tdr-body .trait-facets{top:0}
+  .tdr-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 22px;background:#fff;border-top:1px solid var(--line)}
+  .tdr-summ{flex:1;min-width:220px;font-size:13px;color:var(--ink)}
+  .tdr-n{font-family:var(--mono);font-size:18px;font-weight:700}
+  .tdr-delta{color:var(--muted);margin-left:8px}
+  .tdr-add{color:#176c3a} .tdr-rem{color:#b42318}
+  .tdr-status{font-size:11.5px;color:var(--faint);margin-top:2px}
+  .tdr-acts{display:flex;gap:8px}
+  @media (max-width:700px){ .tdr{left:0;width:auto} .tdr-head,.tdr-body,.tdr-foot{padding-left:14px;padding-right:14px} }
   /* hand-off dialog (same shape as GWAS Explorer's Send to SNPVersity) */
   .trait-send-backdrop{position:fixed;inset:0;background:rgba(10,15,28,.35);z-index:43}
   .trait-send{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(480px,calc(100vw - 32px));max-height:85vh;

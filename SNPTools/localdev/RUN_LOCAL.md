@@ -69,6 +69,14 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    Lines are grouped by panel (NAM 26, Ames 282 254, WiDiv 623, Other GRIN 30). Try
    Subpopulation = SS, In Ames 282 = yes, Kernel type = Dent (14 lines), then search `iowa` (6).
    Under *GRIN trait ranges* pick *1000 Kernel Weight*, min 250, max 300, Add (299 lines).
+   The same selector opens from SNPVersity (prototype, patch 0032): step 3 shows the selection
+   (count, panel bar, subpopulation mix, chips), quick picks (NAM founders + B73 26, Ames 282 280,
+   WiDiv 831, Other GRIN 30 -- panel membership, so a line can be in several -- random 2-25 %, All),
+   each with Undo, and the paste/upload box (now also GRIN accessions such as `PI 550473` and line
+   names). *Browse & filter lines…* opens SNPTrait as a drawer on a draft of the selection; the
+   footer shows +added / -removed against SNPVersity, *Apply to SNPVersity* writes it back (Undo
+   offered), Cancel / Escape / the backdrop drop it. The drawer keeps its own filters between
+   openings and leaves the SNPTrait page's selection and filters alone.
    *Send N lines to SNPVersity…* opens a dialog like GWAS Explorer's: *replace* the accessions
    selected in SNPVersity (pre-ticked) or *keep them and add* (it says how many lines are new).
    SNPTrait starts with nothing selected and keeps its own selection between visits.

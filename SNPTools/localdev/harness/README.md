@@ -14,6 +14,10 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    it, and *add* keeps SNPVersity's 5 lines and adds the 14 (19). SNPTrait starts with nothing
    selected (not SNPVersity's selection). (The neutral-schema case for
    `mgdb2026_hq` is off with that set.)
+   Then SNPVersity's step 3 (prototype): the quick pick Ames 282 (280 = inAmes282) with Undo, the
+   SNPTrait drawer (draft = the 26 NAM lines; SS x Ames282 x Dent, select visible, Apply -> 39;
+   Escape changes nothing; filters kept on reopening; the SNPTrait page's selection untouched), and
+   a pasted list resolving `PI 550473` and `Mo17`.
 2. Help page lists SNPTrait (live) and SNPGeo.
 3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and
    world views, three colour modes, country detail; per-site statistics dumped.

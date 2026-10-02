@@ -18,7 +18,7 @@ const SNPHelp = (function () {
   const PAGES = [
     { id:'snpversity', name:'SNPVersity', icon:'dna', color:'#2563eb', status:LIVE,
       tag:'Build a variant view across accessions',
-      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or a B73 v5 gene model ID), and pick the accessions you want. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included.',
+      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or a B73 v5 gene model ID), and pick the accessions you want: a quick pick (a panel, a random sample), a pasted list (IDs, line names or GRIN accessions), or Browse & filter, which opens SNPTrait over the page to filter by panel, origin, subpopulation and GRIN traits and applies the result. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included.',
       give:'A dataset, a region or gene, and a set of accessions.',
       get:'A genotype table and a VCF. From here, "Send selection to…" hands the same result to any other tool.' },
     { id:'snpgwas', name:'GWAS Explorer', icon:'gwas', color:'#cf8a12', status:LIVE,
