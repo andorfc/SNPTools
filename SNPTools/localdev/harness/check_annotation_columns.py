@@ -65,6 +65,7 @@ SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434
         'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',
         'mgdb2026_hc': f'{FX}/mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz'}
 summary = {}
+PREC = {}
 for ds, path in SETS.items():
     a = A.get(ds)
     if not a:
@@ -79,6 +80,13 @@ for ds, path in SETS.items():
     for k in KEYS:
         if a['filled'][k] != f[k]:
             bad += 1; print('filled', ds, k, a['filled'][k], 'expected', f[k])
+    # numeric precision as rendered never exceeds the INFO's (PlantCAD1/2 and Evo2: 0.1 in the rebuilt stores)
+    for k, info_key in (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('r2', 'MAXR2')):
+        dec = max([len(t.split('.')[1]) if '.' in t else 0 for t in (info(x[7]).get(info_key) for x in records(path)) if t not in (None, '', '.')] or [0])
+        if a.get('decimals', {}).get(k, 0) > dec:
+            bad += 1; print('precision', ds, k, a['decimals'][k], '>', dec)
+        if ds == 'zmgrin2026_imp':
+            PREC[k] = {'info_max_decimals': dec, 'rendered_max_decimals': a.get('decimals', {}).get(k), 'rendered_examples': a.get('sample', {}).get(k)}
     if any(v != 'ok' for v in status.values()) != bool(a['note']):
         bad += 1; print('availability note', ds, repr(a['note'][:80]))
     summary[ds] = {k: (status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
@@ -115,5 +123,6 @@ for c in ('chr1', 'chr2', 'chr5', 'chr7', 'chr8', 'chr9', 'chr10'):
             bad += 1; print('esm on non-missense', k)
 print('chr2 store:', 'full chromosome' if FULL_CHR2 else 'demo fixture')
 print('annotation columns:', json.dumps(summary, ensure_ascii=False))
+print('zmgrin2026 precision:', json.dumps(PREC, ensure_ascii=False))
 print(f'GRIN-linked INFO: {nsite} sites (SnpEff fields, MAF), {nesm} missense sites with ESM1/2/3; mismatches={bad}')
 sys.exit(1 if bad else 0)

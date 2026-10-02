@@ -37,7 +37,9 @@ the score tables). ESMC_score (llr_esmc) is written with the other ESM scores. `
 (chr,pos,ref,alt,MAXR2; position-sorted) adds MAXR2: the highest PLINK 1.9 --r2 of the site with
 any variant 400-5,000 bp away, from the 933 release genotypes with no MAF/missingness/r2 filtering,
 written with up to 6 decimals (1.0, 0.509182) like the MaizeGDB 2026 stores. The rebuilt
-full-chromosome stores on Ceres use both options.
+full-chromosome stores on Ceres use both options. The MAXR2 table comes from `maxr2_chr.sh <chr>`
+(Ceres: bcftools + PLINK 1.9 --r2 on the 933-sample merge, max over partners 400-5,000 bp away);
+`check_r2.py` recomputes 300 random pairs from the PLINK .bed as an independent check.
 
 Natural Earth: https://github.com/nvkelso/natural-earth-vector tag v5.1.2
 (f1890d9f152c896d250a77557a5751a93d494776), public domain.

@@ -38,10 +38,12 @@ function annotStats(site){
     const first=th.indexOf('Gene model');
     const host=document.createElement('tbody');
     host.innerHTML=tableView(S.results.rows).fr.map(r=>rowHTML(r)).join('');
-    const filled={};
-    cols.forEach((c,j)=>{ let n=0; host.querySelectorAll('tr').forEach(tr=>{ const td=tr.children[first+j];
-      const v=td?td.textContent.trim():''; if(v && !/^(—|N\\/A|NA|\\.|intergenic)$/.test(v)) n++; }); filled[c.key]=n; });
-    return {dataset:S.dataset, headers:th.slice(0, first+cols.length), cols, rows:S.results.rows.length, filled,
+    const filled={}, decimals={}, sample={};
+    cols.forEach((c,j)=>{ let n=0, d=0; const ex=[]; host.querySelectorAll('tr').forEach(tr=>{ const td=tr.children[first+j];
+      const v=td?td.textContent.trim():''; if(v && !/^(—|N\\/A|NA|\\.|intergenic)$/.test(v)){ n++;
+        if(/^-?[0-9.]+$/.test(v)){ d=Math.max(d,(v.split('.')[1]||'').length); if(ex.length<5) ex.push(v); } } });
+      filled[c.key]=n; decimals[c.key]=d; sample[c.key]=ex; });
+    return {dataset:S.dataset, headers:th.slice(0, first+cols.length), cols, rows:S.results.rows.length, filled, decimals, sample,
             note:(document.getElementById('annotNote')||{}).textContent||''};
   })()`);
 }

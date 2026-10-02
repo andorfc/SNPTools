@@ -31,14 +31,18 @@ does not match the v1.4 catalogue: rerun `make local-store` once (a running serv
 files; no restart needed).
 
 **Full chromosome 2 (pilot of the per-chromosome build).** `hdf5/version3/zmgrin2026_chr2_impute.h5`
-can be the full Ceres build (5,179,690 sites x 933 samples, 1.97 GB; INFO with SnpEff fields, MAF,
-PlantCAD1/PlantCAD2, Evo2, ESM1/2/3, ESM-C), copied from
-`/90daydata/maizegdb/carson/grz2023/snptools_build/chr2/` (sha256 6e6eae31...3615023); the 3,495-site
+is the full Ceres build (5,179,690 sites x 933 samples, 2.0 GB; INFO with SnpEff fields, MAF, MAXR2
+(4,665,215 sites), PlantCAD1/PlantCAD2 (4,865,809 SNPs) and Evo2 (665,539) rounded to 0.1, ESM1/2/3
+and ESM-C (50,780 missense sites)), copied on 2026-09-30 from
+`/90daydata/maizegdb/carson/grz2023/snptools_build/chr2/` (md5 9b8a52df8d08df7a875f3c84f4bf7d3b, as in
+its `logs/MD5SUMS.txt`); the 3,495-site
 demo cut is kept as `zmgrin2026_chr2_impute.demo.h5`. `make local-store` skips any store larger than
 50 MB (`FORCE=1` replaces it with the demo cut). With the full chr2 store every chr2 region works,
 not only the fixture windows. Measured through processForm.php -> h5_to_vcf.py (PHP CLI, this Mac):
-gene Zm00001eb067740 (127 variants) 0.26 s for 26 NAM lines / 0.48 s for all 933; chr2:4-5 Mb
-(16,583 variants) 0.44 s / 2.4 s including the browser-side parse (0.35 s / 0.92 s in PHP + Python).
+gene Zm00001eb067740 (127 variants) 0.26 s for 26 NAM lines / 0.49 s for all 933; chr2:4-5 Mb
+(16,583 variants) 0.43 s / 2.6 s including the browser-side parse (0.33 s / 0.85 s in PHP + Python);
+the first query after installing the file is slower (0.41 s / 0.71 s for the gene) while the OS
+cache warms.
 
 **Genome-wide IBS for SNPCompare / SNPTree (GRIN-linked set).** Copy the Ceres matrices to
 `distance/zmgrin2026/` (similarity.csv, missing_pct.csv, similarity_snp.csv, missing_pct_snp.csv,
@@ -113,11 +117,11 @@ and a note above the table: MQ and COMP (not available for the Grzybowski et al.
 source VCFs carry no per-site MQ/coverage) and PlantCAD1/PlantCAD2 where a store has no scores yet.
 maxR² is available for this set (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the
 933 release genotypes, no filtering; blank = no partner variant in range or monomorphic); the
-stores installed here predate it, so their cells read NA until the rebuilt stores arrive.
-PlantCAD1/PlantCAD2 and Evo2 are rounded to 0.1 like the ESM scores. The chr2 store installed here
-is the earlier 4-decimal build (PlantCAD shown to 4 decimals, no MAXR2); the rebuilt Ceres stores
-use 0.1 and carry MAXR2. With the full chr2 store PlantCAD1/PlantCAD2 are filled on chr2 (SNPs;
-indels read N/A); the other chromosomes still use the demo cut and show them as pending.
+full chr2 store carries it (chr2 GWAS window: 233 of 249 sites); the demo stores of the other
+chromosomes predate it, so their cells read NA until the rebuilt stores arrive. PlantCAD1/PlantCAD2
+and Evo2 are rounded to 0.1 like the ESM scores. With the full chr2 store PlantCAD1/PlantCAD2 are
+filled on chr2 (SNPs; indels read N/A); the other chromosomes still use the demo cut and show them
+as pending.
 
 5. **SNPCompare genome-wide (GRIN-linked set)**: open *SNPCompare*, choose **Dataset = MaizeGDB
    GRIN-linked 2026** (or arrive from SNPVersity with that set), focal `ZmG_B73`, scope
