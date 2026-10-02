@@ -530,7 +530,7 @@ function traitExport(kind){
  * ===================================================================== */
 const TraitDrawer = (function(){
   const KEYS = ['selected','q','facets','ranges','openGroups','onlySel'];
-  let pageState = null, opts = null, base = new Set(), returnFocus = null;
+  let pageState = null, opts = null, base = new Set(), returnFocus = null, pageNodes = null;
   const drawerState = {};                              // dataset -> its filters, kept between openings
   const take = () => { const o = {}; KEYS.forEach(k => { o[k] = TRAIT[k]; }); return o; };
   const put  = o => KEYS.forEach(k => { TRAIT[k] = o[k]; });
@@ -547,6 +547,13 @@ const TraitDrawer = (function(){
     const ds = opts.dataset || S.dataset;
     if (TRAIT.dataset !== ds) traitLoad(ds);
     pageState = take();
+    /* Opened from the SNPTrait page itself (the top bar's selection chip): the page and the
+       drawer use the same element ids, so the page's nodes wait outside the document. */
+    const page = document.getElementById('page');
+    if (page && page.querySelector('#traitGrid')){
+      pageNodes = document.createDocumentFragment();
+      while (page.firstChild) pageNodes.appendChild(page.firstChild);
+    }
     const known = new Set(TRAIT.rows.map(r => r.id));
     base = new Set((opts.selected || []).filter(id => known.has(id)));
     put(Object.assign({}, drawerState[ds] || freshFilters(), {selected: new Set(base)}));
@@ -598,6 +605,7 @@ const TraitDrawer = (function(){
     const st = take(); delete st.selected; drawerState[TRAIT.dataset] = st;
     put(pageState); pageState = null; TRAIT.mode = 'page';
     document.getElementById('traitDrawer').remove();
+    if (pageNodes){ const page = document.getElementById('page'); if (page) page.appendChild(pageNodes); pageNodes = null; }
     document.body.classList.remove('tdr-lock');
     document.removeEventListener('keydown', onKey);
     const cb = opts && opts.onApply; opts = null;

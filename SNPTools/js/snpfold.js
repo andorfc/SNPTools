@@ -176,6 +176,8 @@
     esm:       ['esm', 'esm1', 'esm_1', 'ESM', 'ESM1'],
     esm2:      ['esm2', 'esm_2', 'ESM2'],
     esm3:      ['esm3', 'esm_3', 'ESM3'],
+    evo2:      ['evo2', 'EVO2'],
+    esmc:      ['esmc', 'esm_c', 'ESMC'],
   };
   function modelScore(v, model){
     if (!v) return null;
@@ -196,11 +198,13 @@
     const scores = [
       ['PlantCAD', modelScore(v, 'plantcad')],
       ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
+      ...(FD.extra && FD.extra.evo2 ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
       ...(FD.sec ? [
         ['ESM2', modelScore(v, 'esm2')],
         ['ESM3', modelScore(v, 'esm3')],
       ] : []),
+      ...(FD.extra && FD.extra.esmc ? [['ESM-C', modelScore(v, 'esmc')]] : []),
     ];
     if (!scores.some(([, value]) => value != null)) return 'n/a';
     //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
@@ -498,6 +502,7 @@
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
       esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
+      evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
     };
   }
@@ -1026,6 +1031,7 @@
     FD.iupred = null;
     FD.sites = null;
     FD.trackZoom = 1;
+    FD.extra = {evo2:false, esmc:false};
     try {
       /* Passing the dataset as a second argument is backward-compatible in JavaScript:
          older one-argument implementations simply ignore it. */
@@ -1054,6 +1060,8 @@
       /* If the app state did not expose the dataset, actual returned 2026 score fields
          still enable the extra columns. */
       FD.sec = FD.sec || hasSecondaryVariantScores(FD.variants);
+      FD.extra = { evo2: FD.variants.some(v => modelScore(v, 'evo2') != null),
+                   esmc: FD.variants.some(v => modelScore(v, 'esmc') != null) };
 
       FD.carriers = (fn && fn.variants)
         ? Object.fromEntries(fn.variants.map(v => [v.pos+'|'+v.ref+'|'+v.alt, v]))
@@ -1566,12 +1574,16 @@
       get:v => modelScore(v, 'plantcad') },
     { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
       get:v => modelScore(v, 'plantcad2') },
+    { key:'evo2',        label:'Evo2',        type:'num', num:true, extra:'evo2',
+      get:v => modelScore(v, 'evo2') },
     { key:'esm',         label:'ESM1',        type:'num', num:true,
       get:v => modelScore(v, 'esm') },
     { key:'esm2',        label:'ESM2',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm2') },
     { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm3') },
+    { key:'esmc',        label:'ESM-C',       type:'num', num:true, extra:'esmc',
+      get:v => modelScore(v, 'esmc') },
     { key:'disorder',    label:'IUPred2', type:'num', num:true,
       get:v => { const c = iupredAt(v.resi); return c ? c.disorder : null; } },
     { key:'anchor2',     label:'Anchor2',     type:'num', num:true,
@@ -1590,7 +1602,8 @@
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
+  /* `extra` columns (Evo2, ESM-C: in the rebuilt stores only) show when the gene has a score */
+  function foldVisibleCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.extra || (FD.extra && FD.extra[c.extra]))); }
   function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
@@ -1628,6 +1641,8 @@
     esm:'ESM protein language-model score for the substitution.',
     esm2:'ESM2 protein language-model score.',
     esm3:'ESM3 protein language-model score.',
+    evo2:'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene.',
+    esmc:'ESM-C protein language-model score for the substitution.',
     disorder:'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).',
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',
@@ -1663,8 +1678,10 @@
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
+      ${FD.extra&&FD.extra.evo2?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
       <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
+      ${FD.extra&&FD.extra.esmc?`<td class="num">${scoreCell(modelScore(v, 'esmc'))}</td>`:''}
       <td class="num">${iupredCell(iupredAt(v.resi)?.disorder)}</td>
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>

@@ -62,7 +62,11 @@ def num(v):
 
 
 ROWS = {}                  # chrom -> [(pos, ref, alt, info dict, genotype cells)]
-for f in glob.glob(f'{FX}/zmgrin2026_v1.4_chr*_testregions.vcf.gz'):
+# a full chr2 store (Evo2, ESM-C) is queried through its own window, cut from the same release VCF
+FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
+SOURCES = [f for f in glob.glob(f'{FX}/zmgrin2026_v1.4_chr*_testregions.vcf.gz') if not (FULL_CHR2 and '_chr2_' in f)]
+if FULL_CHR2: SOURCES.append(f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz')
+for f in SOURCES:
     for line in gzip.open(f, 'rt'):
         if line[0] == '#': continue
         t = line.rstrip('\n').split('\t')
@@ -96,6 +100,10 @@ def scores(I, e):
     return tuple(num(I.get(k)) if e[4] else None for k in ('ESM1_score', 'ESM2_score', 'ESM3_score'))
 
 
+def esmc(I, e):            # ESM-C goes with the same entry as ESM1-3
+    return num(I.get('ESMC_score')) if e[4] else None
+
+
 def residue(sub):
     m = re.search(r'\d+', sub or '')
     return int(m.group()) if m else None
@@ -114,7 +122,8 @@ for gene, got in P['genes'].items():
         d = [dose(c) for c in cells]
         hom, het = sum(x == 2 for x in d), sum(x == 1 for x in d)
         exp_v.append({'pos': pos, 'ref': ref, 'alt': alt, 'cls': cls, 'esm': esm, 'hom': hom, 'het': het,
-                      'severe': severe, 'sub': e[3]})
+                      'severe': severe, 'sub': e[3], 'evo2': num(I.get('evo2_score')), 'esmc': esmc(I, e),
+                      'pc1': num(I.get('plantcad1_score'))})
         if fold_coding(e[1]) and residue(e[3]) is not None:
             exp_fold.append({'pos': pos, 'resi': residue(e[3]), 'esm': esm[0]})
         # (c) a score shown for this gene must be the ESM table's score for this gene's substitution
@@ -134,20 +143,34 @@ for gene, got in P['genes'].items():
         g = gv.get((v['pos'], v['ref'], v['alt']))
         if not g: continue
         if g['cls'] != v['cls'] or (g['hom'], g['het']) != (v['hom'], v['het']) or \
-           (g['esm'], g['esm2'], g['esm3']) != v['esm']:
+           (g['esm'], g['esm2'], g['esm3']) != v['esm'] or g.get('evo2') != v['evo2'] or g.get('esmc') != v['esmc']:
             bad += 1; print('SNPFunction variant', gene, v['pos'], g, v)
         if v['cls'] == 'missense' and g['sub'] != v['sub']:
             bad += 1; print('substitution', gene, v['pos'], g['sub'], v['sub'])
-    dmg = sum(v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and v['esm'][0] is not None and v['esm'][0] <= -4) for v in exp_v)
+    def combined(v):       # Data.geneFunction: mean of PlantCAD1 and ESM1 when both, else whichever is present
+        pc, es = v['pc1'], v['esm'][0]
+        return round((pc + es) / 2, 2) if pc is not None and es is not None else (pc if pc is not None else es)
+    dmg = sum(v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and combined(v) is not None and combined(v) <= -4) for v in exp_v)
     if fn['damaging'] != dmg: bad += 1; print('damaging', gene, fn['damaging'], dmg)
     if fn['nAcc'] != 933: bad += 1; print('panel', gene, fn['nAcc'])
     key = lambda v: (v['pos'], v['resi'], 'none' if v['esm'] is None else f"{v['esm']:.1f}")   # JSON writes -3.0 as -3
     fold = sorted(key(v) for v in got['fold'])
     if fold != sorted(key(v) for v in exp_fold):
         bad += 1; print('SNPFold variants', gene, len(fold), len(exp_fold))
+    # Evo2 is allele-level (every entry), ESM-C follows the ESM entry; the burden means
+    for k in ('evo2', 'esmc'):
+        vals = [v[k] for v in exp_v if v[k] is not None]
+        mean = sum(vals) / len(vals) if vals else None
+        got_m = (fn.get('means') or {}).get(k)
+        if (got_m is None) != (mean is None) or (mean is not None and abs(got_m - mean) > 0.005 + 1e-9):   # JS rounds to 2 places
+            bad += 1; print('mean', k, gene, got_m, mean)
+    fold_x = {v['pos']: (v.get('evo2'), v.get('esmc')) for v in got['fold']}
+    for v in exp_v:
+        if v['pos'] in fold_x and fold_x[v['pos']] != (v['evo2'], v['esmc']): bad += 1; print('SNPFold Evo2/ESM-C', gene, v['pos'], fold_x[v['pos']], (v['evo2'], v['esmc']))
     summary.append(f"{gene}: {len(exp_v)} sites (first-listed rule kept {first_rule}), "
                    f"{by.get('missense', 0)} missense ({sum(v['esm'][0] is not None for v in exp_v if v['cls'] == 'missense')} with ESM), "
-                   f"{len(exp_fold)} on the structure, {dmg} damaging")
+                   f"{len(exp_fold)} on the structure, {dmg} damaging"
+                   + (f", Evo2 on {sum(v['evo2'] is not None for v in exp_v)}, ESM-C on {sum(v['esmc'] is not None for v in exp_v)}" if any(v['evo2'] is not None or v['esmc'] is not None for v in exp_v) else ''))
 
 # (d) SNPGeo, gene search Zm00001eb374230
 iv = P['genes']['Zm00001eb374230']['interval']

@@ -77,6 +77,10 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    footer shows +added / -removed against SNPVersity, *Apply to SNPVersity* writes it back (Undo
    offered), Cancel / Escape / the backdrop drop it. The drawer keeps its own filters between
    openings and leaves the SNPTrait page's selection and filters alone.
+   The top bar's **selection chip** (list icon + count, patch 0033) shows SNPVersity's selection in
+   every tool and opens the same drawer; outside SNPVersity, Apply sets the selection SNPVersity
+   queries next and a toast offers Undo / Open SNPVersity. On a 375 px screen the top bar now fits
+   (16 px gutters; "SNPTools ›" and the button labels drop to icons below 560 px).
    *Send N lines to SNPVersity…* opens a dialog like GWAS Explorer's: *replace* the accessions
    selected in SNPVersity (pre-ticked) or *keep them and add* (it says how many lines are new).
    SNPTrait starts with nothing selected and keeps its own selection between visits.
@@ -136,6 +140,11 @@ are left out for this set (patch 0030; status 'hidden' in `Data.annotationFields
 Grzybowski et al. 2023 call set records no per-site MQ or coverage. Filled: Gene model, Effect, SNPEff
 Impact (SnpEff 5.2a fields of the MaizeGDB Schnable scored VCFs), MAF (from the 933 release
 genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_store_score`).
+Evo2 (INFO `evo2_score`: SNPs within 1 kb of a gene) and ESM-C (`ESMC_score`: missense) are
+columns after PlantCAD2 and ESM3 (patch 0033); the full chr2 store fills them (chr2 GWAS window:
+120 and 10 of 249 sites), the demo stores of the other chromosomes predate them, so they read
+pending there. SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo show them as
+columns only where the region or gene has a score (Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
 Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
 domains mapped to the genome); "—" is the usual answer, since the blocks cover 0.8-1.0% of each
 chromosome (46,930 of chr2's 5,179,690 sites fall in one). On the fixture sites the lookup agrees

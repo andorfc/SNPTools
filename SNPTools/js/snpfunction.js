@@ -437,6 +437,8 @@
         ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
         ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 protein language-model score'):''}
         ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 protein language-model score'):''}
+        ${b.meanEvo2!=null?stat('Mean Evo2', b.meanEvo2, 'average Evo2 DNA language-model score (SNPs within 1 kb of a gene)'):''}
+        ${b.meanEsmc!=null?stat('Mean ESM-C', b.meanEsmc, 'average ESM-C protein language-model score (missense variants)'):''}
       </div>
       <div class="fn-barwrap">
         <div class="fn-bar">
@@ -452,11 +454,19 @@
   function stat(k,v,tip){ return `<div class="fn-stat" title="${esc(tip)}"><div class="fn-statv">${v}</div><div class="fn-statk">${k}</div></div>`; }
   function leg(cls,label,n){ return `<span class="fn-lg"><span class="fn-sw ${cls}"></span>${label} ${n}</span>`; }
 
+  /* Evo2 (genic SNPs) and ESM-C (missense) come with the rebuilt stores only: a column when the
+     gene has a score, rather than a column of dashes. */
+  function extraScores(d){
+    const vs=(d&&d.variants)||[];
+    return {evo2:vs.some(v=>v.evo2!=null), esmc:vs.some(v=>v.esmc!=null)};
+  }
+
   /* ---------- damaging / knockout catalog ---------- */
   function catalog(d){
     if (!d.damaging.length)
       return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div><div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles found in this gene across the panel.</div></div>`;
     const sec = Data.hasSecondaryScores(d.dataset);
+    const X = extraScores(d);
     const rows = d.damaging.map(v=>{
       const open = FN.openId===v.id;
       const vDisp = truncVariant(v.variant);
@@ -467,8 +477,10 @@
         <td>${domTag(v.domain)}</td>
         <td class="num">${scoreCell(v.plantcad)}</td>
         ${sec?`<td class="num">${scoreCell(v.plantcad2)}</td>`:''}
+        ${X.evo2?`<td class="num">${scoreCell(v.evo2)}</td>`:''}
         <td class="num">${scoreCell(v.esm)}</td>
         ${sec?`<td class="num">${scoreCell(v.esm2)}</td><td class="num">${scoreCell(v.esm3)}</td>`:''}
+        ${X.esmc?`<td class="num">${scoreCell(v.esmc)}</td>`:''}
         <td>${prioPill(v.priority)}</td>
         <td class="num">${v.het}</td>
         <td class="num">${v.hom?`<b>${v.hom}</b>`:'0'}</td>
@@ -497,7 +509,7 @@
         <span data-ho-mount data-ho-id="fnMergeReplace" data-ho-target="SNPVersity" data-ho-dataset="${esc(dsId==null?'':dsId)}"></span>
       </div>`:''}
       <div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score.">PlantCAD2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score.">PlantCAD2</th>':''}${X.evo2?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), SNPs within 1 kb of a gene.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${X.esmc?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>`;
@@ -509,7 +521,8 @@
     const send = (mode,label,n)=> n
       ? `<button class="btn tiny" onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','${mode}')">${label} (${n}) →</button>`
       : '';
-    return `<tr class="fn-carriers"><td colspan="${sec?13:10}">
+    const X = extraScores(d);
+    return `<tr class="fn-carriers"><td colspan="${10+(sec?3:0)+(X.evo2?1:0)+(X.esmc?1:0)}">
       <div class="fn-cwrap">
         <div><div class="fn-k">Homozygous ${v.consClass==='lof'?'(candidate knockouts)':''} · ${v.carriersHom.length}</div>
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${v.carriersHom.length>60?` <span class="muted">+${v.carriersHom.length-60} more</span>`:''}</div></div>
@@ -870,17 +883,21 @@
     },
     exportCSV(){
       const d=FN.data; if(!d||!d.damaging) return;
-      const sec=Data.hasSecondaryScores(d.dataset);
+      const sec=Data.hasSecondaryScores(d.dataset), X=extraScores(d);
       const cols=['variant','consequence','domain','plantcad']
         .concat(sec?['plantcad2']:[])
+        .concat(X.evo2?['evo2']:[])
         .concat(['esm'])
         .concat(sec?['esm2','esm3']:[])
+        .concat(X.esmc?['esmc']:[])
         .concat(['combined','priority','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
         const base=[v.variant,v.consequence,v.domain,v.plantcad];
         if(sec) base.push(v.plantcad2);
+        if(X.evo2) base.push(v.evo2);
         base.push(v.esm);
         if(sec) base.push(v.esm2, v.esm3);
+        if(X.esmc) base.push(v.esmc);
         base.push(v.combined,v.priority,v.het,v.hom,v.af.toFixed(4),
           '"'+v.carriersHom.join(';')+'"','"'+v.carriersHet.join(';')+'"');
         return base.map(x=>x==null?'':x).join(',');

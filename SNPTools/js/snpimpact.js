@@ -240,6 +240,8 @@
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
     }
     IMP.sec = Data.hasSecondaryScores(input.dataset);    // show PlantCAD2/ESM2/ESM3 when the dataset carries them
+    // Evo2 (genic SNPs) and ESM-C (missense) are in the rebuilt stores only: a column when the region has a score
+    IMP.evo2 = IMP.rows.some(r=>r.evo2!=null); IMP.esmc = IMP.rows.some(r=>r.esmc!=null);
     Data.ensureGeneDomains();                             // warm up detail track (non-blocking)
     Data.ensureGeneModels(input.chr);                     // warm up gene-model view for this chromosome
 
@@ -282,7 +284,7 @@
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${th('Priority','priority')}<th></th>
+            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${IMP.evo2?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.esmc?th('ESM-C','esmc','num'):''}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -320,6 +322,8 @@
     'ESM':'ESM protein language-model score for the amino-acid substitution.',
     'ESM2':'ESM2 protein language-model score.',
     'ESM3':'ESM3 protein language-model score.',
+    'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene.',
+    'ESM-C':'ESM-C protein language-model score for the amino-acid substitution.',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
   };
   function th(label, key, cls){
@@ -350,8 +354,10 @@
       <td>${domTag(r.domain)}</td>
       <td class="num">${scoreCell(r.plantcad)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2)}</td>`:''}
+      ${IMP.evo2?`<td class="num">${scoreCell(r.evo2)}</td>`:''}
       <td class="num">${scoreCell(r.esm)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.esm2)}</td><td class="num">${scoreCell(r.esm3)}</td>`:''}
+      ${IMP.esmc?`<td class="num">${scoreCell(r.esmc)}</td>`:''}
       <td>${prioPill(r.priority)}</td>
       <td style="text-align:center">
         <button class="star-btn ${star?'on':''}" title="Add to shortlist"
@@ -529,8 +535,10 @@
           <div class="ai-pill ${r.combined!=null&&r.combined<=-4?'hi':''}">AI score: ${r.combined==null?'n/a':r.combined<=-7?'high impact':r.combined<=-4?'elevated':'low impact'}</div>
           ${scoreBar('PlantCAD1', r.plantcad)}
           ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2):''}
+          ${IMP.evo2?scoreBar('Evo2', r.evo2):''}
           ${scoreBar('ESM', r.esm)}
           ${IMP.sec?scoreBar('ESM2', r.esm2)+scoreBar('ESM3', r.esm3):''}
+          ${IMP.esmc?scoreBar('ESM-C', r.esmc):''}
           <div class="pctl">
             <div class="pctl-l">Region impact percentile</div>
             <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':r.percentile+'th'}</span></div>
@@ -588,8 +596,10 @@
     exportCSV(){
       const cols=['gene','variant','consequence','domain','plantcad']
         .concat(IMP.sec?['plantcad2']:[])
+        .concat(IMP.evo2?['evo2']:[])
         .concat(['esm'])
         .concat(IMP.sec?['esm2','esm3']:[])
+        .concat(IMP.esmc?['esmc']:[])
         .concat(['combined','priority','percentile','impactLevel','maf','pos','ref','alt']);
       const rows=filtered();
       const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';

@@ -172,6 +172,28 @@ async function until(site, expr, ms = 8000){
     $('Handoff.setMode("add")');
   }
 
+  /* ---------- the top bar's selection chip ----------
+     SNPVersity's selection in every tool; it opens the same drawer. Outside SNPVersity, Apply
+     sets the selection and a toast offers Undo. On the SNPTrait page the page's nodes wait
+     outside the document while the drawer (same element ids) is open. */
+  {
+    const C = R.chip = {};
+    $('S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpgeo")');
+    C.onGeo = $('document.getElementById("selChipN").textContent');
+    $('document.getElementById("selChip").click()');
+    C.open = {drawer: $('!!document.querySelector("#traitDrawer .tdr")'), title: $('document.getElementById("tdrTitle").textContent'), draft: $('TRAIT.selected.size')};
+    $('traitClearFacets(); TRAIT.onlySel=false; traitSelectGroup("Other GRIN", true); document.getElementById("tdrApply").click()');
+    C.applied = {n: $('S.selected.size'), chip: $('document.getElementById("selChipN").textContent'), tool: $('S.tool'),
+                 toast: $('document.getElementById("snpToast").textContent').replace(/\s+/g, ' ').trim()};
+    $('[...document.querySelectorAll("#snpToast button.act")].find(b=>b.textContent==="Undo").click()');
+    C.undone = {n: $('S.selected.size'), chip: $('document.getElementById("selChipN").textContent')};
+    $('go("snptrait")');
+    $('document.getElementById("selChip").click()');
+    C.onTrait = {grids: $('document.querySelectorAll("#traitGrid").length'), pageSetAside: $('!document.querySelector("#page #traitGrid")')};
+    $('TraitDrawer.close(false)');
+    C.traitBack = $('!!document.querySelector("#page #traitGrid")');
+  }
+
   /* ---------- Help page ---------- */
   $('openHelp()'); await site.wait(150);
   R.help = {hasSNPGeo: $('/SNPGeo/.test(document.getElementById("page").textContent)'),
@@ -438,13 +460,15 @@ async function until(site, expr, ms = 8000){
      from the fixture VCFs and the ESM table. */
   {
     const P = R.pergene = {genes: {}};
-    for (const gene of ['Zm00001eb374230', 'Zm00001eb404750', 'Zm00001eb374090', 'Zm00001eb056510']){
+    // + a chr2 gene when the full chr2 store (with Evo2 and ESM-C) is installed
+    for (const gene of ['Zm00001eb374230', 'Zm00001eb404750', 'Zm00001eb374090', 'Zm00001eb056510'].concat((R.store || {}).chr2 > 100000 ? ['Zm00001eb067740'] : [])){
       const g = JSON.stringify(gene);
       P.genes[gene] = {
         interval: await $(`Data.lookupGene(${g})`),
         fn: await $(`Data.geneFunction(${g}, "zmgrin2026_imp").then(d=>({n:d.nVariants, nAcc:d.nAccessions, byClass:d.burden.byClass, damaging:d.damaging.length,
-              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, hom:v.hom, het:v.het}))}))`),
-        fold: await $(`Data.queryFoldVariants(${g}, "zmgrin2026_imp").then(a=>a.map(v=>({pos:v.pos, resi:v.resi, variant:v.variant, cls:v.consClass, esm:v.esm})))`)};
+              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, evo2:v.evo2, esmc:v.esmc, hom:v.hom, het:v.het})),
+              means:{evo2:d.burden.meanEvo2, esmc:d.burden.meanEsmc}}))`),
+        fold: await $(`Data.queryFoldVariants(${g}, "zmgrin2026_imp").then(a=>a.map(v=>({pos:v.pos, resi:v.resi, variant:v.variant, cls:v.consClass, esm:v.esm, evo2:v.evo2, esmc:v.esmc})))`)};
     }
     $('S.dataset="zmgrin2026_imp"; S.geoInput=null; go("snpgeo"); document.getElementById("geoGeneInput").value="Zm00001eb374230"');
     await $('geoLookupGene()');

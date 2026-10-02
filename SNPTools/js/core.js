@@ -150,6 +150,7 @@ function go(id){
   document.getElementById('sendBtn').style.display = id==='snpversity'?'inline-flex':'none';
   renderNav();
   window.scrollTo(0,0);
+  hideToast();
   const page=document.getElementById('page');
   page.className='page fade';
   const tool=SNPTools.registry[id];
@@ -162,6 +163,7 @@ function go(id){
       +'<h3 style="font-family:var(--disp);color:#b42318;margin:0 0 8px">'+(TOOLS[id]?TOOLS[id].name:id)+' hit an error</h3>'
       +'<pre style="white-space:pre-wrap;background:#fff;border:1px solid #f0cfca;border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;color:#8a2a20">'+String(err&&err.stack||err)+'</pre></div>';
   }
+  refreshSelChip();
 }
 
 /* ================= TOOL PLACEHOLDER PAGES ================= */
@@ -228,6 +230,51 @@ function attachTT(){
 
 
 /* ================= MENUS / RAIL ================= */
+/* ================= SELECTION CHIP =================
+   The top bar shows SNPVersity's selection (S.selected) in every tool and opens the line
+   selector (SNPTrait as a drawer, TraitDrawer in snptrait.js) on a draft of it. In SNPVersity
+   it is step 3's "Browse & filter lines…"; elsewhere Apply sets the selection SNPVersity will
+   query next and a toast offers Undo and a way back to SNPVersity. */
+function refreshSelChip(bump){
+  const b=document.getElementById('selChip'); if(!b) return;
+  const n=(S.selected&&S.selected.size)||0, many=n===1?'accession':'accessions';
+  const d=(typeof Data!=='undefined'&&Data.datasets)?Data.datasets().find(x=>x.id===S.dataset):null;
+  document.getElementById('selChipN').textContent=n.toLocaleString();
+  document.getElementById('selChipLbl').textContent=many;
+  b.title=`${n.toLocaleString()} ${many} selected for SNPVersity${d?' ('+d.name+')':''}. Click to browse, filter and edit the selection.`;
+  b.setAttribute('aria-label',`Selection: ${n.toLocaleString()} ${many}. Browse, filter and edit`);
+  if(bump){ b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+}
+function openSelectionDrawer(){
+  if(S.tool==='snpversity' && typeof openLineSelector==='function'){ openLineSelector(); return; }
+  if(typeof TraitDrawer==='undefined'){ go('snpversity'); return; }
+  const before=[...S.selected];
+  TraitDrawer.open({dataset:S.dataset, selected:before, title:'Edit the SNPVersity selection', onApply:ids=>{
+    const was=new Set(before), now=new Set(ids);
+    if(now.size===was.size && ids.every(id=>was.has(id))){ toast('No change to the selection.'); return; }
+    let add=0, rem=0;
+    now.forEach(id=>{ if(!was.has(id)) add++; }); was.forEach(id=>{ if(!now.has(id)) rem++; });
+    S.selected=now; refreshSelChip(true);
+    toast(`Selection is now <b>${now.size.toLocaleString()}</b> accession${now.size===1?'':'s'} (${[add?'+'+add:'',rem?'−'+rem:''].filter(Boolean).join(' · ')}). SNPVersity uses it for its next query.`,
+      [{label:'Undo', run:()=>{ S.selected=new Set(before); refreshSelChip(true); toast(`Selection restored to <b>${before.length.toLocaleString()}</b> accessions.`); }},
+       {label:'Open SNPVersity', run:()=>go('snpversity')}]);
+  }});
+}
+/* a short note at the bottom of the screen; actions = [{label, run}] */
+function toast(html, actions){
+  let el=document.getElementById('snpToast');
+  if(!el){ el=document.createElement('div'); el.id='snpToast'; el.className='snp-toast';
+    el.setAttribute('role','status'); el.setAttribute('aria-live','polite'); document.body.appendChild(el); }
+  clearTimeout(toast._t);
+  el.innerHTML=`<span>${html}</span>`+(actions||[]).map((a,i)=>`<button type="button" class="act" data-i="${i}">${a.label}</button>`).join('')+
+    `<button type="button" class="snp-toast-x" aria-label="Dismiss">×</button>`;
+  el.querySelectorAll('button.act').forEach(b=>{ b.onclick=()=>{ hideToast(); actions[+b.dataset.i].run(); }; });
+  el.querySelector('.snp-toast-x').onclick=hideToast;
+  el.classList.add('show');
+  toast._t=setTimeout(hideToast, 12000);
+}
+function hideToast(){ const el=document.getElementById('snpToast'); if(el) el.classList.remove('show'); clearTimeout(toast._t); }
+
 function toggleMenu(){document.getElementById('sendMenu').classList.toggle('open');}
 function closeMenu(){document.getElementById('sendMenu').classList.remove('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.send-wrap'))closeMenu();});

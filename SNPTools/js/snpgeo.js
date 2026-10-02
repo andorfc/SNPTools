@@ -431,7 +431,9 @@ function geoRenderTable(){
   // identically. ScorePill.cell() returns the inner <span>; wrap it in the
   // numeric <td> this table expects. Fallback keeps the column readable if
   // snpfold.js somehow hasn't loaded.
-  const models = (typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [];
+  // Evo2 (genic SNPs) and ESM-C (missense) are in the rebuilt stores only: a column when this gene has a score
+  const models = ((typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [])
+    .filter(m => (m.key !== 'evo2' && m.key !== 'esmc') || (rows || []).some(r => r[m.key] != null));
   const pill = (v) => (window.ScorePill ? ScorePill.cell(v) : (v == null ? '—' : v));
   const sc = (v) => `<td class="num">${pill(v)}</td>`;
 

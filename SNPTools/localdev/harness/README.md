@@ -18,6 +18,9 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    SNPTrait drawer (draft = the 26 NAM lines; SS x Ames282 x Dent, select visible, Apply -> 39;
    Escape changes nothing; filters kept on reopening; the SNPTrait page's selection untouched), and
    a pasted list resolving `PI 550473` and `Mo17`.
+   Then the top bar's selection chip: 26 on SNPGeo, opened there, + Other GRIN applied (56) with
+   the toast, Undo (26), and opened on the SNPTrait page (the page's nodes set aside, one #traitGrid
+   in the document, restored on close).
 2. Help page lists SNPTrait (live) and SNPGeo.
 3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and
    world views, three colour modes, country detail; per-site statistics dumped.
@@ -52,7 +55,10 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    Zm00001eb374230 (site 13,120,567 reads A471G, not the neighbour's R65P); SNPVersity's "+N"
    markers and gene list on chr9:13,118,306-13,124,164. `check_gene_consequences.py` recomputes
    all of it from the fixture VCFs (each gene's own entry, carriers from the genotypes) and checks
-   every ESM score shown against the ESM table row for that gene's substitution.
+   every ESM score shown against the ESM table row for that gene's substitution. With the full chr2
+   store, Zm00001eb067740 is added: Evo2 (allele-level, every entry) and ESM-C (with the ESM entry)
+   per variant, the burden means, and SNPFold's values; the annotation-column check counts the
+   Evo2 / ESM-C cells against the INFO.
 10. With a full chr2 store installed: the chr2 checks use its window
    (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
 

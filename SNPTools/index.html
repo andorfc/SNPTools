@@ -97,10 +97,16 @@
         <span id="crumbTool"><b>SNPVersity</b></span>
       </div>
       <div class="spacer"></div>
+      <!-- the accessions SNPVersity queries, from any tool: opens the selector drawer (core.js openSelectionDrawer) -->
+      <button class="selchip" id="selChip" type="button" onclick="openSelectionDrawer()" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.5" fill="currentColor"/><circle cx="4.5" cy="12" r="1.5" fill="currentColor"/><circle cx="4.5" cy="18" r="1.5" fill="currentColor"/></svg>
+        <span class="selchip-n" id="selChipN">0</span><span class="selchip-lbl" id="selChipLbl">accessions</span>
+        <svg class="selchip-caret" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div class="send-wrap">
-        <button class="btn" id="sendBtn" onclick="toggleMenu()">
+        <button class="btn" id="sendBtn" onclick="toggleMenu()" aria-label="Send selection to another tool">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h13m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Send selection to…
+          <span class="send-lbl">Send selection to…</span>
         </button>
         <div class="menu" id="sendMenu">
           <div class="mh">Move this set into another tool</div>

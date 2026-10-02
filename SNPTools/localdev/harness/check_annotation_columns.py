@@ -22,8 +22,8 @@ res, root = sys.argv[1:3]
 A = json.load(open(res))['annot']
 FX = f'{root}/localdev/fixtures'
 LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR²', 'MAF',
-          'PlantCAD1', 'PlantCAD2', 'ESM1', 'ESM2', 'ESM3']
-KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'pc1', 'pc2', 'esm1', 'esm2', 'esm3']
+          'PlantCAD1', 'PlantCAD2', 'Evo2', 'ESM1', 'ESM2', 'ESM3', 'ESM-C']
+KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
 bad = 0
 
 
@@ -71,6 +71,8 @@ def expected(path, status):
         f['maf'] += present(I.get('MAF'))
         f['pc1'] += present(I.get('plantcad1_score')) or present(I.get('DNA_SCORE'))
         f['pc2'] += present(I.get('plantcad2_score'))
+        f['evo2'] += present(I.get('evo2_score'))
+        f['esmc'] += present(I.get('ESMC_score'))
         f['esm1'] += present(I.get('ESM1_score')) or present(I.get('AA_SCORE'))
         f['esm2'] += present(I.get('ESM2_score')); f['esm3'] += present(I.get('ESM3_score'))
     for k in KEYS:
@@ -112,7 +114,7 @@ for ds, path in SETS.items():
         if a['filled'][k] != f[k]:
             bad += 1; print('filled', ds, k, a['filled'][k], 'expected', f[k])
     # numeric precision as rendered never exceeds the INFO's (PlantCAD1/2 and Evo2: 0.1 in the rebuilt stores)
-    for k, info_key in (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('r2', 'MAXR2')):
+    for k, info_key in (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('evo2', 'evo2_score'), ('esmc', 'ESMC_score'), ('r2', 'MAXR2')):
         dec = max([len(t.split('.')[1]) if '.' in t else 0 for t in (info(x[7]).get(info_key) for x in records(path)) if t not in (None, '', '.')] or [0])
         if a.get('decimals', {}).get(k, 0) > dec:
             bad += 1; print('precision', ds, k, a['decimals'][k], '>', dec)

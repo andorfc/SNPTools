@@ -435,6 +435,7 @@ function openLineSelector(){
       ids.forEach(id=>{ if(!before.has(id)) added++; });
       before.forEach(id=>{ if(!S.selected.has(id)) removed++; });
       renderAccList(); renderSelected(); renderRunbar();
+      if(typeof refreshSelChip==='function') refreshSelChip(true);
       accSay(`Applied from Browse &amp; filter: ${added?`<b>+${added}</b>`:''}${added&&removed?' · ':''}${removed?`<b>−${removed}</b>`:''}`+
              ` · selection is now <b>${S.selected.size}</b>. ${undoChip()}`);
     }});
@@ -492,6 +493,7 @@ function renderSelected(){
   const c=document.getElementById('selCount'); if(c) c.textContent=arr.length.toLocaleString();
   const of=document.getElementById('selOf'); if(of) of.textContent=`of ${ACCESSIONS.length.toLocaleString()} accessions selected`;
   const m=document.getElementById('mAcc'); if(m) m.textContent=arr.length;
+  if(typeof refreshSelChip==='function') refreshSelChip();
   const byId=new Map(ACCESSIONS.map(a=>[a.id,a]));
   const mixBox=document.getElementById('selMix');
   if(mixBox){
@@ -1089,10 +1091,12 @@ const ANNOT_TT={
   maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
   pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
   pc2:'Second-generation PlantCAD DNA score.',
+  evo2:'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene; more negative is more disruptive.',
   esm1:'ESM protein language-model score for the amino-acid change.',
   esm2:'ESM2 protein language-model score.',
-  esm3:'ESM3 protein language-model score.'};
-const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,esm1:1,esm2:1,esm3:1};
+  esm3:'ESM3 protein language-model score.',
+  esmc:'ESM-C protein language-model score for the amino-acid change (missense sites).'};
+const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,evo2:1,esm1:1,esm2:1,esm3:1,esmc:1};
 let _annotCache={ds:null, res:null, val:null};
 function annotFields(){
   // once per dataset + result: rowHTML asks for every row, and a 'pending' column scans the rows
@@ -1159,7 +1163,8 @@ function rowHTML(r){
     comp:  ()=>off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`,
     r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`,
     maf:   ()=>off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`,
-    pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'),
+    pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), evo2:()=>sc(r.evo2,'evo2'),
+    esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'), esmc:()=>sc(r.esmc,'esmc'),
   };
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>

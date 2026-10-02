@@ -65,6 +65,17 @@ mo17 = [a['id'] for a in rows if a.get('strain') == 'Mo17']
 if Q['paste']['selected'] != sorted(['ZmG_B73'] + mo17) or Q['paste']['unmatched'] != ['not-a-line']: bad += 1; print('pasted list', Q['paste'])
 print(f"step 3: quick pick Ames 282 = {len(ames)}, undo -> {len(Q['undo'])}; drawer +{added} -> {len(exp_applied)}; "
       f"pasted 'PI 550473', 'Mo17' -> {', '.join(Q['paste']['selected'])}")
+# the top bar's selection chip
+C = json.load(open(res))['chip']
+other = [a['id'] for a in rows if a.get('panel') == 'Other GRIN']
+grown = len(set(nam) | set(other))
+if C['onGeo'] != str(len(nam)): bad += 1; print('chip count on SNPGeo', C['onGeo'])
+if not C['open']['drawer'] or C['open']['draft'] != len(nam) or 'SNPVersity' not in C['open']['title']: bad += 1; print('chip drawer', C['open'])
+if C['applied']['n'] != grown or C['applied']['chip'] != str(grown) or C['applied']['tool'] != 'snpgeo' \
+        or f"+{grown - len(nam)}" not in C['applied']['toast'] or 'Undo' not in C['applied']['toast']: bad += 1; print('chip apply', C['applied'])
+if C['undone'] != {'n': len(nam), 'chip': str(len(nam))}: bad += 1; print('chip undo', C['undone'])
+if C['onTrait'] != {'grids': 1, 'pageSetAside': True} or not C['traitBack']: bad += 1; print('chip on the SNPTrait page', C['onTrait'], C['traitBack'])
+print(f"selection chip: {C['onGeo']} on SNPGeo; apply + Other GRIN -> {C['applied']['n']}; undo -> {C['undone']['n']}; SNPTrait page set aside and restored")
 print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
 print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')
 sys.exit(1 if bad else 0)

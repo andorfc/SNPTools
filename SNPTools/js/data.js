@@ -71,13 +71,20 @@ const Data = (function () {
     {key:'mq',     label:'MQ'},           {key:'comp',   label:'COMP'},
     {key:'r2',     label:'maxR²'},        {key:'maf',    label:'MAF'},
     {key:'pc1',    label:'PlantCAD1'},    {key:'pc2',    label:'PlantCAD2'},
+    {key:'evo2',   label:'Evo2'},
     {key:'esm1',   label:'ESM1'},         {key:'esm2',   label:'ESM2'},
-    {key:'esm3',   label:'ESM3'},
+    {key:'esm3',   label:'ESM3'},         {key:'esmc',   label:'ESM-C'},
   ];
   const ZMGRIN_NA_QC = 'Not available for the Grzybowski et al. 2023 call set (source VCFs carry no per-site MQ/coverage).';
   const FIELD_STATUS = {
+    mgdb2026_hq: {
+      evo2: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
+      esmc: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
+    },
     mgdb2026_hc: {
       r2: {status:'na', note:'maxR² is computed only for the High Quality set (its LD filter); the High Coverage set has no MAXR2.'},
+      evo2: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
+      esmc: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
     },
     zmgrin2026_imp: {
       mq:   {status:'hidden', note:ZMGRIN_NA_QC},
@@ -88,6 +95,8 @@ const Data = (function () {
       esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
       esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
       esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
+      evo2: {status:'pending', note:'Evo2 7B log-likelihood ratio (256-bp left context), SNPs within 1 kb of a gene only, rounded to 0.1; merged with the rebuilt per-chromosome stores.'},
+      esmc: {status:'pending', note:'ESM C 600M log-likelihood ratio, missense variants only; merged with the rebuilt per-chromosome stores.'},
       maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
     },
   };
@@ -168,6 +177,7 @@ const Data = (function () {
     return [
       {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE; 0.1 steps in the GRIN-linked 2026 set).'},
       {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score; 0.1 steps in the GRIN-linked 2026 set).'},
+      {key:'evo2', kind:'dna',     label:'Evo2',      tip:'Evo2 7B DNA language-model log-likelihood ratio (INFO evo2_score; SNPs within 1 kb of a gene; 0.1 steps).'},
       {key:'esm1', kind:'protein', label:'ESM1',      tip:'ESM1b protein language-model score (INFO ESM1_score, or AA_SCORE).'},
       {key:'esm2', kind:'protein', label:'ESM2',      tip:'ESM2 protein language-model score (INFO ESM2_score).'},
       {key:'esm3', kind:'protein', label:'ESM3',      tip:'ESM3 protein language-model score (INFO ESM3_score).'},
@@ -438,6 +448,7 @@ const Data = (function () {
         // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
         pc1:    numOrNull(II.plantcad1_score != null ? II.plantcad1_score : II.DNA_SCORE),
         pc2:    numOrNull(II.plantcad2_score),
+        evo2:   numOrNull(II.evo2_score != null ? II.evo2_score : II.EVO2_score),   // genic +/-1 kb SNPs only
         esm1:   numOrNull(II.ESM1_score != null ? II.ESM1_score : II.AA_SCORE),
         esm2:   numOrNull(II.ESM2_score),
         esm3:   numOrNull(II.ESM3_score),
@@ -835,6 +846,7 @@ const Data = (function () {
         plantcad: pc, esm: esm,
         plantcad2: (r.pc2 != null ? r.pc2 : null), esm2: (r.esm2 != null ? r.esm2 : null),
         esm3: (r.esm3 != null ? r.esm3 : null),
+        evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
         combined,
         priority: combined == null ? null
                 : (combined <= -7 ? 'TOP' : combined <= -4 ? 'HIGH' : combined <= -1 ? 'MODERATE' : 'LOW'),
@@ -900,6 +912,7 @@ const Data = (function () {
         plantcad: pc, esm: esm, combined,
         plantcad2: (r.pc2 != null ? r.pc2 : null),
         pc1: r.pc1, pc2: r.pc2, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
+        evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
         maf: r.maf, r2: r.r2, mq: r.mq,
         priority: impactPriority(cls, combined, r.impact), percentile: null,
       });
@@ -963,6 +976,7 @@ const Data = (function () {
       const pc = r.pc1 != null ? r.pc1 : null, esm = r.esm1 != null ? r.esm1 : null;
       const pc2 = r.pc2 != null ? r.pc2 : null, esm2 = r.esm2 != null ? r.esm2 : null;
       const esm3 = r.esm3 != null ? r.esm3 : null;
+      const evo2 = r.evo2 != null ? r.evo2 : null, esmc = r.esmc != null ? r.esmc : null;
       const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2) : (pc != null ? pc : (esm != null ? esm : null));
       let het=0, hom=0, called=0; const homIds=[], hetIds=[];
       for (let k=0;k<accs.length;k++){ const d=_dose(r.gts[k]);
@@ -973,7 +987,7 @@ const Data = (function () {
       const coding = (cls.klass==='missense'||cls.klass==='lof'||cls.klass==='indel');
       const variant = (p && p.resi!=null && coding) ? hgvsProtein(p, {label:cls.label, klass:cls.klass}) : `${r.pos} ${r.ref}>${r.alt}`;
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
-        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, combined,
+        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, evo2, esmc, combined,
         priority: impactPriority(cls, combined, r.impact),
         het, hom, af, carriersHom:homIds, carriersHet:hetIds};
     });
@@ -1013,7 +1027,9 @@ const Data = (function () {
                 meanEsm:_avg(variants.map(v=>v.esm).filter(x=>x!=null)),
                 meanPlantcad2:_avg(variants.map(v=>v.plantcad2).filter(x=>x!=null)),
                 meanEsm2:_avg(variants.map(v=>v.esm2).filter(x=>x!=null)),
-                meanEsm3:_avg(variants.map(v=>v.esm3).filter(x=>x!=null)), afSpectrum },
+                meanEsm3:_avg(variants.map(v=>v.esm3).filter(x=>x!=null)),
+                meanEvo2:_avg(variants.map(v=>v.evo2).filter(x=>x!=null)),
+                meanEsmc:_avg(variants.map(v=>v.esmc).filter(x=>x!=null)), afSpectrum },
       damaging, koGenotypes, koLines: koLines.size, variants,
     };
   }
