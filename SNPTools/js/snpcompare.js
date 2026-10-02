@@ -480,13 +480,13 @@ const SNPCompare = (function () {
 
     <div class="card pad" style="margin-bottom:16px">
       <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
-        <div style="min-width:480px;flex:1 1 480px">
+        <div style="min-width:min(480px,100%);flex:1 1 480px">
           <div class="fl-lbl">Focal accession</div>
           <div style="display:flex;gap:8px">
             <input id="cmpFocal" list="cmpFocalList" value="${esc(ST.focal||'')}" placeholder="type a SNPVersity ID…"
               oninput="SNPCompare.syncFocal(this.value)"
               onkeydown="if(event.key==='Enter'){event.preventDefault();SNPCompare.runCurrent();}"
-              style="flex:1;min-width:340px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px">
+              style="flex:1;min-width:min(340px,100%);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px">
             <datalist id="cmpFocalList">${ids.slice(0,4000).map(i=>`<option value="${esc(i)}">`).join('')}</datalist>
           </div>
         </div>
@@ -635,7 +635,7 @@ const SNPCompare = (function () {
             <option value="focal" ${ST.mdsLabels==='focal'?'selected':''}>Focal only</option>
             <option value="none" ${ST.mdsLabels==='none'?'selected':''}>None</option>
           </select></div>`:''}
-        ${needScale?`<div style="flex:1 1 320px;min-width:300px">
+        ${needScale?`<div style="flex:1 1 320px;min-width:min(300px,100%)">
           <div class="fl-lbl">Color domain — drag the handles</div>
           <div id="cmpLegend"></div></div>`:''}
         <div style="margin-left:auto;align-self:flex-end">

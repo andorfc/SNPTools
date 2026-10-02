@@ -127,7 +127,7 @@
       .map(m => `<option value="${m}" ${m === st.esm ? 'selected' : ''}>${m}</option>`).join('');
     const examples = PE.cfg.examples
       .map(g => `<a href="#" class="pe-ex" data-gene="${g}">${g}</a>`)
-      .join('<span class="pe-ex-sep">·</span>');
+      .join('<span class="pe-ex-sep">·</span><wbr>');  /* <wbr>: the row may wrap on a phone */
     const vLbl = variantLabel(st.variant);
 
     return `
