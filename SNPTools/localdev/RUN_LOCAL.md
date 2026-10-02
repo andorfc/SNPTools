@@ -149,8 +149,9 @@ genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_
 Evo2 (INFO `evo2_score`: SNPs within 1 kb of a gene) and ESM-C (`ESMC_score`: missense) are
 columns after PlantCAD2 and ESM3 (patch 0033); the full chr2 store fills them (chr2 GWAS window:
 120 and 10 of 249 sites), the demo stores of the other chromosomes predate them, so they read
-pending there. SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo show them as
-columns only where the region or gene has a score (Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
+pending there. SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
+them beside PlantCAD and ESM (patches 0036-0037), empty where the store has no score
+(Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
 Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
 domains mapped to the genome); "—" is the usual answer, since the blocks cover 0.8-1.0% of each
 chromosome (46,930 of chr2's 5,179,690 sites fall in one). On the fixture sites the lookup agrees

@@ -198,13 +198,13 @@
     const scores = [
       ['PlantCAD', modelScore(v, 'plantcad')],
       ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
-      ...(FD.extra && FD.extra.evo2 ? [['Evo2', modelScore(v, 'evo2')]] : []),
+      ...(FD.sec ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
       ...(FD.sec ? [
         ['ESM2', modelScore(v, 'esm2')],
         ['ESM3', modelScore(v, 'esm3')],
       ] : []),
-      ...(FD.extra && FD.extra.esmc ? [['ESM-C', modelScore(v, 'esmc')]] : []),
+      ...(FD.sec ? [['ESM-C', modelScore(v, 'esmc')]] : []),
     ];
     if (!scores.some(([, value]) => value != null)) return 'n/a';
     //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
@@ -1031,7 +1031,6 @@
     FD.iupred = null;
     FD.sites = null;
     FD.trackZoom = 1;
-    FD.extra = {evo2:false, esmc:false};
     try {
       /* Passing the dataset as a second argument is backward-compatible in JavaScript:
          older one-argument implementations simply ignore it. */
@@ -1060,8 +1059,6 @@
       /* If the app state did not expose the dataset, actual returned 2026 score fields
          still enable the extra columns. */
       FD.sec = FD.sec || hasSecondaryVariantScores(FD.variants);
-      FD.extra = { evo2: FD.variants.some(v => modelScore(v, 'evo2') != null),
-                   esmc: FD.variants.some(v => modelScore(v, 'esmc') != null) };
 
       FD.carriers = (fn && fn.variants)
         ? Object.fromEntries(fn.variants.map(v => [v.pos+'|'+v.ref+'|'+v.alt, v]))
@@ -1553,7 +1550,7 @@
   /* ---------- variant table: sortable column model ----------
      One entry per <th>, in display order. `get` returns the value the column is
      sorted on (null/undefined => always sorted to the bottom, either direction).
-     `sec` marks the MaizeGDB-2026-only columns, so the header and the row markup
+     `sec` marks the second-generation score columns (PlantCAD2, Evo2, ESM2, ESM3, ESM-C), so the header and the row markup
      stay in sync automatically. `desc1` = first click sorts high→low, which reads
      better for counts/ranks; everything else starts low→high. */
   const PRIO_RANK = { top:4, high:3, moderate:2, medium:2, low:1, modifier:0 };
@@ -1574,7 +1571,7 @@
       get:v => modelScore(v, 'plantcad') },
     { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
       get:v => modelScore(v, 'plantcad2') },
-    { key:'evo2',        label:'Evo2',        type:'num', num:true, extra:'evo2',
+    { key:'evo2',        label:'Evo2',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'evo2') },
     { key:'esm',         label:'ESM1',        type:'num', num:true,
       get:v => modelScore(v, 'esm') },
@@ -1582,7 +1579,7 @@
       get:v => modelScore(v, 'esm2') },
     { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm3') },
-    { key:'esmc',        label:'ESM-C',       type:'num', num:true, extra:'esmc',
+    { key:'esmc',        label:'ESM-C',       type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esmc') },
     { key:'disorder',    label:'IUPred2', type:'num', num:true,
       get:v => { const c = iupredAt(v.resi); return c ? c.disorder : null; } },
@@ -1602,8 +1599,7 @@
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  /* `extra` columns (Evo2, ESM-C: in the rebuilt stores only) show when the gene has a score */
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.extra || (FD.extra && FD.extra[c.extra]))); }
+  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
   function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
@@ -1678,10 +1674,10 @@
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
-      ${FD.extra&&FD.extra.evo2?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
       <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
-      ${FD.extra&&FD.extra.esmc?`<td class="num">${scoreCell(modelScore(v, 'esmc'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esmc'))}</td>`:''}
       <td class="num">${iupredCell(iupredAt(v.resi)?.disorder)}</td>
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>
