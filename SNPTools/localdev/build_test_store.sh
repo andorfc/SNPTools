@@ -10,5 +10,11 @@ PY="${PYTHON_PATH:-python3}"
 mkdir -p "$root/hdf5/version3"
 for f in "$here"/fixtures/zmgrin2026_v1.4_chr*_testregions.vcf.gz; do
   chr="$(basename "$f" | sed -E 's/^zmgrin2026_v1\.4_(chr[0-9]+)_testregions\.vcf\.gz$/\1/')"
-  "$PY" "$root/tools/vcf_to_h5.py" "$f" "$root/hdf5/version3/zmgrin2026_${chr}_impute.h5"
+  out="$root/hdf5/version3/zmgrin2026_${chr}_impute.h5"
+  # never overwrite a full-chromosome store (e.g. the Ceres chr2 build) with the demo cut
+  if [ -f "$out" ] && [ "$(wc -c < "$out")" -gt 50000000 ] && [ "${FORCE:-0}" != 1 ]; then
+    echo "skip $chr: $(basename "$out") is a full store ($(( $(wc -c < "$out") / 1000000 )) MB); FORCE=1 to replace it with the demo cut"
+    continue
+  fi
+  "$PY" "$root/tools/vcf_to_h5.py" "$f" "$out"
 done

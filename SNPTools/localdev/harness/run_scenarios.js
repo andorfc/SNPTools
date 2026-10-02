@@ -54,6 +54,11 @@ async function until(site, expr, ms = 8000){
 (async () => {
   const site = await openSite(ROOT);
   const $ = site.$eval;
+  /* which zmgrin2026 stores are installed: the 3,495-site demo store or a full chromosome */
+  try {
+    R.store = JSON.parse(require('child_process').execFileSync(process.env.PYTHON_PATH || 'python3', ['-c',
+      'import h5py,json,glob,os,sys\nr={}\nfor f in sorted(glob.glob(sys.argv[1]+"/hdf5/version3/zmgrin2026_chr*_impute.h5")):\n  h=h5py.File(f,"r"); r[os.path.basename(f).split("_")[1]]=int(h["POS"].shape[0]); h.close()\nprint(json.dumps(r))', ROOT]).toString());
+  } catch (e) { R.store = {error: String(e.message || e).slice(0, 200)}; }
   R.load = {registry: $('Object.keys(SNPTools.registry)'), nav: $('[...document.querySelectorAll("#nav .navitem")].map(b=>b.textContent.trim().replace(/\\s+/g," "))'),
             datasets: $('Data.datasets().map(d=>d.id)'), zmgrinN: $('Data.accessionsFor("zmgrin2026_imp").length'),
             otherFamilies: $('Object.keys(window.SNP_CATALOG.families)'),
@@ -261,6 +266,30 @@ async function until(site, expr, ms = 8000){
               S.page=1; renderResults(); })()`);
     R.annot[ds] = annotStats(site);
     snapshot(site, 'snpversity_annotation_' + ds, 'SNPVersity - annotation columns, ' + ds + ' (MaizeGDB 2026 INFO, chr2 window)');
+  }
+
+  /* ---------- query timing on a full-chromosome store (chr2), when installed ---------- */
+  if ((R.store || {}).chr2 > 100000){
+    const s5 = await openSite(ROOT); const $t = s5.$eval;
+    const Tm = R.timing = {};
+    const nam = $t('Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)');
+    for (const [name, lo, hi] of [['gene_Zm00001eb067740', 4493424, 4497434], ['region_1Mb', 4000000, 5000000]]){
+      for (const [sel, ids] of [['26_NAM', nam], ['all_933', null]]){
+        const t0 = Date.now();
+        const r = await $t(`Data.queryVariants("zmgrin2026_imp","chr2",${lo},${hi},${ids ? JSON.stringify(ids) : 'Data.accessionsFor("zmgrin2026_imp").map(a=>a.id)'})
+          .then(r=>({rows:r.rows?r.rows.length:0, accs:r.accs?r.accs.length:0, wide:!!r.wide, variants:r.variants||null,
+                     pc1:r.rows?r.rows.filter(x=>x.pc1!=null).length:0}))`);
+        const t1 = Date.now();
+        const php = s5.log.filter(x => x.url === 'processForm.php').slice(-1)[0] || {};
+        Tm[name + '_' + sel] = Object.assign(r, {total_ms: t1 - t0, php_ms: php.ms, vcf_bytes: php.bytes});
+      }
+    }
+    // table render for the 1-Mb x 26 NAM result (what SNPVersity draws)
+    $t(`S.dataset="zmgrin2026_imp"; go("snpversity")`);
+    const t2 = Date.now();
+    await $t(`Data.queryVariants("zmgrin2026_imp","chr2",4000000,5000000,${JSON.stringify(nam)}).then(r=>{S.chr="chr2";S.start=4000000;S.end=5000000;S.results=r;S.page=1;renderResults();})`);
+    Tm.region_1Mb_26_NAM_with_table_ms = Date.now() - t2;
+    s5.window.close();
   }
 
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));

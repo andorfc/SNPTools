@@ -57,7 +57,11 @@ def expected(path, status):
     return n, f
 
 
-SETS = {'zmgrin2026_imp': f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
+# chr2 query source: the demo store (fixture) or a full chr2 store (its window cut from the
+# annotated chr2 release VCF on Ceres), whichever run_scenarios.js found installed
+FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
+SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
+                          else f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
         'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',
         'mgdb2026_hc': f'{FX}/mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz'}
 summary = {}
@@ -109,6 +113,7 @@ for c in ('chr1', 'chr2', 'chr5', 'chr7', 'chr8', 'chr9', 'chr10'):
                     bad += 1; print('esm', k, key, I.get(key), r[col])
         elif any(x in I for x in ('ESM1_score', 'ESM2_score', 'ESM3_score')):
             bad += 1; print('esm on non-missense', k)
+print('chr2 store:', 'full chromosome' if FULL_CHR2 else 'demo fixture')
 print('annotation columns:', json.dumps(summary, ensure_ascii=False))
 print(f'GRIN-linked INFO: {nsite} sites (SnpEff fields, MAF), {nesm} missense sites with ESM1/2/3; mismatches={bad}')
 sys.exit(1 if bad else 0)

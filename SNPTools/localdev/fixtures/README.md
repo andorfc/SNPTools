@@ -25,6 +25,12 @@ and no PlantCAD scores (pending). Inputs for re-running it are in `annotation/`:
         --esm annotation/grz2023_missense_esm_testregions.tsv.gz --out /tmp/a.vcf.gz && mv /tmp/a.vcf.gz $f
     done
 
+`chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz`: the GWAS window cut with
+bcftools 1.20 from the full annotated chr2 release VCF on Ceres
+(`grz2023/snptools_build/chr2/zmgrin2026_v1.4_chr2_933.annotated.vcf.gz`), used by the checks when
+the full chr2 store is installed. Same 249 sites and genotypes as the demo fixture; its INFO
+adds plantcad1/plantcad2 (158 SNPs), evo2 (120) and ESMC_score (10), and writes MAF 0 as "0".
+
 `annotation/schnable_scored_testregions.sites.vcf.gz`: columns 1-8 of Atlas
 `/90daydata/maizegdb/carson/grz2023_scoring/protein/vcf/chr<N>_schnable_scored.vcf.gz` in the
 fixture windows. `annotation/grz2023_missense_esm_testregions.tsv.gz`: the 147 rows of

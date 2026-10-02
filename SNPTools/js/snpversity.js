@@ -1072,7 +1072,12 @@ const ANNOT_TT={
   esm3:'ESM3 protein language-model score (MaizeGDB 2026 datasets).'};
 const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,esm1:1,esm2:1,esm3:1};
 function annotFields(){
-  return (Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
+  const F=(Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
+  // A 'pending' column is shown as soon as the queried store carries it (e.g. PlantCAD merged
+  // for one chromosome first); it stays pending (empty + note) where the store has no value.
+  const rows=(S.results&&S.results.rows)||[];
+  return F.map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
+    ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome; sites without a score show N/A.'}) : f);
 }
 function annotFieldMap(){ const m={}; annotFields().forEach(f=>{m[f.key]=f;}); return m; }
 function annotHeaderHTML(){
