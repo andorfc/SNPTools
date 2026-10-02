@@ -1,0 +1,14 @@
+{
+  "name": "snptools-localdev-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Headless (jsdom) end-to-end checks of SNPTrait and SNPGeo against the local PHP backend",
+  "scripts": {
+    "test": "node run_scenarios.js ../.. ../out && python3 check_snptrait.py ../out/results.json ../.. && python3 check_snpgeo_counts.py ../out/results.json ../fixtures/zmgrin2026_v1.3_chr9_testregions.vcf.gz ../.."
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "d3": "^5.16.0",
+    "jsdom": "^24.1.3"
+  }
+}
