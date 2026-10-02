@@ -6,17 +6,14 @@
  *  real .h5 store, writes a VCF, and returns its path. We then fetch that
  *  VCF and parse it into the exact row shape the tools already expect.
  *
- *  Accession IDs come from accessions.real.js (window.SNP_REAL_ACCESSIONS),
- *  which holds the actual column names inside the .h5 files, so a selection
- *  maps to real HDF5 columns.
+ *  Accession IDs come from the accession catalogue (window.SNP_CATALOG, or the
+ *  older flat window.SNP_REAL_ACCESSIONS), which holds the actual column
+ *  names inside the .h5 files, so a selection maps to real HDF5 columns.
  *
- *  PFAM / protein-domain data is not in the HDF5 yet — the "Domain" column
- *  is filled with "N/A" until that separate data structure is built.
- *
- *  SNPImpact / SNPFold still use demo generators (they are not backed by
- *  these .h5 files); those bodies are left untouched below.
- *
- *  Depends on rnd() and pick() from core.js.
+ *  The "Domain" column reads Pfam blocks by genomic position from
+ *  data/domains/ (ensureDomains / domainAt). SNPImpact ranks the queried rows
+ *  (rankImpact); SNPFold and SNPFunction read one gene's rows (geneFunction).
+ *  Nothing in this layer fabricates data.
  * ===================================================================== */
 const Data = (function () {
 
@@ -37,6 +34,9 @@ const Data = (function () {
     // accessions "table work" budget below (TABLE_WORK_MAX / TABLE_ROWS_MAX);
     // this just catches an absurd region.
     tableMaxSpan : 20_000_000,
+    // The largest request the server builds (variants x accessions): h5_to_vcf.py's
+    // SNPTOOLS_MAX_CELLS default. Only used to warn in the run bar; the server decides.
+    buildCellsMax : 2e9,
   };
 
   /* ---------------- datasets (UI cards) ----------------
@@ -286,9 +286,22 @@ const Data = (function () {
     'Zm00001eb374090','Zm00001eb067740','Zm00001eb374230',
     'Zm00001eb056510','Zm00001eb233650','Zm00001eb313510',
   ];
+  /* One lookup per gene id for the session: SNPFold alone asked three or four times per gene,
+     and every ask unserializes the whole gene store on the server. A failed lookup is not
+     kept, so it is retried next time. Callers get their own copy of the answer. */
+  const _geneLookups = new Map();
   async function lookupGene(id){
     id = (id || '').trim();
     if (!id) return null;
+    if (!_geneLookups.has(id)){
+      const p = _lookupGeneUncached(id);
+      _geneLookups.set(id, p);
+      p.catch(() => { _geneLookups.delete(id); });
+    }
+    const g = await _geneLookups.get(id);
+    return g ? Object.assign({}, g) : null;
+  }
+  async function _lookupGeneUncached(id){
     const url = `${CFG.geneEndpoint}?geneModelId=${encodeURIComponent(id)}`;
     const resp = await fetch(url, {cache:'no-store'});
     if (!resp.ok) throw new Error('Gene lookup failed (HTTP ' + resp.status + ')');
@@ -546,7 +559,7 @@ const Data = (function () {
     if (!m) return 0;
     return parseFloat(m[1]) * ({K:1e3, M:1e6, G:1e9}[m[2].toUpperCase()] || 1);
   }
-  /* estimateResult(datasetId, spanBp, nAccessions) -> {estVariants, willDownload} */
+  /* estimateResult(datasetId, spanBp, nAccessions) -> {estVariants, willDownload, overLimit} */
   function estimateResult(datasetId, spanBp, nAccessions){
     const d = DATASETS.find(x => x.id === datasetId);
     const density = d ? siteCount(d.sites) / GENOME_LEN : 0;
@@ -554,7 +567,8 @@ const Data = (function () {
     const willDownload = spanBp > CFG.tableMaxSpan
       || estVariants > TABLE_ROWS_MAX
       || estVariants * Math.max(1, nAccessions) > TABLE_WORK_MAX;
-    return {estVariants, willDownload};
+    const overLimit = estVariants * Math.max(1, nAccessions) > CFG.buildCellsMax;
+    return {estVariants, willDownload, overLimit};
   }
 
   /**
@@ -653,56 +667,7 @@ const Data = (function () {
   }
 
   /* =============================================================
-   *  SNPImpact query  (DEMO — not backed by these .h5 files)
-   * ============================================================= */
-  const BASES = ['A','C','G','T'];
-  const CONSEQ = [
-    {t:'Loss-of-function', cls:'lof',      base:-8.0},
-    {t:'Loss-of-domain',  cls:'lod',      base:-6.0},
-    {t:'Splice',          cls:'splice',   base:-3.0},
-    {t:'Missense',        cls:'missense', base:-1.4},
-    {t:'In-frame deletion',cls:'indel',   base:-0.6},
-    {t:'Synonymous',      cls:'syn',      base: 0.3},
-  ];
-  const DOM_NAMES = ['Kinase domain','NB-ARC','bZIP','NAC domain','WRKY','DNA-binding domain','PPR repeat','F-box'];
-  function priorityFromScore(s){ return s<=-7 ? 'TOP' : s<=-4 ? 'HIGH' : s<=-1 ? 'MODERATE' : 'LOW'; }
-
-  function queryImpact(opts){
-    opts = opts || {};
-    const out = [];
-    for (let i=0; i<46; i++){
-      const c = pick(CONSEQ);
-      const plantcad = +(c.base + rnd(-2,2)).toFixed(1);
-      const esm      = +(c.base*0.72 + rnd(-1.5,1.5)).toFixed(1);
-      const combined = +((plantcad + esm)/2).toFixed(2);
-      const hasDom   = (c.cls==='lod' || c.cls==='missense' || Math.random()<.35);
-      const aa = 90 + Math.floor(Math.random()*520);
-      const exons = 4 + Math.floor(Math.random()*4);
-      const affectedExon = 1 + Math.floor(Math.random()*exons);
-      out.push({
-        id:'v'+i,
-        gene:'Zm00001eb'+(100000+Math.floor(Math.random()*899999)),
-        variant: c.cls==='lof'      ? 'p.'+pick(['W','Q','R','E','K'])+aa+'*'
-               : c.cls==='missense' ? 'p.'+pick(['A','G','R','D','V'])+aa+pick(['R','K','L','P','S'])
-               : c.cls==='lod'      ? 'Δ Exon '+affectedExon
-               : c.cls==='splice'   ? 'splice-site'
-               : c.cls==='indel'    ? 'deletion'
-               :                      'c.'+aa+pick(BASES)+'>'+pick(BASES),
-        consequence:c.t, consClass:c.cls,
-        domain: hasDom ? pick(DOM_NAMES) : '—',
-        plantcad, esm, combined,
-        priority: priorityFromScore(combined),
-        percentile: Math.max(1, Math.min(99, Math.round(50 - combined*5 + rnd(-4,4)))),
-        protLen: 280 + Math.floor(Math.random()*520),
-        exons, affectedExon, aa,
-      });
-    }
-    out.sort((a,b) => a.combined - b.combined);
-    return out;
-  }
-
-  /* =============================================================
-   *  SNPFold — protein structure + coding variants (DEMO curated).
+   *  SNPFold — protein structure files + coding variants.
    * ============================================================= */
   function structureFor(gene){ return (window.SNPFOLD_STRUCT||{})[gene] || null; }
   function pdbFor(gene){ return (window.SNPFOLD_PDB||{})[gene] || null; }
@@ -825,8 +790,14 @@ const Data = (function () {
     let res;
     try { res = await queryVariants(dataset, g.chr, g.start, g.end, ids, {forceTable:true}); }
     catch (e){ console.warn('queryFoldVariants:', e && e.message); return []; }
+    return foldVariantsFromRows(res.rows, gene);
+  }
+  /* The coding variants SNPFold draws, from the rows of a gene's interval. They are site-level
+     (INFO only), so any accession set gives the same list: geneFunction() builds it from its
+     full-panel rows, which spares SNPFold a second query of the same interval. */
+  function foldVariantsFromRows(rows, gene){
     const out = [];
-    for (const r0 of (res.rows || [])){
+    for (const r0 of (rows || [])){
       // this gene's consequence at the site, even when SnpEff lists another gene first
       const r = gene ? (rowForGene(r0, gene) || ((!r0.gene || r0.gene === '—') ? r0 : null)) : r0;
       if (!r) continue;
@@ -1031,6 +1002,7 @@ const Data = (function () {
                 meanEvo2:_avg(variants.map(v=>v.evo2).filter(x=>x!=null)),
                 meanEsmc:_avg(variants.map(v=>v.esmc).filter(x=>x!=null)), afSpectrum },
       damaging, koGenotypes, koLines: koLines.size, variants,
+      foldVariants: foldVariantsFromRows(res.rows, gene),   // SNPFold's list, same rows
     };
   }
 
@@ -1059,7 +1031,6 @@ const Data = (function () {
     accessionById,
     queryVariants,          // now async (returns a Promise)
     queryVariantsByGene,    // async: gene id -> queryVariants() over the gene interval
-    queryImpact,
     structureFor,
     pdbFor,
     ensureStructure,

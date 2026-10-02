@@ -18,6 +18,17 @@ Python loop over every position in the file.
 The INFO column is stored verbatim in the HDF5 and passed straight through,
 so every annotation key -- GENEMODEL, TYPE, EFFECT, SUB, MQ, CVP, MAXR2,
 MAF, plantcad1/2_score, ESM1/2/3_score -- survives unchanged.
+
+Memory is bounded by a block of rows, not by the request: the fixed columns
+and the genotypes are read one block at a time (blocks aligned to the
+store's 65,536-row chunks). Reading the whole slice at once held every
+column for the whole interval -- 7.1 GB for chromosome 2 with only 5 lines,
+the INFO column alone padded to its longest entry over 5.18 M rows.
+
+A request larger than SNPTOOLS_MAX_CELLS (variants x accessions, default
+2e9, about 8 GB of genotype text) is refused before anything is written:
+the script prints "TOO_LARGE: ..." and exits 3, and processForm.php passes
+the message on.
 """
 import gzip
 import h5py
@@ -42,12 +53,22 @@ if os.path.isfile(arg5):
 else:
     json_string = arg5
 genome_list = json.loads(json_string)
+if not isinstance(genome_list, list):
+    genome_list = []
+# ids are column names: anything that is not a string becomes a missing column's name
+genome_list = [g if isinstance(g, str) else str(g) for g in genome_list]
 
 # HDF5 genotype code -> VCF genotype string. Anything outside 0..3 is clamped
 # to 3 ('./.'), matching the old dict-with-default behaviour.
 GT_LUT = np.array([b'0/0', b'1/0', b'1/1', b'./.'], dtype='S3')
 FIXED_COLS = ['CHROM', 'POS', 'REF', 'ALT', 'QUAL', 'INFO']
-ROW_CHUNK = 20000
+ROW_CHUNK = 20000                 # rows per write (string assembly), fewer for wide requests
+GT_BLOCK_CELLS = 50_000_000       # genotype cells read at once (~50 MB of int8)
+MAX_BLOCK_CHUNKS = 4              # and at most 4 store chunks (262,144 rows) per read
+try:
+    MAX_CELLS = int(float(os.environ.get('SNPTOOLS_MAX_CELLS') or 2e9))
+except ValueError:
+    MAX_CELLS = int(2e9)
 current_date = datetime.date.today().strftime('%Y%m%d')
 
 
@@ -59,50 +80,92 @@ def as_bytes_col(arr):
 
 
 # ---------------------------------------------------------------------------
-# Read the requested slice out of the HDF5 store
+# Locate the requested slice in the HDF5 store
 # ---------------------------------------------------------------------------
-with h5py.File(hdf5_file_path, 'r') as hdf5_file:
-    if 'POS' not in hdf5_file:
-        print("No 'POS' dataset found in the file.")
-        sys.exit(1)
+# No chunk cache: blocks are cut on chunk boundaries, so each chunk is read once, and the
+# default 1 MB cache per dataset held up to ~1 GB for a full panel's 933 genotype columns.
+hdf5_file = h5py.File(hdf5_file_path, 'r', rdcc_nbytes=0)
+if 'POS' not in hdf5_file:
+    print("No 'POS' dataset found in the file.")
+    sys.exit(1)
 
-    pos_raw = hdf5_file['POS'][:]
-    try:
-        pos_data = pos_raw.astype(np.int64)
-    except (ValueError, TypeError):
-        pos_data = np.array(
-            [int(p.decode('utf-8')) if isinstance(p, bytes) else int(p) for p in pos_raw],
-            dtype=np.int64,
-        )
+pos_raw = hdf5_file['POS'][:]
+try:
+    pos_data = pos_raw.astype(np.int64)
+except (ValueError, TypeError):
+    pos_data = np.array(
+        [int(p.decode('utf-8')) if isinstance(p, bytes) else int(p) for p in pos_raw],
+        dtype=np.int64,
+    )
+del pos_raw
 
-    lower_index = int(np.searchsorted(pos_data, lower_bound, side='left'))
-    upper_index = int(np.searchsorted(pos_data, upper_bound, side='right'))
-    n_rows = upper_index - lower_index
+lower_index = int(np.searchsorted(pos_data, lower_bound, side='left'))
+upper_index = int(np.searchsorted(pos_data, upper_bound, side='right'))
+n_rows = upper_index - lower_index
+del pos_data
 
-    if n_rows == 0:
-        print("No data found in the specified position range.")
-        sys.exit(0)
-
-    fixed_cols = {c: as_bytes_col(hdf5_file[c][lower_index:upper_index]) for c in FIXED_COLS}
-
-    # Only read columns that actually exist in this file; a stray/foreign
-    # accession id in the request is filled with './.' rather than aborting.
-    present = [g for g in genome_list if g in hdf5_file]
-    missing = [g for g in genome_list if g not in hdf5_file]
-    if missing:
-        print(f"Note: {len(missing)} requested accession(s) not in {hdf5_file_path}; "
-              f"filling with ./.  e.g. {missing[:5]}")
-
-    # Genotype code matrix (n_rows, n_accessions) in request order.
-    gt_codes = np.empty((n_rows, len(genome_list)), dtype=np.int8)
-    for k, g in enumerate(genome_list):
-        gt_codes[:, k] = hdf5_file[g][lower_index:upper_index] if g in hdf5_file else 3
-    np.clip(gt_codes, 0, 3, out=gt_codes)
+if n_rows == 0:
+    print("No data found in the specified position range.")
+    sys.exit(0)
 
 n_acc = len(genome_list)
-ID_COL = np.full(n_rows, b'.', dtype='S1')
-FILTER_COL = np.full(n_rows, b'.', dtype='S1')
-FORMAT_COL = np.full(n_rows, b'GT', dtype='S2')
+if n_rows * max(1, n_acc) > MAX_CELLS:
+    print(f"TOO_LARGE: {n_rows:,} variants x {n_acc:,} accessions is more than this server builds "
+          f"in one request ({MAX_CELLS:,} genotype cells). Choose a smaller interval or fewer accessions.")
+    sys.exit(3)
+
+
+def genotype_dataset(g):
+    """The store's genotype column for accession id g, or None. The fixed columns (POS,
+    INFO, ...) and anything that is not a top-level dataset are not accessions."""
+    if g in FIXED_COLS or '/' in g or g not in hdf5_file:
+        return None
+    d = hdf5_file[g]
+    return d if isinstance(d, h5py.Dataset) else None
+
+
+# A stray/foreign accession id in the request is filled with './.' rather than aborting.
+gt_dsets = [genotype_dataset(g) for g in genome_list]
+missing = [g for g, d in zip(genome_list, gt_dsets) if d is None]
+if missing:
+    print(f"Note: {len(missing)} requested accession(s) not in {hdf5_file_path}; "
+          f"filling with ./.  e.g. {missing[:5]}")
+fixed_dsets = {c: hdf5_file[c] for c in FIXED_COLS}
+
+# Rows per read block: whole store chunks (65,536 rows in the vcf_to_h5.py stores), as many
+# as GT_BLOCK_CELLS genotype cells allow, from 1 to MAX_BLOCK_CHUNKS of them.
+STORE_CHUNK = (hdf5_file['POS'].chunks or (65536,))[0]
+BLOCK = STORE_CHUNK * min(MAX_BLOCK_CHUNKS, max(1, GT_BLOCK_CELLS // (STORE_CHUNK * max(1, n_acc))))
+
+
+def blocks():
+    """(a, b) store-index ranges covering [lower_index, upper_index), cut at multiples of
+    BLOCK so each store chunk is decompressed once."""
+    a = lower_index
+    while a < upper_index:
+        b = min(upper_index, (a // BLOCK + 1) * BLOCK)
+        yield a, b
+        a = b
+
+
+def read_block(a, b):
+    """Fixed columns as stored and the genotype code matrix (rows, accessions) in request
+    order. The fixed columns become fixed-width bytes per write chunk, not per block: the
+    conversion pads every value to the longest INFO in the slice it is given."""
+    cols = {c: d[a:b] for c, d in fixed_dsets.items()}
+    gt = np.empty((b - a, n_acc), dtype=np.int8)
+    for k, d in enumerate(gt_dsets):
+        gt[:, k] = d[a:b] if d is not None else 3
+    np.clip(gt, 0, 3, out=gt)
+    return cols, gt
+
+
+# A write chunk's strings take about rows x (4 bytes per accession + the INFO); keep the
+# genotype text of one chunk near 40 MB, so a full panel writes ~10,000 rows at a time.
+ROW_CHUNK = max(1000, min(ROW_CHUNK, 40_000_000 // (4 * max(1, n_acc) + 512)))
+ID_COL = np.full(ROW_CHUNK, b'.', dtype='S1')
+FILTER_COL = np.full(ROW_CHUNK, b'.', dtype='S1')
+FORMAT_COL = np.full(ROW_CHUNK, b'GT', dtype='S2')
 
 
 # ---------------------------------------------------------------------------
@@ -174,27 +237,31 @@ def _open(path, mode):
 with _open(output_vcf_path, 'wb') as vcf_file:
     vcf_file.write(header_text())
 
-    for a in range(0, n_rows, ROW_CHUNK):
-        b = min(a + ROW_CHUNK, n_rows)
-        m = b - a
+    for blo, bhi in blocks():
+        fixed_cols, gt_codes = read_block(blo, bhi)
+        for a in range(0, bhi - blo, ROW_CHUNK):
+            b = min(a + ROW_CHUNK, bhi - blo)
+            m = b - a
 
-        # 9 fixed columns, tab-joined: only 9 vectorized adds.
-        line = fixed_cols['CHROM'][a:b]
-        for col in (fixed_cols['POS'][a:b], ID_COL[a:b], fixed_cols['REF'][a:b],
-                    fixed_cols['ALT'][a:b], fixed_cols['QUAL'][a:b], FILTER_COL[a:b],
-                    fixed_cols['INFO'][a:b], FORMAT_COL[a:b]):
-            line = np.char.add(np.char.add(line, b'\t'), col)
+            # 9 fixed columns, tab-joined: only 9 vectorized adds.
+            fc = {c: as_bytes_col(v[a:b]) for c, v in fixed_cols.items()}
+            line = fc['CHROM']
+            for col in (fc['POS'], ID_COL[:m], fc['REF'], fc['ALT'], fc['QUAL'], FILTER_COL[:m],
+                        fc['INFO'], FORMAT_COL[:m]):
+                line = np.char.add(np.char.add(line, b'\t'), col)
 
-        # Genotype block: one vectorized LUT map over the whole (m, n_acc)
-        # slice, prefix each cell with a tab, then reinterpret each row's
-        # contiguous 4-byte cells ('\t' + 'x/y') as a single string.
-        if n_acc:
-            cells = np.ascontiguousarray(np.char.add(b'\t', GT_LUT[gt_codes[a:b]]))
-            gt_lines = cells.view(f'S{4 * n_acc}').reshape(m)
-            line = np.char.add(line, gt_lines)
+            # Genotype block: one vectorized LUT map over the whole (m, n_acc)
+            # slice, prefix each cell with a tab, then reinterpret each row's
+            # contiguous 4-byte cells ('\t' + 'x/y') as a single string.
+            if n_acc:
+                cells = np.ascontiguousarray(np.char.add(b'\t', GT_LUT[gt_codes[a:b]]))
+                gt_lines = cells.view(f'S{4 * n_acc}').reshape(m)
+                line = np.char.add(line, gt_lines)
 
-        vcf_file.write(b'\n'.join(line.tolist()))
-        vcf_file.write(b'\n')
+            vcf_file.write(b'\n'.join(line.tolist()))
+            vcf_file.write(b'\n')
+        del fixed_cols, gt_codes
 
+hdf5_file.close()
 print(f"variants: {n_rows}")
 print(f"VCF data has been saved to {output_vcf_path}")

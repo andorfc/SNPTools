@@ -99,6 +99,13 @@ const TOOLS = {
 /* ================= SHARED HELPERS ================= */
 function rnd(a,b){return a+Math.random()*(b-a)}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
+/* n items drawn uniformly at random, without replacement (a partial Fisher-Yates shuffle).
+   arr.sort(()=>Math.random()-.5) is not a uniform shuffle: it leans toward the input order. */
+function randomSample(arr, n){
+  const a=arr.slice(), k=Math.max(0, Math.min(n, a.length));
+  for(let i=0;i<k;i++){ const j=i+Math.floor(Math.random()*(a.length-i)); const t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a.slice(0, k);
+}
 
 /* ---- MaizeGDB gene model links — shared across tools ---- */
 const MAIZEGDB_GENE_BASE = 'https://www.maizegdb.org/gene_center/gene/';

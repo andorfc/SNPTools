@@ -182,6 +182,16 @@ as pending.
    MaizeGDB host. Offline, or if MaizeGDB fails, the card says so and the old GO/KEGG lists from
    `data/function/annotations/` are shown instead.
 
+**Server limits and VCF clean-up (patch 0038).** `h5_to_vcf.py` refuses a request of more than
+`SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933
+GRIN-linked lines) before writing anything; SNPVersity's run bar warns ahead of time and the
+failed-query card shows the server's message. It now reads the store in chunk-aligned blocks with
+no HDF5 chunk cache, so memory no longer scales with the interval: chr2 whole for 5 lines peaked at
+7.1 GB and now ~1.0 GB; chr2:100-130 Mb for 933 lines 2.9 GB -> 0.6 GB (byte-identical VCFs).
+`processForm.php` deletes its own `vcf/snpv_*` files older than `SNPTOOLS_VCF_TTL_HOURS` (default
+24; 0 turns it off), at most once every 10 minutes (`vcf/.last_prune`). Running the harness or the
+local server therefore clears day-old query VCFs from `vcf/`.
+
 ## 5. Headless checks (no browser)
 
     cd ~/Documents/code/SNPTools_maize_port/SNPTools

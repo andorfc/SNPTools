@@ -63,6 +63,17 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    Evo2 / ESM-C cells against the INFO.
 10. With a full chr2 store installed: the chr2 checks use its window
    (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
+11. The code-review fixes (patch 0038), `check_review_fixes.py`: SNPTrait's Random % with no line
+   visible; `randomSample()` drawing distinct ids flat over catalogue order; a SNPVersity result
+   keeping its queried region (CHR column, JBrowse link, heading, Send to SNPTree) after the form
+   moves to another chromosome; the newer of two Builds, two SNPFunction genes, two SNPGeo searches
+   and two SNPFold genes winning when the older answers last (stubbed data calls resolved out of
+   order, since PHP runs synchronously here); a SNPGeo search answered after leaving SNPGeo not
+   drawing over SNPVersity; one variant query and one gene lookup per SNPFold gene. Then, in a
+   temporary site root (the real `vcf/` is not pruned): `processForm.php` refusing a request over
+   `SNPTOOLS_MAX_CELLS`, keeping string ids once each, filling a reserved name (INFO) with ./.,
+   never reusing a file name, ignoring a path in `outName`, refusing `start=1e5`, pruning its own
+   VCFs past the TTL; `ibsCompare.php` rebuilding a torn `.offidx`.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.

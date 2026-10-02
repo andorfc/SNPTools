@@ -40,6 +40,16 @@ $VERSION_PATH = './hdf5/version3/';
 // 3) Where VCFs are written (must be web-served AND writable). Matches CFG.vcfDir in data.js.
 $VCF_DIR = './vcf/';
 
+// 4) How long a built VCF stays downloadable. Every query (and every SNPGeo / SNPFunction /
+//    SNPFold gene view) writes one; older ones are removed, at most once every 10 minutes.
+//    SNPTOOLS_VCF_TTL_HOURS overrides the default of 24 hours; 0 turns the clean-up off.
+$VCF_TTL_HOURS = getenv('SNPTOOLS_VCF_TTL_HOURS');
+$VCF_TTL_HOURS = ($VCF_TTL_HOURS === false || trim($VCF_TTL_HOURS) === '') ? 24.0 : (float) $VCF_TTL_HOURS;
+
+// 5) The largest request h5_to_vcf.py builds (variants x accessions) is SNPTOOLS_MAX_CELLS,
+//    read by the script itself (default 2e9). A list longer than this many ids is refused here.
+$MAX_IDS = 20000;
+
 /* ---------------------------------------------------------------------
  *  INPUT
  * ------------------------------------------------------------------- */
@@ -55,9 +65,10 @@ $dataset       = isset($_POST['dataSet'])   ? $_POST['dataSet']   : '';
 $genotypesJson = isset($_POST['genotypes']) ? $_POST['genotypes'] : '[]';
 $outName       = isset($_POST['outName'])   ? $_POST['outName']   : '';
 
-// numeric interval
-if (!is_numeric($start) || !is_numeric($end)) {
-    echo json_encode(array('status' => 'error', 'message' => 'Invalid interval (start/end must be numeric).'));
+// integer interval (is_numeric() also passed "1e5" and "2.5", which the script cannot read)
+$start = trim((string) $start); $end = trim((string) $end);
+if (!preg_match('/^-?[0-9]{1,12}$/', $start) || !preg_match('/^-?[0-9]{1,12}$/', $end)) {
+    echo json_encode(array('status' => 'error', 'message' => 'Invalid interval (start/end must be whole numbers).'));
     exit;
 }
 // chromosome token must look like chr10 (used verbatim in the .h5 filename)
@@ -106,12 +117,17 @@ if (!is_writable($VCF_DIR)) {
         'message' => 'VCF directory is not writable: ' . $VCF_DIR));
     exit;
 }
+prune_old_vcfs($VCF_DIR, $VCF_TTL_HOURS);
+
 /* Output is gzip-compressed (.vcf.gz) — genotype text compresses ~15-20x.
  * h5_to_vcf.py writes gzip transparently when the path ends in .gz, and
- * data.js inflates the response with DecompressionStream. */
-$base = basename($outName ? $outName : ('snpv_' . time() . '_' . mt_rand() . '.vcf.gz'));
-if (substr($base, -7) !== '.vcf.gz') {
-    $base = preg_replace('/\.vcf(\.gz)?$/', '', $base) . '.vcf.gz';
+ * data.js inflates the response with DecompressionStream.
+ * The browser proposes a name (snpv_<time>_<random>_<start>_<end>.vcf.gz); it is used only
+ * when it has that shape and names no existing file, so a request can never overwrite
+ * another query's VCF. Otherwise the server names the file. */
+$base = basename((string) $outName);
+if (!preg_match('/^snpv_[A-Za-z0-9_]{1,120}\.vcf\.gz$/', $base) || file_exists(rtrim($VCF_DIR, '/') . '/' . $base)) {
+    $base = 'snpv_' . time() . '_' . bin2hex(random_bytes(8)) . '.vcf.gz';
 }
 $vcf_path = rtrim($VCF_DIR, '/') . '/' . $base;
 
@@ -120,6 +136,13 @@ $vcf_path = rtrim($VCF_DIR, '/') . '/' . $base;
  * ------------------------------------------------------------------- */
 $genotypesArray = json_decode($genotypesJson);
 if (!is_array($genotypesArray)) { $genotypesArray = array(); }
+// column names only: strings, each once, in the order given
+$genotypesArray = array_values(array_unique(array_filter($genotypesArray, 'is_string')));
+if (count($genotypesArray) > $MAX_IDS) {
+    echo json_encode(array('status' => 'error',
+        'message' => 'Too many accessions in one request (' . count($genotypesArray) . '; at most ' . $MAX_IDS . ').'));
+    exit;
+}
 
 /* The accession list is handed to Python through a sidecar JSON file, not
  * as a command-line argument. Windows' escapeshellarg() strips '"' (and
@@ -156,6 +179,13 @@ if (is_file($vcf_path)) {
         'message'  => 'VCF written',
         'output'   => $output,
     ));
+} else if ($output !== null && preg_match('/^TOO_LARGE:\s*(.+)$/m', $output, $tl)) {
+    // Over the server's build limit (h5_to_vcf.py checks variants x accessions first).
+    echo json_encode(array(
+        'status'  => 'error',
+        'message' => 'This query is too large to build here: ' . trim($tl[1]),
+        'tooLarge'=> true,
+    ));
 } else if ($output !== null && strpos($output, 'No data found in the specified position range') !== false) {
     // Python ran fine, the interval simply contained no variants.
     echo json_encode(array(
@@ -171,5 +201,23 @@ if (is_file($vcf_path)) {
         'command' => $command,
         'output'  => ($output === null ? '(no output — check that $PYTHON_PATH is correct and executable)' : $output),
     ));
+}
+
+/* Remove VCFs (and stray accession lists) older than $ttlHours from the output folder. Runs
+ * at most once every 10 minutes, marked by the folder's .last_prune file. Only names this
+ * endpoint writes are touched. */
+function prune_old_vcfs($dir, $ttlHours) {
+    if ($ttlHours <= 0) return;
+    $dir = rtrim($dir, '/');
+    $mark = $dir . '/.last_prune';
+    if (is_file($mark) && filemtime($mark) > time() - 600) return;
+    @touch($mark);
+    $cutoff = time() - (int) round($ttlHours * 3600);
+    foreach ((array) @scandir($dir) as $f) {
+        if (!preg_match('/^snpv_[A-Za-z0-9_]+\.vcf(\.gz)?(\.acc\.json)?$/', $f)) continue;
+        $p = $dir . '/' . $f;
+        $m = @filemtime($p);
+        if ($m !== false && $m < $cutoff) @unlink($p);
+    }
 }
 ?>

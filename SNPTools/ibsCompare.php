@@ -89,15 +89,22 @@ if ($pos === false) {
         'error' => 'Focal id not found in ' . $IDS)); exit;
 }
 
+/* The index is written to a temporary file and renamed into place, so a request reading
+   it while another builds it sees the old index or the whole new one, never half of one;
+   an index that does not read back as an array is ignored and rebuilt. */
 function line_offsets($csv) {
     $idx = $csv . '.offidx';
     if (is_file($idx) && filemtime($idx) >= filemtime($csv)) {
-        return unserialize(file_get_contents($idx));
+        $offs = @unserialize(file_get_contents($idx), array('allowed_classes' => false));
+        if (is_array($offs)) return $offs;
     }
     $offs = array(); $fh = fopen($csv, 'rb'); $p = 0;
     while (($l = fgets($fh)) !== false) { $offs[] = $p; $p = ftell($fh); }
     fclose($fh);
-    @file_put_contents($idx, serialize($offs));
+    $tmp = $idx . '.' . getmypid() . '.' . mt_rand() . '.tmp';
+    if (@file_put_contents($tmp, serialize($offs)) !== false) {
+        if (!@rename($tmp, $idx)) @unlink($tmp);
+    }
     return $offs;
 }
 function read_row($csv, $i) {

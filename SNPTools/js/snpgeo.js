@@ -158,6 +158,7 @@ function renderGeo(page){
   // Load GeoJSON (and the admin-1 layer when the North America view is active) and render
   loadCountriesGeoJSON(() => {
     const draw = () => {
+      if (S.tool !== 'snpgeo' || !document.getElementById('geoMap')) return;   // left SNPGeo while the map layers loaded
       geoRenderTable();
       geoRenderMap();
       geoRenderOverview();   // right pane opens on the country overview
@@ -172,6 +173,14 @@ if (typeof SNPTools !== 'undefined' && SNPTools.register) {
 }
 
 /* ================= GENE LOOKUP ================= */
+/* A gene query can take seconds. Only the newest one, made while SNPGeo is still the
+   page on screen, may show its result: an older one finishing late, or one finishing after
+   the user moved to another tool, is dropped (it drew the map over that tool before). */
+let GEO_LOOKUP_SEQ = 0;
+function geoIsCurrent(seq){
+  return seq === GEO_LOOKUP_SEQ && typeof S !== 'undefined' && S.tool === 'snpgeo'
+    && !!document.getElementById('geoGeneInput');
+}
 async function geoLookupGene(){
   const inp = document.getElementById('geoGeneInput');
   const gene = inp ? inp.value.trim() : '';
@@ -183,6 +192,7 @@ async function geoLookupGene(){
   }
   
   if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Searching...</span>';
+  const seq = ++GEO_LOOKUP_SEQ;
   
   try {
     // Query the backend for gene coordinates and variants.
@@ -194,6 +204,7 @@ async function geoLookupGene(){
     // uses for whole-dataset queries).
     const allIds = (Data.accessionsFor(S.dataset) || []).map(a => a.id);
     const result = await Data.queryVariantsByGene(S.dataset, gene, allIds);
+    if (!geoIsCurrent(seq)) return;
 
     // Too many variants x samples for an in-browser table (Data.queryVariants
     // returns wide:true and no rows): say so and offer the VCF instead of
@@ -226,14 +237,15 @@ async function geoLookupGene(){
     
     if (statusEl) statusEl.innerHTML = `<span style="color:#10b981">${result.rows.length} variants found</span>`;
     
-    // Re-render SNPGeo with results
+    // Re-render SNPGeo with results (unless another search or another tool took over meanwhile)
     setTimeout(() => {
       const page = document.querySelector('.page');
-      if (page) renderGeo(page);
+      if (page && geoIsCurrent(seq)) renderGeo(page);
     }, 200);
     
   } catch (err){
     console.error('[SNPGeo] Gene lookup error:', err);
+    if (!geoIsCurrent(seq)) return;
     if (statusEl) statusEl.innerHTML = '<span style="color:#f87171">Error: ' + escGeo(err.message) + '</span>';
   }
 }

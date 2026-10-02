@@ -496,6 +496,109 @@ async function until(site, expr, ms = 8000){
     snapshot(site, 'snpversity_chr9_multigene', 'SNPVersity - chr9:13,118,306-13,124,164, sites with several consequences (+N)');
   }
 
+  /* ---------- review fixes (patch 0038) ----------
+     Late answers are simulated with stubbed data calls resolved in a chosen order (the
+     harness runs PHP synchronously, so real requests cannot overtake each other).
+     check_review_fixes.py reads R.fixes. */
+  {
+    const s6 = await openSite(ROOT); const $r = s6.$eval;
+    const F = R.fixes = {};
+    const php = name => s6.log.filter(x => x.url === name).length;
+    // (a) SNPTrait "Random %" with no line visible: no error, selection untouched
+    $r('S.dataset="zmgrin2026_imp"; go("snptrait"); TRAIT.selected=new Set(["ZmG_B73"]); TRAIT.q="no-line-matches-this"; traitRenderTable()');
+    F.traitRandomEmpty = $r(`(()=>{ let threw=null; try{ traitRandom(.05); }catch(e){ threw=String(e.message||e); }
+      return {visible:traitVisible().length, threw, selected:[...TRAIT.selected]}; })()`);
+    $r('TRAIT.q=""; TRAIT.selected=new Set(); traitRenderTable()');
+    F.traitRandom10 = $r('(()=>{ traitRandom(.10); return {visible:traitVisible().length, selected:TRAIT.selected.size}; })()');
+    // (b) randomSample (Random % in SNPTrait and SNPVersity): k distinct ids, flat over catalogue order
+    F.sample = $r(`(()=>{ const ids=Data.accessionsFor("zmgrin2026_imp").map(a=>a.id), N=ids.length, k=Math.ceil(N*.05), T=3000;
+      const pos=new Map(ids.map((id,i)=>[id,i])), c=new Array(N).fill(0); let distinct=true;
+      for(let t=0;t<T;t++){ const x=randomSample(ids,k); if(new Set(x).size!==k) distinct=false; x.forEach(id=>c[pos.get(id)]++); }
+      const m=(a,b)=>c.slice(a,b).reduce((u,v)=>u+v,0)/(b-a);
+      return {N, k, T, distinct, first100:m(0,100), last100:m(N-100,N), expected:T*k/N,
+              zero:randomSample(ids,0).length, over:randomSample(ids.slice(0,3),10).length}; })()`);
+    $r('go("snpversity"); applyPick("r0.05")');
+    F.quickPick5 = $r('({selected:S.selected.size, of:ACCESSIONS.length})');
+    // (c) a result keeps its own region after the form moves on
+    $r('S.chr="chr9"; S.start=13118306; S.end=13124164; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
+    await s6.wait(50);
+    await $r('runQuery()');
+    F.queried = $r('S.results.q');
+    $r('document.getElementById("chrInput").value="chr2"; document.getElementById("startInput").value="4000000"; document.getElementById("endInput").value="4100000"; onRegion(); setPage(1)');
+    F.afterFormChange = $r(`(()=>{ const tr=document.querySelector('#rtBody table.vcf tbody tr');
+      return {form:[S.chr,S.start,S.end], chrCell:tr.children[0].textContent.trim(), jbrowse:tr.querySelector('a.gene-link').getAttribute('href'),
+              heading:document.querySelector('#resultsAnchor h2').textContent.replace(/\\s+/g,' ').trim()}; })()`);
+    $r('sendToTree()');
+    F.treeInput = $r('({chr:S.treeInput.chr, start:S.treeInput.start, end:S.treeInput.end, dataset:S.treeInput.dataset, rows:S.treeInput.rows.length})');
+    $r('go("snpversity")');
+    F.backHeading = $r('document.querySelector("#resultsAnchor h2").textContent.replace(/\\s+/g," ").trim()');
+    // (d) two Builds: the second one's answer stands even when the first answers last
+    F.runRace = await $r(`(async()=>{ const real=Data.queryVariants, calls=[];
+      Data.queryVariants=(ds,chr,lo,hi)=>new Promise(res=>calls.push({res, chr}));
+      const mk=c=>({rows:[], accs:[], chr:c.chr, vcfUrl:null, span:0, wide:false, empty:true});
+      try{ S.chr="chr9"; S.start=13118306; S.end=13124164; const p1=runQuery();
+           S.chr="chr10"; S.start=1000; S.end=2000; const p2=runQuery();
+           calls[1].res(mk(calls[1])); await p2; calls[0].res(mk(calls[0])); await p1;
+           return {calls:calls.length, resultChr:S.results.q.chr}; }
+      finally { Data.queryVariants=real; } })()`);
+    // (e) SNPFunction: gene B searched after gene A; A's slower answer must not replace B's
+    $r('go("snpfunction")');
+    F.functionRace = await $r(`(async()=>{ const real=Data.geneFunction, calls=[];
+      Data.geneFunction=(g)=>new Promise(res=>calls.push({res, g}));
+      try{ const inp=()=>document.getElementById('fnGeneInput');
+           inp().value='Zm00001eb374230'; FUNCTION.load(); inp().value='Zm00001eb374090'; FUNCTION.load();
+           calls[1].res({gene:calls[1].g, error:'answer for '+calls[1].g}); await new Promise(r=>setTimeout(r,20));
+           calls[0].res({gene:calls[0].g, error:'answer for '+calls[0].g}); await new Promise(r=>setTimeout(r,20));
+           const t=document.getElementById('page').textContent;
+           return {calls:calls.map(c=>c.g), showsB:t.includes('answer for Zm00001eb374090'), showsA:t.includes('answer for Zm00001eb374230')}; }
+      finally { Data.geneFunction=real; } })()`);
+    // (f) SNPGeo: a gene search answered after the user left SNPGeo must not draw over SNPVersity;
+    //     and of two searches, the newer one's answer stands
+    const geoReal = {
+      A: await $r('Data.queryVariantsByGene("zmgrin2026_imp","Zm00001eb374230",Data.accessionsFor("zmgrin2026_imp").map(a=>a.id))'),
+      B: await $r('Data.queryVariantsByGene("zmgrin2026_imp","Zm00001eb374090",Data.accessionsFor("zmgrin2026_imp").map(a=>a.id))')};
+    s6.window.__geoReal = geoReal;
+    F.geoLeft = await $r(`(async()=>{ const real=Data.queryVariantsByGene, calls=[];
+      Data.queryVariantsByGene=()=>new Promise(res=>calls.push(res));
+      try{ S.geoInput=null; go('snpgeo'); document.getElementById('geoGeneInput').value='Zm00001eb374230';
+           const p=geoLookupGene(); go('snpversity'); calls[0](window.__geoReal.A); await p;
+           await new Promise(r=>setTimeout(r,400));
+           return {tool:S.tool, geoMap:!!document.getElementById('geoMap'), runbar:!!document.getElementById('runbar'), geoInput:!!S.geoInput}; }
+      finally { Data.queryVariantsByGene=real; } })()`);
+    F.geoTwo = await $r(`(async()=>{ const real=Data.queryVariantsByGene, calls=[];
+      Data.queryVariantsByGene=()=>new Promise(res=>calls.push(res));
+      try{ S.geoInput=null; go('snpgeo'); const inp=()=>document.getElementById('geoGeneInput');
+           inp().value='Zm00001eb374230'; const pA=geoLookupGene();
+           inp().value='Zm00001eb374090'; const pB=geoLookupGene();
+           calls[1](window.__geoReal.B); await pB; calls[0](window.__geoReal.A); await pA;
+           await new Promise(r=>setTimeout(r,400));
+           return {gene:S.geoInput&&S.geoInput.gene, rows:S.geoInput&&S.geoInput.rows.length, tool:S.tool}; }
+      finally { Data.queryVariantsByGene=real; } })()`);
+    await until(s6, 'S.tool!=="snpgeo" || !document.getElementById("geoMap") || document.querySelector("#geoMap svg")'); await s6.wait(300);
+    // (g) SNPFold: one variant query and one gene lookup per gene
+    const pf0 = php('processForm.php'), lk0 = php('lookupGeneModel.php');
+    $r('goFold("Zm00001eb406050")');
+    await until(s6, 'S.tool==="snpfold" && !document.querySelector("#page .spinner")', 20000); await s6.wait(200);
+    F.foldRequests = {processForm: php('processForm.php') - pf0, lookupGeneModel: php('lookupGeneModel.php') - lk0,
+                      shown: $r('(document.querySelector(".fold-context .g")||{}).textContent||null'),
+                      variants: $r('(document.querySelector(".fold-context")||{textContent:""}).textContent.match(/(\\d+) coding variants/)?.[1]||null')};
+    // (h) SNPFold: gene B loaded after gene A; A's slower answer must not replace B's
+    F.foldRace = await $r(`(async()=>{ const real=Data.geneFunction, calls=[];
+      Data.geneFunction=(g)=>new Promise(res=>calls.push({res, g}));
+      try{ const load=g=>{ document.getElementById('foldGeneInput').value=g; FOLD.loadGene(); };
+           const until=async n=>{ for (let i=0;i<250 && calls.length<n;i++) await new Promise(r=>setTimeout(r,20)); };
+           load('Zm00001eb378140'); await until(1);          // A is waiting on its variants
+           load('Zm00001eb406050'); await until(2);          // then B is too
+           const stub=c=>({gene:c.g, dataset:'zmgrin2026_imp', variants:[], foldVariants:[], chr:null});
+           const b=calls.find(c=>c.g==='Zm00001eb406050'), a=calls.find(c=>c.g==='Zm00001eb378140');
+           if (b) b.res(stub(b)); await new Promise(r=>setTimeout(r,200));
+           if (a) a.res(stub(a)); await new Promise(r=>setTimeout(r,200));
+           return {calls:calls.map(c=>c.g), shown:(document.querySelector('.fold-context .g')||{}).textContent||null}; }
+      finally { Data.geneFunction=real; } })()`);
+    F.consoleErrors = s6.errors.filter(e => !/favicon/.test(e));
+    s6.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

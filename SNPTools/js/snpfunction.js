@@ -14,6 +14,7 @@
   const FN = {
     gene:'Zm00001eb406050',        // default example gene model
     dataset:null, data:null, loading:false, openId:null,
+    seq:0,                         // bumped per analysis; an older geneFunction answer is dropped
     root:null,                     // persistent DOM container — survives tool switches
     loaded:false,                  // a gene's content is (being) rendered into root
     loadedGene:null,               // which gene that content is for
@@ -286,9 +287,12 @@
     loadAnnotation(FN.gene);         // fetch functional annotation in parallel (independent of variant data)
     loadOntology(FN.gene);           // and MaizeGDB's GO + pathways, also in parallel
     FN.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:44px;text-align:center"><div class="spinner"></div><div>Analyzing <b>${esc(FN.gene)}</b> across the panel…</div></div>`;
-    Data.geneFunction(FN.gene, FN.dataset)
-      .then(d => { FN.data = d; FN.loading = false; paint(); })
-      .catch(e => { FN.loading = false; FN.data = {gene:FN.gene, error:(e&&e.message)||'failed'}; paint(); });
+    /* a later search (or dataset pick) overtakes this one: its answer, if slower, is dropped,
+       as loadAnnotation / loadOntology already do */
+    const seq = ++FN.seq, gene = FN.gene;
+    Data.geneFunction(gene, FN.dataset)
+      .then(d => { if (FN.seq !== seq) return; FN.data = d; FN.loading = false; paint(); })
+      .catch(e => { if (FN.seq !== seq) return; FN.loading = false; FN.data = {gene, error:(e&&e.message)||'failed'}; paint(); });
   }
 
   /* Load the functional-annotation record for a gene from ANN_DIR/<gene>.json.

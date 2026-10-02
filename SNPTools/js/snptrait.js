@@ -427,10 +427,11 @@ function traitSelectVisible(on){
   traitRenderTable(); traitRenderRunbar();
 }
 function traitRandom(frac){
-  const vis=traitVisible().slice().sort(()=>Math.random()-0.5);
+  const vis=traitVisible();
+  if(!vis.length) return;                  // nothing matches the filters, so nothing to draw from
   const n=Math.max(1, Math.round(vis.length*frac));
   vis.forEach(r=>TRAIT.selected.delete(r.id));
-  for(let i=0;i<n;i++) TRAIT.selected.add(vis[i].id);
+  randomSample(vis, n).forEach(r=>TRAIT.selected.add(r.id));
   traitRenderTable(); traitRenderRunbar();
 }
 

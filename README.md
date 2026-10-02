@@ -366,7 +366,17 @@ Backend paths and behavior live in `data.js` under `CFG`:
 | `domainsUrl` | `data/domains/domains.by_chr.json` | Combined domains fallback. |
 | `domainsGeneUrl` | `data/domains/domains.by_gene.json` | Gene → canonical domains. |
 | `geneModelsDir` | `data/genemodels/by_chr/` | Per-chromosome exon/CDS structure. |
-| `tableMaxSpan` | `1_000_000` | Intervals wider than this offer a VCF download instead of an in-browser table. |
+| `tableMaxSpan` | `20_000_000` | Intervals wider than this offer a VCF download instead of an in-browser table. |
+| `buildCellsMax` | `2e9` | Mirror of the server's build limit, used only for the run-bar warning. |
+
+The server side reads three environment variables (set them per host, e.g. `SetEnv` in Apache or
+`ENV` in Docker):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PYTHON_PATH` | `python3` | Interpreter with h5py + numpy that runs `h5_to_vcf.py`. |
+| `SNPTOOLS_MAX_CELLS` | `2e9` | Largest request `h5_to_vcf.py` builds, in genotype cells (variants × accessions); larger requests are refused with a message before anything is written. |
+| `SNPTOOLS_VCF_TTL_HOURS` | `24` | `processForm.php` deletes its own `vcf/snpv_*` files older than this (checked at most every 10 minutes); `0` turns the clean-up off. |
 
 SNPCompare has its own `CFG` (`ibsCompare.php` endpoint, default dataset, and a
 `useDemoGlobal` toggle for previewing without a backend).

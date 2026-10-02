@@ -479,7 +479,7 @@ function applyPick(key){
   else {
     const pk=accPicks().find(x=>x.key===key); if(!pk) return;
     label=pk.label;
-    ids = pk.random ? ACCESSIONS.map(a=>a.id).sort(()=>Math.random()-.5).slice(0, pk.n) : pk.ids;
+    ids = pk.random ? randomSample(ACCESSIONS.map(a=>a.id), pk.n) : pk.ids;
   }
   if(sameSet(ids)){ accSay(`The selection already is ${escAttr(label)}.`); return; }
   snapshotQuery(`the quick pick “${label}”`);
@@ -768,7 +768,9 @@ function renderRunbar(){
   // rough pre-run prediction (the real table-vs-download call uses the exact
   // variant count the server returns).
   const est=ready ? Data.estimateResult(S.dataset, span, S.selected.size) : null;
-  const mode = est ? (est.willDownload
+  const mode = est ? (est.overLimit
+    ? '<span style="color:#b42318">likely over the server’s build limit — choose a smaller interval or fewer accessions</span>'
+    : est.willDownload
     ? '<span style="color:var(--faint)">likely too large for the table — returns a downloadable VCF</span>'
     : 'opens as an interactive table') : '';
   const spanStr = span>=1e6 ? (span/1e6).toFixed(2)+' Mb' : (span/1e3).toFixed(1)+' kb';
@@ -790,6 +792,22 @@ function noticeCard(title, body){
     <h3 style="font-family:var(--disp);margin:0 0 8px">${title}</h3>
     <p style="color:var(--muted);margin:0 auto;max-width:560px">${body}</p></div>`;
 }
+/* The query a result answers. The region form and the dataset (picked here, or in SNPTrait,
+   SNPFold or SNPFunction) can move on after a run; the table, its links and every hand-off
+   follow what was queried, not what the form says now. A result built outside runQuery
+   (the test harness) has no record and reads the current form. */
+function resultQuery(res){
+  res=res||S.results||{};
+  return res.q || {dataset:S.dataset, chr:S.chr, lo:Math.min(S.start,S.end), hi:Math.max(S.start,S.end)};
+}
+/* A result as the other tools take it (SNPTree, SNPMatrix, SNPCompare, SNPImpact, SNPGeo). */
+function resultHandoff(res){
+  res=res||S.results;
+  const q=resultQuery(res);
+  return {rows:res.rows, accs:res.accs, chr:q.chr, start:q.lo, end:q.hi, dataset:q.dataset,
+    datasetName:(Data.datasets().find(d=>d.id===q.dataset)||{}).name||q.dataset, vcfUrl:res.vcfUrl};
+}
+let RUN_SEQ=0;               // a second Build overtakes the first; the first's answer is dropped
 async function runQuery(){
   touchSelection();          // the selection is committed — the Undo no longer applies
   const anchor=document.getElementById('resultsAnchor');
@@ -803,8 +821,11 @@ async function runQuery(){
   </div></div>`;
   anchor.scrollIntoView({behavior:'smooth',block:'start'});
   const lo=Math.min(S.start,S.end), hi=Math.max(S.start,S.end);
+  const q={dataset:S.dataset, chr:S.chr, lo, hi}, seq=++RUN_SEQ;
   try{
-    S.results = await Data.queryVariants(S.dataset, S.chr, lo, hi, [...S.selected]);
+    const res = await Data.queryVariants(q.dataset, q.chr, lo, hi, [...S.selected]);
+    if(seq!==RUN_SEQ) return;
+    res.q=q; S.results=res;
     if(S.results.wide){
       anchor.innerHTML=wideResultCard(S.results, lo, hi);
       return;
@@ -816,6 +837,7 @@ async function runQuery(){
     }
     S.page=1; renderResults();
   }catch(err){
+    if(seq!==RUN_SEQ) return;
     const url=err&&err.detail&&err.detail.vcfUrl;   // set when the VCF was built but the fetch failed
     anchor.innerHTML=noticeCard('The query failed',
       `<span style="color:var(--muted)">${(err&&err.message?err.message:err)}</span>`+
@@ -825,7 +847,7 @@ async function runQuery(){
 }
 /* Result is too large for the in-browser table — VCF download only. */
 function wideResultCard(res, lo, hi){
-  const V=res.variants, A=(S.selected&&S.selected.size)||0;
+  const V=res.variants, A=(res.accs||[]).length;
   const size = V!=null ? `<b>${V.toLocaleString()}</b> variants x <b>${A}</b> accessions`
                        : `a <b>${((hi-lo)/1e6).toFixed(2)} Mb</b> interval`;
   return `<div class="card pad fade" style="text-align:center">
@@ -859,7 +881,7 @@ function gColor(s){
    The header "Send selection to…" menu isn't greyed; the tool guards catch it. */
 function sendGate(tool){
   const V = (S.results && S.results.rows) ? S.results.rows.length : 0;
-  const A = S.selected ? S.selected.size : 0;
+  const A = (S.results && S.results.accs) ? S.results.accs.length : 0;   // the matrix the tool receives
   if(tool==='impact')
     return V > IBS_COST.impactBlock
       ? {ok:false, msg:'Selected data too large for SNPImpact - choose a smaller region or lower-density SNP set'}
@@ -884,12 +906,12 @@ function sendBtnHTML(fn, gate, label, icon){
 
 function renderResults(){
   const a=document.getElementById('resultsAnchor');
-  const lo=Math.min(S.start,S.end), hi=Math.max(S.start,S.end);
+  const {chr,lo,hi}=resultQuery();
   const pgOK=(hi-lo)<=PANGENOME_MAX_SPAN;
   a.innerHTML=`
     <div class="sec"><div class="bar"></div>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%">
-        <h2 style="font-size:16px;margin:0">Variant view · <span class="c-mono" style="color:var(--blue-600)">${S.chr}:${lo.toLocaleString()}–${hi.toLocaleString()}</span></h2>
+        <h2 style="font-size:16px;margin:0">Variant view · <span class="c-mono" style="color:var(--blue-600)">${chr}:${lo.toLocaleString()}–${hi.toLocaleString()}</span></h2>
         <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
           ${sendBtnHTML('sendToImpact()',  sendGate('impact'),  'Send to SNPImpact',   ICONS.star)}
           ${sendBtnHTML('sendToCompare()', sendGate('compare'), 'Send to SNPCompare',  ICONS.compare||ICONS.grid)}
@@ -912,41 +934,17 @@ function switchRT(rt){
 }
 /* hand the generated VCF matrix (+ metadata) to SNPTree for a local IBS phylogeny */
 function sendToTree(){
-  if(S.results&&S.results.rows&&S.results.rows.length){
-    S.treeInput={
-      rows:S.results.rows, accs:S.results.accs,
-      chr:S.chr, start:Math.min(S.start,S.end), end:Math.max(S.start,S.end),
-      dataset:S.dataset,
-      datasetName:(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset,
-      vcfUrl:S.results.vcfUrl
-    };
-  }
+  if(S.results&&S.results.rows&&S.results.rows.length) S.treeInput=resultHandoff();
   go('snptree');   // navigates even with no result yet (SNPTree shows a guided empty state)
 }
 /* hand the region's genotype matrix to SNPMatrix (IBS distance heatmap) */
 function sendToMatrix(){
-  if(S.results&&S.results.rows&&S.results.rows.length){
-    S.matrixInput={
-      rows:S.results.rows, accs:S.results.accs,
-      chr:S.chr, start:Math.min(S.start,S.end), end:Math.max(S.start,S.end),
-      dataset:S.dataset,
-      datasetName:(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset,
-      vcfUrl:S.results.vcfUrl
-    };
-  }
+  if(S.results&&S.results.rows&&S.results.rows.length) S.matrixInput=resultHandoff();
   go('snpmatrix');
 }
 /* hand the generated VCF matrix (+ metadata) to SNPCompare for local vs global IBS */
 function sendToCompare(){
-  if(S.results&&S.results.rows&&S.results.rows.length){
-    S.compareInput={
-      rows:S.results.rows, accs:S.results.accs,
-      chr:S.chr, start:Math.min(S.start,S.end), end:Math.max(S.start,S.end),
-      dataset:S.dataset,
-      datasetName:(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset,
-      vcfUrl:S.results.vcfUrl
-    };
-  }
+  if(S.results&&S.results.rows&&S.results.rows.length) S.compareInput=resultHandoff();
   go('snpcompare');
 }
 /* hand the region's variants to SNPGeo for the geographic view.
@@ -959,39 +957,25 @@ function sendToCompare(){
 const GEO_HANDOFF_WORK_MAX = 4e7;   // = Data TABLE_WORK_MAX (variants x samples)
 async function sendToGeo(){
   if(!(S.results&&S.results.rows&&S.results.rows.length)){ go('snpgeo'); return; }
-  const lo=Math.min(S.start,S.end), hi=Math.max(S.start,S.end);
-  const dsName=(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset;
-  const allIds=(Data.accessionsFor(S.dataset)||[]).map(a=>a.id);
+  const q=resultQuery();
+  const allIds=(Data.accessionsFor(q.dataset)||[]).map(a=>a.id);
   let res=S.results, requeried=false;
   const partial=(S.results.accs||[]).length < allIds.length;
   if(partial && S.results.rows.length*allIds.length <= GEO_HANDOFF_WORK_MAX){
     const btns=[...document.querySelectorAll('button')].filter(b=>/Send to SNPGeo/.test(b.textContent));
     btns.forEach(b=>{b.dataset.lbl=b.innerHTML; b.innerHTML='Querying all '+allIds.length+' samples…'; b.disabled=true;});
     try{
-      const r=await Data.queryVariants(S.dataset, S.chr, lo, hi, allIds);
-      if(r && !r.wide && r.rows && r.rows.length){ res=r; requeried=true; }
+      const r=await Data.queryVariants(q.dataset, q.chr, q.lo, q.hi, allIds);
+      if(r && !r.wide && r.rows && r.rows.length){ r.q=q; res=r; requeried=true; }
     }catch(e){ console.warn('[sendToGeo] full-dataset re-query failed; handing off the selection only', e); }
     btns.forEach(b=>{b.innerHTML=b.dataset.lbl; b.disabled=false;});
   }
-  S.geoInput={
-    rows:res.rows, accs:res.accs,
-    chr:S.chr, start:lo, end:hi,
-    dataset:S.dataset, datasetName:dsName,
-    vcfUrl:res.vcfUrl, requeried
-  };
+  S.geoInput=Object.assign(resultHandoff(res), {requeried});
   go('snpgeo');
 }
 /* hand the region's variants to SNPImpact for ranking (accessions irrelevant there) */
 function sendToImpact(){
-  if(S.results&&S.results.rows&&S.results.rows.length){
-    S.impactInput={
-      rows:S.results.rows, accs:S.results.accs,
-      chr:S.chr, start:Math.min(S.start,S.end), end:Math.max(S.start,S.end),
-      dataset:S.dataset,
-      datasetName:(Data.datasets().find(d=>d.id===S.dataset)||{}).name||S.dataset,
-      vcfUrl:S.results.vcfUrl
-    };
-  }
+  if(S.results&&S.results.rows&&S.results.rows.length) S.impactInput=resultHandoff();
   go('snpimpact');
 }
 
@@ -1100,15 +1084,15 @@ const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,evo2:1,esm1:1,esm2:1,esm3:1,
 let _annotCache={ds:null, res:null, val:null};
 function annotFields(){
   // once per dataset + result: rowHTML asks for every row, and a 'pending' column scans the rows
-  const res=S.results||null;
-  if(_annotCache.val && _annotCache.ds===S.dataset && _annotCache.res===res) return _annotCache.val;
-  const F=(Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
+  const res=S.results||null, ds=resultQuery().dataset;
+  if(_annotCache.val && _annotCache.ds===ds && _annotCache.res===res) return _annotCache.val;
+  const F=(Data.annotationFields ? Data.annotationFields(ds) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
   // A 'pending' column is shown as soon as the queried store carries it (e.g. PlantCAD merged
   // for one chromosome first); it stays pending (empty + note) where the store has no value.
   const rows=(res&&res.rows)||[];
   const val=F.filter(f=>f.status!=='hidden').map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
     ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome (rounded to 0.1); sites without a score show N/A.'}) : f);
-  _annotCache={ds:S.dataset, res, val};
+  _annotCache={ds, res, val};
   return val;
 }
 function annotHeaderHTML(){
@@ -1122,8 +1106,8 @@ function annotHeaderHTML(){
 function annotNoteHTML(){
   const F=annotFields(), na=F.filter(f=>f.status==='na'), pend=F.filter(f=>f.status==='pending');
   if(!na.length && !pend.length) return '';
-  const ds=(Data.datasets().find(d=>d.id===S.dataset)||{});
-  const nm=escAttr((ds.name||S.dataset)+(ds.sub?' · '+ds.sub:''));
+  const dsId=resultQuery().dataset, ds=(Data.datasets().find(d=>d.id===dsId)||{});
+  const nm=escAttr((ds.name||dsId)+(ds.sub?' · '+ds.sub:''));
   const li=L=>L.map(f=>`<b>${f.label}</b> — ${escAttr(f.note)}`).join('<br>');
   return `<div class="annot-note" id="annotNote">`+
     (na.length?`<div><span class="annot-k">Not available for this set (${nm}):</span> ${na.map(f=>f.label).join(', ')}. The columns stay in the table with empty cells.</div>`:'')+
@@ -1131,8 +1115,9 @@ function annotNoteHTML(){
     `<details><summary>Why</summary><div class="annot-why">${li(na.concat(pend))}</div></details></div>`;
 }
 function rowHTML(r){
-  const lo=r.pos-10000,hi=r.pos+10000;
-  const link=`https://jbrowse.maizegdb.org/?data=B73&loc=${S.chr}:${lo}..${hi}&highlight=${S.chr}:${r.pos}..${r.pos}`;
+  const chr=resultQuery().chr;               // the queried chromosome, even if the form has moved on
+  const lo=Math.max(1,r.pos-10000),hi=r.pos+10000;
+  const link=`https://jbrowse.maizegdb.org/?data=B73&loc=${chr}:${lo}..${hi}&highlight=${chr}:${r.pos}..${r.pos}`;
   const effectText = String(r.effect||'');
   const isMis = /missense/i.test(effectText);
   const isSyn = /synonymous/i.test(effectText) && !/non[-_ ]?synonymous/i.test(effectText);
@@ -1145,7 +1130,7 @@ function rowHTML(r){
      link. The genomic position/alleles are also passed so stop-gained records can
      still be selected when the VCF SUB field lacks a protein substitution. */
   const foldJump = (isFoldCoding && hasGene)
-    ? ` <a class="fold-jump" href="#" title="Show this variant on the predicted protein structure in SNPFold" onclick="goFold('${r.gene}',{chr:'${escAttr(S.chr)}',pos:${r.pos},ref:'${escAttr(r.ref)}',alt:'${escAttr(r.alt)}',sub:'${escAttr(r.sub||'')}',effect:'${escAttr(r.effect||'')}'});return false;">fold ↗</a>`
+    ? ` <a class="fold-jump" href="#" title="Show this variant on the predicted protein structure in SNPFold" onclick="goFold('${r.gene}',{chr:'${escAttr(chr)}',pos:${r.pos},ref:'${escAttr(r.ref)}',alt:'${escAttr(r.alt)}',sub:'${escAttr(r.sub||'')}',effect:'${escAttr(r.effect||'')}'});return false;">fold ↗</a>`
     : '';
   const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump + foldJump;
   const fields=annotFields();
@@ -1167,7 +1152,7 @@ function rowHTML(r){
     esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'), esmc:()=>sc(r.esmc,'esmc'),
   };
   return `<tr>
-    <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>
+    <td class="c-mono" style="padding-left:11px">${chr.replace('chr','')}</td>
     <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
@@ -1249,9 +1234,9 @@ function pangenomeRegionURL(chr, start, end, set){
 }
 /* open the current query region in the Pangenome viewer */
 function openPangenomeRegion(){
-  const lo=Math.min(S.start,S.end), hi=Math.max(S.start,S.end);
+  const {chr,lo,hi}=resultQuery();          // the button sits on the result, so its region
   if(hi-lo > PANGENOME_MAX_SPAN) return;   // button is greyed out in this case
-  window.open(pangenomeRegionURL(S.chr,S.start,S.end),'_blank','noopener');
+  window.open(pangenomeRegionURL(chr,lo,hi),'_blank','noopener');
 }
 /* Jump to SNPFold for a specific gene model.
    `variant` is optional: {chr,pos,ref,alt,sub,effect} (or a plain "A123T" string).
@@ -1281,48 +1266,6 @@ function pageBtns(pages){
 }
 function setPage(p){S.page=p;renderTable();document.querySelector('.tbl-wrap').scrollTop=0;}
 
-function treePlaceholder(){
-  const accs=S.results.accs.slice(0,14);
-  // simple radial-ish NJ mock using SVG
-  const cx=300,cy=210,R=160;
-  const leaves=accs.map((a,i)=>{
-    const ang=(i/accs.length)*Math.PI*2-Math.PI/2;
-    const x=cx+Math.cos(ang)*R, y=cy+Math.sin(ang)*R;
-    const mx=cx+Math.cos(ang)*(R*.55), my=cy+Math.sin(ang)*(R*.55);
-    return {a,x,y,mx,my,ang};
-  });
-  return `<div class="card pad fade">
-    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
-      <svg viewBox="0 0 600 420" style="flex:1;min-width:320px;max-width:600px">
-        ${leaves.map(l=>`<path d="M${cx} ${cy} Q ${l.mx} ${l.my} ${l.x} ${l.y}" stroke="${l.a.projColor}" stroke-width="1.6" fill="none" opacity=".75"/>`).join('')}
-        ${leaves.map(l=>`<circle cx="${l.x}" cy="${l.y}" r="4" fill="${l.a.projColor}"/>
-          <text x="${l.x+(Math.cos(l.ang)>=0?8:-8)}" y="${l.y+3}" font-size="10" font-family="IBM Plex Mono" fill="#0f1b2d" text-anchor="${Math.cos(l.ang)>=0?'start':'end'}">${l.a.founder}</text>`).join('')}
-        <circle cx="${cx}" cy="${cy}" r="5" fill="#13264a"/>
-      </svg>
-      <div style="flex:1;min-width:240px">
-        <h3 style="font-family:var(--disp);margin:0 0 8px">Neighbor-joining tree</h3>
-        <p style="color:var(--muted);margin:0 0 12px">A local phylogeny built from the variants in this region across your selected accessions. In the full tool this is interactive — reroot, collapse clades, and color by bioproject.</p>
-        <p style="color:var(--faint);font-size:12px;margin:0">Tree computation is powered by VCF2PopTree on the parsed VCF. Showing first ${accs.length} accessions for preview.</p>
-      </div>
-    </div>
-  </div>`;
-}
-function ibsPlaceholder(){
-  const accs=S.results.accs.slice(0,12);
-  const n=accs.length;
-  const cell=Math.min(34, Math.floor(520/Math.max(n,1)));
-  let g='';
-  for(let i=0;i<n;i++)for(let j=0;j<n;j++){
-    const v=i===j?1:rnd(.55,.99);
-    const col=`rgba(37,99,235,${(v-.5).toFixed(2)})`;
-    g+=`<div data-tt="${accs[i].founder} vs ${accs[j].founder}: ${(v*100|0)}% IBS" style="width:${cell}px;height:${cell}px;background:${col};border:1px solid #fff"></div>`;
-  }
-  return `<div class="card pad fade">
-    <h3 style="font-family:var(--disp);margin:0 0 4px">Identity-by-state matrix</h3>
-    <p style="color:var(--muted);margin:0 0 16px">Pairwise sequence identity across selected accessions for this region. Darker = more similar.</p>
-    <div style="display:grid;grid-template-columns:repeat(${n},${cell}px);width:max-content">${g}</div>
-  </div>`;
-}
 
 /* register with the suite shell */
 SNPTools.register('snpversity', { render(){ renderVersity(); } });

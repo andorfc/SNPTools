@@ -10,7 +10,8 @@
  *       (domain, local confidence, secondary structure, predicted ΔΔG).
  *
  *  Structure data + PDB come from structure-<gene>.js via Data.structureFor()
- *  / Data.pdbFor(); variants from Data.queryFoldVariants().
+ *  / Data.pdbFor(); variants from Data.geneFunction()'s foldVariants (one
+ *  query of the gene's interval; Data.queryFoldVariants() is the fallback).
  * ===================================================================== */
 (function () {
   const THREEDMOL_URL = 'https://3Dmol.org/build/3Dmol-min.js';
@@ -978,6 +979,10 @@
   /* The heavy path: fetch the model + variants and render the full SNPFold UI into
      FD.root. Used both for autoload-from-tool and for explicit user loads. */
   async function loadStructure(){
+    /* a later gene (or model / dataset pick) overtakes this load: after each wait, an
+       overtaken load stops instead of painting its gene over the newer one */
+    const seq = FD.loadSeq = (FD.loadSeq || 0) + 1;
+    const stale = () => seq !== FD.loadSeq;
     FD.viewer = null;
     FD.truncation = null;
     FD.loaded = true;               // commit to the loaded view (keep across navigation)
@@ -991,6 +996,7 @@
     FD.structSource = null;
     let matched = null;
     try { matched = await resolveStructureSource(FD.gene, FD.modelPref); } catch (e){ /* no file for this gene in the checked folder(s) */ }
+    if (stale()) return;
 
     FD.struct = matched ? matched.data.struct : null;
     FD.pdb    = matched ? matched.data.pdb    : null;
@@ -1032,22 +1038,27 @@
     FD.sites = null;
     FD.trackZoom = 1;
     try {
-      /* Passing the dataset as a second argument is backward-compatible in JavaScript:
-         older one-argument implementations simply ignore it. */
-      const variantsPromise = Promise.resolve(Data.queryFoldVariants(FD.gene, FD.dataset));
+      /* One query of the gene's interval: geneFunction() reads the full panel and also returns
+         the coding variants drawn here (foldVariants). queryFoldVariants() ran a second query of
+         the same interval in parallel; it is now only the fallback for a data layer without
+         that list. */
       const functionPromise = typeof Data.geneFunction === 'function'
         ? Promise.resolve(Data.geneFunction(FD.gene, FD.dataset)).catch(()=>null)
         : Promise.resolve(null);
+      const variantsPromise = functionPromise.then(fn => (fn && Array.isArray(fn.foldVariants))
+        ? fn.foldVariants : Data.queryFoldVariants(FD.gene, FD.dataset));
       const iupredPromise = loadIupredForGene(FD.gene, s.length).catch(()=>null);
       const sitesPromise = loadSitesForGene(FD.gene, s.length).catch(()=>null);
 
       const [variants, fn, iupred, sites] = await Promise.all([variantsPromise, functionPromise, iupredPromise, sitesPromise]);
+      if (stale()) return;
       FD.iupred = iupred || null;
       FD.sites = sites || null;
       const [geneModel, domainRecords] = await Promise.all([
         loadFoldGeneModel(fn),
         loadCanonicalDomainRecords(fn),
       ]);
+      if (stale()) return;
 
       /* Use canonical protein-coordinate domains even when the full-panel variant
          query fails, and convert genomic LOF positions through the canonical CDS
@@ -1070,6 +1081,7 @@
         : null;
     }
     catch (e){
+      if (stale()) return;
       console.error('SNPFold variant loading error', e);
       FD.variants = [];
       FD.carriers = null;
