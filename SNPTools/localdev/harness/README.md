@@ -16,10 +16,15 @@ Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.
 4. SNPGeo gene on a chromosome without a store (graceful error).
 5. SNPVersity chr10:9,788,000-9,826,500 with the 25 NAM founders -> Send to SNPGeo
    (re-query of all 932 lines), then a forced partial hand-off (warning banner).
+6. GWAS Explorer, Tassel Branch Number (intercept, NAM, Tibbs-Cortes et al. 2024): region
+   chr2:4,491,424-4,499,434 (Zm00001eb067740 +-2 kb; 85 GWAS SNPs, 11 significant) -> Send to
+   SNPVersity, (a) with the default VCF set (unchanged: 81 MaizeGDB 2026 NAM runs) and (b) with
+   the GRIN-linked set (NAM names translated to 25 ZmG_* samples, CML103 reported as not
+   available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py` and `check_snpgeo_counts.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py` and `check_gwas_handoff.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

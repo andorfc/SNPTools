@@ -1143,20 +1143,87 @@
     return (typeof Data !== 'undefined' && Data.datasets && Data.datasets()[0]) ? Data.datasets()[0].id : '';
   }
 
-  function namAccessionInfo() {
+  /* VCF set chosen in the hand-off popup. Defaults to SNPVersity's first
+     dataset, which is what this hand-off always used. */
+  let sendDatasetId = null;
+  function chosenVersityDatasetId() { return sendDatasetId || defaultVersityDatasetId(); }
+
+  /* The NAM parents: B73 plus the 25 founders. The GWAS results were computed
+     on the NAM RILs, so these are the lines whose genotypes a GWAS region is
+     read against. */
+  const NAM_LINES = ['B73', 'B97', 'CML52', 'CML69', 'CML103', 'CML228', 'CML247', 'CML277', 'CML322',
+    'CML333', 'Hp301', 'Il14H', 'Ki3', 'Ki11', 'Ky21', 'M37W', 'M162W', 'Mo18W', 'MS71', 'NC350', 'NC358',
+    'Oh7B', 'Oh43', 'P39', 'Tx303', 'Tzi8'];
+  const GRIN_FAMILY = 'zmgrin2026';
+  const normName = function (v) { return String(v == null ? '' : v).toUpperCase().replace(/^ZMG[:_]/, '').replace(/[^A-Z0-9]/g, ''); };
+
+  function familyOfDs(ds) { return (typeof Data !== 'undefined' && Data.familyOf) ? Data.familyOf(ds) : null; }
+
+  /* Datasets offered in the popup: the default one (unchanged behaviour),
+     any other dataset of the same family (e.g. MaizeGDB 2026 HQ/HC), and the
+     GRIN-linked 2026 release, when those are listed in Data.datasets(). */
+  function versityDatasetChoices() {
+    if (typeof Data === 'undefined' || !Data.datasets) return [];
+    const list = Data.datasets() || [];
+    const def = defaultVersityDatasetId();
+    const defFam = familyOfDs(def);
+    return list.filter(function (d) { return d.id === def || d.family === defFam || d.family === GRIN_FAMILY; });
+  }
+
+  /* GRIN-linked release: translate NAM line names to release sample ids
+     (ZmG_*) through the catalogue (namFounder, genotypeId, name, VCF name).
+     Names without a sample in this set are returned in `missing` so the
+     popup and SNPVersity's banner can say so instead of dropping them. */
+  function namGrinInfo(ds) {
+    const accs = Data.accessionsFor(ds) || [];
+    const byKey = new Map();
+    const add = function (key, a, rank) {
+      const k = normName(key); if (!k) return;
+      const cur = byKey.get(k);
+      if (!cur || rank < cur.rank) byKey.set(k, {rank: rank, ids: [a.id]});
+      else if (rank === cur.rank && cur.ids.indexOf(a.id) < 0) cur.ids.push(a.id);
+    };
+    accs.forEach(function (a) {
+      add(a.namFounder, a, 0); add(a.genotypeId, a, 1); add(a.founder, a, 1);
+      add(a.strain, a, 2); add(a.run, a, 3);
+    });
+    const names = NAM_LINES.slice();
+    const defInfo = namCatalogInfo(defaultVersityDatasetId());
+    if (defInfo) defInfo.names.forEach(function (n) { if (!names.some(function (x) { return normName(x) === normName(n); })) names.push(n); });
+    const mapped = [], missing = [], ids = [];
+    names.forEach(function (n) {
+      const hit = byKey.get(normName(n));
+      if (hit) { mapped.push({name: n, ids: hit.ids}); hit.ids.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); }
+      else missing.push(n);
+    });
+    if (!ids.length) return null;
+    return { dataset: ds, ids: ids, names: names, mapped: mapped, missing: missing, translated: true };
+  }
+
+  function namAccessionInfo(dsArg) {
     if (typeof Data === 'undefined' || !Data.datasets || !Data.projectsFor || !Data.accessionsFor) return null;
-    const ds = defaultVersityDatasetId();
+    const ds = dsArg || chosenVersityDatasetId();
+    if (!ds) return null;
+    if (familyOfDs(ds) === GRIN_FAMILY) return namGrinInfo(ds);
+    return namCatalogInfo(ds);
+  }
+
+  /* Catalogue families with NAM bioprojects (MaizeGDB 2026): every run of the
+     B73 reference and NAM founder projects — the original behaviour. */
+  function namCatalogInfo(ds) {
     if (!ds) return null;
     const projects = Data.projectsFor(ds) || [];
     const wantProjIds = projects
       .filter(function (p) { return NAM_FOUNDER_PROJECT_RE.test(p.title) || NAM_REFERENCE_PROJECT_RE.test(p.title); })
       .map(function (p) { return p.id; });
     if (!wantProjIds.length) return null;
-    const ids = (Data.accessionsFor(ds) || [])
-      .filter(function (a) { return wantProjIds.indexOf(a.proj) !== -1; })
-      .map(function (a) { return a.id; });
+    const nam = (Data.accessionsFor(ds) || [])
+      .filter(function (a) { return wantProjIds.indexOf(a.proj) !== -1; });
+    const ids = nam.map(function (a) { return a.id; });
     if (!ids.length) return null;
-    return { dataset: ds, ids: ids };
+    const names = [];
+    nam.forEach(function (a) { const n = a.founder || a.namFounder; if (n && names.indexOf(n) < 0) names.push(n); });
+    return { dataset: ds, ids: ids, names: names, missing: [], translated: false };
   }
 
   function regionSendable() { return !!currentRegion && currentRegion.chrsTouched.length === 1; }
@@ -1167,8 +1234,38 @@
      accession checkboxes are mutually exclusive (checking one unchecks
      the other) since they're two mutually-exclusive merge modes of the
      same action, not two different things to send. */
+  function datasetOptionsHTML() {
+    const cur = chosenVersityDatasetId();
+    return versityDatasetChoices().map(function (d) {
+      return '<option value="' + escAttr(d.id) + '"' + (d.id === cur ? ' selected' : '') + '>' +
+        escAttr(d.name + (d.sub ? ' · ' + d.sub : '')) + (d.family === GRIN_FAMILY ? ' (' + escAttr(d.id) + ')' : '') + '</option>';
+    }).join('');
+  }
+  /* Below the accession checkboxes: what "the NAM accessions" means for the
+     chosen VCF set, including any NAM line that has no sample in it. */
+  function renderSendMap() {
+    if (!DOM.sendMap) return;
+    const info = (activeEntry && activeEntry.population === 'NAM') ? namAccessionInfo() : null;
+    if (!info || !info.translated) { DOM.sendMap.innerHTML = ''; return; }
+    let h = '<b>' + info.mapped.length + ' of ' + info.names.length + '</b> NAM lines (B73 + founders) have a sample in this set → ' +
+      info.ids.length + ' sample' + (info.ids.length === 1 ? '' : 's') + ' (ZmG_*).';
+    if (info.missing.length) h += '<br><span class="gwx-ho-miss">Not available in this set: <b>' + info.missing.map(escAttr).join(', ') + '</b></span>';
+    DOM.sendMap.innerHTML = h;
+  }
+  function onSendDatasetChange() {
+    sendDatasetId = DOM.sendDatasetSel ? DOM.sendDatasetSel.value : null;
+    const canAcc = accessionsOfferable();
+    [DOM.sendAccReplaceChk, DOM.sendAccAddChk].forEach(function (c) { if (c) { c.disabled = !canAcc; if (!canAcc) c.checked = false; } });
+    renderSendMap();
+    updateSendPopupState();
+  }
+
   function openSendPopup() {
     if (!DOM.sendPopup) return;
+    if (DOM.sendDatasetSel) {
+      DOM.sendDatasetSel.innerHTML = datasetOptionsHTML();
+      if (DOM.sendDatasetRow) DOM.sendDatasetRow.style.display = versityDatasetChoices().length > 1 ? '' : 'none';
+    }
     const canRegion = regionSendable();
     const canAcc = accessionsOfferable();
 
@@ -1180,6 +1277,7 @@
     if (DOM.accCountReplace) DOM.accCountReplace.textContent = n;
     if (DOM.accCountAdd) DOM.accCountAdd.textContent = n;
 
+    renderSendMap();
     updateSendPopupState();
     DOM.sendPopup.classList.add('open');
     DOM.sendPopupBackdrop.classList.add('open');
@@ -1207,8 +1305,13 @@
     const wantsAdd = !!DOM.sendAccAddChk && DOM.sendAccAddChk.checked;
     if (DOM.sendConfirmBtn) DOM.sendConfirmBtn.disabled = !wantsRegion && !wantsReplace && !wantsAdd;
     if (DOM.hoHint) {
-      DOM.hoHint.textContent = canRegion ? ''
-        : 'This region spans multiple chromosomes, so it can’t be sent to SNPVersity; SNPVersity needs a single continuous region, on one chromosome.';
+      const switching = chosenVersityDatasetId() !== defaultVersityDatasetId()
+        && typeof S !== 'undefined' && S.dataset !== chosenVersityDatasetId();
+      DOM.hoHint.textContent = !canRegion
+        ? 'This region spans multiple chromosomes, so it can’t be sent to SNPVersity; SNPVersity needs a single continuous region, on one chromosome.'
+        : (switching && !wantsReplace && !wantsAdd
+          ? 'SNPVersity will switch to this VCF set; its accession lists are not shared with other sets, so the current selection is cleared.'
+          : '');
     }
   }
 
@@ -1222,6 +1325,11 @@
 
     const payload = { from: 'GWAS Explorer' };
     const noteParts = [];
+    const chosenDs = chosenVersityDatasetId();
+    /* An explicitly chosen non-default VCF set always travels with the payload,
+       so a region-only send also opens that set. The default set keeps the
+       original behaviour (dataset sent only together with accessions). */
+    if (chosenDs && chosenDs !== defaultVersityDatasetId()) payload.dataset = chosenDs;
 
     if (wantsRegion) {
       payload.chr = 'chr' + currentRegion.chr;
@@ -1234,7 +1342,13 @@
       payload.dataset = info.dataset;
       payload.accessions = info.ids;
       payload.merge = wantsReplace ? 'replace' : 'add';
-      noteParts.push('NAM population accessions (B73 v5 reference + NAM founder panel)');
+      if (info.translated) {
+        noteParts.push('NAM lines translated to ' + info.ids.length + ' GRIN-linked release samples (' + info.mapped.length + ' of ' + info.names.length + ' NAM lines)'
+          + (info.missing.length ? '; not available in this set: ' + info.missing.join(', ') : ''));
+        payload.notAvailable = info.missing.slice();
+      } else {
+        noteParts.push('NAM population accessions (B73 v5 reference + NAM founder panel)');
+      }
     } else {
       /* No accessions in this payload — never let a leftover merge choice
          apply to (and potentially wipe) the user's existing accession
@@ -1631,6 +1745,9 @@
     DOM.accCountReplace = document.getElementById('gwxAccCountReplace');
     DOM.accCountAdd = document.getElementById('gwxAccCountAdd');
     DOM.hoHint = document.getElementById('gwxHoHint');
+    DOM.sendDatasetSel = document.getElementById('gwxSendDataset');
+    DOM.sendDatasetRow = document.getElementById('gwxSendDatasetRow');
+    DOM.sendMap = document.getElementById('gwxSendMap');
     DOM.plotCtx = DOM.plotCanvas.getContext('2d');
     DOM.miniCtx = DOM.miniCanvas.getContext('2d');
 
@@ -1689,6 +1806,7 @@
     if (DOM.sendAccReplaceChk) DOM.sendAccReplaceChk.addEventListener('change', onAccReplaceChange);
     if (DOM.sendAccAddChk) DOM.sendAccAddChk.addEventListener('change', onAccAddChange);
     DOM.sendConfirmBtn.addEventListener('click', confirmSendToVersity);
+    if (DOM.sendDatasetSel) DOM.sendDatasetSel.addEventListener('change', onSendDatasetChange);
     document.getElementById('gwxExportAllBtn').addEventListener('click', exportAllSignificant);
 
     wireThresholdBar();
@@ -2205,13 +2323,16 @@
         '<button class="gwx-panel-close" id="gwxSendPopupCloseBtn" aria-label="Close">&times;</button>' +
       '</div>' +
       '<div class="gwx-send-popup-body">' +
+        '<label class="gwx-ho-field" id="gwxSendDatasetRow"><span>VCF set in SNPVersity</span>' +
+          '<select id="gwxSendDataset"></select></label>' +
         '<label class="gwx-ho-check"><input type="checkbox" id="gwxSendRegionChk">' +
           '<span>Send this genomic region</span></label>' +
         (activeEntry.population === 'NAM'
           ? '<label class="gwx-ho-check"><input type="checkbox" id="gwxSendAccReplaceChk">' +
               '<span>Send accessions — replace the <b id="gwxAccCountReplace">0</b> accessions currently selected in SNPVersity</span></label>' +
             '<label class="gwx-ho-check"><input type="checkbox" id="gwxSendAccAddChk">' +
-              '<span>Send accessions — keep the <b id="gwxAccCountAdd">0</b> accessions currently selected in SNPVersity and add to them</span></label>'
+              '<span>Send accessions — keep the <b id="gwxAccCountAdd">0</b> accessions currently selected in SNPVersity and add to them</span></label>' +
+            '<div class="gwx-ho-map" id="gwxSendMap"></div>'
           : '') +
         '<div class="gwx-ho-hint" id="gwxHoHint"></div>' +
       '</div>' +
@@ -2350,6 +2471,10 @@
     '.gwx-panel-foot{padding:12px 18px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}' +
     '.gwx-panel-foot .row{display:flex;gap:8px}' +
     '.gwx-ho-check{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;line-height:1.4}' +
+    '.gwx-ho-field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}' +
+    '.gwx-ho-field select{font:500 13px var(--body);color:var(--ink);padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff}' +
+    '.gwx-ho-map{font-size:12px;color:var(--muted);line-height:1.45;margin:2px 0 0 24px}' +
+    '.gwx-ho-miss{color:#b45309}' +
     '.gwx-ho-check input{margin:0;position:relative;top:2px;cursor:pointer;flex:0 0 auto}' +
     '.gwx-ho-check input:disabled{cursor:not-allowed}' +
     '.gwx-ho-check input:disabled ~ span{color:var(--faint)}' +
@@ -2404,5 +2529,17 @@
     }
   }
 
-  SNPTools.register('snpgwas', { render: render });
+  SNPTools.register('snpgwas', {
+    render: render,
+    /* Programmatic region selection: same as a drag-select over bp lo..hi on one
+       chromosome of the loaded dataset (used by the headless tests; also a hook
+       for deep links). Returns false when no dataset is loaded. */
+    selectRegion: function (chr, bpLo, bpHi) {
+      if (!DATA || !GEOM) return false;
+      const c = parseInt(String(chr).replace(/^chr/i, ''), 10);
+      openRegionPanel(GEOM.chrOffset[c] + Math.min(bpLo, bpHi), GEOM.chrOffset[c] + Math.max(bpLo, bpHi));
+      return true;
+    },
+    activeEntryId: function () { return activeEntry ? activeEntry.id : null; },
+  });
 })();

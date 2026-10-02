@@ -147,11 +147,60 @@ async function until(site, expr, ms = 8000){
   V.partialBannerWhenPartial = $('!!document.querySelector(".geo-partial")');
   V.partialBannerText = $('(document.querySelector(".geo-partial")||{}).textContent||""').replace(/\s+/g, ' ').trim();
 
+  /* ---------- GWAS Explorer -> SNPVersity (VCF-set dropdown) ---------- */
+  const W = R.gwas = {};
+  $('go("snpgwas")');
+  await until(site, 'document.querySelector(".gwx-trait-dd-opt")', 15000);
+  $('[...document.querySelectorAll(".gwx-trait-dd-opt")].find(b=>b.getAttribute("data-value")==="Tassel Branch Number").click()');
+  await site.wait(100);
+  await until(site, 'document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\')');
+  $('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\').click()');
+  await until(site, 'SNPTools.registry.snpgwas.activeEntryId()==="tibbscortes2024_nam_tpbn_intcp" && document.getElementById("gwxOpenSendBtn")', 20000);
+  W.entry = $('SNPTools.registry.snpgwas.activeEntryId()');
+  const openPopup = async () => {
+    $('SNPTools.registry.snpgwas.selectRegion(2, 4491424, 4499434)'); await site.wait(50);
+    $('document.getElementById("gwxOpenSendBtn").click()'); await site.wait(50);
+  };
+  await openPopup();
+  W.region = $('document.getElementById("gwxRegionCoord").textContent');
+  W.regionStats = {total: $('document.getElementById("gwxStatTotal").textContent'), sig: $('document.getElementById("gwxStatSig").textContent')};
+  W.options = $('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>[o.value,o.textContent,o.selected])');
+  W.defaultMapText = $('document.getElementById("gwxSendMap").textContent');
+  // (a) default VCF set: behaviour unchanged (all NAM runs of the MaizeGDB 2026 catalogue)
+  $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change")); document.getElementById("gwxSendConfirmBtn").click();})()');
+  await site.wait(300);
+  W.defaultSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('S.selected.size'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+                   founders: $('[...new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder))].sort()')};
+  // (b) GRIN-linked release: NAM names translated to ZmG_* sample ids
+  $('go("snpgwas")'); await until(site, 'document.getElementById("gwxOpenSendBtn")', 10000);
+  await openPopup();
+  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value="zmgrin2026_imp"; s.dispatchEvent(new Event("change"));})()');
+  W.grinMapText = $('document.getElementById("gwxSendMap").textContent');
+  W.grinMissing = $('(document.querySelector("#gwxSendMap .gwx-ho-miss")||{}).textContent||""');
+  $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change"));})()');
+  snapshot(site, 'gwas_send_popup_grin', 'GWAS Explorer - Send to SNPVersity (GRIN-linked VCF set)');
+  $('document.getElementById("gwxSendConfirmBtn").click()'); await site.wait(300);
+  W.grinSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+                banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 400)};
+  W.pageHasNotAvailable = $('/not available in this set: CML103/.test(document.getElementById("page").textContent)');
+  await $('runQuery()');
+  W.versity = {rows: $('S.results && S.results.rows.length'), accs: $('S.results && S.results.accs.length')};
+  snapshot(site, 'snpversity_from_gwas_grin', 'SNPVersity - GWAS region chr2:4,491,424-4,499,434, 25 NAM lines (GRIN-linked)');
+  await $('sendToGeo()');
+  await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
+  const idx = $('GEO.rows.findIndex(r=>r.pos===4494625)');
+  W.geo = {requeried: $('S.geoInput.requeried'), accs: $('S.geoInput.accs.length'), rows: $('GEO.rows.length'), idx494625: idx};
+  if (idx >= 0){ $(`geoSelectSnp(${idx})`); await site.wait(50);
+    W.geo.usa = $('(()=>{const s=aggregateGeoData(GEO.snpIndex).USA; return s && {count:s.count,total:s.total,het:s.het,af:s.alleleFreq};})()');
+    W.geo.nam = $('(()=>{const ids=new Set(Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)); const r=GEO.rows[GEO.snpIndex]; let c=0,n=0; GEO.accs.forEach((a,i)=>{ if(ids.has(a.id)&&r.gts[i]!==3){n++; if(r.gts[i]>0)c++;} }); return {carriers:c, called:n};})()');
+    W.geo.png = mapPNG(site, 'snpgeo_from_gwas_tpbn_chr2_4494625_NA_freq'); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(R));
   const brief = JSON.parse(JSON.stringify(R)); delete brief.snpgeo_gene.allStats; delete brief.snpgeo_gene.accOrder;
+  brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length;
   brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();

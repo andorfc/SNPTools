@@ -65,6 +65,14 @@ async function openSite(root){
       w.TextDecoder = TextDecoder; w.TextEncoder = TextEncoder;
       w.URL.createObjectURL = () => 'blob:harness'; w.URL.revokeObjectURL = () => {};
       w.scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function(){};
+      // jsdom has no canvas backend: a no-op 2D context lets the GWAS Explorer's
+      // Manhattan plot code run (nothing is drawn; the SNP data and region logic are real).
+      const noop = () => {};
+      w.HTMLCanvasElement.prototype.getContext = function(){
+        const base = {canvas: this, measureText: () => ({width: 0}), getImageData: () => ({data: []}),
+                      createLinearGradient: () => ({addColorStop: noop}), getLineDash: () => []};
+        return new Proxy(base, {get: (t, k) => (k in t ? t[k] : noop), set: (t, k, v) => { t[k] = v; return true; }});
+      };
     }});
   await new Promise(r => dom.window.addEventListener('load', r));
   await new Promise(r => setTimeout(r, 50));

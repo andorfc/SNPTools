@@ -55,6 +55,24 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    the default NAM selection, *Run*; then *Send to SNPGeo*. SNPGeo re-queries the region for
    all 932 lines (1,297 variants).
 
+4. **GWAS Explorer -> SNPVersity with the GRIN-linked set** (NAM GWAS, Tibbs-Cortes et al. 2024):
+   - *GWAS Explorer* (sidebar) -> trait dropdown -> **Tassel Branch Number** -> chip
+     **Tassel Branch Number - Trait** (NAM · Tibbs-Cortes et al. 2024).
+   - Type `chr2:4491424..4499434` in *Jump to SNP or region…* and press Enter; click
+     **Select region** and drag across the visible window (the view is padded by ~8 %, so the
+     panel shows roughly Chr2:4.490–4.500 Mb; the headless test selects exactly
+     4,491,424–4,499,434: 85 SNPs, 11 above the threshold, lead S2_4498985, p = 3.6e-14).
+   - **Send to SNPVersity →** -> in the popup set **VCF set in SNPVersity** to
+     *MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites) (zmgrin2026_imp)*. The popup
+     reports "25 of 26 NAM lines ... → 25 samples (ZmG_*)" and "Not available in this set: CML103".
+     Tick **Send accessions — replace ...** (keep *Send this genomic region* ticked) -> **Send**.
+   - SNPVersity opens on the GRIN-linked set with chr2:4,491,424-4,499,434 and the 25 ZmG_* NAM
+     lines; the banner repeats the CML103 note. **Build VCF & view** -> 249 variants.
+   - **Send to SNPGeo** (re-queries all 932 lines) -> click the row `4494625 ...` (a GWAS SNP with
+     p = 6.6e-9 that is also a release site) to map it.
+   With the VCF set left at *MaizeGDB 2026 · High Quality* the hand-off is unchanged (81 NAM runs of
+   that catalogue; there is no local HDF5 for it, so the query itself fails locally).
+
 Anything outside the fixture windows returns "No variants"; chromosomes 3, 4 and 6 have no
 store ("HDF5 file not found"). Score/consequence columns read "—" because the release INFO
 does not yet carry the annotation keys. The two `mgdb2026_*` datasets have no HDF5 locally.
