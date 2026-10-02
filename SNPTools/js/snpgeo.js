@@ -35,7 +35,7 @@ const GEO = {
   snpStats: {},          // snpIndex -> { countryIso3: {count, total, pct, called, alt, ref, altFrac, isolates, states} }
   geoJson: null,         // loaded countries.geo.json
   mapSvg: null,          // d3 selection of map container
-  colorMode: 'freq',     // 'freq' | 'refalt' | 'af' — see GEO_MODES
+  colorMode: 'refalt',   // 'refalt' (default) | 'freq' | 'af' — see GEO_MODES
   mapView: null,         // 'world' | 'na' (US states / Canadian provinces / Mexican states); null = auto
   admin1Json: null,      // loaded data/geo/admin1_na.geo.json
 };
@@ -431,9 +431,10 @@ function geoRenderTable(){
   // identically. ScorePill.cell() returns the inner <span>; wrap it in the
   // numeric <td> this table expects. Fallback keeps the column readable if
   // snpfold.js somehow hasn't loaded.
-  // Evo2 (genic SNPs) and ESM-C (missense) are in the rebuilt stores only: a column when this gene has a score
-  const models = ((typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [])
-    .filter(m => (m.key !== 'evo2' && m.key !== 'esmc') || (rows || []).some(r => r[m.key] != null));
+  // PlantCAD1 | PlantCAD2 | Evo2 | ESM1 | ESM2 | ESM3 | ESM-C, every column always shown, as
+  // PlantCAD is: empty ("—") where a store has no score yet (Evo2 and ESM-C come with the
+  // rebuilt stores; Evo2 covers SNPs within 1 kb of a gene, ESM-C missense sites)
+  const models = (typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [];
   const pill = (v) => (window.ScorePill ? ScorePill.cell(v) : (v == null ? '—' : v));
   const sc = (v) => `<td class="num">${pill(v)}</td>`;
 
@@ -591,13 +592,6 @@ geoBindKeyNav();
 const GEO_NODATA = '#e4e8ee';
 
 const GEO_MODES = {
-  freq: {
-    label: 'Variant frequency',
-    legendTitle: '% carrying variant',
-    stops: [[0, '#f0fdf4'], [1, '#059669']],
-    ends: ['0%', '50%', '100%'],
-    value: st => (st && st.called > 0) ? st.pct : null,
-  },
   refalt: {
     label: 'Reference ↔ Alternative (carriers)',
     legendTitle: 'Carriers among called samples',
@@ -611,6 +605,13 @@ const GEO_MODES = {
     ends: ['all reference', '50 / 50', 'all carriers'],
     value: st => (st && st.altFrac != null) ? st.altFrac : null,
   },
+  freq: {
+    label: 'Variant frequency',
+    legendTitle: '% carrying variant',
+    stops: [[0, '#f0fdf4'], [1, '#059669']],
+    ends: ['0%', '50%', '100%'],
+    value: st => (st && st.called > 0) ? st.pct : null,
+  },
   /* Diploid data: fraction of called alleles that are alternative
      (alt alleles / 2·called). Differs from the carrier fraction wherever
      heterozygous calls are common. */
@@ -622,7 +623,7 @@ const GEO_MODES = {
     value: st => (st && st.alleleFreq != null) ? st.alleleFreq : null,
   },
 };
-function geoMode(){ return GEO_MODES[GEO.colorMode] || GEO_MODES.freq; }
+function geoMode(){ return GEO_MODES[GEO.colorMode] || GEO_MODES.refalt; }
 
 function geoHexRGB(h){
   const s = h.replace('#','');
@@ -1245,7 +1246,7 @@ function injectGeoCSS(){
      window size and pushes overflow in the detail card to its own internal
      scroll (.geo-pane-body already has overflow:auto; it just never had a
      bounded parent height to scroll within before). */
-  .geo-shell { display: grid; grid-template-columns: 1fr 280px; gap: 14px; margin: 14px 0; align-items: start; --geo-h: 400px; }
+  .geo-shell { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 36%, 480px); gap: 14px; margin: 14px 0; align-items: start; --geo-h: 400px; }
   @media(max-width: 1000px) { .geo-shell { grid-template-columns: 1fr; } }
   
   .geo-map-wrap { position: relative; border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; height: var(--geo-h); }

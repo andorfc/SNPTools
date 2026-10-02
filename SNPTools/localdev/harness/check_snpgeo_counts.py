@@ -55,5 +55,10 @@ for s in R['allStats']:
             for k in ('total', 'called', 'count', 'het', 'altAlleles', 'calledAlleles'):
                 ncmp += 1
                 if xs[k] != ys[k]: bad += 1; print('state mismatch', s['pos'], iso, stn, k, xs[k], ys[k])
-print(f'sites={len(sites)} comparisons={ncmp} mismatches={bad}')
+# the default view and the score columns (DNA: PlantCAD1, PlantCAD2, Evo2; protein: ESM1-3, ESM-C)
+if R.get('defaultMode') != 'refalt' or not any(o and o[0] == 'refalt' for o in R.get('modeSelects', [])):
+    bad += 1; print('default colour mode', R.get('defaultMode'), R.get('modeSelects'))
+SCORES = ['PlantCAD1', 'PlantCAD2', 'Evo2', 'ESM1', 'ESM2', 'ESM3', 'ESM-C']
+if [h for h in R['tableHead'] if h in SCORES] != SCORES: bad += 1; print('score columns', R['tableHead'])
+print(f'sites={len(sites)} comparisons={ncmp} default view {R.get("defaultMode")}; score columns {" | ".join(SCORES)}; mismatches={bad}')
 sys.exit(1 if bad else 0)

@@ -225,7 +225,11 @@ async function until(site, expr, ms = 8000){
   G.pick = $(`(()=>{let best=-1,bi=0; GEO.rows.forEach((r,i)=>{let c=0,n=0; for(const g of r.gts){ if(g!==3){n++; if(g>0)c++;} } const f=c/n; if(f<0.5 && c>best){best=c;bi=i;} }); return {idx:bi, pos:GEO.rows[bi].pos, carriers:best};})()`);
   $(`geoSelectSnp(${G.pick.idx})`); await site.wait(100);
   G.overview = $('[...document.querySelectorAll("#geoDetail tbody tr")].slice(0,8).map(tr=>[...tr.children].map(td=>td.textContent.trim()))');
-  G.pngNA_freq = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_freq');
+  // the default view is Reference <-> Alternative (carriers among called)
+  G.defaultMode = $('GEO.colorMode');
+  G.modeSelects = $('[...document.querySelectorAll(".geo-mode-sel")].map(s=>[...s.options].map(o=>o.value))');
+  G.pngNA_refalt = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_refalt');
+  $('geoSetColorMode("freq")'); G.pngNA_freq = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_freq');
   $('geoSetColorMode("af")'); G.pngNA_af = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_af');
   G.fillsNA_af = $('[...document.querySelectorAll("#geoMap path.admin1")].filter(p=>p.style.fill && p.style.fill!=="rgb(228, 232, 238)" && p.style.fill!=="#e4e8ee").length');
   $('geoSetMapView("world"); geoSetColorMode("freq")'); await site.wait(50);

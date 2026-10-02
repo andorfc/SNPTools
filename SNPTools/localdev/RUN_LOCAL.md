@@ -90,7 +90,10 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
 2. **SNPGeo** ("Explore & Analyze"): pick the GRIN-linked dataset card; the gene box is
    pre-filled with `Zm00001eb374090` (chr9:12,838,008-12,843,999; 164 variants x 933 lines).
    Switch *North America (states / provinces)* / *World*, and the colour modes
-   (carrier fraction, carriers among called, alternative allele frequency). Click a country
+   (Reference ↔ Alternative = carriers among called, the default since patch 0036; variant
+   frequency = carrier fraction; alternative allele frequency). The Overview takes about a third
+   of the row (300-480 px); the variant table has PlantCAD1 | PlantCAD2 | Evo2 | ESM1-3 | ESM-C
+   (Evo2 / ESM-C empty on the demo stores; Zm00001eb067740 on the full chr2 store fills them). Click a country
    for the state table and carrier list; arrow keys step through variants; PNG/SVG export.
    Other genes in the test store: Zm00001eb374230, Zm00001eb067740, Zm00001eb056510,
    Zm00001eb233650, Zm00001eb313510, Zm00001eb404740, Zm00001eb404760.
