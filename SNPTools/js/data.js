@@ -60,10 +60,11 @@ const Data = (function () {
      filters:['Grzybowski 2023 GATK filters','Beagle 5 imputation','GRIN-linked'], het:true, indel:true, impute:true},
   ];
 
-  /* SNPVersity annotation columns, in table order. Every column is always shown;
-     annotationFields(datasetId) says, per set, whether a column is filled ('ok'),
-     not available for that set ('na') or waiting for a data merge ('pending'), with
-     the reason shown in the header tooltip and in the note above the table. */
+  /* SNPVersity annotation columns, in table order. annotationFields(datasetId) says, per
+     set, whether a column is filled ('ok'), not available for that set ('na': shown empty,
+     with the reason in the header tooltip and the note above the table), waiting for a data
+     merge ('pending'), or left out of that set's table altogether ('hidden': a field the
+     call set never records, so an always-empty column says nothing). */
   const ANNOTATION_COLUMNS = [
     {key:'gene',   label:'Gene model'},   {key:'effect', label:'Effect'},
     {key:'impact', label:'SNPEff Impact'},{key:'domain', label:'Domain'},
@@ -79,8 +80,8 @@ const Data = (function () {
       r2: {status:'na', note:'maxR² is computed only for the High Quality set (its LD filter); the High Coverage set has no MAXR2.'},
     },
     zmgrin2026_imp: {
-      mq:   {status:'na', note:ZMGRIN_NA_QC},
-      comp: {status:'na', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
+      mq:   {status:'hidden', note:ZMGRIN_NA_QC},
+      comp: {status:'hidden', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
       r2:   {status:'ok', note:'From the 933 release genotypes: highest PLINK 1.9 r² with any variant 400-5,000 bp away, no MAF/missingness/r² filtering. Blank = no partner variant within 400-5,000 bp, or monomorphic.'},
       pc1:  {status:'pending', note:'PlantCAD1 scores for the Grzybowski sites are being merged per chromosome (rounded to 0.1).'},
       pc2:  {status:'pending', note:'PlantCAD2 scores for the Grzybowski sites are being merged per chromosome (rounded to 0.1).'},

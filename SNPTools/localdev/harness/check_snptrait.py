@@ -25,6 +25,18 @@ kw = sorted(a['id'] for a in rows if (tr['samples'].get(a['id'], {}).get('traits
 if kw != T['rangeKW']: bad += 1; print('range filter differs', len(kw), len(T['rangeKW']))
 kwa = [i for i in kw if next(a for a in rows if a['id'] == i).get('panel') == 'Ames282']
 if len(kwa) != T['rangeKW_Ames']: bad += 1; print('range x panel differs', len(kwa), T['rangeKW_Ames'])
+# the Send dialog: replace pre-ticked; ticking add unticks replace; add keeps SNPVersity's
+# selection and adds the SNPTrait lines (union), and says how many are new
+D, B, H = T['dialog'], T['dialogBefore'], T['handoffAdd']
+union = sorted(set(B['versity']) | set(B['trait']))
+new = len(set(B['trait']) - set(B['versity']))
+if not (D['open'] and D['replace'] and not D['add']): bad += 1; print('dialog defaults', D)
+if D['afterAdd'] != {'replace': False, 'add': True, 'sendDisabled': False}: bad += 1; print('dialog after add', D['afterAdd'])
+if f"replace the {len(B['versity'])} accessions" not in D['text'] or f"({new} new" not in D['text']: bad += 1; print('dialog text', D['text'])
+if H['tool'] != 'snpversity' or not H['dialogClosed'] or H['selected'] != union: bad += 1; print('add hand-off', len(H['selected']), len(union))
+if f"+{new} added" not in H['banner']: bad += 1; print('arrival banner', H['banner'])
+if T['handoff']['selected'] != T['selectedAfterSelectVisible']: bad += 1; print('replace hand-off', T['handoff'])   # SNPTrait starts from SNPVersity's selection
+print(f"Send dialog: replace {T['handoff']['selected']} lines; add {len(B['trait'])} to {len(B['versity'])} -> {len(H['selected'])} ({new} new)")
 print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
 print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')
 sys.exit(1 if bad else 0)

@@ -402,21 +402,79 @@ function traitRenderRunbar(){
     <div class="spacer"></div>
     <button class="btn" onclick="traitExport('csv')">${ICONS.download} CSV</button>
     <button class="btn" onclick="traitExport('json')">${ICONS.download} JSON</button>
-    <button class="btn primary" ${n?'':'disabled'} onclick="traitSendToVersity()">
-      ${ICONS.dna} Send ${n} ${escT(traitUnit(n))} to SNPVersity</button>`;
+    <button class="btn primary" ${n?'':'disabled'} onclick="traitOpenSend()" aria-haspopup="dialog">
+      ${ICONS.dna} Send ${n} ${escT(traitUnit(n))} to SNPVersity…</button>`;
   traitStatus();
 }
-function traitSendToVersity(){
+/* ---- hand-off dialog: replace SNPVersity's selection or add to it ----
+   The same choice GWAS Explorer's "Send to SNPVersity" offers: two mutually exclusive
+   boxes, "replace" pre-ticked, Send disabled until one is ticked. The add box says how
+   many of the lines are new to SNPVersity's selection. */
+function traitSendCounts(){
+  const ids=[...TRAIT.selected];
+  const cur=(typeof S!=='undefined' && S.selected instanceof Set) ? S.selected : new Set();
+  const fresh=ids.filter(id=>!cur.has(id)).length;
+  return {n:ids.length, current:cur.size, fresh, already:ids.length-fresh};
+}
+function traitOpenSend(){
+  if(!TRAIT.selected.size) return;
+  traitCloseSend();
+  const c=traitSendCounts(), unit=escT(traitUnit(c.n));
+  const accs=k=>`accession${k===1?'':'s'}`;
+  const host=document.createElement('div'); host.id='traitSendDlg';
+  host.innerHTML=`<div class="trait-send-backdrop" onclick="traitCloseSend()"></div>
+    <div class="trait-send" role="dialog" aria-modal="true" aria-labelledby="traitSendTitle">
+      <div class="trait-send-head"><h3 id="traitSendTitle">Send to SNPVersity</h3>
+        <button type="button" class="trait-send-x" onclick="traitCloseSend()" aria-label="Close">&times;</button></div>
+      <div class="trait-send-body">
+        <div class="trait-send-what"><b>${c.n}</b> ${unit} selected in SNPTrait</div>
+        <label class="trait-send-check"><input type="checkbox" id="traitSendReplace" checked onchange="traitSendPick(this)">
+          <span>Send ${unit} — replace the <b>${c.current}</b> ${accs(c.current)} currently selected in SNPVersity</span></label>
+        <label class="trait-send-check"><input type="checkbox" id="traitSendAdd" onchange="traitSendPick(this)">
+          <span>Send ${unit} — keep the <b>${c.current}</b> ${accs(c.current)} currently selected in SNPVersity and add to them
+            <span class="trait-send-n">(${c.fresh} new${c.already?`, ${c.already} already selected`:''})</span></span></label>
+        <div class="trait-send-hint" id="traitSendHint"></div>
+      </div>
+      <div class="trait-send-foot">
+        <button type="button" class="btn" onclick="traitCloseSend()">Cancel</button>
+        <button type="button" class="btn primary" id="traitSendGo" onclick="traitSendConfirm()">Send</button>
+      </div>
+    </div>`;
+  document.body.appendChild(host);
+  document.addEventListener('keydown', traitSendKey);
+  const first=document.getElementById('traitSendReplace'); if(first) first.focus();
+}
+function traitSendKey(e){ if(e.key==='Escape') traitCloseSend(); }
+function traitCloseSend(){
+  const el=document.getElementById('traitSendDlg'); if(el) el.remove();
+  document.removeEventListener('keydown', traitSendKey);
+}
+/* the two boxes exclude each other; Send needs one of them */
+function traitSendPick(box){
+  const rep=document.getElementById('traitSendReplace'), add=document.getElementById('traitSendAdd');
+  if(box && box.checked){ (box===rep?add:rep).checked=false; }
+  const any=rep.checked||add.checked;
+  document.getElementById('traitSendGo').disabled=!any;
+  document.getElementById('traitSendHint').textContent=any?'':'Choose whether to replace SNPVersity’s selection or add to it.';
+}
+function traitSendConfirm(){
+  const rep=document.getElementById('traitSendReplace'), add=document.getElementById('traitSendAdd');
+  const mode=rep&&rep.checked ? 'replace' : (add&&add.checked ? 'add' : null);
+  if(!mode) return;
+  traitCloseSend();
+  traitSendToVersity(mode);
+}
+/* mode: 'replace' (the default, as before the dialog) or 'add' */
+function traitSendToVersity(mode){
   const ids=[...TRAIT.selected];
   if(!ids.length) return;
-  if(typeof window.versityRequest==='function'){
-    window.versityRequest({
-      dataset:S.dataset, accessions:ids, merge:'replace',
-      from:'SNPTrait', note:`${ids.length} ${traitUnit(ids.length)} selected in SNPTrait`,
-    });
-  } else {
-    S.selected=new Set(ids); go('snpversity');
-  }
+  const merge = mode==='add' ? 'add' : 'replace';
+  const payload={dataset:TRAIT.dataset||S.dataset, accessions:ids, merge,
+                 from:'SNPTrait', note:`${ids.length} ${traitUnit(ids.length)} selected in SNPTrait`};
+  if(typeof Handoff!=='undefined' && Handoff.toVersity){ Handoff.toVersity(payload); return; }
+  if(typeof window.versityRequest==='function'){ window.versityRequest(payload); return; }
+  S.selected = merge==='add' ? new Set([...S.selected, ...ids]) : new Set(ids);
+  go('snpversity');
 }
 function traitExport(kind){
   const sel=TRAIT.rows.filter(r=>TRAIT.selected.has(r.id));
@@ -497,6 +555,22 @@ function injectTraitCSS(){
   .tg-table tr.on .cb{background:var(--blue-600);border-color:var(--blue-600)}
   .tg-table tr.on .cb svg{opacity:1}
   .trait-empty{padding:26px;text-align:center;color:var(--faint);border:1px dashed var(--line);border-radius:10px}
+  /* hand-off dialog (same shape as GWAS Explorer's Send to SNPVersity) */
+  .trait-send-backdrop{position:fixed;inset:0;background:rgba(10,15,28,.35);z-index:43}
+  .trait-send{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(480px,calc(100vw - 32px));max-height:85vh;
+    background:#fff;border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow-lg);z-index:44;
+    display:flex;flex-direction:column;overflow:hidden}
+  .trait-send-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+  .trait-send-head h3{font-family:var(--disp);font-size:15px;font-weight:700;margin:0;color:var(--ink)}
+  .trait-send-x{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+  .trait-send-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+  .trait-send-what{font-size:13px;color:var(--ink)} .trait-send-what b{font-family:var(--mono)}
+  .trait-send-check{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.45;cursor:pointer;color:var(--ink)}
+  .trait-send-check input{margin:0;position:relative;top:3px;cursor:pointer;flex:0 0 auto}
+  .trait-send-check b{font-family:var(--mono)}
+  .trait-send-n{color:var(--muted);white-space:nowrap}
+  .trait-send-hint{font-size:11.5px;color:#b45309;min-height:14px}
+  .trait-send-foot{padding:12px 18px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
   `;
   document.head.appendChild(s);
 }

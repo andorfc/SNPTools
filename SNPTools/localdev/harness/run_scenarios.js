@@ -44,6 +44,8 @@ function annotStats(site){
         if(/^-?[0-9.]+$/.test(v)){ d=Math.max(d,(v.split('.')[1]||'').length); if(ex.length<5) ex.push(v); } } });
       filled[c.key]=n; decimals[c.key]=d; sample[c.key]=ex; });
     return {dataset:S.dataset, headers:th.slice(0, first+cols.length), cols, rows:S.results.rows.length, filled, decimals, sample,
+            fields:Data.annotationFields(S.dataset).map(f=>({key:f.key, label:f.label, status:f.status})),
+            cellsPerRow:host.querySelector('tr') ? host.querySelector('tr').children.length : 0, headerCells:document.querySelectorAll('#rtBody table.vcf thead th').length,
             note:(document.getElementById('annotNote')||{}).textContent||''};
   })()`);
 }
@@ -102,6 +104,22 @@ async function until(site, expr, ms = 8000){
   snapshot(site, 'snptrait_filtered', 'SNPTrait - SS x Ames282 x Dent');
   $('traitSendToVersity()'); await site.wait(300);
   T.handoff = {tool: $('S.tool'), selected: $('S.selected.size'), dataset: $('S.dataset')};
+  /* the Send dialog, as in GWAS Explorer: replace pre-ticked; "add" keeps SNPVersity's
+     selection (here 5 lines SNPTrait has not selected, so add and replace differ) and adds
+     the SNPTrait lines to it */
+  $('go("snptrait"); S.selected=new Set(Data.accessionsFor("zmgrin2026_imp").map(a=>a.id).filter(id=>!TRAIT.selected.has(id)).slice(0,5)); traitRenderRunbar()');
+  T.dialogBefore = {versity: $('[...S.selected].sort()'), trait: $('[...TRAIT.selected].sort()'),
+                    button: $('[...document.querySelectorAll("#traitRunbar button")].map(b=>b.textContent.trim()).find(t=>/SNPVersity/.test(t))')};
+  $('[...document.querySelectorAll("#traitRunbar button")].find(b=>/SNPVersity/.test(b.textContent)).click()');
+  T.dialog = {open: $('!!document.querySelector("#traitSendDlg .trait-send")'), text: $('document.querySelector(".trait-send").textContent.replace(/\\s+/g," ").trim()'),
+              replace: $('document.getElementById("traitSendReplace").checked'), add: $('document.getElementById("traitSendAdd").checked')};
+  $('document.getElementById("traitSendAdd").click()');
+  T.dialog.afterAdd = {replace: $('document.getElementById("traitSendReplace").checked'), add: $('document.getElementById("traitSendAdd").checked'),
+                       sendDisabled: $('document.getElementById("traitSendGo").disabled')};
+  snapshot(site, 'snptrait_send_dialog', 'SNPTrait - Send to SNPVersity (add to the current selection)');
+  $('document.getElementById("traitSendGo").click()'); await site.wait(300);
+  T.handoffAdd = {tool: $('S.tool'), dialogClosed: $('!document.getElementById("traitSendDlg")'), selected: $('[...S.selected].sort()'),
+                  banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 300)};
   /* A family without a generated schema falls back to the neutral schema: no listed dataset
      lacks one while only the GRIN-linked set is offered, so the MaizeGDB 2026 case is off.
   $('S.dataset="mgdb2026_hq"; go("snptrait")');

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """check_annotation_columns.py <results.json> <site_root> -- SNPVersity annotation columns.
 
-(a) The 13 annotation columns (Gene model ... ESM3) are rendered, in the same order, for
-    zmgrin2026_imp (and mgdb2026_hq / mgdb2026_hc, when those sets are offered); none
-    disappears when a set lacks a field.
+(a) The annotation columns (Gene model ... ESM3) are rendered, in the same order, for
+    zmgrin2026_imp (and mgdb2026_hq / mgdb2026_hc, when those sets are offered): a field a set
+    lacks stays as an empty column ('na'), except one the call set never records, which is
+    left out ('hidden': MQ and COMP for zmgrin2026_imp); every row has as many cells as the
+    header.
 (b) Per set and column, the number of filled cells equals what the INFO predicts
     (zmgrin2026_imp: fixtures/zmgrin2026_v1.4_chr2_testregions.vcf.gz; MaizeGDB 2026:
     fixtures/mgdb2026_{hq,hc}_chr2_4491424_4499434.sites.vcf.gz), and columns a set lacks
@@ -93,13 +95,20 @@ for ds, path in SETS.items():
     if not a:
         bad += 1; print('no render for', ds); continue
     hdr = a['headers']
-    if hdr[:4] != ['CHR', 'POS', 'REF', 'ALT'] or hdr[4:17] != LABELS:
+    # a 'hidden' column (MQ and COMP for the GRIN-linked call set) is left out of the table
+    hidden = {x['key'] for x in a.get('fields', []) if x['status'] == 'hidden'}
+    shown = [k for k in KEYS if k not in hidden]
+    if hdr[:4] != ['CHR', 'POS', 'REF', 'ALT'] or hdr[4:] != [LABELS[KEYS.index(k)] for k in shown]:
         bad += 1; print('columns differ', ds, hdr)
+    if a.get('cellsPerRow') != a.get('headerCells'):
+        bad += 1; print('row cells != header cells', ds, a.get('cellsPerRow'), a.get('headerCells'))
+    if ds == 'zmgrin2026_imp' and hidden != {'mq', 'comp'}:
+        bad += 1; print('hidden columns', ds, sorted(hidden))
     status = {c['key']: c['status'] for c in a['cols']}
     n, f = expected(path, status)
     if a['rows'] != n:
         bad += 1; print('rows', ds, a['rows'], n)
-    for k in KEYS:
+    for k in shown:
         if a['filled'][k] != f[k]:
             bad += 1; print('filled', ds, k, a['filled'][k], 'expected', f[k])
     # numeric precision as rendered never exceeds the INFO's (PlantCAD1/2 and Evo2: 0.1 in the rebuilt stores)
@@ -111,7 +120,7 @@ for ds, path in SETS.items():
             PREC[k] = {'info_max_decimals': dec, 'rendered_max_decimals': a.get('decimals', {}).get(k), 'rendered_examples': a.get('sample', {}).get(k)}
     if any(v != 'ok' for v in status.values()) != bool(a['note']):
         bad += 1; print('availability note', ds, repr(a['note'][:80]))
-    summary[ds] = {k: (status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
+    summary[ds] = {k: ('hidden' if k in hidden else status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
 
 # (c) the GRIN-linked INFO against its sources, all 3,495 fixture sites
 snp = {}

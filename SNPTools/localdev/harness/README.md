@@ -10,7 +10,9 @@ Scenarios (dataset `zmgrin2026_imp`, the only set offered in the initial release
 from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, switched off):
 1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
-   and hand-off to SNPVersity. (The neutral-schema case for `mgdb2026_hq` is off with that set.)
+   and hand-off to SNPVersity (replace), then the Send dialog: replace pre-ticked, add unticks
+   it, and *add* keeps SNPVersity's 5 lines and adds the 39 (44). (The neutral-schema case for
+   `mgdb2026_hq` is off with that set.)
 2. Help page lists SNPTrait (live) and SNPGeo.
 3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and
    world views, three colour modes, country detail; per-site statistics dumped.
@@ -26,7 +28,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
 
 7. SNPVersity annotation columns: the 13 columns (Gene model ... ESM3) for the GRIN-linked set
    (chr2 GWAS window from the store; MaizeGDB 2026 HQ and HC, from `../fixtures/mgdb2026_*`, only
-   when those sets are offered); the Domain column is expected filled wherever `data/domains/`
+   when those sets are offered); MQ and COMP are absent for the GRIN-linked set ('hidden') and
+   every row has as many cells as the header; the Domain column is expected filled wherever `data/domains/`
    covers the site (it assumed the files absent and failed whenever they were installed);
    `check_annotation_columns.py` recomputes the filled-cell counts from the INFO, checks that
    unavailable/pending columns stay in the table empty, and checks the GRIN-linked INFO against

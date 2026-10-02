@@ -73,6 +73,12 @@
     if (r.aaRef && r.aaAlt && r.resi!=null) return `${r.aaRef}${r.resi}${r.aaAlt}`;
     return '';
   }
+  /* MQ is left out for a set that never records it (Data.annotationFields 'hidden'). The r²
+     beside it is MAXR2, the highest LD r² with a nearby variant, not an imputation r². */
+  function mqShown(ds){
+    const f=(typeof Data!=='undefined' && Data.annotationFields) ? (Data.annotationFields(ds).find(x=>x.key==='mq')||{}) : {};
+    return f.status!=='hidden';
+  }
   function canPanEffect(r){ return !!(r && r.gene && r.gene!=='—'); }
   /* internal view switch — highlights the substitution when missense,
      otherwise just opens PanEffect on the gene */
@@ -529,7 +535,7 @@
             <div class="pctl-l">Region impact percentile</div>
             <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':r.percentile+'th'}</span></div>
           </div>
-          <div class="muted" style="font-size:11px;margin-top:6px">MAF ${fmtMaf(r.maf)} · imputation r² ${r.r2==null?'—':(+r.r2).toFixed(2)} · MQ ${r.mq==null?'—':r.mq}</div>
+          <div class="muted" style="font-size:11px;margin-top:6px">MAF ${fmtMaf(r.maf)} · max LD r² ${r.r2==null?'—':(+r.r2).toFixed(2)}${mqShown(IMP.input&&IMP.input.dataset)?` · MQ ${r.mq==null?'—':r.mq}`:''}</div>
         </div>
       </div>
 

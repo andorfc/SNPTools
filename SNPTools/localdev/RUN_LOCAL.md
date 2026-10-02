@@ -69,7 +69,9 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    Lines are grouped by panel (NAM 26, Ames 282 254, WiDiv 623, Other GRIN 30). Try
    Subpopulation = SS, In Ames 282 = yes, Kernel type = Dent (14 lines), then search `iowa` (6).
    Under *GRIN trait ranges* pick *1000 Kernel Weight*, min 250, max 300, Add (299 lines).
-   *Send N lines to SNPVersity* hands the selection over.
+   *Send N lines to SNPVersity…* opens a dialog like GWAS Explorer's: *replace* the accessions
+   selected in SNPVersity (pre-ticked) or *keep them and add* (it says how many lines are new).
+   SNPTrait starts from SNPVersity's current selection, so those lines are ticked on arrival.
 2. **SNPGeo** ("Explore & Analyze"): pick the GRIN-linked dataset card; the gene box is
    pre-filled with `Zm00001eb374090` (chr9:12,838,008-12,843,999; 164 variants x 933 lines).
    Switch *North America (states / provinces)* / *World*, and the colour modes
@@ -121,13 +123,17 @@ carries ONE ESM score, computed for the first missense entry of TYPE (`tools/ann
 so a gene whose substitution is not that entry shows no ESM there (13 of Zm00001eb374230's 25
 missense sites) rather than its neighbour's score.
 
-**SNPVersity annotation columns (GRIN-linked set).** All 13 columns (Gene model ... ESM3) are always
-shown. Filled: Gene model, Effect, SNPEff Impact (SnpEff 5.2a fields of the MaizeGDB Schnable
-scored VCFs), MAF (from the 933 release genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 =
-store ESM-2 650M, `esm2_store_score`). Domain uses the same position lookup as every set
-(`data/domains/`, not part of this tree, so "—" locally for all sets). Empty with a dashed header
-and a note above the table: MQ and COMP (not available for the Grzybowski et al. 2023 call set: the
-source VCFs carry no per-site MQ/coverage) and PlantCAD1/PlantCAD2 where a store has no scores yet.
+**SNPVersity annotation columns (GRIN-linked set).** 11 columns (Gene model ... ESM3): MQ and COMP
+are left out for this set (patch 0030; status 'hidden' in `Data.annotationFields`), because the
+Grzybowski et al. 2023 call set records no per-site MQ or coverage. Filled: Gene model, Effect, SNPEff
+Impact (SnpEff 5.2a fields of the MaizeGDB Schnable scored VCFs), MAF (from the 933 release
+genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_store_score`).
+Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
+domains mapped to the genome); "—" is the usual answer, since the blocks cover 0.8-1.0% of each
+chromosome (46,930 of chr2's 5,179,690 sites fall in one). On the fixture sites the lookup agrees
+with the protein-coordinate domains (`domains.by_gene.json`) on 232 of 237 coding sites; the other 5
+lie 1-4 residues from a domain edge (residue numbering of another isoform, or the edge codon). Empty with a dashed header and a note above the
+table: PlantCAD1/PlantCAD2 where a store has no scores yet.
 maxR² is available for this set (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the
 933 release genotypes, no filtering; blank = no partner variant in range or monomorphic); the
 full chr2 store carries it (chr2 GWAS window: 233 of 249 sites); the demo stores of the other

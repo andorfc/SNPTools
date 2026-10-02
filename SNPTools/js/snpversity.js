@@ -1055,9 +1055,10 @@ function renderTable(){
     </div>`;
   attachTT();
 }
-/* Annotation columns: always all 13, in this order. Per-set availability comes from
-   Data.annotationFields(); a column that a set lacks stays in the table with empty
-   cells, a dashed header and the reason in its tooltip (never removed). */
+/* Annotation columns, in this order. Per-set availability comes from
+   Data.annotationFields(): a column a set lacks ('na') stays in the table with empty
+   cells, a dashed header and the reason in its tooltip; a column the set never records
+   ('hidden': MQ and COMP for the GRIN-linked 2026 call set) is left out. */
 const ANNOT_TT={
   gene:'B73 v5 gene model overlapping the variant; where a site has consequences in several genes, the most severe is shown and +N lists the others.',
   effect:'Predicted consequence — e.g. missense, synonymous, intron, frameshift.',
@@ -1073,15 +1074,20 @@ const ANNOT_TT={
   esm2:'ESM2 protein language-model score.',
   esm3:'ESM3 protein language-model score.'};
 const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,esm1:1,esm2:1,esm3:1};
+let _annotCache={ds:null, res:null, val:null};
 function annotFields(){
+  // once per dataset + result: rowHTML asks for every row, and a 'pending' column scans the rows
+  const res=S.results||null;
+  if(_annotCache.val && _annotCache.ds===S.dataset && _annotCache.res===res) return _annotCache.val;
   const F=(Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
   // A 'pending' column is shown as soon as the queried store carries it (e.g. PlantCAD merged
   // for one chromosome first); it stays pending (empty + note) where the store has no value.
-  const rows=(S.results&&S.results.rows)||[];
-  return F.map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
+  const rows=(res&&res.rows)||[];
+  const val=F.filter(f=>f.status!=='hidden').map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
     ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome (rounded to 0.1); sites without a score show N/A.'}) : f);
+  _annotCache={ds:S.dataset, res, val};
+  return val;
 }
-function annotFieldMap(){ const m={}; annotFields().forEach(f=>{m[f.key]=f;}); return m; }
 function annotHeaderHTML(){
   return annotFields().map(f=>{
     const tt=ANNOT_TT[f.key]+(f.status==='pending'?' Pending for this set: '+f.note
@@ -1119,24 +1125,29 @@ function rowHTML(r){
     ? ` <a class="fold-jump" href="#" title="Show this variant on the predicted protein structure in SNPFold" onclick="goFold('${r.gene}',{chr:'${escAttr(S.chr)}',pos:${r.pos},ref:'${escAttr(r.ref)}',alt:'${escAttr(r.alt)}',sub:'${escAttr(r.sub||'')}',effect:'${escAttr(r.effect||'')}'});return false;">fold ↗</a>`
     : '';
   const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump + foldJump;
-  const F=annotFieldMap();
+  const fields=annotFields();
+  const F={}; fields.forEach(f=>{F[f.key]=f;});
   const off=k=>F[k] && F[k].status!=='ok';           // column not available / pending for this set
   const blank=k=>`<td class="num annot-off" data-tt="${escAttr(F[k].note)}"></td>`;
   const sc=(v,k)=>off(k)?blank(k):`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
+  // one cell per annotation column, in the header's order (a hidden column has neither)
+  const cell={
+    gene:  ()=>`<td>${geneCell(r.gene)}${moreGenes(r)}</td>`,
+    effect:()=>`<td class="effect-cell">${eff}</td>`,
+    impact:()=>`<td><span class="pill ${r.impact.toLowerCase()}">${r.impact}</span></td>`,
+    domain:()=>`<td>${domTag(r.domain)}</td>`,
+    mq:    ()=>off('mq')?blank('mq'):`<td class="num">${r.mq}</td>`,
+    comp:  ()=>off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`,
+    r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`,
+    maf:   ()=>off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`,
+    pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'),
+  };
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${S.chr.replace('chr','')}</td>
     <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
-    <td>${geneCell(r.gene)}${moreGenes(r)}</td>
-    <td class="effect-cell">${eff}</td>
-    <td><span class="pill ${r.impact.toLowerCase()}">${r.impact}</span></td>
-    <td>${domTag(r.domain)}</td>
-    ${off('mq')?blank('mq'):`<td class="num">${r.mq}</td>`}
-    ${off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`}
-    ${off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`}
-    ${off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`}
-    ${sc(r.pc1,'pc1')}${sc(r.pc2,'pc2')}${sc(r.esm1,'esm1')}${sc(r.esm2,'esm2')}${sc(r.esm3,'esm3')}
+    ${fields.map(f=>cell[f.key]?cell[f.key]():'<td></td>').join('')}
     ${gtCells(r.gts)}
   </tr>`;
 }
