@@ -11,16 +11,16 @@ Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
    and hand-off to SNPVersity; neutral schema for `mgdb2026_hq`.
 2. Help page lists SNPTrait (live) and SNPGeo.
-3. SNPGeo gene search `Zm00001eb374090` (all 932 lines): table, map in North America and
+3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and
    world views, three colour modes, country detail; per-site statistics dumped.
 4. SNPGeo gene on a chromosome without a store (graceful error).
-5. SNPVersity chr10:9,788,000-9,826,500 with the 25 NAM founders -> Send to SNPGeo
-   (re-query of all 932 lines), then a forced partial hand-off (warning banner).
+5. SNPVersity chr10:9,788,000-9,826,500 with the 26 NAM lines (B73 + 25 founders) -> Send to SNPGeo
+   (re-query of all 933 lines), then a forced partial hand-off (warning banner).
 6. GWAS Explorer, Tassel Branch Number (intercept, NAM, Tibbs-Cortes et al. 2024): region
    chr2:4,491,424-4,499,434 (Zm00001eb067740 +-2 kb; 85 GWAS SNPs, 11 significant) -> Send to
    SNPVersity, (a) with the default VCF set (unchanged: 81 MaizeGDB 2026 NAM runs) and (b) with
-   the GRIN-linked set (NAM names translated to 25 ZmG_* samples, CML103 reported as not
-   available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
+   the GRIN-linked set (release v1.4: all 26 NAM names translated to 26 ZmG_* samples, none
+   reported as not available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.

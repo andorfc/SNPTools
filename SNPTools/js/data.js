@@ -48,11 +48,11 @@ const Data = (function () {
      filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
     {id:'mgdb2026_hc', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Coverage',  ref:'B73 v5', acc:'2,710', sites:'290M',
      filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
-    // GRIN-linked release v1.3: 926 Grzybowski et al. 2023 lines (Beagle-imputed)
-    // + 6 lines called separately at the same sites. Sample ids = release
+    // GRIN-linked release v1.4: 926 Grzybowski et al. 2023 lines (Beagle-imputed)
+    // + 7 lines called separately at the same sites (incl. NAM founder CML103). Sample ids = release
     // sample_id (ZmG_<genotype>); metadata in js/zmgrin.catalog.js.
     {id:'zmgrin2026_imp', family:'zmgrin2026', name:'MaizeGDB GRIN-linked 2026', sub:'Imputed (Grzybowski 2023 sites)',
-     ref:'B73 v5', acc:'932', sites:'46M',
+     ref:'B73 v5', acc:'933', sites:'46M',
      filters:['Grzybowski 2023 GATK filters','Beagle 5 imputation','GRIN-linked'], het:true, indel:true, impute:true},
   ];
 

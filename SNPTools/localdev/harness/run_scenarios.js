@@ -126,7 +126,7 @@ async function until(site, expr, ms = 8000){
   await $('geoLookupGene()');
   R.snpgeo_nostore = $('document.getElementById("geoLookupStatus").textContent');
 
-  /* ---------- SNPVersity region (25 NAM founders) -> Send to SNPGeo ---------- */
+  /* ---------- SNPVersity region (26 NAM lines, B73 + 25 founders) -> Send to SNPGeo ---------- */
   const V = R.versity_to_geo = {};
   $('S.dataset="zmgrin2026_imp"; S.chr="chr10"; S.start=9788000; S.end=9826500; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
   await site.wait(100);
@@ -134,7 +134,7 @@ async function until(site, expr, ms = 8000){
   V.versityRows = $('S.results && S.results.rows.length'); V.versityAccs = $('S.results && S.results.accs.length');
   V.versityTableRows = $('document.querySelectorAll("#rtBody tbody tr").length');
   V.sendButton = $('[...document.querySelectorAll("button")].some(b=>/Send to SNPGeo/.test(b.textContent))');
-  snapshot(site, 'snpversity_chr10_region', 'SNPVersity - chr10:9,788,000-9,826,500, 25 NAM founders');
+  snapshot(site, 'snpversity_chr10_region', 'SNPVersity - chr10:9,788,000-9,826,500, 26 NAM lines');
   await $('sendToGeo()');
   await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
   V.geo = {requeried: $('S.geoInput.requeried'), accs: $('S.geoInput.accs.length'), rows: $('GEO.rows.length'),
@@ -192,10 +192,10 @@ async function until(site, expr, ms = 8000){
   $('document.getElementById("gwxSendConfirmBtn").click()'); await site.wait(300);
   W.grinSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
                 banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 400)};
-  W.pageHasNotAvailable = $('/not available in this set: CML103/.test(document.getElementById("page").textContent)');
+  W.pageHasNotAvailable = $('/not available in this set/i.test(document.getElementById("page").textContent)');
   await $('runQuery()');
   W.versity = {rows: $('S.results && S.results.rows.length'), accs: $('S.results && S.results.accs.length')};
-  snapshot(site, 'snpversity_from_gwas_grin', 'SNPVersity - GWAS region chr2:4,491,424-4,499,434, 25 NAM lines (GRIN-linked)');
+  snapshot(site, 'snpversity_from_gwas_grin', 'SNPVersity - GWAS region chr2:4,491,424-4,499,434, 26 NAM lines (GRIN-linked, release v1.4)');
   await $('sendToGeo()');
   await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
   const idx = $('GEO.rows.findIndex(r=>r.pos===4494625)');

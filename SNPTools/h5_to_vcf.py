@@ -150,7 +150,7 @@ def header_text():
         lines += info_defs()
     if "zmgrin" in hdf5_file_path:
         lines += common_info_header()
-        lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.3; Grzybowski et al. 2023 sites, Beagle-imputed)")
+        lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.4; Grzybowski et al. 2023 sites, Beagle-imputed + direct-call companion lines)")
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
         lines.append("##doi=https://doi.org/10.1111/tpj.16123")
         lines += info_defs()

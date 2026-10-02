@@ -48,7 +48,7 @@ const TOOLS = {
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
     tag:'Select lines by passport and trait metadata',
     desc:'Browse the lines of a dataset with their GRIN passport and evaluation metadata — panel, subpopulation, country and state of origin, improvement status, kernel type, and binned trait values. Filter with facets and search, batch-select, export, and send the selection straight to SNPVersity.',
-    feats:[['search','Search & filter','Facet the 932 GRIN-linked lines of the 2026 release by panel, origin, and trait class.'],['leaf','GRIN records','Passport data and evaluation summaries from the U.S. National Plant Germplasm System.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+    feats:[['search','Search & filter','Facet the 933 GRIN-linked lines of the 2026 release (v1.4) by panel, origin, and trait class.'],['leaf','GRIN records','Passport data and evaluation summaries from the U.S. National Plant Germplasm System.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
   snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
     tag:'Map where each allele is found',
     desc:'Map the geographic distribution of variants: for a gene or a region handed off from SNPVersity, colour countries (and U.S. states, Canadian provinces, Mexican states) by carrier fraction, reference/alternative composition, or alternative-allele frequency over the lines with known origin.',

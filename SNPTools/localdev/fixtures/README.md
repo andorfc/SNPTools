@@ -1,12 +1,18 @@
-# Local test fixtures (dataset `zmgrin2026_imp`, release v1.3)
+# Local test fixtures (dataset `zmgrin2026_imp`, release v1.4)
 
 Cut on Ceres on 2026-09-28 with bcftools 1.20 from
 `/90daydata/maizegdb/carson/grz2023/release_v1.3/all/grz2023_release_v1.3_all_<chr>.vcf.gz`
-(926 Beagle-imputed samples); the 6 default companion lines (ZmG_CM174, ZmG_CML144,
-ZmG_CML312, ZmG_CML451, ZmG_PHT69, ZmG_R109B) were appended from
-`companion/grz2023_release_v1.3_direct_calls_8lines.vcf.gz` (GT only, matched on
-CHROM/POS/REF/ALT; all 3,495 sites matched). Sample columns = the 932 `sample_id`s of
-`data/zmgrin2026_samples.tsv`. INFO is the release INFO (AC/AN/AF/DR2/IMP); the
+(926 Beagle-imputed samples; records and genotypes are identical in release v1.4); the 6
+default companion lines of v1.3 (ZmG_CM174, ZmG_CML144, ZmG_CML312, ZmG_CML451, ZmG_PHT69,
+ZmG_R109B) were appended from `companion/grz2023_release_v1.3_direct_calls_8lines.vcf.gz`
+(GT only, matched on CHROM/POS/REF/ALT; all 3,495 sites matched). On 2026-09-29 the NAM founder
+**ZmG_CML103** (GRIN PI 690319) was appended as the last column from
+`release_v1.4/companion/grz2023_release_v1.4_direct_calls_8lines.vcf.gz` (bcftools 1.20 on
+Ceres; GT only, same matching; 3,495/3,495 sites matched: 2,833 0/0, 67 0/1, 377 1/1, 218 ./.).
+The per-sample FT field is not applied: its 41 GRZHARD genotypes are already ./. and its 14
+LowQual genotypes are 0/0 reference calls, which are kept. The demo regions do not overlap the
+chr10 30-130 Mb segment flagged in the release's CML103 identity caveat. Sample columns = the
+933 `sample_id`s of `data/zmgrin2026_samples.tsv`, in that order (CML103 last). INFO is the release INFO (AC/AN/AF/DR2/IMP); the
 annotation keys SNPTools shows (GENEMODEL, TYPE, EFFECT, plantcad*/ESM* scores) are not
 merged yet, so those columns read "—".
 

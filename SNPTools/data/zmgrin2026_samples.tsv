@@ -931,3 +931,4 @@ ZmG_R109B	ZmG_R109B	1	1	ZmG_R109B	ZmG:R109B	NSL 30881	1101061	R109B	E_called_sep
 ZmG_PHT69	ZmG_PHT69	1	1	ZmG_PHT69	ZmG:PHT69	PI 559949	1454921	PHT69	E_called_separately	t0_primary	False	False	True	WiDiv		False
 ZmG_CML144	ZmG_CML144	1	1	ZmG_CML144	ZmG:CML144	PI 690587	1918521	CML 144	E_called_separately	t0_primary	False	False	True	WiDiv		False
 ZmG_CM174	ZmG_CM174	1	1	ZmG_CM174	ZmG:CM174	PI 693332	1082768	CM174	E_called_separately	t0_primary	False	True	False	Ames282		False
+ZmG_CML103	ZmG_CML103	1	1	ZmG_CML103	ZmG:CML103	PI 690319	1645471	CML 103	E_called_separately	t0_primary	True	True	False	NAM	CML103	False

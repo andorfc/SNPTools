@@ -16,7 +16,7 @@ T4C ?=
 T5 ?=
 RELEASE_MANIFEST ?=
 EXTRA_SAMPLES ?=
-# release VCFs, one per chromosome: $(RELEASE_VCF_DIR)/grz2023_release_v1.3_all_chr<N>.vcf.gz
+# release VCFs, one per chromosome: $(RELEASE_VCF_DIR)/grz2023_release_v1.4_all_chr<N>.vcf.gz
 RELEASE_VCF_DIR ?=
 CHRS := 1 2 3 4 5 6 7 8 9 10
 
@@ -47,7 +47,7 @@ geo-layers: $(NE_DIR)/ne_110m_admin_0_countries.geojson $(NE_DIR)/ne_10m_admin_1
 	  --ne1 $(word 2,$^) --out1 data/geo/admin1_na.geo.json
 store:
 	@test -n "$(RELEASE_VCF_DIR)" || { echo "set RELEASE_VCF_DIR"; exit 1; }
-	for c in $(CHRS); do $(PYTHON_PATH) tools/vcf_to_h5.py $(RELEASE_VCF_DIR)/grz2023_release_v1.3_all_chr$$c.vcf.gz \
+	for c in $(CHRS); do $(PYTHON_PATH) tools/vcf_to_h5.py $(RELEASE_VCF_DIR)/grz2023_release_v1.4_all_chr$$c.vcf.gz \
 	  hdf5/version3/zmgrin2026_chr$${c}_impute.h5 --samples <(cut -f1 data/zmgrin2026_samples.tsv | tail -n +2) || exit 1; done
 local-store:
 	PYTHON_PATH=$(PYTHON_PATH) localdev/build_test_store.sh

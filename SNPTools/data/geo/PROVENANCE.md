@@ -25,5 +25,5 @@ Regenerate:
 
 The 110 m admin-1 file covers only the USA and the 50 m file lacks Mexico, which is
 why the 10 m file is simplified here. All 39 ISO 3166-2 codes carried by
-`SNPGEO_REGIONS[...].admin1Code` for USA/CAN/MEX samples in the v1.3 set have a
+`SNPGEO_REGIONS[...].admin1Code` for USA/CAN/MEX samples in the v1.4 set have a
 polygon in `admin1_na.geo.json`.

@@ -16,7 +16,7 @@ Multi-allelic records are not expected (release VCFs are biallelic, norm -d all)
 any allele index > 0 is treated as ALT. Only one CHROM per input is allowed.
 --samples restricts/reorders the sample columns (one id per line; ids absent
 from the VCF are skipped with a warning). Rows are buffered --chunk at a time in an
-int8 matrix (memory ~ chunk x samples bytes, 186 MB at 200,000 x 932), and datasets are
+int8 matrix (memory ~ chunk x samples bytes, 186 MB at 200,000 x 933), and datasets are
 stored in HDF5 chunks of --h5-chunk positions (default 65,536) with gzip level 4, so a
 gene-sized query decompresses one small chunk per sample column.
 Requires h5py + numpy.

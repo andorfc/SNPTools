@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 build_maize_samples.py -- derive the SNPTools sample manifest for the maize
-GRIN-linked v1 release from the project tables.
+GRIN-linked release from the project tables (first built for v1; the committed
+v1.4 manifest adds the separately called lines, CML103 included, as class E rows).
 
 One row per VCF sample column of the v1 set (crosswalk classes A, B and C of
 grz2023_grin_crosswalk.tsv). This manifest is the single join key used by
