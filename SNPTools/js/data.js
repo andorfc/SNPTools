@@ -48,6 +48,12 @@ const Data = (function () {
      filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
     {id:'mgdb2026_hc', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Coverage',  ref:'B73 v5', acc:'2,710', sites:'290M',
      filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
+    // GRIN-linked release v1.3: 926 Grzybowski et al. 2023 lines (Beagle-imputed)
+    // + 6 lines called separately at the same sites. Sample ids = release
+    // sample_id (ZmG_<genotype>); metadata in js/zmgrin.catalog.js.
+    {id:'zmgrin2026_imp', family:'zmgrin2026', name:'MaizeGDB GRIN-linked 2026', sub:'Imputed (Grzybowski 2023 sites)',
+     ref:'B73 v5', acc:'932', sites:'46M',
+     filters:['Grzybowski 2023 GATK filters','Beagle 5 imputation','GRIN-linked'], het:true, indel:true, impute:true},
   ];
 
   /*const DATASETS = [
@@ -70,6 +76,7 @@ const Data = (function () {
     mgdb2024:     {name:'MaizeGDB 2024', color:'#cf8a12'},
     schnable2023: {name:'Schnable 2023', color:'#1f8a4c'},
     nam2021:      {name:'NAM 2021',      color:'#7c3aed'},
+    zmgrin2026:   {name:'MaizeGDB GRIN-linked 2026', color:'#0f766e'},
   };
 
   /* ---------------- accession catalog (projects -> groups -> accessions) ----------------
@@ -85,7 +92,29 @@ const Data = (function () {
   }
   // MaizeGDB 2026 is the only family carrying the second-generation language-model
   // scores (PlantCAD2 / ESM2). Tools call this to show those columns conditionally.
-  function hasSecondaryScores(datasetId){ return familyOf(datasetId) === 'mgdb2026'; }
+  // The GRIN-linked 2026 release carries the same model set (PlantCAD1/2, ESM1/2/3)
+  // plus ESM-C once the annotation INFO is merged into its HDF5 store.
+  function hasSecondaryScores(datasetId){ return ['mgdb2026','zmgrin2026'].indexOf(familyOf(datasetId)) >= 0; }
+
+  /* Language-model score columns for a dataset, in display order. `key` indexes
+     the row object parseVcf() builds (pc1/pc2 = DNA, esm1..esm3/esmc = protein).
+     Used by SNPGeo's variant table; any tool can render row[model.key]. Families
+     without second-generation scores get the single DNA/protein pair their
+     INFO carries (DNA_SCORE -> pc1, AA_SCORE -> esm1). */
+  function scoreModels(datasetId){
+    if (!hasSecondaryScores(datasetId)) return [
+      {key:'pc1',  kind:'dna',     label:'PlantCAD', tip:'PlantCaduceus DNA language-model score (INFO DNA_SCORE / plantcad1_score).'},
+      {key:'esm1', kind:'protein', label:'ESM1b',    tip:'ESM1b protein language-model score (INFO AA_SCORE / ESM1_score).'},
+    ];
+    return [
+      {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE).'},
+      {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score).'},
+      {key:'esm1', kind:'protein', label:'ESM1',      tip:'ESM1b protein language-model score (INFO ESM1_score, or AA_SCORE).'},
+      {key:'esm2', kind:'protein', label:'ESM2',      tip:'ESM2 protein language-model score (INFO ESM2_score).'},
+      {key:'esm3', kind:'protein', label:'ESM3',      tip:'ESM3 protein language-model score (INFO ESM3_score).'},
+      {key:'esmc', kind:'protein', label:'ESM-C',     tip:'ESM-C protein language-model score (INFO ESMC_score).'},
+    ];
+  }
   function famNode(datasetId){
     return CATALOG ? CATALOG.families[familyOf(datasetId)] : null;
   }
@@ -110,7 +139,9 @@ const Data = (function () {
     let out = [];
     if (node){
       node.projects.forEach(p => p.groups.forEach(g => g.accessions.forEach(a => {
-        out.push({id:a.id, run:a.run, founder:a.founder, rep:a.rep, reps:a.reps,
+        // Spread first so every catalogue metadata key (panel, subpop, country,
+        // grin, ...) reaches SNPTrait/SNPGeo; the computed keys below still win.
+        out.push({...a, id:a.id, run:a.run, founder:a.founder, rep:a.rep, reps:a.reps,
                   label:a.label, group:g.name, namFounder:a.namFounder,
                   proj:p.id, projColor:p.color, projTitle:p.title});
       })));
@@ -152,7 +183,7 @@ const Data = (function () {
   function idIndex(){
     if (_byId) return _byId;
     _byId = new Map();
-    ['mgdb2026','mgdb2024','schnable2023','nam2021'].forEach(fam => {
+    ['mgdb2026','mgdb2024','schnable2023','nam2021','zmgrin2026'].forEach(fam => {
       const dsid = (DATASETS.find(d => d.family === fam) || {}).id;
       if (dsid) accessionsFor(dsid).forEach(a => { if (!_byId.has(a.id)) _byId.set(a.id, a); });
     });
@@ -344,6 +375,7 @@ const Data = (function () {
         esm1:   numOrNull(II.ESM1_score != null ? II.ESM1_score : II.AA_SCORE),
         esm2:   numOrNull(II.ESM2_score),
         esm3:   numOrNull(II.ESM3_score),
+        esmc:   numOrNull(II.ESMC_score != null ? II.ESMC_score : (II.ESMC_SCORE != null ? II.ESMC_SCORE : II.esmc_score)),
         gts,
       });
     }
@@ -473,6 +505,30 @@ const Data = (function () {
     await ensureDomains(chr);                    // load just this chromosome's Pfam file (cached)
     const {rows} = parseVcf(vcfText, ids);
     return {rows, accs, chr, vcfUrl, span, variants, wide:false, empty: rows.length === 0};
+  }
+
+  /**
+   * queryVariantsByGene(dataset, geneId, ids, opts) -> Promise<{rows, accs, chr, start, end, gene, vcfUrl, span, wide, empty, variants}>
+   * Resolves the gene through lookupGeneModel.php; when that endpoint is not
+   * reachable (e.g. a static file server) it falls back to the built-in
+   * GENE_MODELS table so the example genes still work. `ids` defaults to the
+   * dataset's default selection — pass every accession id when per-population
+   * statistics are needed (SNPGeo does).
+   */
+  async function queryVariantsByGene(dataset, geneId, ids, opts){
+    dataset = dataset || DATASETS[0].id;
+    geneId = String(geneId || '').trim();
+    let gene = null, lookupErr = null;
+    try { gene = await lookupGene(geneId); }
+    catch (e) { lookupErr = e; }
+    if (!gene && GENE_MODELS[geneId]) gene = Object.assign({id: geneId}, GENE_MODELS[geneId]);
+    if (!gene){
+      if (lookupErr) throw new Error('Gene lookup unavailable (' + lookupErr.message + ') and ' + geneId + ' is not a built-in example gene.');
+      throw new Error('Gene not found: ' + geneId);
+    }
+    ids = (ids && ids.length) ? ids : defaultSelectionFor(dataset);
+    const r = await queryVariants(dataset, gene.chr, gene.start, gene.end, ids, opts);
+    return Object.assign({}, r, {chr: gene.chr, start: gene.start, end: gene.end, gene: geneId});
   }
 
   /* =============================================================
@@ -853,7 +909,10 @@ const Data = (function () {
   return {
     datasets:    () => DATASETS,
     // dataset-aware accession accessors
-    projectsFor, accessionsFor, defaultSelectionFor, familyOf, hasSecondaryScores, namFoundersFor,
+    projectsFor, accessionsFor, defaultSelectionFor, familyOf, hasSecondaryScores, scoreModels, namFoundersFor,
+    familyMeta:  () => FAMILY_META,
+    // parsing helpers shared with SNPGeo (and the Node smoke test)
+    parseVcf, parseSub, classifyConsequence,
     // backwards-compatible defaults (first dataset)
     projects:    () => projectsFor(DEFAULT_DS),
     accessions:  () => accessionsFor(DEFAULT_DS),
@@ -866,6 +925,7 @@ const Data = (function () {
     estimateResult,                        // run-bar prediction: table vs VCF download
     accessionById,
     queryVariants,          // now async (returns a Promise)
+    queryVariantsByGene,    // async: gene id -> queryVariants() over the gene interval
     queryImpact,
     structureFor,
     pdbFor,
