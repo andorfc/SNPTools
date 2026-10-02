@@ -29,7 +29,10 @@ Adds TYPE/EFFECT/GENEMODEL/SUB (from the MaizeGDB Schnable scored VCFs, SnpEff 5
 the release genotypes) and ESM1_score/ESM2_score/ESM3_score (missense ESM table; ESM2 = store
 ESM-2 650M = esm2_store_score) to a release VCF before `vcf_to_h5.py`. Streams both sorted VCFs
 (one chromosome per run); run it per chromosome on the full release to annotate the 46M-site
-store. MQ/CVC/CVP/MAXR2 and PlantCAD scores are deliberately not written (see the docstring).
+store. MQ/CVC/CVP/MAXR2 are deliberately not written (see the docstring). `--dna-scores <tsv>`
+(chr,pos,ref,alt,plantcad1_score,plantcad2_score,evo2_score; position-sorted) adds the Atlas
+PlantCAD1/PlantCAD2 (all SNPs) and Evo2 (genic +/-1 kb SNPs) scores, and ESMC_score (llr_esmc) is
+written with the other ESM scores. The chr2 pilot store on Ceres was built this way.
 
 Natural Earth: https://github.com/nvkelso/natural-earth-vector tag v5.1.2
 (f1890d9f152c896d250a77557a5751a93d494776), public domain.

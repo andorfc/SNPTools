@@ -22,12 +22,17 @@ schnable2023 and MaizeGDB 2026 stores carry):
                                  first missense consequence of the TYPE list (the gene/SUB
                                  SNPVersity displays).
 
+  plantcad1_score, plantcad2_score, evo2_score   optional (--dna-scores): the grz2023 Atlas
+                                 PlantCAD1/PlantCAD2 (all SNPs) and Evo2 (genic +/-1 kb subset)
+                                 tables, joined on CHROM/POS/REF/ALT; indels get none.
+  ESMC_score                     llr_esmc from the same missense table, 1 decimal.
+
 Not written, on purpose:
   MQ, CVC, CVP, MAXR2            the Schnable scored VCFs carry them as "." and no per-site
                                  value exists for the Grzybowski call set; values from the
                                  MaizeGDB 2026 call set describe different reads/samples.
-  plantcad1_score/plantcad2_score  pending the PlantCAD Atlas merge. DNA_SCORE/AA_SCORE of the
-                                 scored VCF are dropped so parseVcf does not fall back to them.
+  DNA_SCORE/AA_SCORE              of the scored VCF are dropped so parseVcf does not fall back
+                                 to them (PlantCAD comes only from --dna-scores).
 
 Both VCF inputs must be sorted by position within each chromosome (release files are);
 the join streams, so whole-chromosome files work in constant memory apart from the ESM
@@ -36,7 +41,8 @@ table (~416k rows).
 import argparse, gzip, sys, collections
 
 KEEP_FROM_SNPEFF = ('TYPE', 'EFFECT', 'GENEMODEL', 'SUB')
-ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score')
+DNA_KEYS = ('plantcad1_score', 'plantcad2_score', 'evo2_score')
+ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS
 HEADER = [
     '##INFO=<ID=TYPE,Number=.,Type=String,Description="SnpEff 5.2a consequence(s) (Sequence Ontology), from the MaizeGDB Schnable scored VCF of the Grzybowski et al. 2023 sites">',
     '##INFO=<ID=EFFECT,Number=.,Type=String,Description="SnpEff putative impact per consequence (HIGH/MODERATE/LOW/MODIFIER), same source">',
@@ -46,6 +52,13 @@ HEADER = [
     '##INFO=<ID=ESM1_score,Number=1,Type=Float,Description="ESM-1b 650M WT-marginal LLR (grz2023_missense_esm llr_esm1b), 1 decimal; missense only">',
     '##INFO=<ID=ESM2_score,Number=1,Type=Float,Description="ESM-2 650M WT-marginal LLR from the Full_ESM_stack store (esm2_store_score; not the published esm2_score), 1 decimal; missense only">',
     '##INFO=<ID=ESM3_score,Number=1,Type=Float,Description="ESM3-open sequence-track WT-marginal LLR (grz2023_missense_esm llr_esm3), 1 decimal; missense only">',
+    '##INFO=<ID=ESMC_score,Number=1,Type=Float,Description="ESM C 600M WT-marginal LLR (grz2023_missense_esm llr_esmc), 1 decimal; missense only">',
+]
+
+DNA_HEADER = [
+    '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), 4 decimals; SNPs only">',
+    '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), 4 decimals; SNPs only">',
+    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), genic +/-1 kb SNP subset only (--dna-scores), 4 decimals">',
 ]
 
 
@@ -80,12 +93,45 @@ def snpeff_stream(path):
             yield t[0], int(t[1]), t[3], t[4], {k: info[k] for k in KEEP_FROM_SNPEFF if info.get(k) not in (None, '.', '')}
 
 
+def dna_stream(path):
+    """yield (chrom, pos, ref, alt, {plantcad1_score, plantcad2_score, evo2_score}) from a
+    position-sorted TSV with header chr,pos,ref,alt,<any of DNA_KEYS>; empty/nan values skipped."""
+    with opener(path) as fh:
+        hdr = fh.readline().rstrip('\n').split('\t')
+        ix = {c: i for i, c in enumerate(hdr)}
+        for c in ('chr', 'pos', 'ref', 'alt'):
+            if c not in ix:
+                sys.exit(f'--dna-scores: column {c} missing')
+        keys = [k for k in DNA_KEYS if k in ix]
+        for line in fh:
+            t = line.rstrip('\n').split('\t')
+            yield t[ix['chr']], int(t[ix['pos']]), t[ix['ref']], t[ix['alt']], \
+                {k: t[ix[k]] for k in keys if t[ix[k]] not in ('', 'nan', 'NA', '.')}
+
+
+class SortedJoin:
+    """Advance a position-sorted record stream alongside a position-sorted VCF."""
+    def __init__(self, it):
+        self.it = it; self.cur = next(it, None); self.key = None; self.buf = {}
+
+    def get(self, chrom, pos, ref, alt):
+        if self.key != (chrom, pos):
+            while self.cur is not None and self.cur[0] != chrom:
+                self.cur = next(self.it, None)
+            while self.cur is not None and self.cur[0] == chrom and self.cur[1] < pos:
+                self.cur = next(self.it, None)
+            self.key, self.buf = (chrom, pos), {}
+            while self.cur is not None and self.cur[0] == chrom and self.cur[1] == pos:
+                self.buf[(self.cur[2], self.cur[3])] = self.cur[4]
+                self.cur = next(self.it, None)
+        return self.buf.get((ref, alt), {})
+
 def load_esm(path):
     esm = collections.defaultdict(list)
     with opener(path) as fh:
         hdr = fh.readline().rstrip('\n').split('\t')
         ix = {c: i for i, c in enumerate(hdr)}
-        for c in ('chrom', 'pos', 'ref', 'alt', 'vcf_protein', 'variant', 'status', 'llr_esm1b', 'llr_esm2', 'llr_esm3'):
+        for c in ('chrom', 'pos', 'ref', 'alt', 'vcf_protein', 'variant', 'status', 'llr_esm1b', 'llr_esm2', 'llr_esm3', 'llr_esmc'):
             if c not in ix:
                 sys.exit(f'--esm: column {c} missing')
         for line in fh:
@@ -93,7 +139,7 @@ def load_esm(path):
             if t[ix['status']] != 'OK':
                 continue
             esm[(t[ix['chrom']], int(t[ix['pos']]), t[ix['ref']], t[ix['alt']])].append(
-                (t[ix['vcf_protein']], t[ix['variant']], t[ix['llr_esm1b']], t[ix['llr_esm2']], t[ix['llr_esm3']]))
+                (t[ix['vcf_protein']], t[ix['variant']], t[ix['llr_esm1b']], t[ix['llr_esm2']], t[ix['llr_esm3']], t[ix['llr_esmc']]))
     return esm
 
 
@@ -143,10 +189,12 @@ def main():
     ap.add_argument('--snpeff', required=True, help='Schnable scored VCF (or its sites-only copy), same sites')
     ap.add_argument('--esm', required=True, help='grz2023_missense_esm.tsv(.gz)')
     ap.add_argument('--out', required=True)
+    ap.add_argument('--dna-scores', help='position-sorted TSV chr,pos,ref,alt,plantcad1_score,plantcad2_score,evo2_score (optional)')
     a = ap.parse_args()
     esm = load_esm(a.esm)
     stats = collections.Counter()
     se = snpeff_stream(a.snpeff)
+    dj = SortedJoin(dna_stream(a.dna_scores)) if a.dna_scores else None
     cur = next(se, None)
     posbuf_key, posbuf = None, {}
     out = gzip.open(a.out, 'wt', compresslevel=6) if a.out.endswith('.gz') else open(a.out, 'w')
@@ -159,6 +207,8 @@ def main():
                 continue
             if line.startswith('#CHROM'):
                 out.write('\n'.join(HEADER) + '\n')
+                if dj is not None:
+                    out.write('\n'.join(DNA_HEADER) + '\n')
                 out.write('##annotate_release_info=TYPE/EFFECT/GENEMODEL/SUB from ' + a.snpeff.split('/')[-1] +
                           '; ESM from ' + a.esm.split('/')[-1] + '; MAF from this file\'s genotypes\n')
                 out.write(line)
@@ -185,6 +235,12 @@ def main():
             for k in KEEP_FROM_SNPEFF:
                 if k in ann:
                     info[k] = ann[k]
+            if dj is not None:
+                dv = dj.get(chrom, pos, ref, alt)
+                stats['dna_matched' if dv else 'dna_unmatched'] += 1
+                for k in DNA_KEYS:
+                    if k in dv:
+                        info[k] = dv[k]; stats[k] += 1
             m = maf_of(t[9:])
             if m is not None:
                 info['MAF'] = m
@@ -196,7 +252,7 @@ def main():
                 stats['esm_sites'] += 1
                 if len(rows) > 1:
                     stats['esm_sites_multi_consequence'] += 1
-                for k, v in (('ESM1_score', r[2]), ('ESM2_score', r[3]), ('ESM3_score', r[4])):
+                for k, v in (('ESM1_score', r[2]), ('ESM2_score', r[3]), ('ESM3_score', r[4]), ('ESMC_score', r[5])):
                     v = r1(v)
                     if v is not None:
                         info[k] = v
