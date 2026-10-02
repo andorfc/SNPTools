@@ -1,7 +1,15 @@
 /* =====================================================================
- *  snptrait.js — SNPTrait = metadata "Strain Selector".
- *  Registers 'snptrait'. Lets the user filter and select isolates by
+ *  snptrait.js — SNPTrait = metadata selector ("Line Selector" on maize).
+ *  Registers 'snptrait'. Lets the user filter and select samples by
  *  metadata, then hand the selected set to SNPVersity to build a VCF.
+ *
+ *  Maize (main): the schema for a family comes from
+ *  window.SNPTRAIT_SCHEMA[family], written by build_maize_trait_catalog.py
+ *  into js/zmgrin.catalog.js (family zmgrin2026: panel, subpopulation,
+ *  GRIN origin, kernel type, binned GRIN evaluation traits). Families
+ *  without a generated or built-in schema get a neutral project-only
+ *  schema. The Fusarium schemas below are kept so the module stays
+ *  identical in behaviour on the fusarium branch.
  *
  *  SCHEMA-DRIVEN: each reference has its own metadata shape, so the facets,
  *  grouping and columns are configured per family (TRAIT_SCHEMA):
@@ -39,19 +47,52 @@ const TRAIT_SCHEMA = {
     search:['id','strain','country','region','substrate','substrateDetail','host','geo'],
   },
 };
+TRAIT_SCHEMA.vert7600 = TRAIT_SCHEMA.vertMRC826 = TRAIT_SCHEMA.vert;   // fusarium family ids
+
+/* Schema lookup: a generated schema (window.SNPTRAIT_SCHEMA[family]) first,
+   then a built-in TRAIT_SCHEMA entry, then a neutral schema — never silently
+   another organism's schema. */
+const TRAIT_NEUTRAL_SCHEMA = {groupBy:'projTitle', groupLabel:'project', groupOrder:[], groupColors:{}, groupNames:{},
+  facets:[['projTitle','Project']], columns:[], search:['id','label','projTitle']};
+function traitFamily(dataset){
+  return (typeof Data!=='undefined' && Data.familyOf) ? Data.familyOf(dataset) : null;
+}
 function traitSchema(dataset){
-  const fam = (typeof Data!=='undefined' && Data.familyOf) ? Data.familyOf(dataset) : 'graminearum';
-  return fam==='graminearum' ? TRAIT_SCHEMA.graminearum : TRAIT_SCHEMA.vert;
+  const fam = traitFamily(dataset);
+  const gen = (typeof window!=='undefined' && window.SNPTRAIT_SCHEMA) || {};
+  if (fam && gen[fam]) return gen[fam];
+  if (fam && TRAIT_SCHEMA[fam]) return TRAIT_SCHEMA[fam];
+  return TRAIT_NEUTRAL_SCHEMA;
+}
+function traitHasSchema(dataset){
+  const fam = traitFamily(dataset);
+  return !!(fam && (((typeof window!=='undefined' && window.SNPTRAIT_SCHEMA) || {})[fam] || TRAIT_SCHEMA[fam]));
 }
 
+/* Organism wording. Maize is the default on this branch; Fusarium families keep
+   their isolate wording. A deployment can override per family through
+   window.SNPTRAIT_ORGANISM[family] = {kicker, title, one, many, exportBase}. */
+const TRAIT_ORGANISM = {
+  _default:    {kicker:'LINE SELECTOR',   title:'Select maize lines by metadata',       one:'line',    many:'lines',    exportBase:'selected_lines'},
+  graminearum: {kicker:'STRAIN SELECTOR', title:'Select Fusarium isolates by metadata', one:'isolate', many:'isolates', exportBase:'selected_strains'},
+};
+TRAIT_ORGANISM.vert7600 = TRAIT_ORGANISM.vertMRC826 = TRAIT_ORGANISM.graminearum;
+function traitOrganism(dataset){
+  const fam = traitFamily(dataset);
+  const ov = (typeof window!=='undefined' && window.SNPTRAIT_ORGANISM) || {};
+  return Object.assign({}, TRAIT_ORGANISM._default, TRAIT_ORGANISM[fam] || {}, ov[fam] || {});
+}
+function traitUnit(n){ const o = TRAIT.org || TRAIT_ORGANISM._default; return n === 1 ? o.one : o.many; }
+
 const TRAIT = {
-  dataset:null, schema:TRAIT_SCHEMA.graminearum,
+  dataset:null, schema:TRAIT_NEUTRAL_SCHEMA, org:TRAIT_ORGANISM._default,
   rows:[], selected:new Set(), q:'', facets:{}, openGroups:new Set(), hasMeta:false,
 };
 
 function traitLoad(dataset){
   TRAIT.dataset = dataset;
   const sc = TRAIT.schema = traitSchema(dataset);
+  TRAIT.org = traitOrganism(dataset);
   const list = Data.accessionsFor(dataset) || [];
   // fields the current schema needs on each row
   const fields = new Set([sc.groupBy, 'strain'].concat(sc.facets.map(f=>f[0]), sc.columns.map(c=>c[0]), sc.search));
@@ -89,15 +130,15 @@ function renderTrait(){
   const dsName = (Data.datasets().find(d=>d.id===S.dataset)||{}).name || S.dataset;
   p.innerHTML = `
     <div class="sec"><div class="bar"></div><div style="width:100%">
-      <div class="n">STRAIN SELECTOR</div>
-      <h2>Select Fusarium isolates by metadata</h2>
-      <p>An interactive catalogue of the isolates in <b>${escT(dsName)}</b>, grouped by ${escT(sc.groupLabel)}.
+      <div class="n">${escT(TRAIT.org.kicker)}</div>
+      <h2>${escT(TRAIT.org.title)}</h2>
+      <p>An interactive catalogue of the ${escT(TRAIT.org.many)} in <b>${escT(dsName)}</b>, grouped by ${escT(sc.groupLabel)}.
          Filter with the facets or the search box, batch-select, then send the selection to SNPVersity to build a VCF.</p>
     </div></div>
 
     <div class="ds-picker" id="traitDsPicker"></div>
 
-    ${TRAIT.hasMeta ? '' : `<div class="trait-note">No metadata is available for this reference yet — showing isolate IDs only.</div>`}
+    ${TRAIT.hasMeta ? '' : `<div class="trait-note">No metadata is available for this dataset yet — showing ${escT(TRAIT.org.one)} IDs only.</div>`}
 
     <div class="trait-shell">
       <aside class="trait-facets" id="traitFacets"></aside>
@@ -131,7 +172,8 @@ function renderTrait(){
 function renderTraitDsPicker(){
   const el=document.getElementById('traitDsPicker'); if(!el) return;
   el.innerHTML = Data.datasets().map(d=>`
-    <button class="ds-pill ${d.id===S.dataset?'on':''}" onclick="traitPickDataset('${d.id}')">
+    <button class="ds-pill ${d.id===S.dataset?'on':''}${traitHasSchema(d.id)?'':' nometa'}" onclick="traitPickDataset('${d.id}')"
+      title="${traitHasSchema(d.id)?'':'No trait / passport metadata for this dataset yet'}">
       <span class="dot"></span>${escT(d.name)} · ${d.sub}</button>`).join('');
 }
 function traitPickDataset(id){
@@ -194,7 +236,7 @@ function traitRenderTable(){
     const ia=order.indexOf(a), ib=order.indexOf(b);
     return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b);
   });
-  if(!rows.length){ grid.innerHTML='<div class="trait-empty">No isolates match the current filters.</div>'; traitStatus(); return; }
+  if(!rows.length){ grid.innerHTML=`<div class="trait-empty">No ${escT(TRAIT.org.many)} match the current filters.</div>`; traitStatus(); return; }
   const showMeta=TRAIT.hasMeta, cols=sc.columns;
   grid.innerHTML = keys.map(gv=>{
     const items=groups[gv];
@@ -205,7 +247,7 @@ function traitRenderTable(){
     const head = `<div class="tg-head" onclick="traitToggleGroup('${escAttrT(gv)}')" style="border-left:4px solid ${color}">
         <span class="caret ${open?'op':''}">${ICONS.caret}</span>
         <b>${escT(gname)}</b>
-        <span class="tg-count">${items.length} isolate${items.length!==1?'s':''}</span>
+        <span class="tg-count">${items.length} ${escT(traitUnit(items.length))}</span>
         <span class="tg-sel">${selN} selected</span>
         <span class="tg-acts">
           <button class="qbtn" onclick="event.stopPropagation();traitSelectGroup('${escAttrT(gv)}',true)">all</button>
@@ -261,14 +303,14 @@ function traitRenderRunbar(){
   const n=TRAIT.selected.size;
   rb.innerHTML=`
     <div class="summ">
-      <span class="kick${n?'':' wait'}">${n?'Ready':'Select isolates to continue'}</span>
+      <span class="kick${n?'':' wait'}">${n?'Ready':'Select '+escT(TRAIT.org.many)+' to continue'}</span>
       <b id="traitStatus"></b>
     </div>
     <div class="spacer"></div>
     <button class="btn" onclick="traitExport('csv')">${ICONS.download} CSV</button>
     <button class="btn" onclick="traitExport('json')">${ICONS.download} JSON</button>
     <button class="btn primary" ${n?'':'disabled'} onclick="traitSendToVersity()">
-      ${ICONS.dna} Send ${n} isolate${n===1?'':'s'} to SNPVersity</button>`;
+      ${ICONS.dna} Send ${n} ${escT(traitUnit(n))} to SNPVersity</button>`;
   traitStatus();
 }
 function traitSendToVersity(){
@@ -277,7 +319,7 @@ function traitSendToVersity(){
   if(typeof window.versityRequest==='function'){
     window.versityRequest({
       dataset:S.dataset, accessions:ids, merge:'replace',
-      from:'SNPTrait Strain Selector', note:`${ids.length} isolate${ids.length===1?'':'s'} from the Strain Selector`,
+      from:'SNPTrait', note:`${ids.length} ${traitUnit(ids.length)} selected in SNPTrait`,
     });
   } else {
     S.selected=new Set(ids); go('snpversity');
@@ -291,11 +333,11 @@ function traitExport(kind){
   let blob, name;
   if(kind==='json'){
     blob=new Blob([JSON.stringify(sel.map(r=>{const o={};hdr.forEach(h=>o[h]=r[h]);return o;}),null,2)],{type:'application/json'});
-    name='selected_strains.json';
+    name=TRAIT.org.exportBase+'.json';
   } else {
     const esc=v=>{v=String(v==null?'':v); return /[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v;};
     const csv=[hdr.join(',')].concat(sel.map(r=>hdr.map(h=>esc(r[h])).join(','))).join('\n');
-    blob=new Blob([csv],{type:'text/csv'}); name='selected_strains.csv';
+    blob=new Blob([csv],{type:'text/csv'}); name=TRAIT.org.exportBase+'.csv';
   }
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
@@ -334,6 +376,7 @@ function injectTraitCSS(){
   .qbtn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 10px;font:600 12px/1 var(--body);color:var(--ink);cursor:pointer}
   .qbtn.solid{background:var(--blue-600,#2563eb);border-color:var(--blue-600,#2563eb);color:#fff}
   .trait-grid{display:flex;flex-direction:column;gap:8px}
+  .ds-pill.nometa{opacity:.55}
   .tg{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .tg-head{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;background:#fbfcfe}
   .tg-head .caret{transition:transform .15s;display:inline-flex;color:var(--muted)}
