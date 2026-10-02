@@ -2,8 +2,15 @@
  *  snpgeo.js — SNPGeo: geographic distribution of SNPs.
  *
  *  Maps the geographic distribution of SNPs across countries and sub-regions.
- *  Shows the percentage of isolates carrying each variant in every country,
+ *  Shows, for every country, the fraction of the dataset's samples (maize
+ *  lines; Fusarium isolates on that branch) carrying each variant, the
+ *  reference/alternative composition, and the alternative-allele frequency,
  *  with interactive hover stats and regional breakdowns.
+ *
+ *  Genotypes: main's parseVcf() stores each call as a 1-byte code in an
+ *  Int8Array (0 = 0/0, 1 = het, 2 = 1/1, 3 = missing); haploid and diploid
+ *  VCF strings are accepted too (geoGtInfo). Denominators are restricted to
+ *  the current dataset's samples (Data.accessionsFor(GEO.dataset)).
  *
  *  Receives variant data from SNPVersity via S.geoInput:
  *    rows: array of variant objects (variant, consequence, residue, scores)
@@ -11,7 +18,7 @@
  *    chr, start, end, dataset, datasetName
  *
  *  Geographic metadata is pulled from:
- *    window.SNPGEO_REGIONS[isolateId] = {country, iso3, state, county, ...}
+ *    window.SNPGEO_REGIONS[sampleId] = {country, iso3, state, county, admin1Code, ...}
  *    window.SNPGEO_COUNTRY_ISO = {countryName -> iso3}
  *    data/geo/countries.geo.json = GeoJSON of world countries
  *
@@ -28,7 +35,7 @@ const GEO = {
   snpStats: {},          // snpIndex -> { countryIso3: {count, total, pct, called, alt, ref, altFrac, isolates, states} }
   geoJson: null,         // loaded countries.geo.json
   mapSvg: null,          // d3 selection of map container
-  colorMode: 'freq',     // 'freq' | 'refalt' — see GEO_MODES
+  colorMode: 'freq',     // 'freq' | 'refalt' | 'af' — see GEO_MODES
 };
 
 /* ================= HELPERS ================= */
@@ -66,7 +73,16 @@ function geoDatasetChooser(){
 /* Pre-filled into the gene box so the page is runnable with one click on
    Search. It is only a default: any gene the user has already looked up wins,
    and the empty-state focus selects the text so typing replaces it outright. */
-const GEO_DEFAULT_GENE = 'FGSG_00025';
+const GEO_DEFAULT_GENE = 'Zm00001eb374090';   // B73 v5; also Data.exampleGenes()[0]
+
+/* Sample wording: maize lines here, Fusarium isolates on the fusarium branch. */
+function geoUnits(){
+  const fam = (typeof Data !== 'undefined' && Data.familyOf) ? Data.familyOf(GEO.dataset || S.dataset) : '';
+  return /^(graminearum|vert)/.test(fam || '') ? {one:'isolate', many:'isolates', Many:'Isolates'}
+                                               : {one:'line', many:'lines', Many:'Lines'};
+}
+/* 'chr10' and '10' both render as chr10. */
+function geoChrLabel(c){ c = String(c == null ? '' : c); return /^chr/i.test(c) ? c : 'chr' + c; }
 
 /* ---- search bar: mirrors SNPFold's searchBar() exactly, minus the model-source picker ---- */
 function geoSearchBar(){
@@ -76,7 +92,7 @@ function geoSearchBar(){
     <input id="geoGeneInput" value="${escGeoAttr(gene)}" spellcheck="false"
       style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
       onkeydown="if(event.key==='Enter')geoLookupGene()"
-      placeholder="e.g. FGSG_00777">
+      placeholder="e.g. Zm00001eb404760">
     <button class="btn" onclick="geoLookupGene()">Search</button>
   </div>`;
 }
@@ -91,8 +107,9 @@ function renderGeo(page){
 
   const results = hasResults ? `
     <div class="card pad" style="margin-bottom:16px">
-      <div class="n" style="margin:0">${S.geoInput.gene ? 'Gene: ' + escGeo(S.geoInput.gene) : 'Region: chr' + S.geoInput.chr + ':' + S.geoInput.start.toLocaleString() + '-' + S.geoInput.end.toLocaleString()}</div>
-      <div style="color:var(--muted);font-size:13px;margin-top:4px">${S.geoInput.rows.length} variants</div>
+      <div class="n" style="margin:0">${S.geoInput.gene ? 'Gene: ' + escGeo(S.geoInput.gene) + ' · ' : 'Region: '}${escGeo(geoChrLabel(S.geoInput.chr))}:${(+S.geoInput.start).toLocaleString()}-${(+S.geoInput.end).toLocaleString()}</div>
+      <div style="color:var(--muted);font-size:13px;margin-top:4px">${S.geoInput.rows.length} variants · ${escGeo(S.geoInput.datasetName || S.geoInput.dataset || '')}</div>
+      ${geoCoverageNote()}
     </div>
     <div class="geo-shell">
       <div class="geo-map-wrap">
@@ -170,7 +187,15 @@ async function geoLookupGene(){
     // uses for whole-dataset queries).
     const allIds = (Data.accessionsFor(S.dataset) || []).map(a => a.id);
     const result = await Data.queryVariantsByGene(S.dataset, gene, allIds);
-    
+
+    // Too many variants x samples for an in-browser table (Data.queryVariants
+    // returns wide:true and no rows): say so and offer the VCF instead of
+    // silently showing an empty page.
+    if (result && result.wide){
+      if (statusEl) statusEl.innerHTML = `<span style="color:#b45309">${escGeo(gene)} spans ${result.variants != null ? result.variants.toLocaleString() + ' variants' : 'too many variants'} × ${allIds.length} ${geoUnits().many} — too large to map in the browser.</span>`
+        + (result.vcfUrl ? ` <a href="${escGeoAttr(result.vcfUrl)}" download>Download the VCF</a>` : '');
+      return;
+    }
     if (!result || !result.rows || result.rows.length === 0){
       if (statusEl) statusEl.innerHTML = '<span style="color:#f87171">No variants found for this gene</span>';
       return;
@@ -227,119 +252,124 @@ function geoLoad(){
   // Pre-compute stats for all SNPs (lazily computed on first access)
 }
 
-/* Classify one genotype call. Fusarium is HAPLOID — a sample column is a
-   single allele index ("0", "1", ".") — but the diploid spellings are
-   accepted too so this stays correct if the store ever emits them.
+/* Classify one genotype call. Accepts main's 1-byte codes (0 = ref/ref,
+   1 = het, 2 = alt/alt, 3 = missing), haploid strings ('0', '1', '.') and
+   diploid strings ('0/1', '1|1', './.', with or without FORMAT subfields).
+   Returns {cls, alt, n}: carrier class ('ref' | 'alt' | 'missing'), the
+   number of alternative alleles, and the number of called alleles.
 
-   An uncalled genotype is MISSING, not an alt call. The previous test
-   (`gt && gt!=='0' && gt!=='0|0' && gt!=='0/0'`) scored "." as carrying the
-   variant, so every isolate with no call at a site inflated that country's
-   carrier count, its map colour and its region table. */
-function geoGtClass(gt){
-  if (gt == null) return 'missing';
-  const s = String(gt).trim();
-  if (s === '' || s === '.' || s === './.' || s === '.|.') return 'missing';
-  if (s === '0' || s === '0/0' || s === '0|0') return 'ref';
-  return 'alt';
+   An uncalled genotype is MISSING, not an alt call: code 3 and '.'/'./.'
+   must never be counted as carriers. */
+function geoGtInfo(gt){
+  if (gt == null) return {cls:'missing', alt:0, n:0};
+  if (typeof gt === 'number'){
+    if (gt === 0) return {cls:'ref', alt:0, n:2};
+    if (gt === 1) return {cls:'alt', alt:1, n:2};
+    if (gt === 2) return {cls:'alt', alt:2, n:2};
+    return {cls:'missing', alt:0, n:0};
+  }
+  const s = String(gt).trim().split(':')[0];
+  if (s === '' || s === '.' || s === './.' || s === '.|.') return {cls:'missing', alt:0, n:0};
+  const al = s.split(/[\/|]/);
+  if (al.some(x => x === '.' || x === '')) return {cls:'missing', alt:0, n:0};
+  const alt = al.filter(x => x !== '0').length;
+  return {cls: alt ? 'alt' : 'ref', alt, n: al.length};
 }
+function geoGtClass(gt){ return geoGtInfo(gt).cls; }
 
 /* Per-country statistics for one variant.
 
-   Two denominators, deliberately kept apart:
-     total  — every isolate the geographic metadata places in the country,
-              queried or not. Drives the "x/y" and % in the overview table
-              and the frequency map (a country's variant frequency is over
-              its whole isolate collection).
-     called — queried isolates in the country with a non-missing genotype at
-              this site. Drives the reference/alternative view, where the
-              question is what the *observed* alleles look like; a country
-              with called === 0 has no answer and is drawn as "no calls"
-              rather than being painted at the 100%-reference end. */
+   Denominators, deliberately kept apart:
+     total  — every sample OF THE CURRENT DATASET that the geographic metadata
+              places in the country, queried or not. Drives the "x/y" and % in
+              the overview table and the carrier-frequency map.
+     called — queried samples in the country with a non-missing genotype.
+              Drives the reference/alternative view; a country with
+              called === 0 is drawn as "no calls".
+     calledAlleles / altAlleles — allele counts over the called samples
+              (2 per diploid call), giving the alternative-allele frequency.
+   A heterozygote counts as a carrier (count/alt) and contributes one
+   alternative allele. Field names used by the renderers are unchanged. */
 function aggregateGeoData(snpIndex){
-  // If cached, return it
   if (GEO.snpStats[snpIndex]) return GEO.snpStats[snpIndex];
-  
   const row = GEO.rows[snpIndex];
   if (!row) return {};
-  
-  const result = {};
   const REGIONS = window.SNPGEO_REGIONS || {};
-  
-  // STEP 1: Count ALL isolates per country (from geographic metadata)
-  Object.entries(REGIONS).forEach(([accId, geo]) => {
+  const dsIds = (typeof Data !== 'undefined' && Data.accessionsFor)
+      ? new Set((Data.accessionsFor(GEO.dataset) || []).map(a => String(a.id))) : null;
+  const result = {};
+  const node = (geo) => {
     const iso3 = geo.iso3 || '???';
+    if (!result[iso3]) result[iso3] = {country: geo.country || 'Unknown', iso3, count:0, total:0, pct:0,
+      called:0, alt:0, ref:0, missing:0, altFrac:null, altAlleles:0, calledAlleles:0, alleleFreq:null,
+      het:0, isolates:[], states:{}};
+    return result[iso3];
+  };
+  const stNode = (c, geo) => {
     const state = geo.state || geo.county || 'Unknown';
-    
-    if (!result[iso3]){
-      result[iso3] = {
-        country: geo.country || 'Unknown',
-        iso3: iso3,
-        count: 0,       // isolates carrying the alt allele
-        total: 0,       // all isolates known from this country
-        pct: 0,         // count / total
-        called: 0,      // queried isolates with a genotype call here
-        alt: 0,         // = count, named for the ref/alt view
-        ref: 0,         // called isolates carrying the reference allele
-        missing: 0,     // queried isolates with no call here
-        altFrac: null,  // alt / called, or null when called === 0
-        isolates: [],
-        states: {}
-      };
-    }
-    
-    // Count total isolates in this country (regardless of whether they were queried)
-    result[iso3].total += 1;
-    
-    if (!result[iso3].states[state]){
-      result[iso3].states[state] = {count: 0, total: 0, called: 0, alt: 0, ref: 0, isolates: []};
-    }
-    result[iso3].states[state].total += 1;
+    if (!c.states[state]) c.states[state] = {count:0, total:0, called:0, alt:0, ref:0, het:0,
+      altAlleles:0, calledAlleles:0, isolates:[], code: geo.admin1Code || null};
+    return c.states[state];
+  };
+  // STEP 1: every sample of this dataset known from each country / state
+  Object.entries(REGIONS).forEach(([accId, geo]) => {
+    if (dsIds && !dsIds.has(String(accId))) return;
+    const c = node(geo); c.total += 1; stNode(c, geo).total += 1;
   });
-  
-  // STEP 2: Classify every queried isolate's call at this site
+  // STEP 2: classify every queried sample's call at this site
+  const gts = row.gts;
+  const isArr = gts != null && typeof gts.length === 'number';   // Array or typed array
   GEO.accs.forEach((acc, accIdx) => {
     const accId = String(acc.id);
     const geo = REGIONS[accId];
-    if (!geo) return; // unmapped isolate
-    
-    const iso3 = geo.iso3 || '???';
-    const state = geo.state || geo.county || 'Unknown';
-    const c = result[iso3];
-    if (!c) return;
-    const st = c.states[state];
-    
-    // Genotypes may be in row.gts (array, one entry per accession) or in
-    // flat row.gt_N columns.
-    const gt = (row.gts && Array.isArray(row.gts)) ? row.gts[accIdx] : row[`gt_${accIdx}`];
-    const cls = geoGtClass(gt);
-    
-    if (cls === 'missing'){ c.missing += 1; return; }
-    
-    c.called += 1;
-    if (st) st.called += 1;
-    
-    if (cls === 'alt'){
-      c.count += 1;
-      c.alt += 1;
-      c.isolates.push(accId);
-      if (st){ st.count += 1; st.alt += 1; st.isolates.push(accId); }
-    } else {
-      c.ref += 1;
-      if (st) st.ref += 1;
-    }
+    if (!geo || (dsIds && !dsIds.has(accId))) return;             // unmapped / other dataset
+    const c = result[geo.iso3 || '???']; if (!c) return;
+    const st = stNode(c, geo);
+    const g = geoGtInfo(isArr ? gts[accIdx] : row[`gt_${accIdx}`]);
+    if (g.cls === 'missing'){ c.missing += 1; return; }
+    c.called += 1; st.called += 1;
+    c.altAlleles += g.alt; c.calledAlleles += g.n; st.altAlleles += g.alt; st.calledAlleles += g.n;
+    if (g.cls === 'alt'){
+      const het = (g.alt > 0 && g.alt < g.n);
+      c.count += 1; c.alt += 1; c.isolates.push(accId); if (het) c.het += 1;
+      st.count += 1; st.alt += 1; st.isolates.push(accId); if (het) st.het += 1;
+    } else { c.ref += 1; st.ref += 1; }
   });
-  
-  // Derived fractions
   Object.values(result).forEach(r => {
-    r.pct = r.total > 0 ? (r.count / r.total) : 0;
-    r.altFrac = r.called > 0 ? (r.alt / r.called) : null;
-    Object.values(r.states).forEach(s => {
-      s.altFrac = s.called > 0 ? (s.alt / s.called) : null;
+    r.pct = r.total > 0 ? r.count / r.total : 0;
+    r.altFrac = r.called > 0 ? r.alt / r.called : null;
+    r.alleleFreq = r.calledAlleles > 0 ? r.altAlleles / r.calledAlleles : null;
+    Object.values(r.states).forEach(st => {
+      st.pct = st.total > 0 ? st.count / st.total : 0;
+      st.altFrac = st.called > 0 ? st.alt / st.called : null;
+      st.alleleFreq = st.calledAlleles > 0 ? st.altAlleles / st.calledAlleles : null;
     });
   });
-  
   GEO.snpStats[snpIndex] = result;
   return result;
+}
+
+/* How many of the dataset's geo-mapped samples were actually genotyped in the
+   current result. When SNPGeo receives a partial selection (e.g. a SNPVersity
+   hand-off of a few lines) the carrier % is over every sample known from a
+   country, so it understates; say so above the map. */
+function geoCoverage(){
+  const REGIONS = window.SNPGEO_REGIONS || {};
+  const ds = (typeof Data !== 'undefined' && Data.accessionsFor) ? (Data.accessionsFor((S.geoInput||{}).dataset || GEO.dataset) || []) : [];
+  const mapped = ds.filter(a => REGIONS[a.id] && REGIONS[a.id].iso3).length;
+  const accs = (S.geoInput && S.geoInput.accs) || GEO.accs || [];
+  const q = accs.filter(a => REGIONS[a.id] && REGIONS[a.id].iso3).length;
+  return {datasetSamples: ds.length, mapped, queried: accs.length, queriedMapped: q};
+}
+function geoCoverageNote(){
+  const c = geoCoverage(), u = geoUnits();
+  if (!c.datasetSamples) return '';
+  const base = `${c.queriedMapped} of ${c.mapped} ${u.many} with a known country of origin genotyped`
+    + (c.datasetSamples > c.mapped ? ` (${c.datasetSamples - c.mapped} ${u.many} in the dataset have no country)` : '');
+  if (c.queriedMapped >= c.mapped) return `<div style="color:var(--muted);font-size:12px;margin-top:4px">${escGeo(base)}.</div>`;
+  return `<div class="geo-partial" style="margin-top:8px;padding:7px 10px;border:1px solid #f5d08a;background:#fffaf0;border-radius:8px;font-size:12px;color:#8a5a00">
+    Partial selection: ${escGeo(base)}. Carrier percentages are over every ${escGeo(u.one)} known from each country,
+    so they understate frequencies; use the allele-composition or allele-frequency modes (over called ${escGeo(u.many)}), or search the gene here to query all ${escGeo(u.many)}.</div>`;
 }
 
 /* ================= TABLE RENDERING ================= */
@@ -391,7 +421,7 @@ function geoRenderTable(){
   // identically. ScorePill.cell() returns the inner <span>; wrap it in the
   // numeric <td> this table expects. Fallback keeps the column readable if
   // snpfold.js somehow hasn't loaded.
-  const models = Data.scoreModels(GEO.dataset);
+  const models = (typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [];
   const pill = (v) => (window.ScorePill ? ScorePill.cell(v) : (v == null ? '—' : v));
   const sc = (v) => `<td class="num">${pill(v)}</td>`;
 
@@ -557,8 +587,8 @@ const GEO_MODES = {
     value: st => (st && st.called > 0) ? st.pct : null,
   },
   refalt: {
-    label: 'Reference ↔ Alternative allele',
-    legendTitle: 'Allele composition (called isolates)',
+    label: 'Reference ↔ Alternative (carriers)',
+    legendTitle: 'Carriers among called samples',
     stops: [
       [0.00, '#0072B2'],   // Okabe-Ito blue        — all reference
       [0.25, '#56B4E9'],   // Okabe-Ito sky blue
@@ -566,8 +596,18 @@ const GEO_MODES = {
       [0.75, '#E69F00'],   // Okabe-Ito orange
       [1.00, '#D55E00'],   // Okabe-Ito vermillion  — all alternative
     ],
-    ends: ['100% ref', '50 / 50', '100% alt'],
+    ends: ['all reference', '50 / 50', 'all carriers'],
     value: st => (st && st.altFrac != null) ? st.altFrac : null,
+  },
+  /* Diploid data: fraction of called alleles that are alternative
+     (alt alleles / 2·called). Differs from the carrier fraction wherever
+     heterozygous calls are common. */
+  af: {
+    label: 'Alternative allele frequency',
+    legendTitle: 'Alt allele frequency (called alleles)',
+    stops: [[0, '#f5f3ff'], [0.5, '#a78bfa'], [1, '#5b21b6']],
+    ends: ['0', '0.5', '1'],
+    value: st => (st && st.alleleFreq != null) ? st.alleleFreq : null,
   },
 };
 function geoMode(){ return GEO_MODES[GEO.colorMode] || GEO_MODES.freq; }
@@ -616,7 +656,7 @@ function geoVariantLabel(row){
 function geoScopeLabel(){
   const i = GEO.input || {};
   if (i.gene) return String(i.gene);
-  if (i.chr) return `chr${i.chr}:${i.start}-${i.end}`;
+  if (i.chr) return `${geoChrLabel(i.chr)}:${i.start}-${i.end}`;
   return 'region';
 }
 
@@ -624,10 +664,13 @@ function geoScopeLabel(){
    the tooltip leads with. */
 function geoTipHTML(stat){
   const pct = (stat.pct * 100).toFixed(1);
-  let body = `${stat.count}/${stat.total} isolates carry the variant (${pct}%)`;
+  const u = geoUnits();
+  let body = `${stat.count}/${stat.total} ${u.many} carry the variant (${pct}%)`;
   if (stat.called > 0){
     const af = (stat.altFrac * 100).toFixed(1);
-    body += `<br/>Called: ${stat.called} · ref ${stat.ref} / alt ${stat.alt} (${af}% alt)`;
+    body += `<br/>Called: ${stat.called} · ref ${stat.ref} / carrier ${stat.alt} (${af}%)`;
+    if (stat.het) body += ` · ${stat.het} het`;
+    if (stat.alleleFreq != null) body += `<br/>Alt allele frequency: ${stat.alleleFreq.toFixed(3)} (${stat.altAlleles}/${stat.calledAlleles} alleles)`;
   } else {
     body += `<br/><span style="opacity:.7">No genotype calls at this site</span>`;
   }
@@ -880,6 +923,7 @@ function geoRenderOverview(){
             data-tt="Open the ${escGeoAttr(r.country)} breakdown">${escGeo(r.country)}</button></td>
       <td class="geo-cell-num">${r.count}/${r.total}</td>
       <td class="geo-cell-num">${(r.pct * 100).toFixed(1)}%</td>
+      <td class="geo-cell-num">${r.alleleFreq != null ? r.alleleFreq.toFixed(2) : '—'}</td>
     </tr>`).join('');
 
   det.innerHTML = `
@@ -891,7 +935,7 @@ function geoRenderOverview(){
       <div class="geo-pane-body">
         <div class="geo-stat-block">
           <div class="geo-stat-row">
-            <span class="geo-stat-label">Isolates with variant:</span>
+            <span class="geo-stat-label">${geoUnits().Many} with variant:</span>
             <span class="geo-stat-value">${totCar}/${totIso}</span>
           </div>
           <div class="geo-stat-row">
@@ -903,8 +947,9 @@ function geoRenderOverview(){
           <thead>
             <tr>
               <th data-tt="Click a country to open its regional breakdown.">Country</th>
-              <th class="geo-cell-num" data-tt="Isolates carrying the variant over all isolates known from that country.">Isolates</th>
-              <th class="geo-cell-num" data-tt="Carriers as a percentage of the country's isolates.">%</th>
+              <th class="geo-cell-num" data-tt="Carriers of the variant over all ${geoUnits().many} of this dataset known from that country.">${geoUnits().Many}</th>
+              <th class="geo-cell-num" data-tt="Carriers as a percentage of the country's ${geoUnits().many}.">%</th>
+              <th class="geo-cell-num" data-tt="Alternative-allele frequency over called alleles.">AF</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -931,6 +976,7 @@ function geoShowDetail(iso3){
         <td class="geo-cell-num">${s.count}</td>
         <td class="geo-cell-num">${s.total}</td>
         <td class="geo-cell-num">${(s.total > 0 ? (s.count/s.total*100).toFixed(1) : 0)}%</td>
+        <td class="geo-cell-num">${s.alleleFreq != null ? s.alleleFreq.toFixed(2) : '—'}</td>
       </tr>`).join('');
   
   const isoPills = stat.isolates.length
@@ -946,7 +992,7 @@ function geoShowDetail(iso3){
       <div class="geo-pane-body">
         <div class="geo-stat-block">
           <div class="geo-stat-row">
-            <span class="geo-stat-label">Isolates with variant:</span>
+            <span class="geo-stat-label">${geoUnits().Many} with variant:</span>
             <span class="geo-stat-value">${stat.count}/${stat.total}</span>
           </div>
           <div class="geo-stat-row">
@@ -958,18 +1004,26 @@ function geoShowDetail(iso3){
             <span class="geo-stat-value">${stat.called}${stat.missing ? ` (+${stat.missing} no call)` : ''}</span>
           </div>
           <div class="geo-stat-row">
-            <span class="geo-stat-label">Ref / alt (called):</span>
-            <span class="geo-stat-value">${stat.called ? `${stat.ref} / ${stat.alt} · ${(stat.altFrac*100).toFixed(1)}% alt` : '—'}</span>
+            <span class="geo-stat-label">Ref / carrier (called):</span>
+            <span class="geo-stat-value">${stat.called ? `${stat.ref} / ${stat.alt} · ${(stat.altFrac*100).toFixed(1)}% carriers` : '—'}</span>
+          </div>
+          <div class="geo-stat-row">
+            <span class="geo-stat-label">Heterozygous carriers:</span>
+            <span class="geo-stat-value">${stat.called ? stat.het : '—'}</span>
+          </div>
+          <div class="geo-stat-row">
+            <span class="geo-stat-label">Alt allele frequency:</span>
+            <span class="geo-stat-value">${stat.alleleFreq != null ? `${stat.alleleFreq.toFixed(3)} (${stat.altAlleles}/${stat.calledAlleles})` : '—'}</span>
           </div>
         </div>
 
-        <h5 class="geo-subhead">Isolates carrying this variant</h5>
+        <h5 class="geo-subhead">${geoUnits().Many} carrying this variant</h5>
         <div class="geo-iso-pills">${isoPills}</div>
 
-        <h5 class="geo-subhead">By region</h5>
+        <h5 class="geo-subhead">By state / province</h5>
         <table class="geo-region-table">
           <thead>
-            <tr><th>Region</th><th>Count</th><th>Total</th><th>%</th></tr>
+            <tr><th>State / province</th><th>Carriers</th><th>Total</th><th>%</th><th>AF</th></tr>
           </thead>
           <tbody>${stateRows}</tbody>
         </table>
