@@ -2,11 +2,14 @@
 """check_annotation_columns.py <results.json> <site_root> -- SNPVersity annotation columns.
 
 (a) The 13 annotation columns (Gene model ... ESM3) are rendered, in the same order, for
-    zmgrin2026_imp, mgdb2026_hq and mgdb2026_hc; none disappears when a set lacks a field.
+    zmgrin2026_imp (and mgdb2026_hq / mgdb2026_hc, when those sets are offered); none
+    disappears when a set lacks a field.
 (b) Per set and column, the number of filled cells equals what the INFO predicts
     (zmgrin2026_imp: fixtures/zmgrin2026_v1.4_chr2_testregions.vcf.gz; MaizeGDB 2026:
     fixtures/mgdb2026_{hq,hc}_chr2_4491424_4499434.sites.vcf.gz), and columns a set lacks
-    are empty with status na/pending.
+    are empty with status na/pending. Domain: a site is filled when data/domains/ (by_chr/<chr>.json,
+    else domains.by_chr.json) has a block covering it, the lookup Data.domainAt() does; 0 when
+    neither file is installed.
 (c) zmgrin2026_imp INFO: MAF recomputed from the fixture genotypes; ESM1/2/3 equal the
     rounded llr_esm1b / llr_esm2 / llr_esm3 of fixtures/annotation/grz2023_missense_esm_testregions.tsv.gz
     (llr_esm2 = the store ESM-2 layer, i.e. esm2_store_score); TYPE/EFFECT/GENEMODEL/SUB equal
@@ -39,10 +42,27 @@ def records(path, lo=4491424, hi=4499434):
             yield t
 
 
+_DOM = {}
+def domain_blocks(chrom):
+    """The Pfam blocks Data.ensureDomains() loads: [g_start, g_end, name, pfam, type] rows."""
+    if chrom not in _DOM:
+        import os
+        one, every = f'{root}/data/domains/by_chr/{chrom}.json', f'{root}/data/domains/domains.by_chr.json'
+        _DOM[chrom] = json.load(open(one)) if os.path.exists(one) else \
+                      (json.load(open(every)).get(chrom, []) if os.path.exists(every) else [])
+    return _DOM[chrom]
+
+
+def covered(chrom, pos):
+    # Data.domainAt(): any block covering pos, looking back at most 100 kb (blocks are exon-sized)
+    return any(b[0] <= pos <= b[1] and b[0] >= pos - 100000 for b in domain_blocks(chrom))
+
+
 def expected(path, status):
     n = 0; f = dict.fromkeys(KEYS, 0)
     for t in records(path):
         I = info(t[7]); n += 1
+        f['domain'] += covered(t[0], int(t[1]))
         f['gene'] += present(I.get('GENEMODEL')); f['effect'] += present(I.get('TYPE'))
         f['impact'] += 1                                  # pill always shown (MODIFIER default)
         f['mq'] += present(I.get('MQ')); f['comp'] += present(I.get('CVP')); f['r2'] += present(I.get('MAXR2'))
@@ -62,8 +82,10 @@ def expected(path, status):
 FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
 SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
                           else f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
-        'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',
-        'mgdb2026_hc': f'{FX}/mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz'}
+        # MaizeGDB 2026, when offered again (run_scenarios.js renders them under the same switch):
+        # 'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',
+        # 'mgdb2026_hc': f'{FX}/mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz',
+        }
 summary = {}
 PREC = {}
 for ds, path in SETS.items():

@@ -24,7 +24,7 @@
     showVar: true,
     highlight: new Set(),   // variant ids force-shown in the 3D view regardless of showVar
     viewer: null, libState: 'idle',
-    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
+    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (datasets that carry them)
     structSource: null,  // 'alphafold' | 'boltz' | 'esmfold' | null — which folder the current FD.struct/FD.pdb came from
     modelPref: 'best',   // 'best' | 'alphafold' | 'boltz' | 'esmfold' — user's model choice for the next load
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
@@ -1624,10 +1624,10 @@
     plddt:'Local pLDDT — AlphaFold per-residue confidence (0 to 100); higher is more reliable.',
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
     plantcad:'PlantCAD DNA language-model score for the change.',
-    plantcad2:'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    plantcad2:'Second-generation PlantCAD DNA score.',
     esm:'ESM protein language-model score for the substitution.',
-    esm2:'ESM2 protein language-model score (MaizeGDB 2026).',
-    esm3:'ESM3 protein language-model score (MaizeGDB 2026).',
+    esm2:'ESM2 protein language-model score.',
+    esm3:'ESM3 protein language-model score.',
     disorder:'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).',
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',

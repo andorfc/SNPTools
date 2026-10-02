@@ -6,10 +6,11 @@ PHP script through the PHP CLI (`php_shim.php`), so `processForm.php -> h5_to_vc
 and `lookupGeneModel.php` run exactly as under `php -S`. No browser and no listening socket
 are needed. d3 v5 is served from `node_modules`.
 
-Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.sh`):
+Scenarios (dataset `zmgrin2026_imp`, the only set offered in the initial release, local test store
+from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, switched off):
 1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
-   and hand-off to SNPVersity; neutral schema for `mgdb2026_hq`.
+   and hand-off to SNPVersity. (The neutral-schema case for `mgdb2026_hq` is off with that set.)
 2. Help page lists SNPTrait (live) and SNPGeo.
 3. SNPGeo gene search `Zm00001eb374090` (all 933 lines): table, map in North America and
    world views, three colour modes, country detail; per-site statistics dumped.
@@ -18,29 +19,38 @@ Scenarios (dataset `zmgrin2026_imp`, local test store from `../build_test_store.
    (re-query of all 933 lines), then a forced partial hand-off (warning banner).
 6. GWAS Explorer, Tassel Branch Number (intercept, NAM, Tibbs-Cortes et al. 2024): region
    chr2:4,491,424-4,499,434 (Zm00001eb067740 +-2 kb; 85 GWAS SNPs, 11 significant) -> Send to
-   SNPVersity, (a) with the default VCF set (unchanged: 81 MaizeGDB 2026 NAM runs) and (b) with
+   SNPVersity, (a) with the default VCF set (the first offered: the GRIN-linked set, 26 ZmG_* NAM
+   samples; it was MaizeGDB 2026 HQ, 81 runs, while that set was listed) and (b) with
    the GRIN-linked set (release v1.4: all 26 NAM names translated to 26 ZmG_* samples, none
    reported as not available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
 7. SNPVersity annotation columns: the 13 columns (Gene model ... ESM3) for the GRIN-linked set
-   (chr2 GWAS window from the store) and for MaizeGDB 2026 HQ and HC (their real INFO at the same
-   window, `../fixtures/mgdb2026_*`, rendered through Data.parseVcf + renderResults);
+   (chr2 GWAS window from the store; MaizeGDB 2026 HQ and HC, from `../fixtures/mgdb2026_*`, only
+   when those sets are offered); the Domain column is expected filled wherever `data/domains/`
+   covers the site (it assumed the files absent and failed whenever they were installed);
    `check_annotation_columns.py` recomputes the filled-cell counts from the INFO, checks that
    unavailable/pending columns stay in the table empty, and checks the GRIN-linked INFO against
    its sources (SnpEff fields, MAF from the genotypes, ESM1/2/3 from the missense ESM table).
 
 8. SNPCompare genome-wide scope per dataset family, with synthetic matrices written by
    `make_synthetic_distance.py` to a temp dir (`SNPTOOLS_DISTANCE_DIR`): zmgrin2026 (933 ids, all +
-   SNP-only), the unchanged MaizeGDB 2026 layout (60 ids, same request URL as before), an empty
+   SNP-only), the MaizeGDB 2026 legacy layout (only when that set is offered), an empty
    dir (scope disabled), and SNPTree's genome-wide Newick downloads; then, if installed, the real
    `distance/zmgrin2026/` files (`check_global_compare.py`, `check_ibs_files.py`: ids = catalogue,
    shapes, symmetry, diagonals, fractions, tree tips).
-9. With a full chr2 store installed: the chr2 checks use its window
+9. One gene's consequences at sites SnpEff annotates in several genes (1,464 of the 3,744 fixture sites):
+   SNPFunction's burden and allele catalog and SNPFold's coding variants for Zm00001eb374230,
+   Zm00001eb404750, Zm00001eb374090 and Zm00001eb056510; SNPGeo's gene search for
+   Zm00001eb374230 (site 13,120,567 reads A471G, not the neighbour's R65P); SNPVersity's "+N"
+   markers and gene list on chr9:13,118,306-13,124,164. `check_gene_consequences.py` recomputes
+   all of it from the fixture VCFs (each gene's own entry, carriers from the genotypes) and checks
+   every ESM score shown against the ESM table row for that gene's substitution.
+10. With a full chr2 store installed: the chr2 checks use its window
    (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py` and `check_gwas_handoff.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py` and `check_gene_consequences.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

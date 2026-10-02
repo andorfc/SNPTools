@@ -233,7 +233,7 @@
       IMP.rows = Data.rankImpact(input.rows);
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
     }
-    IMP.sec = Data.hasSecondaryScores(input.dataset);    // show PlantCAD2/ESM2 only for MaizeGDB 2026
+    IMP.sec = Data.hasSecondaryScores(input.dataset);    // show PlantCAD2/ESM2/ESM3 when the dataset carries them
     Data.ensureGeneDomains();                             // warm up detail track (non-blocking)
     Data.ensureGeneModels(input.chr);                     // warm up gene-model view for this chromosome
 
@@ -310,10 +310,10 @@
     'Consequence':'Specific predicted molecular consequence of the change.',
     'Domain':'Pfam domain containing the affected amino acid, when present.',
     'PlantCAD1':'PlantCAD DNA language-model score estimating sequence disruption.',
-    'PlantCAD2':'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    'PlantCAD2':'Second-generation PlantCAD DNA score.',
     'ESM':'ESM protein language-model score for the amino-acid substitution.',
-    'ESM2':'ESM2 protein language-model score (MaizeGDB 2026).',
-    'ESM3':'ESM3 protein language-model score (MaizeGDB 2026).',
+    'ESM2':'ESM2 protein language-model score.',
+    'ESM3':'ESM3 protein language-model score.',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
   };
   function th(label, key, cls){

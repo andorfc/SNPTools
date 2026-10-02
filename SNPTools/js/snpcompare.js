@@ -49,7 +49,7 @@ const SNPCompare = (function () {
   const CFG = {
     globalEndpoint : 'ibsCompare.php', // ?focal=<ID>&dataset=<family>[&sites=snp] -> {rows:[{id,similarity,missing}]}
     useDemoGlobal  : false,
-    defaultDataset : 'mgdb2026_hq',
+    defaultDataset : 'zmgrin2026_imp',   // initial release: GRIN-linked 2026 (was mgdb2026_hq)
     minSitesFloor  : 20,               // never mask below this many sites
     minSitesFrac   : 0.05,             // default mask threshold = 5% of sites
   };

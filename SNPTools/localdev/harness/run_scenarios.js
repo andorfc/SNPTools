@@ -1,5 +1,5 @@
 /* run_scenarios.js <siteRoot> <outDir> -- end-to-end checks of SNPTrait and SNPGeo
- * on the zmgrin2026_imp dataset; writes results.json, map PNG/SVG renders
+ * on the zmgrin2026_imp dataset (the only set offered in the initial release); writes results.json, map PNG/SVG renders
  * (the app's own geoBuildExportSVG() output, rasterised with resvg) and static
  * HTML snapshots of the rendered pages. */
 const fs = require('fs'), path = require('path');
@@ -64,7 +64,7 @@ async function until(site, expr, ms = 8000){
   R.load = {registry: $('Object.keys(SNPTools.registry)'), nav: $('[...document.querySelectorAll("#nav .navitem")].map(b=>b.textContent.trim().replace(/\\s+/g," "))'),
             datasets: $('Data.datasets().map(d=>d.id)'), zmgrinN: $('Data.accessionsFor("zmgrin2026_imp").length'),
             otherFamilies: $('Object.keys(window.SNP_CATALOG.families)'),
-            mgdb2026N: $('Data.accessionsFor("mgdb2026_hq").length')};
+            defaultDataset: $('S.dataset')};   // initial release: zmgrin2026_imp only (MaizeGDB 2026 commented out)
 
   /* ---------- SNPTrait ---------- */
   $('S.dataset="zmgrin2026_imp"; go("snptrait")');
@@ -102,9 +102,11 @@ async function until(site, expr, ms = 8000){
   snapshot(site, 'snptrait_filtered', 'SNPTrait - SS x Ames282 x Dent');
   $('traitSendToVersity()'); await site.wait(300);
   T.handoff = {tool: $('S.tool'), selected: $('S.selected.size'), dataset: $('S.dataset')};
-  // a family without a generated schema falls back to the neutral schema
+  /* A family without a generated schema falls back to the neutral schema: no listed dataset
+     lacks one while only the GRIN-linked set is offered, so the MaizeGDB 2026 case is off.
   $('S.dataset="mgdb2026_hq"; go("snptrait")');
   T.mgdb2026 = {groupBy: $('TRAIT.schema.groupBy'), facets: $('TRAIT.schema.facets.map(f=>f[0])'), rows: $('TRAIT.rows.length'), header: $('document.querySelector("#page h2").textContent')};
+  */
 
   /* ---------- Help page ---------- */
   $('openHelp()'); await site.wait(150);
@@ -191,14 +193,14 @@ async function until(site, expr, ms = 8000){
   W.defaultMapText = $('document.getElementById("gwxSendMap").textContent');
   W.replacePreticked = $('document.getElementById("gwxSendAccReplaceChk").checked');
   W.perSet = {};
-  for (const ds of ['mgdb2026_hq', 'mgdb2026_hc', 'zmgrin2026_imp']){
+  for (const ds of $('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>o.value)')){   // the sets offered
     $(`(()=>{const s=document.getElementById("gwxSendDataset"); s.value="${ds}"; s.dispatchEvent(new Event("change"));})()`);
     W.perSet[ds] = {map: $('document.getElementById("gwxSendMap").textContent'),
                     missing: $('(document.querySelector("#gwxSendMap .gwx-ho-miss")||{}).textContent||""'),
                     replaceChecked: $('document.getElementById("gwxSendAccReplaceChk").checked')};
   }
-  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value="mgdb2026_hq"; s.dispatchEvent(new Event("change"));})()');
-  // (a) default VCF set: behaviour unchanged (all NAM runs of the MaizeGDB 2026 catalogue)
+  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value=s.options[0].value; s.dispatchEvent(new Event("change"));})()');
+  // (a) default VCF set: the first one offered (the GRIN-linked set in this release; MaizeGDB 2026 HQ before)
   $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change")); document.getElementById("gwxSendConfirmBtn").click();})()');
   await site.wait(300);
   W.defaultSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('S.selected.size'), ids: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
@@ -233,7 +235,7 @@ async function until(site, expr, ms = 8000){
   {
     const f = await openSite(ROOT); const $f = f.$eval;
     const F = R.gwas_fresh = {selectedBefore: $f('S.selected.size'), datasetBefore: $f('S.dataset'),
-      b73InDefault: $f('[...S.selected].some(id=>/^B73_/.test(id))')};
+      b73InDefault: $f('[...S.selected].some(id=>/^(B73_|ZmG_B73$)/.test(id))')};
     $f('go("snpgwas")');
     const u = async (e, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms){ if ($f(e)) return; await f.wait(50); } };
     await u('document.querySelector(".gwx-trait-dd-opt")');
@@ -248,7 +250,7 @@ async function until(site, expr, ms = 8000){
                       options: $f('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>o.textContent)')};
     $f('document.getElementById("gwxSendConfirmBtn").click()'); await f.wait(300);
     F.after = {tool: $f('S.tool'), dataset: $f('S.dataset'), selected: $f('S.selected.size'),
-               b73: $f('[...S.selected].filter(id=>/^B73_/.test(id)).length'),
+               b73: $f('[...S.selected].filter(id=>/^(B73_|ZmG_B73$)/.test(id)).length'),
                lines: $f('new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder)).size')};
     f.window.close();
   }
@@ -256,8 +258,9 @@ async function until(site, expr, ms = 8000){
   /* ---------- SNPVersity annotation columns for MaizeGDB 2026 HQ / HC ----------
      No MaizeGDB 2026 HDF5 store exists locally, so the table is rendered from the real INFO
      of the MaizeGDB 2026 VCFs at the same chr2 window (sites only; fixtures/mgdb2026_*). The
-     rows go through the same Data.parseVcf() + renderResults() path as a store query. */
-  for (const [ds, fx] of [['mgdb2026_hq', 'mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz'],
+     rows go through the same Data.parseVcf() + renderResults() path as a store query.
+     Off while the initial release offers the GRIN-linked set only (uncomment with the sets). */
+  if (false) for (const [ds, fx] of [['mgdb2026_hq', 'mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz'],
                           ['mgdb2026_hc', 'mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz']]){
     const text = require('zlib').gunzipSync(fs.readFileSync(path.join(ROOT, 'localdev/fixtures', fx))).toString('utf8');
     site.window.__fixtureVcf = text;
@@ -305,8 +308,11 @@ async function until(site, expr, ms = 8000){
     C.zmgrin_all = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_B73');
     C.zmgrin_snp = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_CML103', 'snp');
     snapshot(s2, 'snpcompare_zmgrin2026_global', 'SNPCompare - zmgrin2026_imp genome-wide (synthetic matrices)');
+    /* MaizeGDB 2026's legacy layout (./distance/maizegdb_allchr_final_*): off while that set
+       is not offered; an unknown dataset id now resolves to the GRIN-linked family.
     const mFocal = fs.readFileSync(path.join(dd, 'ids.txt'), 'utf8').split('\n')[3];
     C.mgdb = await cmpRun(s2, 'mgdb2026_hq', mFocal);
+    */
     s2.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")');
     await until(s2, 'document.querySelector("#treeGW a")', 20000);
     C.tree = {links: s2.$eval('[...document.querySelectorAll("#treeGW a")].map(a=>[a.textContent.trim(), a.getAttribute("href"), a.getAttribute("download")])'),
@@ -360,12 +366,45 @@ async function until(site, expr, ms = 8000){
     s5.window.close();
   }
 
+  /* ---------- one gene's consequences at multi-gene sites (GRIN-linked) ----------
+     SnpEff lists one consequence per gene; 1,464 of the 3,744 fixture sites list several. SNPFunction
+     (Data.geneFunction), SNPFold (Data.queryFoldVariants) and SNPGeo's gene search must read the
+     gene's own entry, with ESM only where it was computed for that entry; SNPVersity marks the
+     other entries (+N) and lists every gene. check_gene_consequences.py recomputes all of it
+     from the fixture VCFs and the ESM table. */
+  {
+    const P = R.pergene = {genes: {}};
+    for (const gene of ['Zm00001eb374230', 'Zm00001eb404750', 'Zm00001eb374090', 'Zm00001eb056510']){
+      const g = JSON.stringify(gene);
+      P.genes[gene] = {
+        interval: await $(`Data.lookupGene(${g})`),
+        fn: await $(`Data.geneFunction(${g}, "zmgrin2026_imp").then(d=>({n:d.nVariants, nAcc:d.nAccessions, byClass:d.burden.byClass, damaging:d.damaging.length,
+              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, hom:v.hom, het:v.het}))}))`),
+        fold: await $(`Data.queryFoldVariants(${g}, "zmgrin2026_imp").then(a=>a.map(v=>({pos:v.pos, resi:v.resi, variant:v.variant, cls:v.consClass, esm:v.esm})))`)};
+    }
+    $('S.dataset="zmgrin2026_imp"; S.geoInput=null; go("snpgeo"); document.getElementById("geoGeneInput").value="Zm00001eb374230"');
+    await $('geoLookupGene()');
+    // geoLookupGene() re-renders the page 200 ms later; let that land before leaving SNPGeo
+    await until(site, 'GEO.rows && GEO.rows.length && document.querySelector("#geoMap svg")'); await site.wait(300);
+    P.geo = $('JSON.parse(JSON.stringify(GEO.rows.map(r=>({pos:r.pos, gene:r.gene, effect:r.effect, sub:r.sub, esm1:r.esm1}))))');
+    $('S.dataset="zmgrin2026_imp"; S.chr="chr9"; S.start=13118306; S.end=13124164; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
+    await site.wait(100);
+    await $('runQuery()');
+    P.versity = $(`(()=>{ const host=document.createElement('tbody'); host.innerHTML=S.results.rows.map(r=>rowHTML(r)).join('');
+      return {window:[S.chr,S.start,S.end], rows:S.results.rows.length,
+              markers:[...host.querySelectorAll('tr')].map(tr=>{ const m=tr.querySelector('.gene-more'); return m ? m.textContent : ''; }),
+              genes:[...document.querySelectorAll('details .c-mono')].map(e=>e.textContent.trim())}; })()`);
+    snapshot(site, 'snpversity_chr9_multigene', 'SNPVersity - chr9:13,118,306-13,124,164, sites with several consequences (+N)');
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(R));
   const brief = JSON.parse(JSON.stringify(R)); delete brief.snpgeo_gene.allStats; delete brief.snpgeo_gene.accOrder;
   brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length; delete brief.gwas.defaultSend.ids;
+  if (brief.pergene){ delete brief.pergene.geo; Object.values(brief.pergene.genes).forEach(g => { g.fn.v = g.fn.v.length; g.fold = g.fold.length; });
+    brief.pergene.versity.markers = brief.pergene.versity.markers.filter(Boolean).length; }
   brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
   if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));

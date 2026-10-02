@@ -689,7 +689,7 @@
       container.innerHTML = skeleton();
       applyVisibility(main_option);
 
-      /* external entries (SNPVersity / SNPFold) open in the MaizeGDB 2026 view */
+      /* external entries (SNPVersity / SNPFold / SNPFunction) open on all variant effects */
       applyWgs(opts.wgs);
 
       /* run the (now callable) PanEffect pipeline */
@@ -737,8 +737,12 @@
     '<input type="radio" id="maizeWGS" name="variantEffect" value="maize2024">' +
     '<label for="maizeWGS">MaizeGDB 2024 High Coverage variant effects</label>' +
     */
+    /* MaizeGDB 2026 option disabled for the GRIN-linked 2026 release (the files carry no
+       GRIN-linked flag yet); applyWgs() still honours it if it is restored
     '<input type="radio" id="maizeWGS2026" name="variantEffect" value="maize2026">' +
     '<label for="maizeWGS2026">MaizeGDB 2026 High Coverage variant effects</label><br>' +
+    */
+    '<br>' +
   '</span>' +
   schemeRow('') +
   '<br>' +

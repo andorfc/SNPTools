@@ -433,10 +433,10 @@
         ${stat('Domain-disrupting', b.domainDisrupting, 'coding variants inside a Pfam domain')}
         ${stat('Candidate KO lines', d.koLines, 'accessions homozygous for a loss-of-function allele')}
         ${stat('Mean PlantCAD1', b.meanPlantcad==null?'—':b.meanPlantcad, 'average PlantCAD1 DNA language-model score')}
-        ${sec?stat('Mean PlantCAD2', b.meanPlantcad2==null?'—':b.meanPlantcad2, 'average PlantCAD2 (2026) DNA language-model score'):''}
+        ${sec?stat('Mean PlantCAD2', b.meanPlantcad2==null?'—':b.meanPlantcad2, 'average PlantCAD2 DNA language-model score'):''}
         ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
-        ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 (2026) protein language-model score'):''}
-        ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 (2026) protein language-model score'):''}
+        ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 protein language-model score'):''}
+        ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 protein language-model score'):''}
       </div>
       <div class="fn-barwrap">
         <div class="fn-bar">
@@ -497,7 +497,7 @@
         <span data-ho-mount data-ho-id="fnMergeReplace" data-ho-target="SNPVersity" data-ho-dataset="${esc(dsId==null?'':dsId)}"></span>
       </div>`:''}
       <div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score (MaizeGDB 2026).">PlantCAD2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score (MaizeGDB 2026).">ESM2</th><th class="num" data-tt="ESM3 protein language-model score (MaizeGDB 2026).">ESM3</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score.">PlantCAD2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </div>`;

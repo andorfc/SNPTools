@@ -3,7 +3,9 @@
 Tree: `~/Documents/code/SNPTools_maize_port` (branch content `maize-snptrait-snpgeo` =
 `main` @ `4bf370d8` + the 25 patches in `patches/`). Dataset with metadata and a local
 test store: **MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites)** (`zmgrin2026_imp`,
-933 lines, release v1.4 = 926 imputed + 7 separately called, incl. NAM founder CML103). The server is a PHP built-in web server bound to 127.0.0.1 only; no admin rights needed.
+933 lines, release v1.4 = 926 imputed + 7 separately called, incl. NAM founder CML103) -- since
+patch 0029 the only dataset offered (initial release; the MaizeGDB 2026 sets are commented out in
+`js/data.js` with everything that serves them left in place). The server is a PHP built-in web server bound to 127.0.0.1 only; no admin rights needed.
 
 ## 1. One-time environment (no admin rights)
 
@@ -89,8 +91,8 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
    - **Send to SNPVersity →**. *Send this genomic region* and **Send accessions — replace ...** are
      pre-ticked. Each entry of **VCF set in SNPVersity** shows how many of the 26 NAM lines
      (B73 + 25 founders) it contains, and the text under the checkboxes names the missing ones:
-     - *MaizeGDB 2026 · High Quality* / *High Coverage*: "24 of 26 ... → 81 samples (all runs);
-       B73 = 4 samples" and "Not available in this set: CML52, NC358";
+     - (while MaizeGDB 2026 was offered: *High Quality* / *High Coverage*: "24 of 26 ... → 81
+       samples (all runs); B73 = 4 samples" and "Not available in this set: CML52, NC358";)
      - *MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites) (zmgrin2026_imp)*:
        "26 of 26 ... → 26 samples (ZmG_*); B73 = 1 sample", with no "Not available" line (release
        v1.4 adds ZmG_CML103; before v1.4 this set reported CML103 as not available).
@@ -99,14 +101,25 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
      lines (banner: "26 of 26 NAM lines incl. B73 (26 samples ...)"). **Build VCF & view** -> 249 variants.
    - **Send to SNPGeo** (re-queries all 933 lines) -> click the row `4494625 ...` (a GWAS SNP with
      p = 6.6e-9 that is also a release site) to map it.
-   With *MaizeGDB 2026 · High Quality* SNPVersity receives 81 accessions = all runs of the 24 NAM
+   (Before patch 0029:) with *MaizeGDB 2026 · High Quality* SNPVersity received 81 accessions = all runs of the 24 NAM
    lines in that catalogue, including the 4 B73 reference runs (there is no local HDF5 for it, so
    the query itself fails locally). Note: SNPVersity's own default selection on page load is 23
    accessions (one run per tagged NAM founder, no B73); that is what remains if the accession
    checkbox is unticked.
 
 Anything outside the fixture windows returns "No variants"; chromosomes 3, 4 and 6 have no
-store ("HDF5 file not found"). The two `mgdb2026_*` datasets have no HDF5 locally.
+store ("HDF5 file not found"). The two `mgdb2026_*` datasets (commented out) have no HDF5 locally.
+
+**Sites with several consequences (patch 0029).** SnpEff writes one consequence per gene: 1,464 of
+the 3,744 GRIN-linked fixture sites list more than one (`GENEMODEL=Zm00001eb374100,Zm00001eb374090;
+TYPE=downstream_gene_variant,intron_variant`). SNPVersity and SNPImpact show the first (most
+severe) entry, and SNPVersity's Gene model column marks the rest with "+N" (hover). SNPFunction,
+SNPFold and SNPGeo's gene search read the gene's own entry (`Data.rowForGene`); they had kept only
+sites whose FIRST gene was theirs: Zm00001eb374230 kept 24 of its 63 sites (11 of 25 missense),
+Zm00001eb374090 99 of 164, Zm00001eb404750 2 of 18. Try SNPFunction on `Zm00001eb374230`. A site
+carries ONE ESM score, computed for the first missense entry of TYPE (`tools/annotate_release_info.py`),
+so a gene whose substitution is not that entry shows no ESM there (13 of Zm00001eb374230's 25
+missense sites) rather than its neighbour's score.
 
 **SNPVersity annotation columns (GRIN-linked set).** All 13 columns (Gene model ... ESM3) are always
 shown. Filled: Gene model, Effect, SNPEff Impact (SnpEff 5.2a fields of the MaizeGDB Schnable

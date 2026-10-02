@@ -715,6 +715,8 @@ function injectVersityCSS(){
     .from-fn .mono{font-family:var(--mono)}
     .from-fn-acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .from-fn .ho-hint{color:#4a6ca8}
+    .gene-more{display:inline-block;margin-left:4px;padding:0 5px;border-radius:5px;background:#eef2f8;
+      color:var(--muted);font-size:10.5px;font-weight:600;cursor:help;vertical-align:1px}
     /* per-row jump links in the Effect column (matches .pe-jump) */
     .effect-cell .fold-jump{font-size:11px;white-space:nowrap;margin-left:2px;
       color:#176c3a;text-decoration:none;border-bottom:1px dotted #9ecdb1}
@@ -1057,7 +1059,7 @@ function renderTable(){
    Data.annotationFields(); a column that a set lacks stays in the table with empty
    cells, a dashed header and the reason in its tooltip (never removed). */
 const ANNOT_TT={
-  gene:'B73 v5 gene model overlapping the variant.',
+  gene:'B73 v5 gene model overlapping the variant; where a site has consequences in several genes, the most severe is shown and +N lists the others.',
   effect:'Predicted consequence — e.g. missense, synonymous, intron, frameshift.',
   impact:'Predicted severity — HIGH, MODERATE, LOW, or MODIFIER.',
   domain:'Pfam protein domain overlapping the affected residue, when available.',
@@ -1066,10 +1068,10 @@ const ANNOT_TT={
   r2:'Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.',
   maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
   pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
-  pc2:'Second-generation PlantCAD DNA score (MaizeGDB 2026 datasets).',
+  pc2:'Second-generation PlantCAD DNA score.',
   esm1:'ESM protein language-model score for the amino-acid change.',
-  esm2:'ESM2 protein language-model score (MaizeGDB 2026 datasets).',
-  esm3:'ESM3 protein language-model score (MaizeGDB 2026 datasets).'};
+  esm2:'ESM2 protein language-model score.',
+  esm3:'ESM3 protein language-model score.'};
 const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,esm1:1,esm2:1,esm3:1};
 function annotFields(){
   const F=(Data.annotationFields ? Data.annotationFields(S.dataset) : Object.keys(ANNOT_TT).map(k=>({key:k,label:k,status:'ok',note:''})));
@@ -1126,7 +1128,7 @@ function rowHTML(r){
     <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
-    <td>${geneCell(r.gene)}</td>
+    <td>${geneCell(r.gene)}${moreGenes(r)}</td>
     <td class="effect-cell">${eff}</td>
     <td><span class="pill ${r.impact.toLowerCase()}">${r.impact}</span></td>
     <td>${domTag(r.domain)}</td>
@@ -1153,6 +1155,20 @@ function gtCells(gts){
 /* "Gene model" table cell: link real gene models to their MaizeGDB page.
    maizegdbGeneURL / isSingleGeneModel are shared helpers defined in core.js.
    Intergenic spans and the "—" placeholder stay as plain text. */
+/* A site SnpEff annotates in more than one gene (1,464 of 3,744 GRIN-linked test-window sites) shows its
+   first, most severe consequence in the Gene model / Effect columns; "+N" names the others
+   on hover. SNPFunction, SNPFold and SNPGeo read each gene's own entry (Data.rowForGene). */
+function moreGenes(r){
+  if(!r.anns || !Data.annotationsOf) return '';
+  const seen=new Set(), lines=[];
+  Data.annotationsOf(r).forEach((a,i)=>{
+    const k=a.gene+'|'+a.effect+'|'+a.sub;
+    if(seen.has(k)) return; seen.add(k);
+    if(i>0) lines.push(`${a.gene.replace(/\s+/g,'\u2013')}: ${a.effect}${a.sub?` (${a.sub})`:''}`);   // intergenic A_B -> A\u2013B
+  });
+  if(!lines.length) return '';
+  return ` <span class="gene-more" data-tt="${escAttr('Also annotated at this site: '+lines.join('; '))}">+${lines.length}</span>`;
+}
 function geneCell(g){
   if(!g || g==='—') return '<span style="color:var(--faint)">—</span>';
   return isSingleGeneModel(g)
@@ -1162,7 +1178,8 @@ function geneCell(g){
 function genesPanel(){
   const rows=(S.results&&S.results.rows)||[];
   // Only single, real gene models — intergenic / boundary spans dropped (isSingleGeneModel, core.js).
-  const genes=[...new Set(rows.map(r=>r.gene).filter(isSingleGeneModel))].sort();
+  // Every gene a site has a consequence in, not only the first-listed one (Data.genesOf).
+  const genes=[...new Set(rows.flatMap(r=>Data.genesOf?Data.genesOf(r):[r.gene]).filter(isSingleGeneModel))].sort();
   if(!genes.length) return '';
   const jb=g=>`https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(g)}`;
   const items=genes.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 2px;border-bottom:1px solid #eef1f5">

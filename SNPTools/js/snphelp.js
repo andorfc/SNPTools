@@ -73,7 +73,7 @@ const SNPHelp = (function () {
       get:'A choropleth per variant, per-country and per-state counts with allele frequencies, and the carrier lines.' },
     { id:'paneffect', name:'PanEffect', icon:'effect', color:'#b45309', status:LIVE,
       tag:'Missense effects across the pan-genome',
-      what:'Visualizes the predicted effect of every possible amino-acid substitution across a protein using ESM protein-language-model scores. A B73 reference view and a pan-genome view each show a full-length substitution heatmap with a zoomable window, aligned to Pfam domains and predicted secondary structure; the pan-genome view adds the natural variation seen across the maize assemblies, colored by heterotic group. Choose a gene model and an ESM model, or arrive from SNPVersity or SNPFold on a specific missense call and that substitution is highlighted in the MaizeGDB 2026 view.',
+      what:'Visualizes the predicted effect of every possible amino-acid substitution across a protein using ESM protein-language-model scores. A B73 reference view and a pan-genome view each show a full-length substitution heatmap with a zoomable window, aligned to Pfam domains and predicted secondary structure; the pan-genome view adds the natural variation seen across the maize assemblies, colored by heterotic group. Choose a gene model and an ESM model, or arrive from SNPVersity, SNPFold, SNPFunction or SNPImpact on a specific missense call and that substitution is highlighted.',
       give:'A gene model and an ESM model (ESM1 / ESM2 / ESM3); optionally a missense variant handed off from another tool.',
       get:'B73 and pan-genome substitution heatmaps with domain and secondary-structure context, plus a downloadable per-variant effects file.' },
     { id:'snpgermplasm', name:'SNPGermplasm', icon:'germ', color:'#16a34a', status:SOON,
@@ -89,8 +89,8 @@ const SNPHelp = (function () {
     ['Genotype dosage', 'Each call is read as 0 (0/0, reference), 1 (heterozygous), or 2 (1/1, alternate homozygous). Missing calls (./.) are left out of a comparison rather than counted as a match.'],
     ['IBS distance / % identity', 'Identity-by-state compares two accessions site by site over the calls they share. Distance is the mean allele difference; % identity is 100 − distance. Used by SNPTree, SNPMatrix, and SNPCompare.'],
     ['Predicted effect & impact', 'Each variant carries a predicted consequence (missense, LOF, splice, indel, synonymous, …) rolled up into an impact tier: HIGH, MODERATE, LOW, or MODIFIER, most severe wins when a site lists several.'],
-    ['PlantCAD score', 'A DNA language-model prediction of how disruptive a change is. MaizeGDB 2026 carries a second-generation PlantCAD2; older datasets carry a single DNA score.'],
-    ['ESM score', 'A protein language-model prediction of the effect of an amino-acid change. MaizeGDB 2026 carries ESM2 and ESM3 alongside the original; older datasets carry a single AA score.'],
+    ['PlantCAD score', 'A DNA language-model prediction of how disruptive a change is. The GRIN-linked 2026 dataset carries PlantCAD1 and the second-generation PlantCAD2, being merged chromosome by chromosome.'],
+    ['ESM score', 'A protein language-model prediction of the effect of an amino-acid change. The GRIN-linked 2026 dataset carries ESM1, ESM2 and ESM3 for missense sites.'],
     ['MAF', 'Minor allele frequency, the frequency of the less common allele. SNPVersity can filter a region by a minimum MAF.'],
     ['Pfam domain', 'When a variant falls inside a known protein domain, that domain is shown and linked to InterPro. Domain annotation is still being loaded for some regions, where it reads as \u2014.'],
     ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection.'],
@@ -131,15 +131,16 @@ const SNPHelp = (function () {
       ['REF', 'Reference allele in B73 v5.'],
       ['ALT', 'Alternate allele represented by the row.'],
       ['Gene model', 'B73 v5 gene model overlapping or associated with the variant.'],
+      ['+N (several consequences)', 'A site can affect more than one gene, for example intronic in one and downstream of its neighbor. The Gene model and Effect columns show the most severe consequence; +N lists the others on hover. SNPFunction, SNPFold and SNPGeo (gene search) read each gene\u2019s own consequence, and the ESM scores go with the substitution they were computed for.'],
       ['Effect', 'Predicted variant consequence from the annotation source.'],
       ['Impact', 'Predicted severity category: HIGH, MODERATE, LOW, or MODIFIER.'],
       ['Domain', 'Pfam protein domain overlapping the affected coding residue, when available.'],
       ['MQ', 'Mapping quality: a phred-scaled measure of confidence that reads were aligned to the correct genomic location; higher is better.'],
       ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
-      ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. MaizeGDB 2026 High Quality uses it as a filter (maxR² ≥ 0.5); for the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic).'],
+      ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. For the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic).'],
       ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
-      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores. PlantCAD2 is available for MaizeGDB 2026 datasets. More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores.'],
-      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions. ESM2 and ESM3 are available for MaizeGDB 2026 datasets.'],
+      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores, being merged into the GRIN-linked 2026 set chromosome by chromosome (columns read pending until then). More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores.'],
+      ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions, filled for missense sites.'],
       ['Accession genotype columns', 'Each accession column shows its genotype at the site: 0/0 reference homozygous, 0/1 heterozygous, 1/1 alternate homozygous, or ./. missing.'],
       ['Dataset', 'A defined variant collection with its own accession panel, filters, included variant types, and score columns.'],
       ['Sites', 'Number of variant positions in the complete dataset, not necessarily the number returned by the current query.'],
@@ -291,7 +292,7 @@ const SNPHelp = (function () {
       ['ESM model (ESM1 / ESM2 / ESM3)', 'The protein language model used to score substitutions, selectable in the panel.'],
       ['Substitution heatmap', 'A per-residue grid colored by predicted effect. Hover a cell to read the position, wild-type → substitution, and score.'],
       ['Zoomed region', 'A 50-residue window of the full heatmap, positioned with the slider, showing per-cell substitution letters and the wild-type residue track.'],
-      ['MaizeGDB 2026 view', 'Colors the B73 heatmap using substitutions observed in the MaizeGDB 2026 High-Coverage set. Hand-offs from SNPVersity or SNPFold open in this view; "Show all variant effects" colors every possible substitution.'],
+      ['Show all variant effects', 'Colors every possible substitution in the B73 heatmap. Hand-offs from the other tools open in this view with their substitution highlighted. (The MaizeGDB 2026 High-Coverage view is turned off in this release: PanEffect\u2019s files do not yet flag the GRIN-linked 2026 substitutions.)'],
       ['PFAM Domains track', 'Pfam domains drawn to scale along the protein and linked to InterPro, shared with the SNPFold and SNPFunction views.'],
       ['Secondary structure', 'Predicted per-residue secondary structure (helix / strand / coil) drawn above the heatmap for context.'],
       ['Species / Gene model', 'In the pan-genome zoomed view, switches the row labels between assembly (species) names and their gene-model IDs.'],
@@ -320,7 +321,7 @@ const SNPHelp = (function () {
     ['Why did a query give me a download instead of a table?',
      'When the result is large — roughly when variants × selected accessions passes ~40 million, or the region alone would exceed ~400,000 variant sites — parsing and rendering it in the browser would freeze the page, so SNPVersity returns a downloadable VCF instead. Choose a smaller region, fewer accessions, or a lower-density SNP set to get the interactive table back. The run bar predicts which you’ll get before you run.'],
     ['Why are some cells \u2014 or N/A?',
-     'A \u2014 in a domain column means Pfam annotation for that position hasn\u2019t been loaded yet. Blank second-generation scores (PlantCAD2, ESM2, ESM3) mean the dataset is not MaizeGDB 2026 — only that family carries them. MQ and coverage read N/A when the source didn\u2019t record them.'],
+     'A \u2014 in a domain column means Pfam annotation for that position hasn\u2019t been loaded yet. Language-model columns stay empty where a score does not apply (ESM for non-missense sites) or is still being merged (PlantCAD, marked pending). MQ and coverage are not recorded for the GRIN-linked 2026 call set, so those columns stay empty.'],
     ['Is there a limit on how many accessions I can compare?',
      'SNPTree, SNPMatrix and SNPCompare warn before a long computation — the cost grows with variants × accessions², so a large region with many accessions is what gets slow. You can build anyway. Sending a result to those tools is blocked outright only when it would be certain to crash the tab. SNPImpact renders up to 1,500 variants at a time.'],
     ['What can I download?',
@@ -370,7 +371,7 @@ const SNPHelp = (function () {
         <th>Dataset</th><th>Reference</th><th>Accessions</th><th>Sites</th>
         <th>Filters</th><th>Het</th><th>INDELs</th><th>Imputed</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hp-fine">Accessions are grouped into families (MaizeGDB 2026, MaizeGDB 2024, Schnable 2023, NAM 2021). Only the <b>MaizeGDB 2026</b> family carries the second-generation language-model scores (PlantCAD2, ESM2, ESM3); the others provide a single DNA score and a single protein score.</p>`;
+      <p class="hp-fine">This release offers the <b>MaizeGDB GRIN-linked 2026</b> dataset (release v1.4): 926 lines of Grzybowski et al. (2023), Beagle-imputed, plus 7 lines called separately at the same sites, including NAM founder CML103, each joined to its GRIN accession. Every SNPTools tool reads the same set.</p>`;
   }
 
   /* ---- in-depth MaizeGDB 2026 dataset description ---- */
@@ -585,7 +586,7 @@ const SNPHelp = (function () {
         <p class="hp-lead">Each query runs against one dataset. All are called against the B73 v5 reference; they differ
           in how they were filtered, how many accessions and sites they hold, and which score columns they carry.</p>
         ${datasetTable()}
-        ${maize2026Details()}
+        ${''/* maize2026Details(): the MaizeGDB 2026 composition section, kept below for when that set is offered again */}
       </section>
 
       <section id="hp-definitions" class="hp-sec">

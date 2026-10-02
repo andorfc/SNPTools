@@ -208,9 +208,12 @@ async function geoLookupGene(){
       return;
     }
     
-    // Populate S.geoInput with the results
+    // Populate S.geoInput with the results. Every site in the gene interval stays on
+    // the map; a site that also has a consequence in a neighbouring gene is labelled
+    // with THIS gene's consequence and residue (SnpEff may list the neighbour first),
+    // and keeps its own reading where the searched gene has no entry.
     S.geoInput = {
-      rows: result.rows,
+      rows: Data.rowForGene ? result.rows.map(r => Data.rowForGene(r, gene) || r) : result.rows,
       accs: result.accs || [],
       chr: result.chr || 'unknown',
       start: result.start || 0,

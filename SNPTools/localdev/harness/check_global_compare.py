@@ -7,7 +7,8 @@ and the SNPTree genome-wide Newick links, against the synthetic files the harnes
     focal row returned for ZmG_B73 (all sites) and ZmG_CML103 (SNPs only) equals the matrix row
     of the files, missing as percent; every one of the 933 ids is present.
 (b) mgdb2026: the unchanged layout (distance/maizegdb_allchr_final_*.csv) still serves, and the
-    request carries no dataset parameter (same URL as before).
+    request carries no dataset parameter (same URL as before). Checked only when run_scenarios.js
+    ran it, i.e. when MaizeGDB 2026 is offered (off in the GRIN-linked initial release).
 (c) SNPTree offers exactly the trees present, and the downloads equal the files.
 Standard library only."""
 import json, sys
@@ -44,10 +45,12 @@ n1 = check('zmgrin2026/all', R['zmgrin_all'], f'{dd}/zmgrin2026', 'similarity.cs
 n2 = check('zmgrin2026/snp', R['zmgrin_snp'], f'{dd}/zmgrin2026', 'similarity_snp.csv', 'missing_pct_snp.csv')
 if not R['zmgrin_all'].get('sitesSelect'):
     bad += 1; print('SNP-only selector not offered')
-n3 = check('mgdb2026', R['mgdb'], dd, 'maizegdb_allchr_final_similarity.csv', 'maizegdb_allchr_final_missing_pct.csv')
-mq = [q for q in R['requests'] if 'focal=' in q and R['mgdb']['focal'] in q]
-if not mq or any('dataset=' in q for q in mq):
-    bad += 1; print('mgdb2026 request URL changed', mq)
+n3 = None
+if 'mgdb' in R:
+    n3 = check('mgdb2026', R['mgdb'], dd, 'maizegdb_allchr_final_similarity.csv', 'maizegdb_allchr_final_missing_pct.csv')
+    mq = [q for q in R['requests'] if 'focal=' in q and R['mgdb']['focal'] in q]
+    if not mq or any('dataset=' in q for q in mq):
+        bad += 1; print('mgdb2026 request URL changed', mq)
 if not any('dataset=zmgrin2026' in q and 'sites=snp' in q for q in R['requests']):
     bad += 1; print('no SNP-only zmgrin2026 request', R['requests'])
 if 'real' in R:   # installed matrices (./distance/zmgrin2026/)
@@ -71,6 +74,6 @@ for t in ('nj', 'upgma'):
 if R['tree_nofiles'].strip():
     bad += 1; print('tree card shown without files')
 print(f'SNPCompare genome-wide: zmgrin2026 {n1} ids (all sites, focal {R["zmgrin_all"].get("focal")}), '
-      f'{n2} ids (SNPs, focal {R["zmgrin_snp"].get("focal")}); mgdb2026 legacy layout {n3} ids; '
+      f'{n2} ids (SNPs, focal {R["zmgrin_snp"].get("focal")}); mgdb2026 legacy layout {n3 if n3 is not None else "not offered"}; '
       f'disabled without files: {not nf.get("gAvail")}; SNPTree Newick downloads: {", ".join(l[0] for l in T["links"])}; mismatches={bad}')
 sys.exit(1 if bad else 0)

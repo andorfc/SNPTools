@@ -113,7 +113,7 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
    should live inside that tool\u2019s own file (see IMP in snpimpact.js). */
 const S = {
   tool:'snpversity',
-  dataset:'mgdb2026_hq',
+  dataset:'zmgrin2026_imp',        // initial release: the GRIN-linked 2026 set (was mgdb2026_hq)
   chr:'chr10', start:9788000, end:9826500, perPage:100,
   selected:new Set(),
   results:null, page:1,

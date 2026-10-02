@@ -44,10 +44,14 @@ const Data = (function () {
    * `family` -> which real accession list to show + which .h5 family
    */
   const DATASETS = [
+    /* Initial release: the GRIN-linked 2026 set only. The MaizeGDB 2026 sets are kept here,
+       commented out, with everything that serves them (processForm.php, ibsCompare.php,
+       FIELD_STATUS, FAMILY_META, the accession catalog); uncomment to offer them again.
     {id:'mgdb2026_hq', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Quality',   ref:'B73 v5', acc:'2,710', sites:'98M',
      filters:['MQ ≥ 30','Coverage ≥ 50%','LD max R² > 0.5'], het:true,  indel:true,  impute:false},
     {id:'mgdb2026_hc', family:'mgdb2026',     name:'MaizeGDB 2026', sub:'High Coverage',  ref:'B73 v5', acc:'2,710', sites:'290M',
      filters:['MQ ≥ 30','Coverage ≥ 50%'], het:true,  indel:true,  impute:false},
+    */
     // GRIN-linked release v1.4: 926 Grzybowski et al. 2023 lines (Beagle-imputed)
     // + 7 lines called separately at the same sites (incl. NAM founder CML103). Sample ids = release
     // sample_id (ZmG_<genotype>); metadata in js/zmgrin.catalog.js.
@@ -139,14 +143,15 @@ const Data = (function () {
   const CATALOG = (typeof window !== 'undefined' && window.SNP_CATALOG) || null;
   const REAL    = (typeof window !== 'undefined' && window.SNP_REAL_ACCESSIONS) || {};
 
+  /* An unknown id falls back to the first listed dataset's family (it was a hard-coded
+     'mgdb2026', which pointed every tool at a set this release does not offer). */
   function familyOf(datasetId){
     const d = DATASETS.find(x => x.id === datasetId);
-    return d ? d.family : 'mgdb2026';
+    return d ? d.family : DATASETS[0].family;
   }
-  // MaizeGDB 2026 is the only family carrying the second-generation language-model
-  // scores (PlantCAD2 / ESM2). Tools call this to show those columns conditionally.
-  // The GRIN-linked 2026 release carries the same model set (PlantCAD1/2, ESM1/2/3)
-  // plus ESM-C once the annotation INFO is merged into its HDF5 store.
+  // The second-generation language-model scores (PlantCAD2 / ESM2 / ESM3) are carried by
+  // the GRIN-linked 2026 release (and by MaizeGDB 2026, when listed). Tools call this to
+  // show those columns conditionally; ESM-C is in the GRIN-linked INFO as well.
   function hasSecondaryScores(datasetId){ return ['mgdb2026','zmgrin2026'].indexOf(familyOf(datasetId)) >= 0; }
 
   /* Language-model score columns for a dataset, in display order. `key` indexes
@@ -420,6 +425,9 @@ const Data = (function () {
         effect: cleanTok(II.TYPE) || 'intergenic',
         impact,
         sub:    cleanTok(II.SUB),
+        // a site with several consequences (several genes): the raw parallel lists, read
+        // per gene by rowForGene(); null for the usual single consequence
+        anns:   (II.GENEMODEL && II.GENEMODEL.indexOf(',') !== -1) ? [II.GENEMODEL, II.TYPE, II.EFFECT, II.SUB] : null,
         domain: domainAt(t[0], pos),     // Pfam domain covering this position (or '—')
         mq:     (mq != null) ? Math.round(mq) : 'N/A',
         comp:   (cvp != null) ? cvp : 'N/A',
@@ -437,6 +445,50 @@ const Data = (function () {
       });
     }
     return {rows, sampleCols};
+  }
+
+  /* ---- one site, several consequences ----
+     SnpEff writes one consequence per affected gene (and transcript): GENEMODEL, TYPE,
+     EFFECT and SUB are parallel comma lists, most severe first. In the GRIN-linked 2026 test
+     windows 1,464 of 3,744 sites list more than one (20 of 414 in a MaizeGDB 2026 window): a site intronic in one
+     gene and downstream of its neighbour, or missense in two overlapping genes. A row's own
+     gene/effect/sub are the FIRST entry, which is right for a region view (SNPVersity,
+     SNPImpact). A view of one gene (SNPFunction, SNPFold, SNPGeo by gene) must read that
+     gene's entry instead, or it drops the site, or shows the neighbour's substitution:
+     rowForGene(). The ESM scores belong to one entry only, the first missense one of the
+     list (tools/annotate_release_info.py, pick_esm), so they go with that entry alone;
+     PlantCAD/Evo2 score the allele, not a protein, and stay on every entry. */
+  function annotationsOf(r){
+    if (!r) return [];
+    const one = [{gene:r.gene, effect:r.effect, impact:r.impact, sub:r.sub, esm:true}];
+    if (!r.anns) return one;
+    const [G, T, E, U] = r.anns.map(x => String(x == null ? '' : x).split(','));
+    if (T.length !== G.length) return one;            // not parallel: keep the first-entry reading
+    const esmAt = T.findIndex(t => /missense/i.test(t));
+    return G.map((g, i) => {
+      const imp = String(E[i] || '').trim().toUpperCase();
+      return {gene: cleanTok(g) || '—', effect: cleanTok(T[i]) || 'intergenic',
+              impact: (imp in SEVERITY) ? imp : 'MODIFIER', sub: cleanTok(U[i]), esm: i === esmAt};
+    });
+  }
+  /* The row as seen from one gene: that gene's most severe entry (the first on a tie),
+     its ESM scores blanked when they were computed for another entry. null when the site
+     has no consequence in the gene. Genotypes are shared, not copied. */
+  function rowForGene(r, gene){
+    if (!r || !gene) return null;
+    if (!r.anns) return r.gene === gene ? r : null;
+    let best = null;
+    for (const a of annotationsOf(r)){
+      if (a.gene === gene && (!best || SEVERITY[a.impact] > SEVERITY[best.impact])) best = a;
+    }
+    if (!best) return null;
+    const v = Object.assign({}, r, {gene:best.gene, effect:best.effect, impact:best.impact, sub:best.sub});
+    if (!best.esm){ v.esm1 = v.esm2 = v.esm3 = v.esmc = null; }
+    return v;
+  }
+  /* Every single gene model a row has a consequence in (intergenic "A_B" spans dropped). */
+  function genesOf(r){
+    return [...new Set(annotationsOf(r).map(a => a.gene))].filter(g => g && g !== '—' && !/\s/.test(g));
   }
 
   // Build the accession objects the table header needs, in selection order.
@@ -762,8 +814,10 @@ const Data = (function () {
     try { res = await queryVariants(dataset, g.chr, g.start, g.end, ids, {forceTable:true}); }
     catch (e){ console.warn('queryFoldVariants:', e && e.message); return []; }
     const out = [];
-    for (const r of (res.rows || [])){
-      if (gene && r.gene && r.gene !== gene && r.gene !== '—') continue;
+    for (const r0 of (res.rows || [])){
+      // this gene's consequence at the site, even when SnpEff lists another gene first
+      const r = gene ? (rowForGene(r0, gene) || ((!r0.gene || r0.gene === '—') ? r0 : null)) : r0;
+      if (!r) continue;
       const cls = classifyConsequence(r.effect);
       if (!cls) continue;
       const p = parseSub(r.sub);
@@ -898,7 +952,9 @@ const Data = (function () {
     catch (e){ return {gene, chr:g.chr, start:g.start, end:g.end, dataset, datasetName:dsName, error:'Variant query failed: '+(e&&e.message)}; }
 
     const accs = res.accs || [];
-    const rows = (res.rows || []).filter(r => r.gene === gene);
+    // every site with a consequence in this gene, read as this gene's consequence
+    // (rowForGene): a first-listed-gene filter dropped 31 of Zm00001eb374230's 51 coding sites
+    const rows = (res.rows || []).map(r => rowForGene(r, gene)).filter(Boolean);
     const gd = geneDomains(gene), gm = geneModelOf(g.chr, gene);
 
     const variants = rows.map((r, vi) => {
@@ -970,6 +1026,7 @@ const Data = (function () {
     familyMeta:  () => FAMILY_META,
     // parsing helpers shared with SNPGeo (and the Node smoke test)
     parseVcf, parseSub, classifyConsequence,
+    annotationsOf, rowForGene, genesOf,   // per-gene reading of multi-consequence sites
     annotationFields,       // per-set status of the SNPVersity annotation columns
     globalDistance, globalDistanceKnown,   // precomputed genome-wide IBS / trees per family
     // backwards-compatible defaults (first dataset)
