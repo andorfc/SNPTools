@@ -69,18 +69,17 @@ const Data = (function () {
     {key:'esm1',   label:'ESM1'},         {key:'esm2',   label:'ESM2'},
     {key:'esm3',   label:'ESM3'},
   ];
-  const ZMGRIN_NA_QC = 'The Grzybowski et al. 2023 call set has no per-site value for it (the MaizeGDB '
-    + 'Schnable scored VCFs carry "."), and values from the MaizeGDB 2026 call set describe other reads and samples.';
+  const ZMGRIN_NA_QC = 'Not available for the Grzybowski et al. 2023 call set (source VCFs carry no per-site MQ/coverage).';
   const FIELD_STATUS = {
     mgdb2026_hc: {
       r2: {status:'na', note:'maxR² is computed only for the High Quality set (its LD filter); the High Coverage set has no MAXR2.'},
     },
     zmgrin2026_imp: {
-      mq:   {status:'na', note:'Mapping quality: ' + ZMGRIN_NA_QC},
-      comp: {status:'na', note:'Completeness: ' + ZMGRIN_NA_QC + ' The release genotypes are Beagle-imputed, so a call rate computed from them would not measure coverage.'},
-      r2:   {status:'na', note:'maxR²: ' + ZMGRIN_NA_QC},
-      pc1:  {status:'pending', note:'PlantCAD1 scores for the Grzybowski sites are being merged on Atlas (expected about Oct 1-3, 2026).'},
-      pc2:  {status:'pending', note:'PlantCAD2 scores for the Grzybowski sites are being merged on Atlas (expected about Oct 1-3, 2026).'},
+      mq:   {status:'na', note:ZMGRIN_NA_QC},
+      comp: {status:'na', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
+      r2:   {status:'ok', note:'From the 933 release genotypes: highest PLINK 1.9 r² with any variant 400-5,000 bp away, no MAF/missingness/r² filtering. Blank = no partner variant within 400-5,000 bp, or monomorphic.'},
+      pc1:  {status:'pending', note:'PlantCAD1 scores for the Grzybowski sites are being merged per chromosome (rounded to 0.1).'},
+      pc2:  {status:'pending', note:'PlantCAD2 scores for the Grzybowski sites are being merged per chromosome (rounded to 0.1).'},
       esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
       esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
       esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
@@ -161,8 +160,8 @@ const Data = (function () {
       {key:'esm1', kind:'protein', label:'ESM1b',    tip:'ESM1b protein language-model score (INFO AA_SCORE / ESM1_score).'},
     ];
     return [
-      {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE).'},
-      {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score).'},
+      {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE; 0.1 steps in the GRIN-linked 2026 set).'},
+      {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score; 0.1 steps in the GRIN-linked 2026 set).'},
       {key:'esm1', kind:'protein', label:'ESM1',      tip:'ESM1b protein language-model score (INFO ESM1_score, or AA_SCORE).'},
       {key:'esm2', kind:'protein', label:'ESM2',      tip:'ESM2 protein language-model score (INFO ESM2_score).'},
       {key:'esm3', kind:'protein', label:'ESM3',      tip:'ESM3 protein language-model score (INFO ESM3_score).'},

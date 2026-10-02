@@ -1077,7 +1077,7 @@ function annotFields(){
   // for one chromosome first); it stays pending (empty + note) where the store has no value.
   const rows=(S.results&&S.results.rows)||[];
   return F.map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
-    ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome; sites without a score show N/A.'}) : f);
+    ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome (rounded to 0.1); sites without a score show N/A.'}) : f);
 }
 function annotFieldMap(){ const m={}; annotFields().forEach(f=>{m[f.key]=f;}); return m; }
 function annotHeaderHTML(){

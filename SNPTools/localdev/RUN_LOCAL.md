@@ -109,10 +109,15 @@ shown. Filled: Gene model, Effect, SNPEff Impact (SnpEff 5.2a fields of the Maiz
 scored VCFs), MAF (from the 933 release genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 =
 store ESM-2 650M, `esm2_store_score`). Domain uses the same position lookup as every set
 (`data/domains/`, not part of this tree, so "—" locally for all sets). Empty with a dashed header
-and a note above the table: MQ, COMP, maxR² (no per-site value exists for the Grzybowski call
-set) and PlantCAD1/PlantCAD2 (pending the Atlas merge). Hover a header for the reason.
-With the full chr2 store PlantCAD1/PlantCAD2 are filled on chr2 (SNPs; indels read N/A); the
-other chromosomes still use the demo cut and show them as pending.
+and a note above the table: MQ and COMP (not available for the Grzybowski et al. 2023 call set: the
+source VCFs carry no per-site MQ/coverage) and PlantCAD1/PlantCAD2 where a store has no scores yet.
+maxR² is available for this set (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the
+933 release genotypes, no filtering; blank = no partner variant in range or monomorphic); the
+stores installed here predate it, so their cells read NA until the rebuilt stores arrive.
+PlantCAD1/PlantCAD2 and Evo2 are rounded to 0.1 like the ESM scores. The chr2 store installed here
+is the earlier 4-decimal build (PlantCAD shown to 4 decimals, no MAXR2); the rebuilt Ceres stores
+use 0.1 and carry MAXR2. With the full chr2 store PlantCAD1/PlantCAD2 are filled on chr2 (SNPs;
+indels read N/A); the other chromosomes still use the demo cut and show them as pending.
 
 5. **SNPCompare genome-wide (GRIN-linked set)**: open *SNPCompare*, choose **Dataset = MaizeGDB
    GRIN-linked 2026** (or arrive from SNPVersity with that set), focal `ZmG_B73`, scope

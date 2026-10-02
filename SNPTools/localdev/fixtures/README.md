@@ -16,8 +16,10 @@ chr10 30-130 Mb segment flagged in the release's CML103 identity caveat. Sample 
 TYPE/EFFECT/GENEMODEL/SUB copied from the MaizeGDB Schnable scored VCFs (SnpEff 5.2a; the
 3,495/3,495 sites matched on CHROM/POS/REF/ALT), MAF from the 933 genotypes of the file, and
 ESM1_score/ESM2_score/ESM3_score for the 133 missense sites (grz2023_missense_esm llr_esm1b /
-llr_esm2 = store ESM-2 650M, i.e. esm2_store_score / llr_esm3, 1 decimal). No MQ/CVC/CVP/MAXR2
-and no PlantCAD scores (pending). Inputs for re-running it are in `annotation/`:
+llr_esm2 = store ESM-2 650M, i.e. esm2_store_score / llr_esm3, 1 decimal). No MQ/CVC/CVP (not
+available for the Grzybowski call set), no MAXR2 and no PlantCAD scores: the full-chromosome
+builds add those with `--maxr2` and `--dna-scores` (PlantCAD1/2 and Evo2 rounded to 0.1,
+`--pc-decimals 1`). Inputs for re-running it are in `annotation/`:
 
     for f in zmgrin2026_v1.4_chr*_testregions.vcf.gz; do
       python3 ../../tools/annotate_release_info.py --vcf $f \
@@ -30,6 +32,8 @@ bcftools 1.20 from the full annotated chr2 release VCF on Ceres
 (`grz2023/snptools_build/chr2/zmgrin2026_v1.4_chr2_933.annotated.vcf.gz`), used by the checks when
 the full chr2 store is installed. Same 249 sites and genotypes as the demo fixture; its INFO
 adds plantcad1/plantcad2 (158 SNPs), evo2 (120) and ESMC_score (10), and writes MAF 0 as "0".
+It comes from the earlier chr2 build (PlantCAD/Evo2 with 4 decimals, no MAXR2); replace it with the
+same window of the rebuilt store (0.1 rounding, MAXR2) when that store is installed.
 
 `annotation/schnable_scored_testregions.sites.vcf.gz`: columns 1-8 of Atlas
 `/90daydata/maizegdb/carson/grz2023_scoring/protein/vcf/chr<N>_schnable_scored.vcf.gz` in the

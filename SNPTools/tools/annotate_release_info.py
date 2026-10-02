@@ -27,10 +27,16 @@ schnable2023 and MaizeGDB 2026 stores carry):
                                  tables, joined on CHROM/POS/REF/ALT; indels get none.
   ESMC_score                     llr_esmc from the same missense table, 1 decimal.
 
+  MAXR2                          optional (--maxr2): highest pairwise LD r2 (PLINK 1.9 --r2) of the
+                                 site with any variant 400-5,000 bp away, computed from the 933
+                                 release v1.4 genotypes with no filtering (tools: maxr2_chr.sh);
+                                 written as up to 6 decimals like the MaizeGDB 2026 stores.
+
 Not written, on purpose:
-  MQ, CVC, CVP, MAXR2            the Schnable scored VCFs carry them as "." and no per-site
+  MQ, CVC, CVP                   the Schnable scored VCFs carry them as "." and no per-site
                                  value exists for the Grzybowski call set; values from the
                                  MaizeGDB 2026 call set describe different reads/samples.
+                                 SNPTools shows them as NA.
   DNA_SCORE/AA_SCORE              of the scored VCF are dropped so parseVcf does not fall back
                                  to them (PlantCAD comes only from --dna-scores).
 
@@ -42,7 +48,7 @@ import argparse, gzip, sys, collections
 
 KEEP_FROM_SNPEFF = ('TYPE', 'EFFECT', 'GENEMODEL', 'SUB')
 DNA_KEYS = ('plantcad1_score', 'plantcad2_score', 'evo2_score')
-ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS
+ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS + ('MAXR2',)
 HEADER = [
     '##INFO=<ID=TYPE,Number=.,Type=String,Description="SnpEff 5.2a consequence(s) (Sequence Ontology), from the MaizeGDB Schnable scored VCF of the Grzybowski et al. 2023 sites">',
     '##INFO=<ID=EFFECT,Number=.,Type=String,Description="SnpEff putative impact per consequence (HIGH/MODERATE/LOW/MODIFIER), same source">',
@@ -56,10 +62,16 @@ HEADER = [
 ]
 
 DNA_HEADER = [
-    '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), 4 decimals; SNPs only">',
-    '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), 4 decimals; SNPs only">',
-    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), genic +/-1 kb SNP subset only (--dna-scores), 4 decimals">',
+    '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
+    '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
+    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), genic +/-1 kb SNP subset only (--dna-scores), rounded to 1 decimal (--pc-decimals)">',
 ]
+MAXR2_HEADER = '##INFO=<ID=MAXR2,Number=1,Type=Float,Description="Highest pairwise LD r2 (PLINK 1.9 --r2) with any variant 400-5,000 bp away, from the 933 release v1.4 genotypes, no MAF/missingness filtering (--maxr2)">'
+
+
+def fmt_r2(v):
+    s = f'{float(v):.6f}'.rstrip('0')
+    return s + '0' if s.endswith('.') else s
 
 
 def opener(p):
@@ -93,7 +105,7 @@ def snpeff_stream(path):
             yield t[0], int(t[1]), t[3], t[4], {k: info[k] for k in KEEP_FROM_SNPEFF if info.get(k) not in (None, '.', '')}
 
 
-def dna_stream(path):
+def dna_stream(path, keys_wanted=DNA_KEYS, opt='--dna-scores'):
     """yield (chrom, pos, ref, alt, {plantcad1_score, plantcad2_score, evo2_score}) from a
     position-sorted TSV with header chr,pos,ref,alt,<any of DNA_KEYS>; empty/nan values skipped."""
     with opener(path) as fh:
@@ -101,8 +113,10 @@ def dna_stream(path):
         ix = {c: i for i, c in enumerate(hdr)}
         for c in ('chr', 'pos', 'ref', 'alt'):
             if c not in ix:
-                sys.exit(f'--dna-scores: column {c} missing')
-        keys = [k for k in DNA_KEYS if k in ix]
+                sys.exit(f'{opt}: column {c} missing')
+        keys = [k for k in keys_wanted if k in ix]
+        if not keys:
+            sys.exit(f'{opt}: none of {keys_wanted} present')
         for line in fh:
             t = line.rstrip('\n').split('\t')
             yield t[ix['chr']], int(t[ix['pos']]), t[ix['ref']], t[ix['alt']], \
@@ -189,12 +203,15 @@ def main():
     ap.add_argument('--snpeff', required=True, help='Schnable scored VCF (or its sites-only copy), same sites')
     ap.add_argument('--esm', required=True, help='grz2023_missense_esm.tsv(.gz)')
     ap.add_argument('--out', required=True)
+    ap.add_argument('--pc-decimals', type=int, default=1, help='decimals for plantcad1/2_score and evo2_score (default 1; full precision stays in the score tables)')
     ap.add_argument('--dna-scores', help='position-sorted TSV chr,pos,ref,alt,plantcad1_score,plantcad2_score,evo2_score (optional)')
+    ap.add_argument('--maxr2', help='position-sorted TSV chr,pos,ref,alt,MAXR2 (optional; maxr2_chr.sh output)')
     a = ap.parse_args()
     esm = load_esm(a.esm)
     stats = collections.Counter()
     se = snpeff_stream(a.snpeff)
     dj = SortedJoin(dna_stream(a.dna_scores)) if a.dna_scores else None
+    mj = SortedJoin(dna_stream(a.maxr2, ('MAXR2',), '--maxr2')) if a.maxr2 else None
     cur = next(se, None)
     posbuf_key, posbuf = None, {}
     out = gzip.open(a.out, 'wt', compresslevel=6) if a.out.endswith('.gz') else open(a.out, 'w')
@@ -209,6 +226,8 @@ def main():
                 out.write('\n'.join(HEADER) + '\n')
                 if dj is not None:
                     out.write('\n'.join(DNA_HEADER) + '\n')
+                if mj is not None:
+                    out.write(MAXR2_HEADER + '\n')
                 out.write('##annotate_release_info=TYPE/EFFECT/GENEMODEL/SUB from ' + a.snpeff.split('/')[-1] +
                           '; ESM from ' + a.esm.split('/')[-1] + '; MAF from this file\'s genotypes\n')
                 out.write(line)
@@ -240,7 +259,18 @@ def main():
                 stats['dna_matched' if dv else 'dna_unmatched'] += 1
                 for k in DNA_KEYS:
                     if k in dv:
-                        info[k] = dv[k]; stats[k] += 1
+                        v = dv[k]
+                        if k in DNA_KEYS:
+                            v = f'{round(float(v), a.pc_decimals):.{a.pc_decimals}f}'
+                            if v in ('-0.0', '-0'):
+                                v = v[1:]
+                        info[k] = v; stats[k] += 1
+            if mj is not None:
+                mv = mj.get(chrom, pos, ref, alt).get('MAXR2')
+                if mv is not None:
+                    info['MAXR2'] = fmt_r2(mv); stats['MAXR2'] += 1
+                else:
+                    stats['maxr2_missing'] += 1
             m = maf_of(t[9:])
             if m is not None:
                 info['MAF'] = m
