@@ -192,13 +192,17 @@ const Data = (function () {
   function accessionById(id){ return idIndex().get(id) || null; }
 
   /* ---------------- genome geometry ---------------- */
+  /* Example gene intervals, B73 v5 (Zm00001eb.1), as returned by
+     lookupGeneModel.php from gff/genes_data.serialized. The previous values were
+     placeholders that did not match the annotation (e.g. Zm00001eb374090 is on
+     chr9, not chr8:163.45 Mb). Live lookups always go through lookupGene(). */
   const GENE_MODELS = {
-    'Zm00001eb374090':{chr:'chr8', start:163450112, end:163454880},
-    'Zm00001eb067740':{chr:'chr2', start:21008440,  end:21013990},
-    'Zm00001eb404760':{chr:'chr10',start:9821400,   end:9826110},
-    'Zm00001eb404740':{chr:'chr10',start:9788220,   end:9794010},
-    'Zm00001eb233650':{chr:'chr5', start:8841220,   end:8849510},
-    'Zm00001eb313510':{chr:'chr7', start:174221000, end:174229800},
+    'Zm00001eb374090':{chr:'chr9', start:12838008,  end:12843999},
+    'Zm00001eb067740':{chr:'chr2', start:4493424,   end:4497434},
+    'Zm00001eb404760':{chr:'chr10',start:218406,    end:220251},
+    'Zm00001eb404740':{chr:'chr10',start:129631,    end:131683},
+    'Zm00001eb233650':{chr:'chr5', start:90721578,  end:90727950},
+    'Zm00001eb313510':{chr:'chr7', start:123685735, end:123691964},
   };
   const CHR_LEN = {chr1:308452471,chr2:243675191,chr3:238017767,chr4:250330460,chr5:226353449,
     chr6:181357234,chr7:185808916,chr8:182411202,chr9:163004744,chr10:152435371};
@@ -509,9 +513,9 @@ const Data = (function () {
 
   /**
    * queryVariantsByGene(dataset, geneId, ids, opts) -> Promise<{rows, accs, chr, start, end, gene, vcfUrl, span, wide, empty, variants}>
-   * Resolves the gene through lookupGeneModel.php; when that endpoint is not
-   * reachable (e.g. a static file server) it falls back to the built-in
-   * GENE_MODELS table so the example genes still work. `ids` defaults to the
+   * Resolves the gene through lookupGeneModel.php (gff/genes_data.serialized);
+   * when that endpoint is unreachable (e.g. a static file server without PHP)
+   * the built-in GENE_MODELS table covers the example genes. `ids` defaults to the
    * dataset's default selection — pass every accession id when per-population
    * statistics are needed (SNPGeo does).
    */
