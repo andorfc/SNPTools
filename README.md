@@ -258,7 +258,8 @@ repository.
   built-in server). Tested with PHP 8.5.
 - Python 3 with `h5py` and `numpy` for `h5_to_vcf.py` (tested with Python 3.12, h5py 3.16,
   numpy 2.5).
-- The variant stores in `hdf5/version3/`, and the data files above.
+- The variant stores in `hdf5/version3/` with their site-QC sidecars (`make site-qc`), and the data
+  files above.
 
 ### Local instance
 
@@ -277,6 +278,10 @@ installed (it never replaces a store larger than 50 MB unless `FORCE=1`).
 
 1. Put `SNPTools/` under the web root.
 2. Install the stores in `hdf5/version3/`, the matrices in `distance/zmgrin2026/` and the data files.
+   Run `make site-qc` where the stores are (or copy their `.siteqc.h5` sidecars with them): it writes
+   the sidecars (about 1.5 minutes with `JOBS=4`) and regenerates `data/qc/` and `js/zmgrin.lineqc.js`,
+   which are also in git. Without the sidecars the pages show no Site QC. After replacing a store, run
+   `make site-qc` and then `make curate` (`js/snpcurate.data.js`, also in git) again.
 3. Make `vcf/` writable by the web server (and `gff/`, if the gene index should rebuild itself).
 4. Set the environment variables below for the PHP process, and point SNPFunction at a MaizeGDB
    host that serves `/api/v1` if not the default.
