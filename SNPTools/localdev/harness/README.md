@@ -128,6 +128,15 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    stores read through `h5_to_vcf.py`, the catalogue, the trait file and `gff/genes_index.txt`,
    independently of `tools/build_snpcurate.py`, and confirms the 7 non-site entries have no site.
 
+16. SNPCurate marks in the other tools, also in `check_snpcurate.py`: SNPVersity on the tga1 interval with
+   the 7 Z. parviglumis and 26 NAM lines (the gold badge at 46,648,374 opens SC0001; the interval line),
+   SNPFunction's "Curated alleles" block for su1, Bx13 and DGAT1-2 (the Phe469 insertion listed though
+   the allele list does not rank it), SNPImpact on tga1 under the default filter (N6K kept), SNPGeo's
+   table and label. Test-only entries added to the loaded copy, never the source: su1 G627W (HET_ONLY)
+   stays in SNPImpact's default view with its "Het only" pill and outline badge and is listed by
+   SNPFunction; a coding variant of Zm00001eb406050 gets SNPFold's ring and table badge. Then the
+   same pages without `js/snpcurate.data.js`: no badge, no block, no error.
+
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
 `check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py` and `check_snpcurate.py` recompute the numbers independently from

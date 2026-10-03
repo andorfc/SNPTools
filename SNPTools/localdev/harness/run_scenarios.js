@@ -49,6 +49,21 @@ function annotStats(site){
             note:(document.getElementById('annotNote')||{}).textContent||''};
   })()`);
 }
+/* A temporary site root of symlinks to everything in ROOT but one file of js/ (to test a page
+   without an optional data file). Cleaned up by unlinking each link, never a recursive delete. */
+function rootWithout(root, jsFile){
+  const os = require('os'), abs = path.resolve(root);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-without-'));
+  for (const e of fs.readdirSync(abs)) if (e !== 'js') fs.symlinkSync(path.join(abs, e), path.join(tmp, e));
+  fs.mkdirSync(path.join(tmp, 'js'));
+  for (const e of fs.readdirSync(path.join(abs, 'js'))) if (e !== jsFile) fs.symlinkSync(path.join(abs, 'js', e), path.join(tmp, 'js', e));
+  return {dir: tmp, cleanup(){
+    const js = path.join(tmp, 'js');
+    if (fs.existsSync(js)){ for (const e of fs.readdirSync(js)) fs.unlinkSync(path.join(js, e)); fs.rmdirSync(js); }
+    for (const e of fs.readdirSync(tmp)) fs.unlinkSync(path.join(tmp, e));
+    fs.rmdirSync(tmp);
+  }};
+}
 async function until(site, expr, ms = 8000){
   const t0 = Date.now();
   while (Date.now() - t0 < ms){ if (site.$eval(expr)) return true; await site.wait(50); }
@@ -814,22 +829,9 @@ async function until(site, expr, ms = 8000){
       return L;
     };
     R.lineqc = {with: await lineqc(ROOT)};
-    // the same pages without js/zmgrin.lineqc.js: a root of symlinks to everything else
-    const os = require('os');
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-nolineqc-'));
-    try {
-      const abs = path.resolve(ROOT);
-      for (const e of fs.readdirSync(abs)) if (e !== 'js') fs.symlinkSync(path.join(abs, e), path.join(tmp, e));
-      fs.mkdirSync(path.join(tmp, 'js'));
-      for (const e of fs.readdirSync(path.join(abs, 'js'))) if (e !== 'zmgrin.lineqc.js') fs.symlinkSync(path.join(abs, 'js', e), path.join(tmp, 'js', e));
-      R.lineqc.without = await lineqc(tmp);
-    } finally {
-      // unlink the symlinks one by one (never a recursive delete that could follow one)
-      const js = path.join(tmp, 'js');
-      if (fs.existsSync(js)){ for (const e of fs.readdirSync(js)) fs.unlinkSync(path.join(js, e)); fs.rmdirSync(js); }
-      for (const e of fs.readdirSync(tmp)) fs.unlinkSync(path.join(tmp, e));
-      fs.rmdirSync(tmp);
-    }
+    // the same pages without js/zmgrin.lineqc.js
+    const w = rootWithout(ROOT, 'zmgrin.lineqc.js');
+    try { R.lineqc.without = await lineqc(w.dir); } finally { w.cleanup(); }
   }
 
   /* ---------- SNPCurate (js/snpcurate.data.js from data/curate/snpcurate.source.json) ----------
@@ -876,6 +878,76 @@ async function until(site, expr, ms = 8000){
     K.data = $c('JSON.parse(JSON.stringify(window.SNP_CURATE))');
     K.consoleErrors = s12.errors.filter(e => !/favicon/.test(e));
     s12.window.close();
+  }
+
+  /* ---------- SNPCurate marks in the other tools ----------
+     SNPVersity (the tga1 interval, the 7 Z.parviglumis lines + the 26 NAM lines: badge beside the
+     position, the line above the table, the badge opening the record), SNPFunction's "Curated
+     alleles" block (su1, Bx13, DGAT1-2), SNPImpact on tga1 under the default filter, SNPGeo's table
+     and label. Then test-only entries added to the loaded copy (never to the source): su1 G627W
+     (HET_ONLY, 31 het / 0 hom) must stay in SNPImpact's default view with its pill and badge and be
+     listed by SNPFunction; a coding variant of Zm00001eb406050 must get SNPFold's ring and badge.
+     Then the same pages without js/snpcurate.data.js: no badge, no block, no error. */
+  if ((R.curate || null) !== null){
+    const marks = async (root, withData) => {
+      const s = await openSite(root); const $m = s.$eval, M = {};
+      const lines = `Data.accessionsFor('zmgrin2026_imp').filter(a=>a.subpop==='Z.parviglumis').map(a=>a.id).concat(Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id))`;
+      M.versity = await $m(`(async()=>{ go('snpversity'); const ids=${lines};
+        const r=await Data.queryVariants('zmgrin2026_imp','chr4',46647932,46652896,ids); r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:46647932,hi:46652896};
+        S.results=r; S.page=1; renderResults();
+        const b=[...document.querySelectorAll('#rtBody td.c-pos .cur-badge')].map(x=>({pos:x.closest('td').querySelector('a').textContent, cls:x.className, id:x.dataset.curate, glyph:x.textContent}));
+        const line=(document.getElementById('versityCurated')||{}).textContent||null;
+        const first=document.querySelector('#rtBody td.c-pos .cur-badge'); if (first) first.click();
+        return {lines:ids.length, rows:r.rows.length, badges:b, line, opened:{tool:S.tool, id:S.curateId}}; })()`);
+      M.func = {};
+      for (const [k, g] of [['su1', 'Zm00001eb174590'], ['Bx13', 'Zm00001eb116010'], ['DGAT1-2', 'Zm00001eb277490']]){
+        $m(`S.functionGene='${g}'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles') || /Damaging/.test((document.querySelector('#page .card.pad:last-child .fn-h')||{}).textContent||'')`, 60000); await s.wait(150);
+        M.func[k] = $m(`({block:[...document.querySelectorAll('#fnCurated .fn-cur-item')].map(d=>({id:d.dataset.curate, cls:d.querySelector('.cur-badge').className, text:d.textContent.replace(/\\s+/g,' ').trim()})),
+          listPos:[...document.querySelectorAll('#fnAlleles tbody tr.imp-row')].map(tr=>tr.getAttribute('data-allele'))})`);
+        M.func[k].list = await $m(`Data.geneFunction('${g}','zmgrin2026_imp').then(d=>d.damaging.map(v=>[v.pos,v.ref,v.alt]))`);
+      }
+      const impact = async (lo, hi) => $m(`(async()=>{ go('snpversity'); const ids=Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id);
+        const r=await Data.queryVariants('zmgrin2026_imp','chr4',${lo},${hi},ids); r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:${lo},hi:${hi}};
+        S.results=r; S.impactInput=resultHandoff(r); go('snpimpact');
+        const rows=[...document.querySelectorAll('table.imp tbody tr')];
+        return {filter:[...document.querySelectorAll('.imp-filters select')].map(x=>x.value).pop()||null, rows:rows.length,
+          curated:rows.filter(tr=>tr.querySelector('.cur-badge')).map(tr=>({variant:tr.children[1].textContent.replace(/[★☆○]/g,''), cls:tr.querySelector('.cur-badge').className,
+            id:tr.querySelector('.cur-badge').dataset.curate, qc:(tr.querySelector('.qcp')||{}).textContent||null}))}; })()`);
+      M.impactTga1 = await impact(46647932, 46652896);
+      M.geo = await $m(`(async()=>{ go('snpgeo'); document.getElementById('geoGeneInput').value='Zm00001eb175150'; await geoLookupGene();
+        await new Promise(r=>setTimeout(r,400)); const i=GEO.rows.findIndex(r=>r.pos===46648374); if (i>=0) geoSelectSnp(i);
+        return {rows:GEO.rows.length, badges:[...document.querySelectorAll('#geoTable .cur-badge')].map(b=>b.dataset.curate), label:!!document.querySelector('.geo-pane-sub .cur-badge')}; })()`);
+      await s.wait(300);
+      if (withData){
+        // test-only entries, added to the loaded copy only
+        M.testEntry = $m(`(()=>{ const e={id:'SC9901', gene:'Zm00001eb174590', symbol:'su1', label:'G627W (test only)', kind:'tag', evidence:'tag', status:'site',
+          chr:'chr4', pos:43437627, ref:'G', alt:'T', trait:'test', refs:[], mark:'outline', site:{nHet:31, nHom:0, nMiss:0, qc:'HET_ONLY', priority:'TOP'}};
+          window.SNP_CURATE.entries.push(e); return Data.curatedAt('chr4',43437627,'G','T')===e; })()`);
+        M.impactSu1 = await impact(43430007, 43438753);
+        $m(`S.functionGene='Zm00001eb174590'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles')`, 60000); await s.wait(150);
+        M.funcSu1Test = $m(`[...document.querySelectorAll('#fnCurated .fn-cur-item')].map(d=>d.dataset.curate)`);
+        M.foldTest = await $m(`(async()=>{ const d=await Data.geneFunction('Zm00001eb406050','zmgrin2026_imp'); const f=d.foldVariants.find(v=>Data.qcUsable(v.qc));
+          window.SNP_CURATE.entries.push({id:'SC9902', gene:'Zm00001eb406050', symbol:'test', label:f.variant+' (test only)', kind:'tag', evidence:'tag', status:'site',
+            chr:d.chr, pos:f.pos, ref:f.refNt, alt:f.altNt, trait:'test', refs:[], mark:'gold', site:{nHet:f.nHet, nHom:f.nHom, nMiss:0, qc:f.qc, priority:f.priority}});
+          return {pos:f.pos, variant:f.variant}; })()`);
+        $m(`goFold('Zm00001eb406050')`);
+        await until(s, `S.tool==='snpfold' && !document.querySelector('#page .spinner') && !!document.querySelector('.fold-context')`, 60000); await s.wait(200);
+        M.foldTest.ring = $m(`[...document.querySelectorAll('#foldTrack .cur-ring')].map(c=>c.dataset.curate)`);
+        M.foldTest.table = $m(`[...document.querySelectorAll('#foldTableBody .cur-badge')].map(b=>b.dataset.curate)`);
+        M.sourceUntouched = $m(`window.SNP_CURATE.entries.filter(e=>/^SC99/.test(e.id)).length`);
+      } else {
+        $m(`S.curateId=null; go('snpcurate')`);
+        M.curatePage = $m(`({empty:!!document.querySelector('#page .empty-state'), text:document.querySelector('#page .empty-state h3')?.textContent||null})`);
+      }
+      M.consoleErrors = s.errors.filter(e => !/favicon/.test(e));
+      s.window.close();
+      return M;
+    };
+    R.curateMarks = {with: await marks(ROOT, true)};
+    const w = rootWithout(ROOT, 'snpcurate.data.js');
+    try { R.curateMarks.without = await marks(w.dir, false); } finally { w.cleanup(); }
   }
 
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));

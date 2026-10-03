@@ -1079,6 +1079,9 @@
          before drawing the residue lollipop. */
       mergeCanonicalDomains(fn, domainRecords);
       FD.allVariants = mergeFoldVariants(variants, fn, geneModel);
+      // SNPCurate: a curated coding variant gets a ring on the track and its mark in the table
+      const curChr = fn && fn.chr;
+      FD.allVariants.forEach(v => { v.curated = (curChr && Data.curatedAt) ? Data.curatedAt(curChr, v.pos, v.refNt, v.altNt) : null; });
       FD.hasQc = FD.allVariants.some(v => v.qc != null);
       FD.variants = shownVariants();
       detectStructureTruncation();
@@ -1369,8 +1372,10 @@
       const head=base - 6 - (sev/maxSev)*(lolliH-10);
       const col=CONS_FILL[v.consClass]||'#2f5bbf';
       const on=v.id===FD.selId;
-      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${v.variant} · ${v.consequence} · residue ${resi}">`;
+      const cur=v.curated;
+      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${escFold(v.variant)} · ${escFold(v.consequence)} · residue ${resi}${cur?` · curated: ${escFold(cur.symbol)} ${escFold(cur.label)}`:''}">`;
       g+=`<line x1="${xx.toFixed(1)}" y1="${base}" x2="${xx.toFixed(1)}" y2="${head.toFixed(1)}" stroke="${col}" stroke-width="${on?2:1.4}"/>`;
+      if (cur) g+=`<circle class="cur-ring" data-curate="${escFold(cur.id)}" cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${(on?6:4.5)+3.2}" fill="none" stroke="${cur.mark==='gold'?'#c99a06':'#8a7642'}" stroke-width="1.8"/>`;
       g+=`<circle cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${on?6:4.5}" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
       if (v.consClass==='lof') g+=`<text x="${xx.toFixed(1)}" y="${(head-8).toFixed(1)}" class="vlab" text-anchor="middle">✱</text>`;
       g+=`</g>`;
@@ -1708,7 +1713,7 @@
     const cr = carrierOf(v);
     const openC = FD.openCarrier===v.id;
     return `<tr class="fold-row ${on?'sel':''}" onclick="FOLD.select('${v.id}')">
-      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}</td>
+      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}${v.curated?curateBadge(v.curated):''}</td>
       <td><span class="cons ${v.consClass}">${v.consequence}</span>${peJump(v)}</td>
       <td class="num">${finiteNumber(v.resi)==null?'<span style="color:var(--faint)">—</span>':v.resi}</td>
       <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>

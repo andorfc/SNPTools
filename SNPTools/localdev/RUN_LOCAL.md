@@ -214,7 +214,11 @@ chromosome by chromosome (a dashed header and a note above the table).
    opens Zm00001eb175150, *On the map* shows the site for all 933 lines in SNPGeo. *p1* (SC0019): cob
    color White 335 of 346, Red 11 of 543; United States 248 of 749, Mexico 43 of 44. A grey entry such
    as *su1* W578R (SC0010) says why the release cannot show it. Rebuild with `make curate` after editing
-   `data/curate/snpcurate.source.json`.
+   `data/curate/snpcurate.source.json`. The marks also appear in the other tools: SNPVersity on the
+   tga1 interval (chr4:46,647,932-46,652,896) shows the gold ★ beside 46,648,374 and "Curated alleles in
+   this interval"; SNPFunction for su1 lists F163L (☆) and W578R (○, not a site in this release) above the
+   allele table, and for DGAT1-2 the Phe469 insertion (★) that the list does not rank; SNPImpact keeps a
+   curated allele whatever the Site QC and score filters say.
 
 **Server limits and VCF clean-up (patch 0038).** `h5_to_vcf.py` refuses a request of more than
 `SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933

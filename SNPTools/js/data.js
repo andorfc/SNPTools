@@ -438,6 +438,48 @@ const Data = (function () {
     return rows.filter(r => qcUsable(r.qc));
   }
 
+  /* ---- SNPCurate (window.SNP_CURATE, js/snpcurate.data.js) ----
+     Curated alleles by site, by gene and by interval, for the marks the other tools draw; nothing
+     when the file is not loaded. The index follows the loaded entries, so it is rebuilt when an
+     entry is added at run time. */
+  let _curIdx = null;
+  function curateIndex(){
+    const C = (typeof window !== 'undefined' && window.SNP_CURATE) ? window.SNP_CURATE : null;
+    const E = (C && C.entries) || null;
+    if (!E) return null;
+    if (_curIdx && _curIdx.E === E && _curIdx.n === E.length) return _curIdx;
+    const site = new Map(), gene = new Map();
+    E.forEach(e => {
+      if (e.status === 'site') site.set(`${e.chr}:${e.pos}:${e.ref}:${e.alt}`, e);
+      [e.gene, e.site_gene].filter(Boolean).forEach(g => {
+        if (!gene.has(g)) gene.set(g, []);
+        if (gene.get(g).indexOf(e) < 0) gene.get(g).push(e);
+      });
+    });
+    _curIdx = {E, n:E.length, site, gene};
+    return _curIdx;
+  }
+  /* the site entry at exactly this chr, pos, ref and alt, or null */
+  function curatedAt(chr, pos, ref, alt){
+    const I = curateIndex();
+    return I ? (I.site.get(`${chr}:${pos}:${ref}:${alt}`) || null) : null;
+  }
+  /* every entry whose gene or site_gene is this model, sites and not */
+  function curatedForGene(gene){ const I = curateIndex(); return I ? (I.gene.get(gene) || []).slice() : []; }
+  /* entries whose site, position, codon or interval falls in chr:lo-hi */
+  function curatedInInterval(chr, lo, hi){
+    const I = curateIndex(); if (!I) return [];
+    return I.E.filter(e => e.chr === chr && (
+      (e.pos != null && e.pos >= lo && e.pos <= hi) ||
+      (e.codon_positions || []).some(p => p >= lo && p <= hi) ||
+      (e.start != null && e.end != null && e.start <= hi && e.end >= lo)));
+  }
+  const CURATE_STATUS = {not_a_site:'Not a site in this release.', not_locatable:'Cannot be placed on this release\u2019s gene model.',
+    structural:'A structural variant this release cannot genotype.', unreliable:'Calls in this gene are unreliable in this release.',
+    not_annotated:'The gene model is not in this release\u2019s annotation.'};
+  /* one sentence on why the release cannot show a grey entry ('' for a site) */
+  function curateStatusText(e){ return (e && CURATE_STATUS[e.status]) || ''; }
+
   /* A region's genotype matrix is variants × accessions — by far the biggest
      thing in memory. Store each call as a 1-byte code in an Int8Array rather
      than a string:  0 = ref/ref, 1 = het, 2 = alt/alt, 3 = missing (null).
@@ -1117,6 +1159,8 @@ const Data = (function () {
     annotationFields,       // per-set status of the SNPVersity annotation columns
     // site QC: the class rule, its labels and tips, and each view's default filter
     siteQc, SITE_QC, SITE_QC_DEFAULTS, SITE_QC_CHOICES, qcGroup, qcUsable, qcFlagged, qcKeep, qcTip, hasSiteQc, usableRows,
+    // SNPCurate: curated alleles by site, gene and interval (window.SNP_CURATE)
+    curatedAt, curatedForGene, curatedInInterval, curateStatusText,
     globalDistance, globalDistanceKnown,   // precomputed genome-wide IBS / trees per family
     // backwards-compatible defaults (first dataset)
     projects:    () => projectsFor(DEFAULT_DS),
@@ -1178,7 +1222,7 @@ function curateBadge(e){
   var tt = String((tips[e.mark] || '') + ' ' + (e.symbol || '') + ' ' + (e.label || '') + ' (' + e.id + ')')
     .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   return '<a href="#" class="cur-badge cur-' + e.mark + '" data-curate="' + e.id + '" data-tt="' + tt + '" aria-label="' + tt +
-    '" onclick="openCurate(\'' + e.id + '\');return false;">' + (CURATE_GLYPH[e.mark] || CURATE_GLYPH.grey) + '</a>';
+    '" onclick="event.stopPropagation();openCurate(\'' + e.id + '\');return false;">' + (CURATE_GLYPH[e.mark] || CURATE_GLYPH.grey) + '</a>';
 }
 function openCurate(id){
   if (typeof S !== 'undefined') S.curateId = id;

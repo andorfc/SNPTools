@@ -1059,6 +1059,7 @@ function renderTable(){
     </div>
     ${annotNoteHTML()}
     ${genesPanel()}
+    ${curatedLineHTML()}
     <div class="tbl-wrap"><table class="vcf">
       <thead><tr>
         <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on B73 v5.">POS</th><th class="num" data-tt="Reference allele in B73 v5.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>
@@ -1138,6 +1139,15 @@ function annotNoteHTML(){
     (pend.length?`<div><span class="annot-k">Pending for this set:</span> ${pend.map(f=>f.label).join(', ')} — empty until the merge lands.</div>`:'')+
     `<details><summary>Why</summary><div class="annot-why">${li(na.concat(pend))}</div></details></div>`;
 }
+/* SNPCurate: the mark of a curated allele beside its position, and a line above the table naming
+   the curated alleles in the queried interval, grey ones (not genotyped here) included. */
+function curMark(chr, r){ const e=Data.curatedAt ? Data.curatedAt(chr, r.pos, r.ref, r.alt) : null; return e ? curateBadge(e) : ''; }
+function curatedLineHTML(){
+  const q=resultQuery(), L=Data.curatedInInterval ? Data.curatedInInterval(q.chr, q.lo, q.hi) : [];
+  if(!L.length) return '';
+  return `<div class="qc-note cur-line" id="versityCurated">Curated alleles in this interval: ${L.map(e=>
+    `<span class="cur-item">${curateBadge(e)} ${escAttr(e.symbol)} ${escAttr(e.label)}</span>`).join(' · ')}</div>`;
+}
 function rowHTML(r){
   const chr=resultQuery().chr;               // the queried chromosome, even if the form has moved on
   const lo=Math.max(1,r.pos-10000),hi=r.pos+10000;
@@ -1178,7 +1188,7 @@ function rowHTML(r){
   };
   return `<tr>
     <td class="c-mono" style="padding-left:11px">${chr.replace('chr','')}</td>
-    <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a></td>
+    <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a>${curMark(chr, r)}</td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
     ${fields.map(f=>cell[f.key]?cell[f.key]():'<td></td>').join('')}

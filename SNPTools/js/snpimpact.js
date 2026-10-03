@@ -182,10 +182,10 @@
     let r = IMP.rows.filter(v =>
       (IMP.fCons==='all'   || v.consClass===IMP.fCons) &&
       (IMP.fImpact==='all' || v.priority===IMP.fImpact) &&
-      (IMP.fScore==='all'  || (v.combined!=null && v.combined<=-4)) &&
+      (IMP.fScore==='all'  || v.curated || (v.combined!=null && v.combined<=-4)) &&
       (IMP.fDomain==='all' || (IMP.fDomain==='dom' ? v.domain!=='—' : v.domain==='—'))
     ).filter(v => {
-      if (Data.qcKeep(v.qc, IMP.fQc)) return true;
+      if (v.curated || Data.qcKeep(v.qc, IMP.fQc)) return true;   // a curated allele is never hidden by Site QC
       hidden[Data.qcGroup(v.qc)]++; return false;
     });
     const k = IMP.sortKey, dir = IMP.sortDir;
@@ -248,6 +248,12 @@
       IMP.rows = Data.rankImpact(input.rows);
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
       IMP.hasQc = Data.hasSiteQc(IMP.rows);
+    }
+    // SNPCurate: a curated allele carries its mark and stays through the Site QC and score filters
+    const curN = (window.SNP_CURATE && window.SNP_CURATE.entries) ? window.SNP_CURATE.entries.length : 0;
+    if (IMP._curN !== curN || IMP._curSig !== sig){
+      IMP.rows.forEach(v => { v.curated = Data.curatedAt ? Data.curatedAt(input.chr, v.pos, v.ref, v.alt) : null; });
+      IMP._curN = curN; IMP._curSig = sig; _fCache = null;
     }
     // PlantCAD2 / Evo2 / ESM2 / ESM3 / ESM-C columns when the dataset carries them (empty where a
     // store has no score yet: Evo2 and ESM-C come with the rebuilt stores)
@@ -372,7 +378,7 @@
     const vTrunc = vDisp !== String(r.variant==null?'':r.variant);
     return `<tr class="imp-row ${opened?'open':''}" onclick="IMPACT.open('${r.id}')">
       <td class="gene-link" style="padding-left:11px">${r.gene}</td>
-      <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}</td>
+      <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}${r.curated?curateBadge(r.curated):''}</td>
       <td>${consPill(r)}${peJump}${foldJump}</td>
       <td>${domTag(r.domain)}</td>
       <td class="num">${scoreCell(r.plantcad)}</td>

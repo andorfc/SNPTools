@@ -290,6 +290,48 @@ check(K['toVersity'] == {'tool': 'snpversity', 'selected': sorted(x['hom'] + x['
 check(K['toFunction'] == {'tool': 'snpfunction', 'gene': 'Zm00001eb175150'}, f"SC0001 Gene in SNPFunction: {K['toFunction']}")
 check(K['toMap']['tool'] == 'snpgeo' and K['toMap']['rows'] == [[46648374, 'C', 'G']] and K['toMap']['accs'] == len(IDS),
       f"SC0001 On the map: SNPGeo with {K['toMap']['rows']} for {K['toMap']['accs']} lines")
+# (e) the marks in the other tools (run_scenarios.js, curateMarks), recomputed from the source
+CM = json.load(open(res)).get('curateMarks')
+if CM:
+    W, WO = CM['with'], CM['without']
+    GLY = {'gold': '\u2605', 'outline': '\u2606', 'grey': '\u25cb'}
+    SRC = src['entries']
+    def in_iv(e, chrom, lo, hi):
+        return e['chr'] == chrom and ((e.get('pos') is not None and lo <= e['pos'] <= hi) or any(lo <= p <= hi for p in e.get('codon_positions') or [])
+                                      or (e.get('start') is not None and e['start'] <= hi and e['end'] >= lo))
+    v = W['versity']
+    exp_line = [e for e in SRC if in_iv(e, 'chr4', 46647932, 46652896)]
+    exp_badge = [{'pos': f"{e['pos']:,}", 'cls': f"cur-badge cur-{EXP[e['id']]['mark']}", 'id': e['id'], 'glyph': GLY[EXP[e['id']]['mark']]} for e in exp_line if e['status'] == 'site']
+    check(v['badges'] == exp_badge and v['line'] == 'Curated alleles in this interval: ' + ' · '.join(f"{GLY[EXP[e['id']]['mark']]} {e['symbol']} {e['label']}" for e in exp_line)
+          and v['opened'] == {'tool': 'snpcurate', 'id': exp_badge[0]['id']} and v['lines'] == 33,
+          f"SNPVersity tga1 x {v['lines']} lines: {[(b['pos'], b['cls'].split('-')[-1], b['id']) for b in v['badges']]}; the badge opens {v['opened']['id']}")
+    for k, g in (('su1', 'Zm00001eb174590'), ('Bx13', 'Zm00001eb116010'), ('DGAT1-2', 'Zm00001eb277490')):
+        want = [e for e in SRC if g in (e['gene'], e.get('site_gene'))]
+        got = W['func'][k]['block']
+        ok = [b['id'] for b in got] == [e['id'] for e in want] and all(b['cls'] == f"cur-badge cur-{EXP[e['id']]['mark']}" for b, e in zip(got, want))
+        for b, e in zip(got, want):
+            x = EXP[e['id']]
+            if 'nHet' in x: ok = ok and f"{e['chr']}:{e['pos']:,} · {x['nHet']:,} het / {x['nHom']:,} hom {QC_LABEL[x['qc']]} {x['priority']}" in b['text']
+            else: ok = ok and b['text'].endswith('Not a site in this release.' if e['status'] == 'not_a_site' else '.')
+        if k == 'DGAT1-2':   # the Phe469 insertion is listed although the allele list does not rank it
+            ok = ok and [115184121, 'T', 'TGAA'] not in W['func'][k]['list']
+        check(ok, f"SNPFunction {k} curated block: {[(b['id'], b['cls'].split('-')[-1]) for b in got]}")
+    im = W['impactTga1']
+    check(im['filter'] == 'usable' and [(c['variant'], c['id'], c['cls']) for c in im['curated']] == [('p.N6K', 'SC0001', 'cur-badge cur-gold')],
+          f"SNPImpact chr4:46,647,932-46,652,896, Hide flagged and no-carrier: {[(c['variant'], c['id']) for c in im['curated']]}")
+    check(W['geo']['badges'] == ['SC0001'] and W['geo']['label'], f"SNPGeo tga1: badge {W['geo']['badges']} in the table and beside the label")
+    t = [c for c in W['impactSu1']['curated'] if c['id'] == 'SC9901']
+    check(W['testEntry'] and W['impactSu1']['filter'] == 'usable' and len(t) == 1 and t[0]['qc'] == 'Het only' and t[0]['cls'] == 'cur-badge cur-outline'
+          and t[0]['variant'] == 'p.G627W' and 'SC9901' in W['funcSu1Test'],
+          f"test-only su1 G627W (HET_ONLY): kept by SNPImpact's default filter with {t[0]['qc'] if t else None} and an outline badge; listed by SNPFunction")
+    check(W['foldTest']['ring'] == ['SC9902'] and W['foldTest']['table'] == ['SC9902'],
+          f"test-only {W['foldTest']['variant']} of Zm00001eb406050: SNPFold ring {W['foldTest']['ring']} and table badge {W['foldTest']['table']}")
+    src_txt = open(f'{root}/data/curate/snpcurate.source.json', encoding='utf-8').read() + open(f'{root}/js/snpcurate.data.js', encoding='utf-8').read()
+    check('SC99' not in src_txt, 'the test-only entries stayed in the loaded copy (not in the source or the data file)')
+    check(not WO['versity']['badges'] and WO['versity']['line'] is None and all(not WO['func'][k]['block'] for k in WO['func'])
+          and not WO['impactTga1']['curated'] and not WO['geo']['badges'] and not WO['geo']['label'] and WO['curatePage']['empty']
+          and not WO['consoleErrors'] and not W['consoleErrors'],
+          f"without js/snpcurate.data.js: no badge, no block, SNPCurate says '{WO['curatePage']['text']}', no script error {W['consoleErrors'] + WO['consoleErrors']}")
 for f in os.listdir(tmp): os.remove(os.path.join(tmp, f))
 os.rmdir(tmp)
 print(f"SNPCurate: {len(src['entries'])} entries, {sum('nHet' in x for x in EXP.values())} sites; {len(fails)} failed; mismatches={len(fails)}")

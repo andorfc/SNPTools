@@ -515,12 +515,27 @@
       ${alleleTable(list, sec, d)}
     </details>`;
   }
+  /* SNPCurate: every curated allele of the gene, at the top of the allele card. A site entry shows
+     its carriers, Site QC and priority even when the list below leaves it out; a grey one, why the
+     release cannot show it. */
+  function curatedBlock(d){
+    const L = Data.curatedForGene ? Data.curatedForGene(d.gene) : [];
+    if (!L.length) return '';
+    const item = e => {
+      const s = e.site;
+      const sub = s ? `<span class="c-mono">${esc(e.chr)}:${(+e.pos).toLocaleString()}</span> · ${s.nHet.toLocaleString()} het / ${s.nHom.toLocaleString()} hom ${siteQcPill(s.qc, s.nHet, s.nHom)} ${prioPill(s.priority)}`
+                    : `<span class="muted">${esc(Data.curateStatusText(e))}</span>`;
+      return `<div class="fn-cur-item" data-curate="${esc(e.id)}">${curateBadge(e)} <b>${esc(e.label)}</b>${e.symbol?` <span class="muted">${esc(e.symbol)}</span>`:''}
+        <div class="fn-cur-sub">${sub}</div></div>`;
+    };
+    return `<div class="fn-curated" id="fnCurated"><div class="fn-k">Curated alleles</div>${L.map(item).join('')}</div>`;
+  }
   function catalog(d){
     const sec = Data.hasSecondaryScores(d.dataset);
     const groups = qcGroupHTML('flagged', 'Flagged calls', d.damagingFlagged, sec, d)
                  + qcGroupHTML('nocarrier', 'No carrier in this release', d.damagingNoCarrier, sec, d);
     if (!d.damaging.length)
-      return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div><div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles${groups?' at usable sites':''} found in this gene across the panel.</div>${groups}</div>`;
+      return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div>${curatedBlock(d)}<div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles${groups?' at usable sites':''} found in this gene across the panel.</div>${groups}</div>`;
     const anyCarrier = d.damaging.some(v=>(v.hom+v.het)>0);
     const dsId = d.dataset!=null ? d.dataset : FN.dataset;
     return `<div class="card pad">
@@ -534,6 +549,7 @@
           <button class="btn" onclick="FUNCTION.exportCSV()">${ICONS.download||''} Export CSV</button>
         </span>
       </div>
+      ${curatedBlock(d)}
       ${anyCarrier?`<div class="fn-handoff">
         <span class="fn-handoff-k">Handoff to SNPVersity</span>
         <span data-ho-mount data-ho-id="fnMergeReplace" data-ho-target="SNPVersity" data-ho-dataset="${esc(dsId==null?'':dsId)}"></span>
@@ -955,6 +971,9 @@
       .fn-qcgroup{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
       .fn-qcgroup>summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:8px}
       td.fn-qc{white-space:nowrap}
+      .fn-curated{background:#fffbea;border:1px solid #ecdca4;border-radius:10px;padding:10px 12px;margin:0 0 12px}
+      .fn-cur-item{margin-top:6px;font-size:13px} .fn-cur-item:first-of-type{margin-top:2px}
+      .fn-cur-sub{font-size:12px;color:var(--muted);margin:2px 0 0 25px}
       .fn-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#eef1f5}
       .fn-seg{display:inline-block;height:100%}
       .fn-seg.lof,.fn-sw.lof{background:#c0362c}.fn-seg.splice,.fn-sw.splice{background:#b8862b}
