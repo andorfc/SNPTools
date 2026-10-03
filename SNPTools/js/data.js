@@ -1061,9 +1061,9 @@ const Data = (function () {
       const esm3 = r.esm3 != null ? r.esm3 : null;
       const evo2 = r.evo2 != null ? r.evo2 : null, esmc = r.esmc != null ? r.esmc : null;
       const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2) : (pc != null ? pc : (esm != null ? esm : null));
-      let het=0, hom=0, called=0; const homIds=[], hetIds=[];
+      let het=0, hom=0, called=0; const homIds=[], hetIds=[], missIds=[];
       for (let k=0;k<accs.length;k++){ const d=_dose(r.gts[k]);
-        if (d==null) continue; called++;
+        if (d==null){ missIds.push(accs[k].id); continue; } called++;
         if (d===2){ hom++; homIds.push(accs[k].id); } else if (d===1){ het++; hetIds.push(accs[k].id); } }
       const an = 2*called, ac = het + 2*hom, af = an ? ac/an : 0;
       const p = parseSub(r.sub);
@@ -1075,7 +1075,8 @@ const Data = (function () {
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
         domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, evo2, esmc, combined,
         priority: impactPriority(cls, combined, r.impact),
-        het, hom, af, carriersHom:homIds, carriersHet:hetIds, qc, nHet:het, nHom:hom};
+        het, hom, af, carriersHom:homIds, carriersHet:hetIds, qc, nHet:het, nHom:hom,
+        nRef: called - het - hom, carriersMiss: missIds};       // reference lines: Data.referenceLines(v)
     });
     if (qcDiffer.length) console.warn(`[geneFunction] ${gene}: the store's SITEQC differs from the panel counts at ${qcDiffer.length} site(s), e.g. ${qcDiffer[0]}`);
 
@@ -1147,6 +1148,14 @@ const Data = (function () {
   }
 
 
+  /* The lines homozygous for the reference allele at a geneFunction() variant: the panel minus its
+     homozygous and heterozygous carriers and its missing calls (kept as a count, nRef, and derived
+     on demand rather than listed: most of the panel at most sites). */
+  function referenceLines(v, dataset){
+    const skip = new Set([].concat(v.carriersHom || [], v.carriersHet || [], v.carriersMiss || []));
+    return (accessionsFor(dataset || DATASETS[0].id) || []).map(a => a.id).filter(id => !skip.has(id));
+  }
+
   const DEFAULT_DS = DATASETS[0].id;
   return {
     datasets:    () => DATASETS,
@@ -1185,6 +1194,7 @@ const Data = (function () {
     ensureGeneModels,
     geneModelOf,
     geneFunction,
+    referenceLines,         // lines homozygous for the reference allele at a geneFunction() variant
   };
 })();
 

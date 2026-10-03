@@ -1767,11 +1767,13 @@
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${carriersHom.length>60?` <span class="muted">+${carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${carriersHet.length>60?` <span class="muted">+${carriersHet.length-60} more</span>`:''}</div></div>
+        ${cr.nRef!=null?`<div style="margin-top:8px"><div class="fn-k">Reference (homozygous for the reference allele) · ${cr.nRef.toLocaleString()}</div></div>`:''}
         <div class="fold-sendrow">
           <span class="fn-k" style="margin:0">Open in SNPVersity</span>
           ${send('hom','Homozygous carriers',carriersHom.length)}
           ${send('het','Heterozygous carriers',carriersHet.length)}
           ${send('all','All carriers',carriersHom.length+carriersHet.length)}
+          ${send('ref','Reference lines',cr.nRef||0)}
         </div>
       </div></td></tr>`;
   }
@@ -1961,10 +1963,11 @@
       const acc=new Set();
       vs.forEach(v=>{
         const c=carrierOf(v); if(!c) return;
+        if(mode==='ref'){ Data.referenceLines(c, datasetId(FD.dataset)).forEach(a=>acc.add(a)); return; }
         if(mode!=='het') (c.carriersHom||[]).forEach(a=>acc.add(a));
         if(mode!=='hom') (c.carriersHet||[]).forEach(a=>acc.add(a));
       });
-      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+      if(!acc.size){ alert(mode==='ref' ? 'No line is homozygous for the reference allele here.' : 'No carriers to send for this allele.'); return; }
 
       const locus = await foldLocus();
       if(!locus){
@@ -1973,6 +1976,7 @@
       }
       const what = mode==='hom' ? 'homozygous carriers'
                  : mode==='het' ? 'heterozygous carriers'
+                 : mode==='ref' ? 'lines homozygous for the reference allele'
                  : 'carriers of an alternative allele';
       const note = id==='all'
         ? `${what} across ${vs.length} coding variant${vs.length>1?'s':''}`

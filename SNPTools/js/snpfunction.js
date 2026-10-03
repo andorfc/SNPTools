@@ -571,11 +571,13 @@
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${v.carriersHom.length>60?` <span class="muted">+${v.carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${v.carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${v.carriersHet.length>60?` <span class="muted">+${v.carriersHet.length-60} more</span>`:''}</div></div>
+        <div style="margin-top:8px"><div class="fn-k">Reference (homozygous for the reference allele) · ${(v.nRef||0).toLocaleString()}</div></div>
         <div class="fn-sendrow">
           <span class="fn-k" style="margin:0">Open in SNPVersity</span>
           ${send('hom','Homozygous carriers',v.carriersHom.length)}
           ${send('het','Heterozygous carriers',v.carriersHet.length)}
           ${send('all','All carriers',v.carriersHom.length+v.carriersHet.length)}
+          ${send('ref','Reference lines',v.nRef||0)}
         </div>
       </div></td></tr>`;
   }
@@ -871,7 +873,8 @@
        over to SNPVersity.
          alleleId : 'all' = every damaging allele in the table (usable sites only)
                     a single id, or an array of ids (union of their carriers)
-         mode     : 'hom' | 'het' | 'all' (homozygous, heterozygous, or both)
+         mode     : 'hom' | 'het' | 'all' (homozygous, heterozygous, or both), or 'ref' (the lines
+                    homozygous for the reference allele, Data.referenceLines)
        Whether SNPVersity adds these to its current selection or replaces it is
        carried on the payload as `merge`, read from the checkbox above the table
        (Handoff owns that state — do NOT overload `mode`, which is the zygosity
@@ -886,12 +889,14 @@
       if(!vs.length) return;
       const acc=new Set();
       vs.forEach(v=>{
+        if(mode==='ref'){ Data.referenceLines(v, d.dataset!=null?d.dataset:FN.dataset).forEach(a=>acc.add(a)); return; }
         if(mode!=='het') (v.carriersHom||[]).forEach(a=>acc.add(a));
         if(mode!=='hom') (v.carriersHet||[]).forEach(a=>acc.add(a));
       });
-      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+      if(!acc.size){ alert(mode==='ref' ? 'No line is homozygous for the reference allele here.' : 'No carriers to send for this allele.'); return; }
       const what = mode==='hom' ? 'homozygous carriers'
                  : mode==='het' ? 'heterozygous carriers'
+                 : mode==='ref' ? 'lines homozygous for the reference allele'
                  : 'carriers of an alternative allele';
       const note = (alleleId==='all' || (ids && vs.length>1))
         ? `${what} across ${vs.length} damaging allele${vs.length>1?'s':''}`
