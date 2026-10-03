@@ -543,7 +543,7 @@
     </div>`;
   }
   function carrierRow(v, sec, d){
-    const chip = (id,cls)=>`<span class="carrier ${cls}">${esc(id)}</span>`;
+    const chip = (id,cls)=>`<span class="carrier ${cls}">${esc(id)}${sampleHetMark(id)}</span>`;
     const homs = v.carriersHom.slice(0,60).map(id=>chip(id,'hom')).join('');
     const hets = v.carriersHet.slice(0,60).map(id=>chip(id,'het')).join('');
     const send = (mode,label,n)=> n

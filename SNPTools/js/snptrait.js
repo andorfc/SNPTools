@@ -60,9 +60,16 @@ function traitFamily(dataset){
 function traitSchema(dataset){
   const fam = traitFamily(dataset);
   const gen = (typeof window!=='undefined' && window.SNPTRAIT_SCHEMA) || {};
-  if (fam && gen[fam]) return gen[fam];
-  if (fam && TRAIT_SCHEMA[fam]) return TRAIT_SCHEMA[fam];
+  if (fam && gen[fam]) return withLineQcFacet(gen[fam], dataset);
+  if (fam && TRAIT_SCHEMA[fam]) return withLineQcFacet(TRAIT_SCHEMA[fam], dataset);
   return TRAIT_NEUTRAL_SCHEMA;
+}
+/* Line QC (js/zmgrin.lineqc.js): when the lines carry a sample heterozygosity class, the schema
+   gains a "Sample heterozygosity" facet. Added here, on a copy, not in the generated schema. */
+function withLineQcFacet(sc, dataset){
+  const list = (typeof Data!=='undefined' && Data.accessionsFor) ? (Data.accessionsFor(dataset) || []) : [];
+  if (!list.some(a => a.sampleQC) || sc.facets.some(f => f[0] === 'sampleQC')) return sc;
+  return Object.assign({}, sc, {facets: sc.facets.concat([['sampleQC', 'Sample heterozygosity']])});
 }
 function traitHasSchema(dataset){
   const fam = traitFamily(dataset);
@@ -185,6 +192,7 @@ function traitLoad(dataset){
   TRAIT.rows = list.map(a => {
     const row = {id:a.id, strain:a.strain || a.label || a.id};
     fields.forEach(k => { const v=a[k]; row[k] = (v!=null && v!=='') ? v : (row[k]!=null?row[k]:'Unknown'); });
+    if (a.hetShare != null) row.hetShare = a.hetShare;      // line QC, for the exports
     return row;
   });
   TRAIT.facets = {}; sc.facets.forEach(([k]) => TRAIT.facets[k] = new Set());
@@ -532,6 +540,7 @@ function traitExport(kind){
   if(!sel.length){ return; }
   const sc=TRAIT.schema;
   const hdr=[...new Set(['id', sc.groupBy].concat(sc.columns.map(c=>c[0]), sc.facets.map(f=>f[0])))];
+  if (sel.some(r=>r.hetShare!=null)) hdr.push('hetShare');   // line QC: share of clean sites heterozygous
   TRAIT.ranges.forEach(rg => { hdr.push(rg.code); sel.forEach(r => { r[rg.code] = traitValue(r.id, rg.code); }); });
   let blob, name;
   if(kind==='json'){

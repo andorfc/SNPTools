@@ -113,6 +113,14 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    `SNPTOOLS_SITEQC=0`: no Site QC column, select, note, pill or site control, while SNPFunction (and
    SNPFold, built on it) give the same lists from their own carrier counts.
 
+14. Line QC (`js/zmgrin.lineqc.js`), in `check_snptrait.py`: SNPTrait's Sample heterozygosity facet
+   counts (Inbred 887, Elevated heterozygosity 26, Heterozygous sample 20) against the file, the 20
+   heterozygous samples sent to SNPVersity, `sampleQC` and `hetShare` in both exports, the "het" marker
+   (with its tooltip) on exactly those lines in SNPVersity's header cells and selection chips and in
+   SNPFunction's carrier chips (ZmG_CH9 checked by name); then the same pages from a temporary root of
+   symlinks without the file: no facet, no marker, no error. With the file loaded, scenario 1's facet
+   checks include the added facet.
+
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
 `check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py` and `check_site_qc_ui.py` recompute the numbers independently from

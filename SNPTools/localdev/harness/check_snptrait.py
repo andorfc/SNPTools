@@ -10,7 +10,15 @@ sch = json.loads(re.search(r'SNPTRAIT_SCHEMA\["zmgrin2026"\]\s*=\s*(\{.*?\});', 
 rows = [a for p in fam['projects'] for g in p['groups'] for a in g['accessions']]
 val = lambda a, k: a.get(k) if a.get(k) not in (None, '') else 'Unknown'
 bad = 0
-for k, _ in sch['facets']:
+# with js/zmgrin.lineqc.js loaded the page's schema gains a "Sample heterozygosity" facet (SNPTrait
+# adds it to a copy of the generated schema): count it like the others
+FACETS = list(sch['facets'])
+if 'sampleQC' in T['facetKeys']:
+    _lq = json.loads(re.search(r'SNP_LINE_QC\["zmgrin2026"\]\s*=\s*(\{.*\});', open(f'{root}/js/zmgrin.lineqc.js', encoding='utf-8').read(), re.S).group(1))['lines']
+    for a in rows: a['sampleQC'] = {'I': 'Inbred', 'E': 'Elevated heterozygosity', 'H': 'Heterozygous sample'}[_lq[a['id']][1]]
+    FACETS.append(['sampleQC', 'Sample heterozygosity'])
+if [k for k, _ in FACETS] != T['facetKeys']: bad += 1; print('facet keys', T['facetKeys'])
+for k, _ in FACETS:
     exp = {}
     for a in rows: exp[val(a, k)] = exp.get(val(a, k), 0) + 1
     if exp != T['facetCounts'][k]: bad += 1; print('facet differs:', k)
@@ -19,7 +27,7 @@ if sorted(a['id'] for a in f) != T['filterSS_Ames_Dent']: bad += 1; print('compo
 # section counts while filtered: each section under every filter but its own; ticked values listed
 F = {'subpop': {'SS'}, 'inAmes282': {'yes'}, 'kernelType': {'Dent'}}
 exp_counts = {}
-for k, _ in sch['facets']:
+for k, _ in FACETS:
     c = {}
     for a in rows:
         if all(val(a, kk) in vs for kk, vs in F.items() if kk != k):
@@ -93,5 +101,37 @@ if C['undone'] != {'n': len(nam), 'chip': str(len(nam))}: bad += 1; print('chip 
 if C['onTrait'] != {'grids': 1, 'pageSetAside': True} or not C['traitBack']: bad += 1; print('chip on the SNPTrait page', C['onTrait'], C['traitBack'])
 print(f"selection chip: {C['onGeo']} on SNPGeo; apply + Other GRIN -> {C['applied']['n']}; undo -> {C['undone']['n']}; SNPTrait page set aside and restored")
 print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
+# line QC (js/zmgrin.lineqc.js): the Sample heterozygosity facet, its exports, the hand-off of the
+# heterozygous samples, the "het" marker; and the same pages without the file
+LQ = json.load(open(res)).get('lineqc')
+if LQ:
+    lq_js = open(f'{root}/js/zmgrin.lineqc.js', encoding='utf-8').read()
+    lq = json.loads(re.search(r'SNP_LINE_QC\["zmgrin2026"\]\s*=\s*(\{.*\});', lq_js, re.S).group(1))['lines']
+    names = {'I': 'Inbred', 'E': 'Elevated heterozygosity', 'H': 'Heterozygous sample'}
+    W, WO = LQ['with'], LQ['without']
+    exp_counts = {}
+    for a in rows: exp_counts[names[lq[a['id']][1]]] = exp_counts.get(names[lq[a['id']][1]], 0) + 1
+    H = sorted(a['id'] for a in rows if lq[a['id']][1] == 'H')
+    if W['counts'] != exp_counts or W['facetKeys'][-1] != 'sampleQC' or not W['facetBlock']: bad += 1; print('line QC facet', W['counts'], exp_counts)
+    if W['selectedTrait'] != H or W['versity'] != {'tool': 'snpversity', 'selected': H}: bad += 1; print('heterozygous samples hand-off', W['versity'])
+    hdr = W['exports']['csv'][0].split(',')
+    csv_ok = 'sampleQC' in hdr and 'hetShare' in hdr and len(W['exports']['csv']) == len(H) + 1 and all(
+        dict(zip(hdr, l.split(',')))['sampleQC'] == 'Heterozygous sample' and abs(float(dict(zip(hdr, l.split(',')))['hetShare']) - lq[l.split(',')[0]][0]) < 1e-9
+        for l in W['exports']['csv'][1:])
+    json_ok = len(W['exports']['json']) == len(H) and all(o['sampleQC'] == 'Heterozygous sample' and o['hetShare'] == lq[o['id']][0] for o in W['exports']['json'])
+    if not (csv_ok and json_ok): bad += 1; print('line QC exports', hdr)
+    ch9 = f"This sample is heterozygous at {lq['ZmG_CH9'][0] * 100:.1f}% of clean sites. Inbred lines are near 0.8%."
+    if W['header']['marked'] != H or W['header']['n'] != len(H) or W['header']['ch9'] != {'text': 'het', 'tt': ch9}:
+        bad += 1; print('header marker', W['header'])
+    if sorted(c['run'] for c in W['chips'] if c['het']) != sorted(a['run'] for a in rows if a['id'] in set(H)) or not all(c['het'] for c in W['chips']):
+        bad += 1; print('selected-line chips', W['chips'][:3])
+    C = W['carriers']
+    exp_marked = sorted(i for i in C['hom'] + C['het'] if lq[i][1] == 'H')
+    if C['marked'] != exp_marked or C['shown'] != len(C['hom']) + len(C['het']) or not exp_marked: bad += 1; print('carrier chips', C['allele'], C['marked'], exp_marked)
+    if WO['hasLineQc'] or 'sampleQC' in WO['facetKeys'] or WO['facetBlock'] or WO['header']['marked'] or any(c['het'] for c in WO['chips']) \
+            or WO['carriers']['marked'] or WO['consoleErrors'] or W['consoleErrors'] or 'hetShare' in WO['exports']['csv'][0].split(','):
+        bad += 1; print('without js/zmgrin.lineqc.js', {k: WO[k] for k in ('facetKeys', 'facetBlock', 'consoleErrors')}, W['consoleErrors'])
+    print(f"line QC: {exp_counts}; Heterozygous sample -> SNPVersity selects {len(W['versity']['selected'])} lines; ZmG_CH9 marked het ({lq['ZmG_CH9'][0]:.4f}); "
+          f"{len(C['marked'])} marked carriers of {C['allele']}; without the file: no facet, no marker, no error")
 print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')
 sys.exit(1 if bad else 0)

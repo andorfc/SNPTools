@@ -513,7 +513,7 @@ function renderSelected(){
   if(!arr.length){ box.innerHTML='<div class="empty">Nothing selected yet — browse &amp; filter the lines, take a quick pick, or paste a list.</div>'; return; }
   const show=accShowAll ? arr : arr.slice(0, ACC_CHIPS);
   box.innerHTML=show.map(id=>{ const a=byId.get(id);
-      return `<span class="sel-chip" title="${escAttr(a?(a.label||a.id)+' · '+(a.projTitle||''):id)}"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${escAttr(a?a.run:id)}<button onclick="toggleAcc('${escAttr(id)}')" aria-label="Remove ${escAttr(a?a.run:id)}">×</button></span>`;
+      return `<span class="sel-chip" title="${escAttr(a?(a.label||a.id)+' · '+(a.projTitle||''):id)}"><span class="dotc" style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${a?a.projColor:'#999'}"></span>${escAttr(a?a.run:id)}${a?sampleHetMark(a):''}<button onclick="toggleAcc('${escAttr(id)}')" aria-label="Remove ${escAttr(a?a.run:id)}">×</button></span>`;
     }).join('')
     + (arr.length>ACC_CHIPS ? `<button class="link-more" onclick="accShowAll=!accShowAll;renderSelected()">${accShowAll?'Show fewer':`+${arr.length-ACC_CHIPS} more — show all`}</button>` : '');
 }
@@ -1019,7 +1019,8 @@ function renderTable(){
   const {rows,accs}=S.results;
   // accession header height scales to the longest full ID so it isn't clipped
   const maxIdLen=accs.length?Math.max(...accs.map(a=>String(a.id).length)):8;
-  const thH=Math.max(118, Math.min(300, Math.round(maxIdLen*6.4)+30));
+  const hetMarks=accs.some(a=>a.sampleQC==='Heterozygous sample');     // room for the "het" marker
+  const thH=Math.max(118, Math.min(300, Math.round(maxIdLen*6.4)+30+(hetMarks?28:0)));
   const {fr,effects,qc}=tableView(rows);
   const perPage=S.perPage, pages=Math.max(1,Math.ceil(fr.length/perPage));
   if(S.page>pages)S.page=1;
@@ -1062,7 +1063,7 @@ function renderTable(){
       <thead><tr>
         <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on B73 v5.">POS</th><th class="num" data-tt="Reference allele in B73 v5.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>
         ${annotHeaderHTML()}
-        ${accs.map(a=>`<th class="acc-th" style="height:${thH}px" title="${escAttr((a.projTitle||a.proj||'')+' — '+a.id)}"><span class="proj-bar" style="background:${a.projColor};height:8px" title="${escAttr(a.projTitle||a.proj||'')}"></span><span class="v">${a.id}</span></th>`).join('')}
+        ${accs.map(a=>`<th class="acc-th" style="height:${thH}px" title="${escAttr((a.projTitle||a.proj||'')+' — '+a.id)}"><span class="proj-bar" style="background:${a.projColor};height:8px" title="${escAttr(a.projTitle||a.proj||'')}"></span><span class="v">${a.id}${sampleHetMark(a)}</span></th>`).join('')}
       </tr></thead>
       <tbody>
         ${slice.map(r=>rowHTML(r)).join('')}

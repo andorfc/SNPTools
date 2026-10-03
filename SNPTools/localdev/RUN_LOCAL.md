@@ -203,6 +203,11 @@ chromosome by chromosome (a dashed header and a note above the table).
    *Usable alleles only*. SNPTree on chr6:91,593,082-91,793,082 for the NAM lines uses 2,705 of 5,919
    sites; *Sites: All* uses every site. `SNPTOOLS_SITEQC=0 make start` brings back the pages as they
    were (SNPFunction and SNPFold still class sites from SNPFunction's own carrier counts).
+9. **Sample heterozygosity** (`js/zmgrin.lineqc.js`): SNPTrait's last filter section, *Sample
+   heterozygosity*, lists Inbred 887, Elevated heterozygosity 26, Heterozygous sample 20. Tick
+   *Heterozygous sample*, select visible and send them to SNPVersity: the 20 lines carry a "het" marker
+   in the selection chips and the table header (ZmG_CH9: heterozygous at 27.1% of clean sites). The
+   CSV and JSON exports add `sampleQC` and `hetShare`. SNPFunction marks them in the carrier chips.
 
 **Server limits and VCF clean-up (patch 0038).** `h5_to_vcf.py` refuses a request of more than
 `SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933

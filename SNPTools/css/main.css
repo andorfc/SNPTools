@@ -325,6 +325,9 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .qcp.nocarrier{background:#f2f4f7;color:#4b5563;border-color:#c9d0da;border-style:dashed}
 .qcp.pass{background:none;border:none;color:var(--faint);font-weight:500;padding:1px 2px}
 .qc-note{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+/* line QC: a sample heterozygous as sequenced (sampleHetMark in data.js) */
+.het-mark{display:inline-block;margin-left:4px;padding:0 4px;border-radius:4px;font:700 9.5px/1.45 var(--body,'Inter',sans-serif);
+  letter-spacing:.2px;background:#fdf1d6;color:#7a4a00;border:1px solid #efd59c;vertical-align:1px;white-space:nowrap}
 .qc-note a{color:var(--blue-600)}
 .dom-tag{font-size:10px;font-family:var(--mono);background:#f1ebfb;color:#6d28d9;padding:2px 7px;border-radius:6px}
 

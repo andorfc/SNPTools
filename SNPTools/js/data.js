@@ -221,9 +221,15 @@ const Data = (function () {
     } else {
       out = (REAL[fam] || []).map(a => ({...a}));
     }
+    /* Line QC (js/<prefix>.lineqc.js, when loaded): the share of clean sites where the line is
+       heterozygous, and its class. The generated catalogue file is left as it is. */
+    const lq = (typeof window !== 'undefined' && window.SNP_LINE_QC) ? window.SNP_LINE_QC[fam] : null;
+    if (lq && lq.lines) out.forEach(a => { const x = lq.lines[a.id];
+      if (x){ a.hetShare = x[0]; a.sampleQC = LINE_QC_LABELS[x[1]] || null; } });
     _accCache[fam] = out;
     return out;
   }
+  const LINE_QC_LABELS = {I:'Inbred', E:'Elevated heterozygosity', H:'Heterozygous sample'};
 
   function namFoundersFor(datasetId){
     const fam = famNode(datasetId);
@@ -1147,6 +1153,18 @@ function siteQcPill(code, nHet, nHom){
   var q = Data.SITE_QC[code];
   var tt = String(Data.qcTip(code, nHet, nHom)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   return '<span class="qcp ' + q.group + '" data-tt="' + tt + '">' + (code === 'PASS' ? 'pass' : q.label) + '</span>';
+}
+
+/* Global helper: the "het" marker of a line whose sample is heterozygous as sequenced (line QC
+   class H: heterozygous at more than 5% of clean sites). Takes an accession object or id;
+   nothing for other lines or without js/zmgrin.lineqc.js. Used by SNPVersity's header cells and
+   selected-line chips and SNPFunction's carrier chips. */
+function sampleHetMark(acc){
+  if (typeof Data === 'undefined') return '';
+  var a = (acc && typeof acc === 'object') ? acc : Data.accessionById(acc);
+  if (!a || a.sampleQC !== 'Heterozygous sample' || a.hetShare == null) return '';
+  return '<span class="het-mark" data-tt="This sample is heterozygous at ' + (a.hetShare * 100).toFixed(1) +
+    '% of clean sites. Inbred lines are near 0.8%.">het</span>';
 }
 
 /* Global helper: render a "Name (PFxxxxx)" domain string as a chip with the

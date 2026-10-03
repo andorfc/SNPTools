@@ -768,6 +768,70 @@ async function until(site, expr, ms = 8000){
     finally { delete process.env.SNPTOOLS_SITEQC; }
   }
 
+  /* ---------- line QC (js/zmgrin.lineqc.js): SNPTrait's Sample heterozygosity facet, its exports,
+     the hand-off of the heterozygous samples, and the "het" marker in SNPVersity's header cells and
+     selected-line chips and in SNPFunction's carrier chips; then the same page without the file
+     (a temporary root of symlinks that leaves it out): no facet, no marker, no error. ---------- */
+  {
+    const lineqc = async (root) => {
+      const s = await openSite(root); const $l = s.$eval, L = {};
+      $l('S.dataset="zmgrin2026_imp"; go("snptrait")');
+      L.facetKeys = $l('TRAIT.schema.facets.map(f=>f[0])');
+      L.counts = $l('JSON.parse(JSON.stringify(facetCounts(traitVisible()))).sampleQC||null');
+      L.facetBlock = $l(`!!document.querySelector('[data-facet="sampleQC"]')`);
+      L.hasLineQc = $l('!!(window.SNP_LINE_QC && window.SNP_LINE_QC.zmgrin2026)');
+      if (L.facetBlock) $l('traitToggleFacet("sampleQC","Heterozygous sample",true)');
+      else $l('["ZmG_CH9","ZmG_B73","ZmG_MO17"].forEach(id=>TRAIT.selected.add(id))');
+      $l('traitSelectVisible(true)');
+      if (!L.facetBlock) $l('TRAIT.selected=new Set(["ZmG_CH9","ZmG_B73","ZmG_MO17"])');
+      L.selectedTrait = $l('[...TRAIT.selected].sort()');
+      L.exports = await $l(`(async()=>{ const o={}, orig=URL.createObjectURL; let last=null; URL.createObjectURL=b=>{ last=b; return 'blob:harness'; };
+        try{ traitExport('csv'); o.csv=(await last.text()).split('\\n'); traitExport('json'); o.json=JSON.parse(await last.text()); }
+        finally{ URL.createObjectURL=orig; } return o; })()`);
+      $l('traitSendToVersity()'); await s.wait(300);
+      L.versity = {tool: $l('S.tool'), selected: $l('[...S.selected].sort()')};
+      L.header = await $l(`(async()=>{ const ids=[...S.selected]; const r=await Data.queryVariants('zmgrin2026_imp','chr4',43430007,43438753,ids);
+        r.q={dataset:'zmgrin2026_imp', chr:'chr4', lo:43430007, hi:43438753}; S.results=r; S.page=1; renderResults();
+        const ths=[...document.querySelectorAll('#rtBody th.acc-th')], idOf=t=>t.querySelector('.v').firstChild.textContent;
+        const ch9=ths.find(t=>idOf(t)==='ZmG_CH9');
+        return {n:ths.length, marked:ths.filter(t=>t.querySelector('.het-mark')).map(idOf).sort(),
+                ch9:ch9&&ch9.querySelector('.het-mark')?{text:ch9.querySelector('.het-mark').textContent, tt:ch9.querySelector('.het-mark').getAttribute('data-tt')}:null}; })()`);
+      $l('go("snpversity")');
+      L.chips = $l('[...document.querySelectorAll("#selChips .sel-chip")].map(c=>({run:c.textContent.replace(/het|×/g,"").trim(), het:!!c.querySelector(".het-mark")}))');
+      // SNPFunction: the first allele of ZmWAK's list with a heterozygous-sample carrier, opened
+      $l(`S.functionGene='Zm00001eb116160'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+      await until(s, `!!document.getElementById('fnAlleles')`, 60000); await s.wait(150);
+      L.carriers = await $l(`(async()=>{ const d=await Data.geneFunction('Zm00001eb116160','zmgrin2026_imp');
+        const H=new Set(Data.accessionsFor('zmgrin2026_imp').filter(a=>a.sampleQC==='Heterozygous sample').map(a=>a.id));
+        const v=d.damaging.find(x=>x.carriersHom.slice(0,60).concat(x.carriersHet.slice(0,60)).some(id=>H.has(id))) || d.damaging[0];
+        FUNCTION.toggle(v.id);
+        const chips=[...document.querySelectorAll('.fn-carriers .carrier')];
+        return {allele:v.variant, shown:chips.length, marked:chips.filter(c=>c.querySelector('.het-mark')).map(c=>c.textContent.replace(/het$/,'')).sort(),
+                hom:v.carriersHom.slice(0,60), het:v.carriersHet.slice(0,60)}; })()`);
+      // the exports click a download link, which jsdom reports as a navigation it cannot do
+      L.consoleErrors = s.errors.filter(e => !/favicon|Not implemented: navigation/.test(e));
+      s.window.close();
+      return L;
+    };
+    R.lineqc = {with: await lineqc(ROOT)};
+    // the same pages without js/zmgrin.lineqc.js: a root of symlinks to everything else
+    const os = require('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-nolineqc-'));
+    try {
+      const abs = path.resolve(ROOT);
+      for (const e of fs.readdirSync(abs)) if (e !== 'js') fs.symlinkSync(path.join(abs, e), path.join(tmp, e));
+      fs.mkdirSync(path.join(tmp, 'js'));
+      for (const e of fs.readdirSync(path.join(abs, 'js'))) if (e !== 'zmgrin.lineqc.js') fs.symlinkSync(path.join(abs, 'js', e), path.join(tmp, 'js', e));
+      R.lineqc.without = await lineqc(tmp);
+    } finally {
+      // unlink the symlinks one by one (never a recursive delete that could follow one)
+      const js = path.join(tmp, 'js');
+      if (fs.existsSync(js)){ for (const e of fs.readdirSync(js)) fs.unlinkSync(path.join(js, e)); fs.rmdirSync(js); }
+      for (const e of fs.readdirSync(tmp)) fs.unlinkSync(path.join(tmp, e));
+      fs.rmdirSync(tmp);
+    }
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
@@ -780,6 +844,7 @@ async function until(site, expr, ms = 8000){
   if (brief.siteqcui){ delete brief.siteqcui.jsRule;
     ['on', 'off'].forEach(p => { const u = brief.siteqcui[p]; if (!u) return;
       Object.values(u.versity || {}).forEach(v => { delete v.qcRows; delete v.cellText; }); }); }
+  if (brief.lineqc) Object.values(brief.lineqc).forEach(L => { if (L && L.exports){ L.exports.csv = L.exports.csv.length; L.exports.json = L.exports.json.length; } });
   if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();
