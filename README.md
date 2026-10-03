@@ -165,7 +165,12 @@ chunk-aligned blocks (peak memory about 0.3 GB for any interval), fills an id th
 `./.`, and writes gzip when the output name ends in `.gz`. Store files are named
 `hdf5/version3/<family>_<chr>_<tier>.h5` (`zmgrin2026_chr1_impute.h5`); each holds the datasets
 `CHROM, POS, REF, ALT, QUAL, INFO` and one int8 genotype column per sample (0 = 0/0, 1 = 0/1,
-2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`.
+2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`. When the store has a current site-QC
+sidecar (`<store>.siteqc.h5`, `tools/build_site_qc.py`), each row's INFO ends with `NHET`, `NHOM`
+(heterozygous and homozygous-alternate carriers among all 933 lines, whatever lines were asked for)
+and `SITEQC` (`NO_CARRIER`, `HET_ONLY`, `HET_EXCESS`, `HET_ELEVATED` or `PASS`, derived from the two
+counts). A missing or stale sidecar (site count or store size changed) leaves the three out and
+puts a `Note:` line in the extractor's output.
 
 INFO keys the browser reads: `GENEMODEL`, `TYPE`, `EFFECT`, `SUB` (parallel comma lists, one entry
 per affected gene, most severe first), `MAF`, `MAXR2`, `plantcad1_score`, `plantcad2_score`,
@@ -181,7 +186,7 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 | Path | Used by | Content |
 | --- | --- | --- |
 | `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.3-2.6 GB per chromosome) |
-| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | build_site_qc.py --summary | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
+| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | h5_to_vcf.py | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
 | `data/qc/zmgrin2026.siteqc.summary.json`, `zmgrin2026.lineqc.tsv` | reports | site classes per chromosome and in total; per-line heterozygosity (generated) |
 | `js/zmgrin.lineqc.js` | (not loaded by the page yet) | per-line heterozygous share at clean sites and its class (`window.SNP_LINE_QC`, generated) |
 | `data/domains/by_chr/<chr>.json` (fallback `domains.by_chr.json`) | SNPVersity, SNPImpact | Pfam domain blocks by genomic position |
@@ -209,7 +214,7 @@ The builders for the GRIN-linked dataset are in `SNPTools/tools/` (details in
 | `build_maize_samples.py` | `data/zmgrin2026_samples.tsv` (the 933 sample ids and their GRIN links) |
 | `build_maize_trait_catalog.py` | `js/zmgrin.catalog.js`, `data/traits/zmgrin2026.traits.json` |
 | `build_maize_snpgeo_data.py`, `build_geo_layers.py` | `js/snpgeo.regions.js`, `data/geo/*.geo.json` |
-| `annotate_release_info.py` | the SnpEff, MAF, maxR² and language-model INFO fields of a release VCF |
+| `annotate_release_info.py` | the SnpEff, MAF, maxR², site QC (`NHET`, `NHOM`, `SITEQC`) and language-model INFO fields of a release VCF |
 | `maxr2_chr.sh`, `check_r2.py` | the maxR² table (PLINK 1.9) and its independent check |
 | `vcf_to_h5.py` | `hdf5/version3/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
 | `build_site_qc.py` | the `.siteqc.h5` sidecar beside each store; with `--summary`, `data/qc/` and `js/zmgrin.lineqc.js` (`make site-qc`) |
@@ -282,6 +287,7 @@ Server side, environment variables of the PHP process (`SetEnv` in Apache, `ENV`
 | `SNPTOOLS_VCF_TTL_HOURS` | `24` | built VCFs are deleted after this long (checked at most every 10 minutes); `0` keeps them |
 | `SNPTOOLS_DEBUG` | unset | `1` adds the extractor's command line and output to `processForm.php` replies (local debugging only: they name server paths) |
 | `SNPTOOLS_DISTANCE_DIR` | `./distance/` | where `ibsCompare.php` looks for the matrices |
+| `SNPTOOLS_SITEQC` | unset | `0` stops `h5_to_vcf.py` adding `NHET`, `NHOM` and `SITEQC` from the site-QC sidecars |
 
 ---
 

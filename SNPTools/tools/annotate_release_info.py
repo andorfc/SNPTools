@@ -14,6 +14,13 @@ schnable2023 and MaizeGDB 2026 stores carry):
                                  2023 sites). Matched on CHROM/POS/REF/ALT.
   MAF                            minor-allele frequency over the called genotypes of THIS
                                  file's samples (the 933 release samples), 4 decimals.
+  NHET, NHOM, SITEQC             site QC: heterozygous and homozygous-alternate carriers among
+                                 THIS file's samples (genotypes read as vcf_to_h5.py codes them),
+                                 and the class derived from them, first match wins: NO_CARRIER
+                                 (no carrier), HET_ONLY (NHOM = 0), HET_EXCESS (NHET > NHOM),
+                                 HET_ELEVATED (4 NHET >= NHET + NHOM), PASS. The same rule as
+                                 tools/build_site_qc.py, whose sidecar h5_to_vcf.py merges for
+                                 stores without these keys; for a store with them it adds nothing.
   ESM1_score, ESM2_score,        missense only, from grz2023_missense_esm.tsv(.gz): llr_esm1b,
   ESM3_score                     llr_esm2 (= the Full_ESM_stack store ESM-2 650M layer, i.e.
                                  esm2_store_score; NOT the published esm2_score), llr_esm3;
@@ -48,7 +55,8 @@ import argparse, gzip, sys, collections
 
 KEEP_FROM_SNPEFF = ('TYPE', 'EFFECT', 'GENEMODEL', 'SUB')
 DNA_KEYS = ('plantcad1_score', 'plantcad2_score', 'evo2_score')
-ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS + ('MAXR2',)
+SITEQC_KEYS = ('NHET', 'NHOM', 'SITEQC')
+ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS + ('MAXR2',) + SITEQC_KEYS
 HEADER = [
     '##INFO=<ID=TYPE,Number=.,Type=String,Description="SnpEff 5.2a consequence(s) (Sequence Ontology), from the MaizeGDB Schnable scored VCF of the Grzybowski et al. 2023 sites">',
     '##INFO=<ID=EFFECT,Number=.,Type=String,Description="SnpEff putative impact per consequence (HIGH/MODERATE/LOW/MODIFIER), same source">',
@@ -59,6 +67,12 @@ HEADER = [
     '##INFO=<ID=ESM2_score,Number=1,Type=Float,Description="ESM-2 650M WT-marginal LLR from the Full_ESM_stack store (esm2_store_score; not the published esm2_score), 1 decimal; missense only">',
     '##INFO=<ID=ESM3_score,Number=1,Type=Float,Description="ESM3-open sequence-track WT-marginal LLR (grz2023_missense_esm llr_esm3), 1 decimal; missense only">',
     '##INFO=<ID=ESMC_score,Number=1,Type=Float,Description="ESM C 600M WT-marginal LLR (grz2023_missense_esm llr_esmc), 1 decimal; missense only">',
+    # the same three lines as h5_to_vcf.py SITEQC_INFO_DEFS
+    '##INFO=<ID=NHET,Number=1,Type=Integer,Description="Heterozygous carriers among the release samples (all of them, whatever the selection)">',
+    '##INFO=<ID=NHOM,Number=1,Type=Integer,Description="Homozygous-alternate carriers among the release samples">',
+    '##INFO=<ID=SITEQC,Number=1,Type=String,Description="Site QC class from NHET and NHOM, first match wins: NO_CARRIER (no carrier), '
+    'HET_ONLY (no homozygous carrier), HET_EXCESS (more heterozygous than homozygous carriers), HET_ELEVATED (heterozygous carriers '
+    'at least a quarter of all carriers), PASS (otherwise)">',
 ]
 
 DNA_HEADER = [
@@ -197,6 +211,36 @@ def maf_of(cells):
     return f'{min(p, 1 - p):.4f}'
 
 
+def carrier_counts(cells):
+    """(heterozygous, homozygous-alternate, missing) genotype cells, each read as vcf_to_h5.py
+    gt_code reads it: missing when an allele is '.' or absent, else one dose per non-0 allele."""
+    het = hom = miss = 0
+    for c in cells:
+        a = c.split(':', 1)[0].replace('|', '/').split('/')
+        if len(a) < 2 or '.' in a or '' in a:
+            miss += 1
+            continue
+        d = (a[0] != '0') + (a[1] != '0')
+        if d == 1:
+            het += 1
+        elif d == 2:
+            hom += 1
+    return het, hom, miss
+
+
+def site_qc(het, hom):
+    """The site QC class (tools/build_site_qc.py site_qc_codes, one site at a time)."""
+    if het + hom == 0:
+        return 'NO_CARRIER'
+    if hom == 0:
+        return 'HET_ONLY'
+    if het > hom:
+        return 'HET_EXCESS'
+    if het * 4 >= het + hom:
+        return 'HET_ELEVATED'
+    return 'PASS'
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--vcf', required=True)
@@ -229,7 +273,7 @@ def main():
                 if mj is not None:
                     out.write(MAXR2_HEADER + '\n')
                 out.write('##annotate_release_info=TYPE/EFFECT/GENEMODEL/SUB from ' + a.snpeff.split('/')[-1] +
-                          '; ESM from ' + a.esm.split('/')[-1] + '; MAF from this file\'s genotypes\n')
+                          '; ESM from ' + a.esm.split('/')[-1] + '; MAF, NHET, NHOM, SITEQC from this file\'s genotypes\n')
                 out.write(line)
                 continue
             t = line.rstrip('\n').split('\t')
@@ -286,6 +330,10 @@ def main():
                     v = r1(v)
                     if v is not None:
                         info[k] = v
+            # last, as h5_to_vcf.py appends them from the sidecar
+            het, hom, _ = carrier_counts(t[9:])
+            info['NHET'], info['NHOM'], info['SITEQC'] = str(het), str(hom), site_qc(het, hom)
+            stats['siteqc_' + info['SITEQC']] += 1
             t[7] = fmt_info(info)
             out.write('\t'.join(t) + '\n')
     print(' '.join(f'{k}={v}' for k, v in sorted(stats.items())), file=sys.stderr)

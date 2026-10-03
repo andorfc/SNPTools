@@ -83,10 +83,25 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    all 39,756 genes read back from `gff/genes_index.txt` exactly as from the store, misses stay
    misses; `lookupGeneModel.php` leaves a current index alone, rebuilds a stale, missing or
    truncated one, and reads the store itself when the index is stale and `gff/` is read-only.
+12. Site QC counts in every VCF, `check_site_qc.py`. The page's query path (Data.queryVariants ->
+   processForm.php -> h5_to_vcf.py) for y1 (chr6:91,643,082-91,646,759) with five lines and with all
+   933, su1 (chr4:43,430,007-43,438,753) and chr10:96,075,873-96,278,559 with all 933 (two fixture
+   windows when only the test stores are built), each once as is and once with `SNPTOOLS_SITEQC=0` for
+   the PHP process. The checker recomputes NHET / NHOM from each row's 933 genotypes and SITEQC from the
+   rule; the five-line INFO must equal the all-lines INFO (panel-wide counts); the `SNPTOOLS_SITEQC=0`
+   VCF must equal the normal one minus the three fields and their ##INFO lines. In a temporary root
+   that symlinks the store: no sidecar and a sidecar with a wrong `store_bytes` each give a `Note:` line
+   and the `SNPTOOLS_SITEQC=0` VCF, a valid copy gives the normal one. The Python copies of the rule
+   (`build_site_qc.py`, `h5_to_vcf.py`, `annotate_release_info.py`) must agree on every (het, hom) pair
+   from 0 to 60. `annotate_release_info.py` is run on every fixture VCF with the inputs in
+   `../fixtures/annotation/`: its counts must equal the fixture's genotypes and the sidecar at the same
+   sites, every INFO key of the fixture keeps its value (`ESMC_score`, which the fixtures predate, is
+   added), and a store built from its chr9 output gets no second set of the three keys from
+   `h5_to_vcf.py`, with or without a sidecar.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py` and `check_gene_consequences.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py` and `check_site_qc.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

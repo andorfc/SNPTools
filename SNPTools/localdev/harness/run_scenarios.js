@@ -631,6 +631,35 @@ async function until(site, expr, ms = 8000){
     s6.window.close();
   }
 
+  /* ---------- site QC counts in every VCF (NHET, NHOM, SITEQC from the .siteqc.h5 sidecar) ----------
+     The page's own query path (Data.queryVariants -> processForm.php -> h5_to_vcf.py) for three
+     intervals, once as is and once with SNPTOOLS_SITEQC=0 for the PHP process. With the full stores:
+     y1 for five lines and for all 933, su1 and chr10:96.08-96.28 Mb for all 933; with only the test
+     stores, two fixture windows. check_site_qc.py reads the VCFs back and recomputes the counts. */
+  {
+    const s8 = await openSite(ROOT); const $q = s8.$eval;
+    const full = ['chr4', 'chr6', 'chr10'].every(c => (R.store || {})[c] > 100000);
+    const five = ['ZmG_B73', 'ZmG_MO17', 'ZmG_OH43', 'ZmG_CML103', 'ZmG_TZI8'];
+    const all = 'Data.accessionsFor("zmgrin2026_imp").map(a=>a.id)';
+    const runs = full
+      ? [['five', 'chr6', 91643082, 91646759, JSON.stringify(five)], ['five_all', 'chr6', 91643082, 91646759, all],
+         ['gene_all', 'chr4', 43430007, 43438753, all], ['region_all', 'chr10', 96075873, 96278559, all]]
+      : [['five', 'chr9', 13118306, 13124164, JSON.stringify(five)], ['five_all', 'chr9', 13118306, 13124164, all],
+         ['gene_all', 'chr9', 12836008, 12846000, all], ['region_all', 'chr10', 9788000, 9826500, all]];
+    const Q = R.siteqc = {full, queries: {}};
+    for (const off of [false, true]){
+      if (off) process.env.SNPTOOLS_SITEQC = '0';
+      try {
+        for (const [name, chr, lo, hi, ids] of runs){
+          Q.queries[name + (off ? '_off' : '')] = Object.assign({chr, start: lo, end: hi}, await $q(`Data.queryVariants("zmgrin2026_imp",${JSON.stringify(chr)},${lo},${hi},${ids},{forceTable:true})
+            .then(r=>({vcf:r.vcfUrl, rows:r.rows.length, accs:r.accs.length, error:r.error||null}))`));
+        }
+      } finally { delete process.env.SNPTOOLS_SITEQC; }
+    }
+    Q.consoleErrors = s8.errors.filter(e => !/favicon/.test(e));
+    s8.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

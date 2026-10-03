@@ -53,6 +53,11 @@ ten), then `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.
 minutes with the default `JOBS=4` on this Mac. `make site-qc-check` verifies each sidecar against its
 store (site count, store size in bytes, positions). A rebuilt or replaced store invalidates its
 sidecar: run `make site-qc` again. `make local-store` builds the sidecar of each test store it writes.
+With the sidecars in place every VCF the app builds ends each INFO with `NHET`, `NHOM` (carriers among
+all 933 lines, whatever lines were selected) and `SITEQC`; the pages do not show them yet. Start the
+server with `SNPTOOLS_SITEQC=0 make start` to build VCFs without them, exactly as before. Cost,
+measured on this Mac for all 933 lines: a gene (su1, 208 sites) 0.45 s either way, chr10:96-97 Mb
+0.81 -> 0.82 s, peak footprint 0.33 GB; a whole chromosome for five lines 13.8 -> 15.3 s.
 
 **Genome-wide IBS for SNPCompare / SNPTree (GRIN-linked set).** Copy the Ceres matrices to
 `distance/zmgrin2026/` (similarity.csv, missing_pct.csv, similarity_snp.csv, missing_pct_snp.csv,
