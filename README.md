@@ -181,6 +181,9 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 | Path | Used by | Content |
 | --- | --- | --- |
 | `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.3-2.6 GB per chromosome) |
+| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | build_site_qc.py --summary | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
+| `data/qc/zmgrin2026.siteqc.summary.json`, `zmgrin2026.lineqc.tsv` | reports | site classes per chromosome and in total; per-line heterozygosity (generated) |
+| `js/zmgrin.lineqc.js` | (not loaded by the page yet) | per-line heterozygous share at clean sites and its class (`window.SNP_LINE_QC`, generated) |
 | `data/domains/by_chr/<chr>.json` (fallback `domains.by_chr.json`) | SNPVersity, SNPImpact | Pfam domain blocks by genomic position |
 | `data/domains/domains.by_gene.json`, `domains.by_protein.json` | SNPImpact, SNPFold, SNPFunction | each gene's canonical-protein domains |
 | `data/genemodels/by_chr/<chr>.json` | SNPImpact, SNPFunction, SNPFold | canonical exon / CDS structure |
@@ -209,6 +212,7 @@ The builders for the GRIN-linked dataset are in `SNPTools/tools/` (details in
 | `annotate_release_info.py` | the SnpEff, MAF, maxR² and language-model INFO fields of a release VCF |
 | `maxr2_chr.sh`, `check_r2.py` | the maxR² table (PLINK 1.9) and its independent check |
 | `vcf_to_h5.py` | `hdf5/version3/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
+| `build_site_qc.py` | the `.siteqc.h5` sidecar beside each store; with `--summary`, `data/qc/` and `js/zmgrin.lineqc.js` (`make site-qc`) |
 | `build_gene_index.php` | `gff/genes_index.txt` |
 
 The domain, gene-model and structure files (`data/domains/`, `data/genemodels/`,

@@ -46,6 +46,14 @@ gene Zm00001eb067740 (127 variants) 0.26 s for 26 NAM lines / 0.49 s for all 933
 the first query after installing the file is slower (0.41 s / 0.71 s for the gene) while the OS
 cache warms.
 
+**Site QC sidecars.** `make site-qc` writes `zmgrin2026_<chr>_impute.siteqc.h5` beside each store
+(per site: heterozygous, homozygous-alternate and missing calls over all 933 lines; 179 MB for the
+ten), then `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv` and
+`js/zmgrin.lineqc.js`. It reads every sample column twice and never writes to a store: about 1.5
+minutes with the default `JOBS=4` on this Mac. `make site-qc-check` verifies each sidecar against its
+store (site count, store size in bytes, positions). A rebuilt or replaced store invalidates its
+sidecar: run `make site-qc` again. `make local-store` builds the sidecar of each test store it writes.
+
 **Genome-wide IBS for SNPCompare / SNPTree (GRIN-linked set).** Copy the Ceres matrices to
 `distance/zmgrin2026/` (similarity.csv, missing_pct.csv, similarity_snp.csv, missing_pct_snp.csv,
 ids.txt, tree_nj.nwk, tree_upgma.nwk; allele_distance.csv / co_called_sites.csv may sit there too).

@@ -19,14 +19,18 @@ EXTRA_SAMPLES ?=
 # release VCFs, one per chromosome: $(RELEASE_VCF_DIR)/grz2023_release_v1.4_all_chr<N>.vcf.gz
 RELEASE_VCF_DIR ?=
 CHRS := 1 2 3 4 5 6 7 8 9 10
+# stores processed in parallel by the site-QC builder
+JOBS ?= 4
 
-.PHONY: help samples catalog regions geo-layers store local-store start stop test
+.PHONY: help samples catalog regions geo-layers store site-qc site-qc-check local-store start stop test
 help:
 	@echo "samples     data/zmgrin2026_samples.tsv       (T0= CROSSWALK= [RELEASE_MANIFEST=] [EXTRA_SAMPLES=])"
 	@echo "catalog     js/zmgrin.catalog.js + data/traits (T5= T4B= T4C= CROSSWALK=)"
 	@echo "regions     js/snpgeo.regions.js               (T5= CROSSWALK=)"
 	@echo "geo-layers  data/geo/*.geo.json from Natural Earth v5.1.2"
 	@echo "store       hdf5/version3/zmgrin2026_chr*_impute.h5 from RELEASE_VCF_DIR (full release; large)"
+	@echo "site-qc     per-site counts beside each store (*.siteqc.h5), data/qc/ + js/zmgrin.lineqc.js  [JOBS=4]"
+	@echo "site-qc-check  verify the sidecars against their stores"
 	@echo "local-store small test store from localdev/fixtures"
 	@echo "start/stop  local PHP server on 127.0.0.1:8877;  test  headless end-to-end checks"
 
@@ -49,6 +53,11 @@ store:
 	@test -n "$(RELEASE_VCF_DIR)" || { echo "set RELEASE_VCF_DIR"; exit 1; }
 	for c in $(CHRS); do $(PYTHON_PATH) tools/vcf_to_h5.py $(RELEASE_VCF_DIR)/grz2023_release_v1.4_all_chr$$c.vcf.gz \
 	  hdf5/version3/zmgrin2026_chr$${c}_impute.h5 --samples <(cut -f1 data/zmgrin2026_samples.tsv | tail -n +2) || exit 1; done
+site-qc:
+	$(PYTHON_PATH) tools/build_site_qc.py --jobs $(JOBS)
+	$(PYTHON_PATH) tools/build_site_qc.py --summary --jobs $(JOBS)
+site-qc-check:
+	$(PYTHON_PATH) tools/build_site_qc.py --check
 local-store:
 	PYTHON_PATH=$(PYTHON_PATH) localdev/build_test_store.sh
 start:
