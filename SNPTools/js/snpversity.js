@@ -1125,7 +1125,7 @@ function annotHeaderHTML(){
     const tt=ANNOT_TT[f.key]+(f.status==='pending'?' Pending for this set: '+f.note
       :(f.status==='na'?' Not available for this set: '+f.note:(f.note?' '+f.note:'')));
     const cls=[ANNOT_NUM[f.key]?'num':'', f.status!=='ok'?'annot-off':''].filter(Boolean).join(' ');
-    return `<th${cls?` class="${cls}"`:''} data-col="${f.key}" data-status="${f.status}" data-tt="${escAttr(tt)}">${f.label}</th>`;
+    return `<th${cls?` class="${cls}"`:''} data-col="${f.key}" data-status="${f.status}" data-tt="${escAttr(tt)}">${scoreHeadHTML(f.label)}</th>`;
   }).join('');
 }
 function annotNoteHTML(){
@@ -1141,7 +1141,6 @@ function annotNoteHTML(){
 }
 /* SNPCurate: the mark of a curated allele beside its position, and a line above the table naming
    the curated alleles in the queried interval, grey ones (not genotyped here) included. */
-function curMark(chr, r){ const e=Data.curatedAt ? Data.curatedAt(chr, r.pos, r.ref, r.alt) : null; return e ? curateBadge(e) : ''; }
 function curatedLineHTML(){
   const q=resultQuery(), L=Data.curatedInInterval ? Data.curatedInInterval(q.chr, q.lo, q.hi) : [];
   if(!L.length) return '';
@@ -1169,6 +1168,7 @@ function rowHTML(r){
   const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump + foldJump;
   const fields=annotFields();
   const F={}; fields.forEach(f=>{F[f.key]=f;});
+  const cur=Data.curatedAt ? Data.curatedAt(chr, r.pos, r.ref, r.alt) : null;   // SNPCurate
   const off=k=>F[k] && F[k].status!=='ok';           // column not available / pending for this set
   const blank=k=>`<td class="num annot-off" data-tt="${escAttr(F[k].note)}"></td>`;
   const sc=(v,k)=>off(k)?blank(k):`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
@@ -1180,15 +1180,17 @@ function rowHTML(r){
     domain:()=>`<td>${domTag(r.domain)}</td>`,
     mq:    ()=>off('mq')?blank('mq'):`<td class="num">${r.mq}</td>`,
     comp:  ()=>off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`,
-    r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`,
+    r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2==null?'<span style="color:var(--faint)">NA</span>':(+r.r2).toFixed(2)}</td>`,
     maf:   ()=>off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`,
     qc:    ()=>`<td class="qc-cell">${siteQcPill(r.qc, r.nHet, r.nHom)}</td>`,
     pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), evo2:()=>sc(r.evo2,'evo2'),
     esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'), esmc:()=>sc(r.esmc,'esmc'),
   };
-  return `<tr>
+  /* a curated allele's row: its site and annotation cells (not the score or genotype cells) on light
+     gold, with a gold bar on the left (curated-row CSS in main.css) */
+  return `<tr${cur?` class="cur-row cur-row-${cur.mark}" data-curate="${escAttr(cur.id)}"`:''}>
     <td class="c-mono" style="padding-left:11px">${chr.replace('chr','')}</td>
-    <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a>${curMark(chr, r)}</td>
+    <td class="c-pos"><a class="gene-link" href="${link}" target="_blank" rel="noopener">${r.pos.toLocaleString()}</a>${cur?curateBadge(cur):''}</td>
     <td class="c-allele c-ref" data-tt="${escAttr(alleleTT(r.ref,'REF allele'))}">${escAttr(alleleDisp(r.ref))}</td>
     <td class="c-allele c-alt" data-tt="${escAttr(alleleTT(r.alt,'ALT allele'))}">${escAttr(alleleDisp(r.alt))}</td>
     ${fields.map(f=>cell[f.key]?cell[f.key]():'<td></td>').join('')}
@@ -1237,9 +1239,10 @@ function genesPanel(){
   const genes=[...new Set(rows.flatMap(r=>Data.genesOf?Data.genesOf(r):[r.gene]).filter(isSingleGeneModel))].sort();
   if(!genes.length) return '';
   const jb=g=>`https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(g)}`;
-  const items=genes.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 2px;border-bottom:1px solid #eef1f5">
-      <span class="c-mono" style="font-size:12.5px">${g}</span>
-      <span style="display:flex;gap:12px;font-size:12px;white-space:nowrap">
+  const items=genes.map(g=>`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px;padding:5px 2px;border-bottom:1px solid #eef1f5">
+      <a class="c-mono" style="font-size:12.5px" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene model page for ${escAttr(g)}">${g}</a>
+      <span style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;white-space:nowrap">
+        <a href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene model page">MaizeGDB ↗</a>
         <a href="${jb(g)}" target="_blank" rel="noopener">JBrowse ↗</a>
         <a href="${pangenomeGeneURL(g)}" target="_blank" rel="noopener">Pangenome ↗</a>
         <a href="#" onclick="goPanEffect('${g}');return false;">PanEffect →</a>

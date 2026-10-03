@@ -457,7 +457,7 @@ function geoRenderTable(){
       <th data-tt="Predicted consequence — e.g. missense, synonymous, intron, frameshift.">Consequence</th>
       <th class="num" data-tt="Affected residue position in the protein, when applicable.">Residue</th>
       <th class="num" data-tt="Residue-level substitution — wild-type residue, position, mutant residue (e.g. R234L).">Residue Variant</th>
-      ${models.map(m=>`<th class="num ${m.kind==='protein'?'lm-prot':'lm-dna'}" data-tt="${escGeoAttr(m.tip)}">${m.label}</th>`).join('')}
+      ${models.map(m=>`<th class="num ${m.kind==='protein'?'lm-prot':'lm-dna'}" data-tt="${escGeoAttr(m.tip)}">${scoreHeadHTML(m.label)}</th>`).join('')}
     </tr>`;
   
   const tbody = rows.map((row, idx) => {

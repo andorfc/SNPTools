@@ -1702,7 +1702,7 @@
         : ' · click to sort';
       return `<th class="fold-th${c.num ? ' num' : ''}${on ? ' sorted' : ''}" data-tt="${escFold(def + sortNote)}"
         aria-sort="${on ? (FD.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"
-        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${escFold(c.label)}<span class="fold-ar">${arrow}</span></span></th>`;
+        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${scoreHeadHTML(escFold(c.label))}<span class="fold-ar">${arrow}</span></span></th>`;
     }).join('') + '<th class="fold-send-th" data-tt="Force-show this residue in the 3D view, independent of the Variant residues toggle.">3D</th><th class="fold-send-th"></th></tr>';
   }
 

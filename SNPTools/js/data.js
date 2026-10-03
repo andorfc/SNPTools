@@ -1221,6 +1221,11 @@ function sampleHetMark(acc){
     '% of clean sites. Inbred lines are near 0.8%.">het</span>';
 }
 
+/* Global helper: a score column's header in a table. "PlantCAD1" / "PlantCAD2" break into two
+   lines (Plant / CAD1), so those columns are no wider than the other score columns (Evo2, ESM1...),
+   whose width the numbers set. Text headers (CSV, tooltips) keep the one-word name. */
+function scoreHeadHTML(label){ return String(label).replace(/^PlantCAD(\d?)$/, 'Plant<br>CAD$1'); }
+
 /* Global helpers: the SNPCurate mark of a curated allele (window.SNP_CURATE, js/snpcurate.data.js)
    as a small link that opens its record. Each mark has its own glyph, so color is not the only
    cue: gold (validated causal change, genotyped here), outline (published marker, associated

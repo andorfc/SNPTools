@@ -359,7 +359,7 @@
     const active = IMP.sortKey===key;
     const arrow = active ? (IMP.sortDir>0?' ▲':' ▼') : ' ⇅';
     const tt = COL_TT[label] ? ` data-tt="${COL_TT[label]}"` : '';
-    return `<th class="sortable ${cls||''} ${active?'on':''}"${tt} onclick="IMPACT.sort('${key}')">${label}<span class="arr">${arrow}</span></th>`;
+    return `<th class="sortable ${cls||''} ${active?'on':''}"${tt} onclick="IMPACT.sort('${key}')">${scoreHeadHTML(label)}<span class="arr">${arrow}</span></th>`;
   }
 
   function rowHTML(r){

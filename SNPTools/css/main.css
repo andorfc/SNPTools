@@ -332,6 +332,12 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .cur-badge.cur-outline{background:#fff;color:#6b5414;border-color:#d6c389}
 .cur-badge.cur-grey{background:#f2f4f7;color:#5b6472;border-color:#cdd3dc}
 .cur-badge:hover{box-shadow:0 0 0 2px rgba(201,154,6,.25)}
+/* SNPVersity: a curated allele's row; its site and annotation cells on light gold (not the score or
+   genotype cells), a gold bar on the left */
+table.vcf tbody tr.cur-row > td:not(.score):not(.gt){background:#fff3c4}
+table.vcf tbody tr.cur-row-outline > td:not(.score):not(.gt){background:#fff8dc}
+table.vcf tbody tr.cur-row > td:first-child{box-shadow:inset 4px 0 0 #c99a06}
+table.vcf tbody tr.cur-row-outline > td:first-child{box-shadow:inset 4px 0 0 #d6c389}
 /* line QC: a sample heterozygous as sequenced (sampleHetMark in data.js) */
 .het-mark{display:inline-block;margin-left:4px;padding:0 4px;border-radius:4px;font:700 9.5px/1.45 var(--body,'Inter',sans-serif);
   letter-spacing:.2px;background:#fdf1d6;color:#7a4a00;border:1px solid #efd59c;vertical-align:1px;white-space:nowrap}
