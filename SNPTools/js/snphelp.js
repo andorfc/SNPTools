@@ -1,5 +1,5 @@
 /* =====================================================================
- *  snphelp.js — Help & FAQ page for the SNPTools suite.
+ *  snphelp.js — Help & FAQ page for the SNPMaize suite (the SNPTools code base).
  *
  *  Registers itself as the 'help' tool so the router can reach it, and
  *  exposes openHelp() for the MaizeGDB masthead link (which doesn't want
@@ -18,9 +18,9 @@ const SNPHelp = (function () {
   const PAGES = [
     { id:'snpversity', name:'SNPVersity', icon:'dna', color:'#2563eb', status:LIVE,
       tag:'Build a variant view across accessions',
-      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or a B73 v5 gene model ID), and pick the accessions you want: a quick pick (a panel, a random sample), a pasted list (IDs, line names or GRIN accessions), or Browse & filter, which opens SNPTrait over the page to filter by panel, origin, subpopulation and GRIN traits and applies the result. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included.',
+      what:'The front door of the suite and the starting point for most work. Choose a dataset, type a genomic interval (or a B73 v5 gene model ID), and pick the accessions you want: a quick pick (a panel, a random sample), a pasted list (IDs, line names or GRIN accessions), or Browse & filter, which opens SNPTrait over the page to filter by panel, origin, subpopulation and GRIN traits and applies the result. SNPVersity queries the variant store and returns a color-coded genotype table plus a downloadable VCF — allele states, predicted effects, and DNA/protein language-model scores included. Each row carries its Site QC class, with a Site QC filter above the table; a curated allele (see SNPCurate) has its mark beside the position and its site and annotation cells shaded light gold, and the curated alleles of the interval are named above the table. The gene models of the region link to their MaizeGDB gene pages, and a line whose sample is heterozygous is marked het.',
       give:'A dataset, a region or gene, and a set of accessions.',
-      get:'A genotype table and a VCF. From here, "Send selection to…" hands the same result to any other tool.' },
+      get:'A genotype table and a VCF. From here, "Send selection to…" hands the same result to any other tool; SNPImpact, SNPCompare and SNPTree also offer it on their empty page (Load data from SNPVersity).' },
     { id:'snpgwas', name:'GWAS Explorer', icon:'gwas', color:'#cf8a12', status:LIVE,
       tag:'Explore curated GWAS results to identify trait-associated SNPs',
       what:'Interactive Manhattan plots of curated published GWAS results from accessions included in SNPVersity. Pick a trait or trait type (Plant Architecture, Yield Component, Flowering Time), publication, or population to explore. Pan and zoom the canvas plot across all 10 chromosomes, jump to a chromosome or search by SNP ID or coordinate range, and toggle between the study’s published significance threshold and your own custom threshold. Drag-select a peak to open a sortable table of its SNPs, filterable to significant-only, and hand the region and/or the accessions off to SNPVersity. Download all or selected results with P<0.001.',
@@ -28,32 +28,32 @@ const SNPHelp = (function () {
       get:'An interactive Manhattan plot, results downloads, a sortable per-region SNP table, and a hand-off of the selected region and/or NAM accessions to SNPVersity.' },
     { id:'snptrait', name:'SNPTrait', icon:'leaf', color:'#1f8a4c', status:LIVE,
       tag:'Select lines by passport and trait metadata',
-      what:'A line selector for datasets with germplasm metadata — on maize, the 933 lines of the GRIN-linked 2026 release (v1.4; all 26 NAM parents) (NAM, Ames 282, WiDiv and other GRIN accessions). Lines are grouped by primary panel and can be filtered with facets built from GRIN passport and evaluation data: panel membership, Grzybowski et al. (2023) subpopulation, country and state of origin, improvement status and era, kernel type and colour, cob colour, Stewart\u2019s wilt score, and tertile bins of 1000-kernel weight, plant height, GDU to silk and ear length. Numeric GRIN traits (per-accession means) can also be filtered by range and shown as table columns. Datasets without metadata show their project grouping only. Tick several values in one filter section to keep lines with any of them (OR); different sections combine (AND), and an unticked value shows +n, the lines it would add.',
+      what:'A line selector for datasets with germplasm metadata — on maize, the 933 lines of the GRIN-linked 2026 release (v1.4; all 26 NAM parents) (NAM, Ames 282, WiDiv and other GRIN accessions). Lines are grouped by primary panel and can be filtered with facets built from GRIN passport and evaluation data: panel membership, Grzybowski et al. (2023) subpopulation, country and state of origin, improvement status and era, kernel type and colour, cob colour, Stewart’s wilt score, sample heterozygosity (Inbred, Elevated heterozygosity, Heterozygous sample), and tertile bins of 1000-kernel weight, plant height, GDU to silk and ear length. Numeric GRIN traits (per-accession means) can also be filtered by range and shown as table columns. Datasets without metadata show their project grouping only. Tick several values in one filter section to keep lines with any of them (OR); different sections combine (AND), and an unticked value shows +n, the lines it would add.',
       give:'A dataset, then facet choices, a text search (name, GRIN accession, pedigree, state, subpopulation) and optional trait ranges.',
-      get:'A selection you can export (CSV/JSON, including the trait columns) or send to SNPVersity, choosing to replace its current accession list or add to it.' },
+      get:'A selection you can export (CSV/JSON, including the trait columns and each line’s sample heterozygosity) or send to SNPVersity, choosing to replace its current accession list or add to it.' },
     { id:'snpimpact', name:'SNPImpact', icon:'star', color:'#7c3aed', status:LIVE,
       tag:'Rank candidate variants',
-      what:'Prioritizes the variants in a region regardless of which accessions you picked. It orders them by an AI-based score (PlantCAD DNA-model and ESM protein-model predictions) combined with predicted consequence and Pfam domain annotation, so likely causal changes rise to the top. Filter by consequence, priority, score, or domain, and flag a shortlist.',
-      give:'A region sent from SNPVersity (accessions are ignored here).',
+      what:'Prioritizes the variants in a region regardless of which accessions you picked. It orders them by an AI-based score (PlantCAD DNA-model and ESM protein-model predictions) combined with predicted consequence and Pfam domain annotation, so likely causal changes rise to the top. Filter by consequence, priority, score, domain, or Site QC, and flag a shortlist. Variants at flagged sites (het only, het excess) and sites with no carrier are hidden by default; a note above the table counts them, and the Site QC filter shows them. A curated allele is never hidden and carries its SNPCurate mark.',
+      give:'A region sent from SNPVersity, or loaded on the empty page with Load data from SNPVersity (accessions are ignored here).',
       get:'A ranked, filterable variant table and a shortlist of candidate alleles.' },
     { id:'snpfunction', name:'SNPFunction', icon:'func', color:'#2563eb', status:LIVE,
       tag:'Gene function & allele mining',
-      what:'A gene-scoped dossier, independent of any one region. It opens with a functional-annotation record — gene symbol and names, a sourced description, protein domain architecture drawn to scale, and external cross-references — and MaizeGDB\u2019s own Gene Ontology and Pathways views, read live from the MaizeGDB API: GO terms placed in the ontology with their evidence, and the gene\u2019s metabolic pathways step by step beside its KEGG maps. Below that it computes the gene\u2019s variant burden across the whole panel and lists which accessions carry each damaging or knockout allele.',
+      what:'A gene-scoped dossier, independent of any one region. It opens with a functional-annotation record — gene symbol and names, a sourced description, protein domain architecture drawn to scale, and external cross-references — and MaizeGDB\u2019s own Gene Ontology and Pathways views, read live from the MaizeGDB API: GO terms placed in the ontology with their evidence, and the gene\u2019s metabolic pathways step by step beside its KEGG maps. Below that it computes the gene\u2019s variant burden across the whole panel and lists which accessions carry each damaging or knockout allele. The burden, the knockout count and the allele list use usable sites; alleles at flagged sites and alleles with no carrier in this release sit in two collapsed groups under the list, and a banner warns when most of a gene’s protein-changing sites are flagged. The gene’s curated alleles head the allele card, and each allele sends its homozygous carriers, heterozygous carriers, all carriers or reference lines to SNPVersity.',
       give:'A gene model ID and a dataset.',
-      get:'A functional-annotation dossier (identity, domains, cross-references), MaizeGDB\u2019s GO and pathway views, a variant-burden breakdown, and a damaging-allele catalog with carrier lines.' },
+      get:'A functional-annotation dossier (identity, domains, cross-references), MaizeGDB\u2019s GO and pathway views, a variant-burden breakdown, and a damaging-allele catalog with carrier and reference lines.' },
     { id:'snpcompare', name:'SNPCompare', icon:'compare', color:'#0e7490', status:LIVE,
       tag:'Similarity to a focal accession',
-      what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is the fraction of co-called sites with the same genotype. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression.',
-      give:'A focal accession, and optionally a region handed off from SNPVersity.',
-      get:'A ranked similarity table with project, SRA ID, and accession name.' },
+      what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is the fraction of co-called sites with the same genotype. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression. The region scope uses usable sites by default (Region sites: Usable only or All sites); the genome-wide values are precomputed over all sites.',
+      give:'A focal accession, and optionally a region handed off from SNPVersity or loaded with Load data from SNPVersity.',
+      get:'A ranked similarity table with project, SRA ID, accession name, and PI number (the line’s GRIN accession).' },
     { id:'snptree', name:'SNPTree', icon:'tree', color:'#15803d', status:LIVE,
       tag:'Local phylogeny',
-      what:'Builds a local phylogenetic tree from the genotype matrix already in memory, using identity-by-state distances (UPGMA / neighbour-joining). Useful for reading haplotype structure, introgression, and how lines cluster in a region.',
-      give:'A SNPVersity result set (warns first if the region × accessions would be slow to compute).',
+      what:'Builds a local phylogenetic tree from the genotype matrix already in memory, using identity-by-state distances (UPGMA / neighbour-joining). Useful for reading haplotype structure, introgression, and how lines cluster in a region. Distances use usable sites by default (Sites: Usable only or All).',
+      give:'A SNPVersity result set, sent from SNPVersity or loaded with Load data from SNPVersity (warns first if the region × accessions would be slow to compute).',
       get:'An interactive tree, downloadable as Newick, MEGA, or PHYLIP.' },
     { id:'snpmatrix', name:'SNPMatrix', icon:'grid', color:'#b45309', status:LIVE,
       tag:'Pairwise distance matrix',
-      what:'Computes the pairwise identity-by-state distance among your selected accessions and draws it as a heatmap. Reorder by input order or by clustering, switch between IBS distance and % identity, and color rows by bioproject.',
+      what:'Computes the pairwise identity-by-state distance among your selected accessions and draws it as a heatmap. Reorder by input order or by clustering, switch between IBS distance and % identity, and color rows by bioproject. Like SNPTree, it uses usable sites by default (Sites: Usable only or All sites).',
       give:'A SNPVersity result set (warns first above ~450 accessions, or if the region × accessions would be slow to compute).',
       get:'A heatmap plus downloads: CSV distance matrix, PHYLIP, PNG, and SVG.' },
     { id:'snpimpute', name:'SNPImpute', icon:'impute', color:'#0891b2', status:SOON,
@@ -63,17 +63,17 @@ const SNPHelp = (function () {
       get:'Imputed genotypes with function predictions.' },
     { id:'snpcurate', name:'SNPCurate', icon:'check', color:'#a16207', status:LIVE,
       tag:'Published alleles and what this release shows of them',
-      what:'A registry of published maize alleles, from causal changes validated by molecular work to published markers and sites that tag a haplotype. Each allele the release genotypes shows its carriers (by subpopulation and country of origin), Site QC class, language-model scores and priority, its rank among the gene\u2019s missense variants, and the GRIN trait means of the lines that carry it. An allele the release cannot show (not a site, a structural variant, unreliable calls) is listed with the reason. Marks: gold for a validated causal change genotyped here, outline for any other allele genotyped here, grey for one the release cannot show; the same marks appear on these alleles in SNPVersity, SNPImpact, SNPFunction, SNPFold and SNPGeo.',
+      what:'A registry of published maize alleles, from causal changes validated by molecular work to published markers and sites that tag a haplotype. Each allele the release genotypes shows its carriers (by subpopulation and country of origin), Site QC class, language-model scores and priority, its rank among the gene\u2019s missense variants, and the GRIN trait means of the lines that carry it. An allele the release cannot show (not a site, a structural variant, unreliable calls) is listed with the reason. Marks: gold for a validated causal change genotyped here, outline for any other allele genotyped here, grey for one the release cannot show; the same marks appear on these alleles in SNPVersity, SNPImpact, SNPFunction, SNPFold and SNPGeo. The table opens sorted by mark (gold, outline, grey), then by gene name.',
       give:'Nothing: browse the registry, or arrive from a mark in another tool.',
       get:'A record per allele, with hand-offs of its carriers to SNPVersity, its gene to SNPFunction and the site to SNPGeo.' },
     { id:'snpfold', name:'SNPFold', icon:'fold', color:'#be185d', status:LIVE,
       tag:'Variants on protein structure',
-      what:'Maps coding variants onto predicted protein structure. A linear protein browser aligns variants with Pfam domains, secondary structure, and per-residue pLDDT confidence; an on-demand 3D viewer shows the fold colored by confidence, domain, or impact; and a per-variant readout interprets each change (domain, local confidence, secondary structure, predicted \u0394\u0394G).',
+      what:'Maps coding variants onto predicted protein structure. A linear protein browser aligns variants with Pfam domains, secondary structure, and per-residue pLDDT confidence; an on-demand 3D viewer shows the fold colored by confidence, domain, or impact; and a per-variant readout interprets each change (domain, local confidence, secondary structure, predicted ΔΔG). Usable alleles only (on by default) hides coding variants at flagged or no-carrier sites from the track, the table and the 3D view. A curated allele is ringed on the track and marked in the table, and each variant sends its carriers or reference lines to SNPVersity.',
       give:'A gene with an available structure model.',
       get:'A structure-aware, per-variant interpretation of coding changes.' },
     { id:'snpgeo', name:'SNPGeo', icon:'map', color:'#059669', status:LIVE,
       tag:'Map where each allele is found',
-      what:'Shows the geographic distribution of every variant in a gene (search a B73 v5 gene model) or in a region sent from SNPVersity, using each line\u2019s GRIN country and state of origin. Countries — or, in the North America view, U.S. states, Canadian provinces and Mexican states — are coloured by one of three statistics: the carrier fraction over all lines of the dataset known from that place, carriers among the lines genotyped there (the default: a reference \u2194 alternative scale, blue to orange), or the alternative-allele frequency over called alleles (heterozygotes count one allele). Click a country for its per-state table and the list of carrier lines; step through variants with the arrow keys; export the map as PNG or SVG.',
+      what:'Shows the geographic distribution of every variant in a gene (search a B73 v5 gene model) or in a region sent from SNPVersity, using each line\u2019s GRIN country and state of origin. Countries — or, in the North America view, U.S. states, Canadian provinces and Mexican states — are coloured by one of three statistics: the carrier fraction over all lines of the dataset known from that place, carriers among the lines genotyped there (the default: a reference \u2194 alternative scale, blue to orange), or the alternative-allele frequency over called alleles (heterozygotes count one allele). Click a country for its per-state table and the list of carrier lines; step through variants with the arrow keys; export the map as PNG or SVG. Each variant shows its Site QC class (SNPGeo hides nothing) and a curated allele its SNPCurate mark.',
       give:'A gene model ID and a dataset, or a SNPVersity result (SNPGeo re-queries the region for all lines of the dataset when the result covered only part of it).',
       get:'A choropleth per variant, per-country and per-state counts with allele frequencies, the carrier lines, and a variant table with the DNA (PlantCAD1, PlantCAD2, Evo2) and protein (ESM1, ESM2, ESM3, ESM-C) language-model scores.' },
     { id:'paneffect', name:'PanEffect', icon:'effect', color:'#b45309', status:LIVE,
@@ -99,8 +99,10 @@ const SNPHelp = (function () {
     ['MAF', 'Minor allele frequency, the frequency of the less common allele. SNPVersity can filter a region by a minimum MAF.'],
     ['Sample heterozygosity', 'The share of clean sites where a line is heterozygous. A clean site passes Site QC and has at least 3 homozygous carriers (16,463,157 sites). Inbred lines are near 0.8% (the median is 0.78%). A line above 5% is a Heterozygous sample (20 lines, marked het in SNPVersity and SNPFunction); above 2% it has Elevated heterozygosity (26 lines); the other 887 are Inbred. SNPTrait filters by it.'],
     ['Site QC', 'Each site of the GRIN-linked 2026 release is classed from its heterozygous (het) and homozygous (hom) carriers among all 933 lines, first match wins: No carrier (no line carries the allele), Het only (no line is homozygous), Het excess (more het than hom carriers), Het elevated (het carriers are a quarter or more of all carriers), Pass (the rest). The lines are inbreds, so het-dominated sites usually mean reads from another copy of the sequence map there. Flagged means het only or het excess; usable means pass or het elevated. Of the release\u2019s 46,054,265 sites, 18,177,811 pass, 3,756,376 are het elevated, 14,354,590 het excess, 4,752,396 het only, and 5,013,092 have no carrier. Defaults: SNPVersity and SNPGeo show every site with its class; SNPImpact, SNPFunction and SNPFold hide flagged and no-carrier sites (each has a control to show them); SNPTree, SNPMatrix and SNPCompare (region scope) use usable sites only, with a switch to all sites. Downloaded VCFs keep every site, with NHET, NHOM and SITEQC in INFO.'],
+    ['Curated allele marks', 'SNPCurate records published maize alleles. A gold star (★) marks a validated causal change genotyped in this release; an outline star (☆), a published marker, associated change or tagging site genotyped here; a grey circle (○), a known allele this release cannot show. Click a mark to open the allele’s record in SNPCurate.'],
+    ['Reference lines', 'For an allele, the lines homozygous for the reference allele: the panel minus the carriers and the lines with a missing call. SNPFunction and SNPFold send them to SNPVersity beside the carriers.'],
     ['Pfam domain', 'When a variant falls inside a Pfam domain of the gene\u2019s canonical protein, that domain is shown and linked to InterPro; \u2014 means the site is outside every domain, which is true of most sites (Pfam domains cover about 1% of each chromosome).'],
-    ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection.'],
+    ['VCF', 'The Variant Call Format file SNPVersity generates for your query. It is the exact matrix the other tools reuse when you send a selection. For the GRIN-linked 2026 release its INFO field also carries NHET, NHOM and SITEQC: the Site QC counts and class of each site.'],
     ['Gene Ontology (GO)', 'Standardized terms describing a gene product\u2019s biological process, molecular function, and cellular component. SNPFunction shows MaizeGDB\u2019s GO for the gene, each term with its evidence code: most maize gene-model terms are computational (PANNZER, the NAM annotation, UniProt imports); experimental ones come from curation of the gene\u2019s locus.'],
     ['GO evidence', 'How a GO term was assigned, from its evidence code: experimental (IDA, IMP, IGI, IPI, IEP), by similarity (ISS and kin), author statement (TAS, NAS, IC), or computational (IEA, COMP). Terms only an InterPro domain suggests (InterPro2GO) are shown apart as domain-implied, not as annotations.'],
     ['Heterotic group', 'A maize breeding classification (stiff-stalk, non-stiff-stalk, Iodent, Lancaster, tropical, teosinte, and others). PanEffect colors the pan-genome rows by the assembly\u2019s heterotic group.'],
@@ -121,7 +123,7 @@ const SNPHelp = (function () {
       ['Gene model', 'The B73 v5 identifier and annotated exon, intron, CDS, and transcript structure assigned to a gene.'],
       ['Consequence / Effect', 'The predicted molecular result of a variant, such as synonymous, missense, splice-site, frameshift, stop gained, or intronic.'],
       ['Impact', 'A broad severity class assigned from the consequence: HIGH, MODERATE, LOW, or MODIFIER.'],
-      ['Priority', 'The SNPTools ranking tier (TOP, HIGH, MODERATE, or LOW) produced by combining consequence, model scores, and domain context.'],
+      ['Priority', 'The SNPMaize ranking tier (TOP, HIGH, MODERATE, or LOW) produced by combining consequence, model scores, and domain context.'],
       ['Domain', 'A Pfam-annotated protein domain overlapping the affected residue; — means the residue is outside every domain.'],
       ['Het', 'Heterozygous: the accession carries one reference and one alternate allele, usually displayed as 0/1 or 1/0.'],
       ['Hom', 'Alternate homozygous: the accession carries two alternate alleles, displayed as 1/1.'],
@@ -130,7 +132,13 @@ const SNPHelp = (function () {
       ['MAF', 'Minor-allele frequency: the frequency of the less common allele, constrained to 0–0.5.'],
       ['Carrier', 'An accession with at least one copy of the alternate allele.'],
       ['Co-called sites', 'Sites where both accessions in a pair have non-missing genotype calls.'],
-      ['B73 RefGen v5', 'The maize reference assembly used for coordinates, REF alleles, gene models, and annotations throughout SNPTools.'],
+      ['B73 RefGen v5', 'The maize reference assembly used for coordinates, REF alleles, gene models, and annotations throughout SNPMaize.'],
+      ['Site QC', 'The class of a site from its heterozygous and homozygous carriers among all lines of the release: Pass, Het elevated, Het excess, Het only, or No carrier (see Scores & annotations).'],
+      ['Usable / flagged site', 'Usable: Site QC Pass or Het elevated. Flagged: Het only or Het excess. A site with no carrier is neither.'],
+      ['het (line mark)', 'Beside a line: its sample is heterozygous at more than 5% of clean sites (a Heterozygous sample); hover it for the share. Inbred lines are near 0.8%.'],
+      ['Curated allele', 'A published allele recorded in SNPCurate, marked gold, outline or grey wherever it appears.'],
+      ['Reference lines', 'Lines homozygous for the reference allele at a site: the panel minus the carriers and the lines with a missing call.'],
+      ['Load data from SNPVersity', 'A button on the empty page of SNPImpact, SNPCompare and SNPTree when SNPVersity holds a table result. It names the region, lines and variants, and runs the same hand-off as Send selection to….'],
     ]},
     { tool:'SNPVersity', color:'#2563eb', items:[
       ['CHR', 'Reference chromosome containing the variant.'],
@@ -144,13 +152,17 @@ const SNPHelp = (function () {
       ['Domain', 'Pfam protein domain overlapping the affected coding residue, when available.'],
       ['MQ', 'Mapping quality: a phred-scaled measure of confidence that reads were aligned to the correct genomic location; higher is better.'],
       ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
-      ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. For the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic).'],
+      ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. For the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic). The table rounds it to two decimals.'],
       ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
-      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores, on every SNP of the GRIN-linked 2026 set (indels have none). More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores.'],
+      ['Site QC', 'The class of the site from its heterozygous and homozygous carriers among all lines of the release; hover a cell for its counts. The filter above the table shows All sites (the default), Hide flagged and no-carrier, or Passing only.'],
+      ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores, on every SNP of the GRIN-linked 2026 set (indels have none). More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores. Their headers break over two lines (Plant / CAD1) so the columns are as narrow as the other scores.'],
       ['Evo2', 'Evo2 7B DNA language-model log-likelihood ratio for the allele (256-bp left context), scored for SNPs within 1 kb of a gene; more negative is more disruptive. Filled on every chromosome of the GRIN-linked 2026 set.'],
       ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions, filled for missense sites.'],
       ['ESM-C', 'ESM C 600M protein language-model log-likelihood ratio for the amino-acid substitution, missense sites only; more negative is more disruptive. Shown where the dataset carries it.'],
       ['Accession genotype columns', 'Each accession column shows its genotype at the site: 0/0 reference homozygous, 0/1 heterozygous, 1/1 alternate homozygous, or ./. missing.'],
+      ['het', 'Beside an accession name: the line is a Heterozygous sample (more than 5% of clean sites heterozygous).'],
+      ['Curated row', 'A row whose site is a curated allele: its SNPCurate mark beside the position, and its site and annotation cells shaded light gold. The curated alleles of the interval, grey ones included, are named above the table.'],
+      ['Gene models in this region', 'The B73 v5 gene models the queried interval overlaps, each linked to its MaizeGDB gene page.'],
       ['Dataset', 'A defined variant collection with its own accession panel, filters, included variant types, and score columns.'],
       ['Sites', 'Number of variant positions in the complete dataset, not necessarily the number returned by the current query.'],
       ['Imputed', 'Whether missing genotypes were statistically inferred in that dataset.'],
@@ -177,6 +189,11 @@ const SNPHelp = (function () {
       ['Bonferroni', 'A multiple-testing correction using α divided by the total marker count, more conservative than SimpleM.'],
       ['α (alpha)', 'The genome-wide false-positive rate used to compute a significance threshold.'],
     ]},
+    { tool:'SNPTrait', color:'#1f8a4c', items:[
+      ['Sample heterozygosity', 'A facet from the line’s share of clean sites that are heterozygous: Inbred, Elevated heterozygosity (above 2%), or Heterozygous sample (above 5%).'],
+      ['sampleQC / hetShare', 'Export columns: the sample heterozygosity class, and the heterozygous share of clean sites (0 to 1).'],
+      ['+n', 'Beside an unticked value: the lines ticking it would add to the selection.'],
+    ]},
     { tool:'SNPImpact', color:'#7c3aed', items:[
       ['Gene', 'Gene model associated with the candidate variant.'],
       ['Variant', 'Genomic change, generally shown as position and REF→ALT alleles.'],
@@ -186,12 +203,13 @@ const SNPHelp = (function () {
       ['Evo2 / ESM-C', 'A further DNA score (Evo2, SNPs within 1 kb of a gene) and protein score (ESM-C, missense); empty where the store has no score yet.'],
       ['ESM / ESM2 / ESM3', 'Protein language-model scores used to estimate the effect of an amino-acid substitution.'],
       ['Priority', 'Integrated candidate tier. TOP is the strongest prioritization, followed by HIGH, MODERATE, and LOW.'],
+      ['Site QC', 'The class of the variant’s site. The filter shows All sites, Hide flagged and no-carrier (the default), or Passing only; a note above the table counts the variants it hides. A curated allele is never hidden.'],
       ['Shortlist / flag', 'A user-selected marker for retaining a candidate variant for later review or export.'],
       ['Gene-model diagram', 'A compact display of exons, introns, coding sequence, strand, and the variant position.'],
       ['Exon', 'A transcript segment retained in the mature RNA; coding portions contribute to the protein sequence.'],
       ['Intron', 'A transcribed segment removed during RNA splicing.'],
       ['CDS', 'Coding sequence: the portion of exons translated into protein.'],
-      ['Imputation r²', 'Estimated squared correlation between imputed and true genotypes; values nearer 1 indicate greater confidence.'],
+      ['max LD r²', 'In a variant’s details: the highest linkage-disequilibrium r² with a variant 400-5,000 bp away (maxR² in SNPVersity), to two decimals.'],
       ['MQ', 'Mapping quality for the variant site.'],
       ['MAF', 'Minor-allele frequency for the candidate variant.'],
     ]},
@@ -208,12 +226,17 @@ const SNPHelp = (function () {
       ['PlantCAD1 / PlantCAD2', 'DNA language-model score for the allele.'],
       ['Evo2', 'Evo2 DNA language-model score for the allele (SNPs within 1 kb of a gene), with ESM-C beside the ESM scores; empty where the store has no score yet.'],
       ['ESM / ESM2 / ESM3', 'Protein language-model score for the resulting amino-acid change.'],
-      ['Priority', 'Integrated SNPTools evidence tier for the allele.'],
+      ['Priority', 'Integrated SNPMaize evidence tier for the allele.'],
+      ['Site QC', 'The class of the allele’s site from its heterozygous and homozygous carriers across the panel.'],
       ['Het', 'Number of accessions carrying the allele heterozygously.'],
       ['Hom', 'Number of accessions carrying the allele as alternate homozygous.'],
       ['AF', 'Alternate-allele frequency across the whole analyzed panel.'],
-      ['Variant burden', 'The count and composition of variants assigned to the gene across the full dataset panel.'],
+      ['Variant burden', 'The count and composition of variants assigned to the gene across the full dataset panel, over usable sites when the release has Site QC.'],
       ['Damaging allele', 'An allele selected because its consequence and/or prediction scores indicate a potentially important functional effect.'],
+      ['Flagged calls', 'A collapsed group under the allele list: damaging alleles whose site is flagged (het only or het excess), with the same columns.'],
+      ['No carrier in this release', 'A collapsed group of damaging alleles no line of the release carries.'],
+      ['Curated alleles', 'The gene’s SNPCurate alleles at the top of the allele card, each with its site, carriers, Site QC and priority, or why the release cannot show it.'],
+      ['Open in SNPVersity', 'Per allele: Homozygous carriers, Heterozygous carriers, All carriers, or Reference lines (homozygous for the reference allele) become SNPVersity’s accession list.'],
       ['Functional annotation', 'A per-gene dossier assembled for the 39,756 canonical B73 v5 gene models: identity, description, protein domains, and cross-references. Its GO and KEGG lists are the fallback shown when MaizeGDB cannot be reached.'],
       ['Gene symbol / aliases', 'The primary gene symbol and any additional names or synonyms recorded for the model.'],
       ['Description source', 'Provenance of the functional description, shown as a badge: MaizeGDB (a curated gene product or locus name), UniProt, InterPro (predicted from domains), or no informative source.'],
@@ -227,11 +250,24 @@ const SNPHelp = (function () {
       ['Cross-references', 'External identifiers for the gene: UniProt, NCBI Gene, and B73 v4 / v3 gene models.'],
       ['Annotation build', 'The build date, assembly, and annotation version the functional record was generated from.'],
     ]},
+    { tool:'SNPCurate', color:'#a16207', items:[
+      ['Mark', 'Gold: validated causal change, genotyped here. Outline: published marker, associated change or tag, genotyped here. Grey: known allele this release cannot show.'],
+      ['Gene', 'Gene symbol and B73 v5 model.'],
+      ['Change', 'The published change.'],
+      ['Trait', 'The trait the allele affects.'],
+      ['Status in this release', 'Whether the release genotypes the allele, and why not when it does not (not a site, a structural variant, unreliable calls).'],
+      ['Carriers (het / hom)', 'Heterozygous / homozygous carriers among the release lines.'],
+      ['Site QC', 'The class of the site from its heterozygous and homozygous carriers.'],
+      ['Priority', 'The SNPMaize priority of the change, as SNPImpact computes it.'],
+      ['Reference', 'The first publication; the record lists all.'],
+      ['Default order', 'By mark (gold, outline, grey), then by gene name; click Gene or Carriers to sort.'],
+    ]},
     { tool:'SNPCompare', color:'#0e7490', items:[
       ['#', 'Current rank after sorting and filtering.'],
       ['Project', 'BioProject or dataset project associated with the accession.'],
       ['SRA ID', 'Sequence Read Archive run identifier associated with the accession.'],
       ['Accession name', 'Human-readable line or germplasm name.'],
+      ['PI number', 'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'],
       ['Global sim', 'Genome-wide identity-by-state similarity between the focal accession and the comparison accession: matching genotypes divided by co-called sites.'],
       ['Local sim', 'Identity-by-state similarity calculated only from variants in the current SNPVersity region.'],
       ['Δ (local−global)', 'Local similarity minus global similarity. Positive values indicate the pair is more similar in the selected region than genome-wide; negative values indicate less similarity in the region.'],
@@ -244,11 +280,13 @@ const SNPHelp = (function () {
       ['Global', 'Precomputed genome-wide comparison scope.'],
       ['This region / Local', 'Comparison calculated from the current SNPVersity genotype matrix.'],
       ['Both', 'Side-by-side display of global and local values plus their difference.'],
+      ['Region sites', 'This region scope: Usable only (the default) leaves out flagged sites and sites with no carrier; All sites uses every site. The genome-wide values are precomputed over all sites.'],
     ]},
     { tool:'SNPTree', color:'#15803d', items:[
       ['IBS allele distance', 'Mean pairwise allele-dosage difference across co-called sites. Identical genotypes contribute 0, opposite homozygotes 1, and a homozygote-versus-heterozygote comparison 0.5.'],
       ['Informative sites', 'Variant sites that contain more than one observed genotype state among the selected accessions.'],
       ['Shared sites', 'Sites with non-missing calls for both accessions in a pair.'],
+      ['Sites', 'Usable only (the default) leaves out flagged sites (het only, het excess) and sites with no carrier; All uses every site.'],
       ['UPGMA', 'Unweighted Pair Group Method with Arithmetic Mean, an agglomerative clustering method that assumes an ultrametric tree.'],
       ['Neighbour-Joining (NJ)', 'A distance-based tree-building method that does not require equal evolutionary rates among branches.'],
       ['Branch length', 'Distance assigned to a tree edge from the pairwise IBS distance calculation.'],
@@ -261,6 +299,7 @@ const SNPHelp = (function () {
       ['IBS distance', 'Pairwise mean allele-dosage difference across co-called sites; 0 means identical across compared calls and larger values indicate more difference.'],
       ['% identity', 'Similarity view derived from the distance matrix and displayed as a percentage.'],
       ['Shared-site count', 'Number of non-missing sites used for a particular pairwise matrix cell.'],
+      ['Sites', 'Usable only (the default) or All sites, as in SNPTree.'],
       ['Input order', 'Rows and columns remain in the same order as the accession selection.'],
       ['Clustered order', 'Rows and columns are reordered by UPGMA clustering to place similar accessions near one another.'],
       ['Bioproject bars', 'Color strips indicating the project or BioProject associated with each accession.'],
@@ -285,6 +324,10 @@ const SNPHelp = (function () {
       ['Activity', 'Annotated functional site overlapping the residue, drawn from InterProScan member databases (for example an active site, binding site, or conserved functional feature), when present.'],
       ['Priority', 'Integrated evidence tier for the structure-mapped variant.'],
       ['Carriers', 'Number of accessions carrying the alternate allele; expanded details separate heterozygous and homozygous carriers.'],
+      ['Site QC', 'The class of the variant’s site from its heterozygous and homozygous carriers across the panel.'],
+      ['Usable alleles only', 'On by default: hides coding variants at flagged or no-carrier sites from the track, the table and the 3D view.'],
+      ['Curated ring', 'A ring around a variant on the protein track, and a mark in the table, for a curated allele (gold for a validated causal change).'],
+      ['Reference lines', 'In a variant’s details: the lines homozygous for the reference allele, which Open in SNPVersity can send beside the carriers.'],
       ['pLDDT', 'Predicted Local Distance Difference Test: the per-residue confidence each structure predictor reports (AlphaFold2, Boltz2 and ESMFold all do); the legend names the model shown. Common interpretation: ≥90 very high confidence, 70–89 confident, 50–69 low, and <50 very low.'],
       ['Secondary structure', 'Local protein conformation classified as helix, strand, or coil/loop, generated from the structure model.'],
       ['ΔΔG', 'Predicted change in protein folding free energy after mutation. Positive and negative interpretations depend on the scoring convention used by the source model; magnitude reflects predicted structural effect.'],
@@ -330,7 +373,7 @@ const SNPHelp = (function () {
     ['Where does the data come from?',
      'A query sends your region and accession list to the server, which reads the real HDF5 variant store, writes a VCF for exactly that slice, and returns it. The tools parse that VCF into the tables and matrices you see, so everything downstream is one consistent result.'],
     ['How do I move a selection between tools?',
-     'Run a query in SNPVersity or highlight a region in GWAS Explorer, then use "Send selection to…" in the top bar (or the buttons on a result). The same genotype matrix is handed to SNPImpact, SNPCompare, SNPTree, SNPMatrix, and SNPGeo without re-querying. SNPMatrix and SNPTree can also pass their set on to each other. The selection chip in the top bar (a list icon and a count) shows the accessions SNPVersity will query, from any tool: click it to browse, filter and edit them in the line selector; outside SNPVersity the change applies to SNPVersity\u2019s next query, with Undo.'],
+     'Run a query in SNPVersity or highlight a region in GWAS Explorer, then use "Send selection to…" in the top bar (or the buttons on a result). The same genotype matrix is handed to SNPImpact, SNPCompare, SNPTree, SNPMatrix, and SNPGeo without re-querying. If you open SNPImpact, SNPCompare or SNPTree first, its empty page offers the current SNPVersity result: press Load data from SNPVersity. SNPMatrix and SNPTree can also pass their set on to each other. The selection chip in the top bar (a list icon and a count) shows the accessions SNPVersity will query, from any tool: click it to browse, filter and edit them in the line selector; outside SNPVersity the change applies to SNPVersity\u2019s next query, with Undo.'],
     ['Why did a query give me a download instead of a table?',
      'When the result is large — roughly when variants × selected accessions passes ~40 million, or the region alone would exceed ~400,000 variant sites — parsing and rendering it in the browser would freeze the page, so SNPVersity returns a downloadable VCF instead. Choose a smaller region, fewer accessions, or a lower-density SNP set to get the interactive table back. The run bar predicts which you’ll get before you run. The server builds at most about 2 billion genotype calls (variants × accessions) in one request — roughly 100 Mb for all 933 GRIN-linked lines — and says so instead of building anything larger. A built VCF stays downloadable for 24 hours.'],
     ['Why are some cells \u2014 or N/A?',
@@ -338,13 +381,32 @@ const SNPHelp = (function () {
     ['Is there a limit on how many accessions I can compare?',
      'SNPTree, SNPMatrix and SNPCompare warn before a long computation — the cost grows with variants × accessions², so a large region with many accessions is what gets slow. You can build anyway. Sending a result to those tools is blocked outright only when it would be certain to crash the tab. SNPImpact renders up to 1,500 variants at a time.'],
     ['What can I download?',
-     'A VCF from SNPVersity; a CSV distance matrix, PHYLIP, PNG, and SVG from SNPMatrix; Newick, MEGA, and PHYLIP trees from SNPTree. A genome-wide significant-SNP CSV, or a CSV of a selected region, from GWAS Explorer. Comparison and impact tables can be exported from their own pages.'],
+     'A VCF from SNPVersity; a CSV distance matrix, PHYLIP, PNG, and SVG from SNPMatrix; Newick, MEGA, and PHYLIP trees from SNPTree. A genome-wide significant-SNP CSV, or a CSV of a selected region, from GWAS Explorer. Comparison and impact tables can be exported from their own pages, and SNPTrait exports its selection as CSV or JSON. The VCF of the GRIN-linked 2026 release keeps every site, with NHET, NHOM and SITEQC in INFO, whatever the tools hide.'],
     ['Where do the SNPTrait and SNPGeo metadata come from?',
      'For the MaizeGDB GRIN-linked 2026 dataset, from the USDA-ARS GRIN-Global passport and evaluation records of each line\u2019s accession, joined to the Grzybowski et al. (2023) sample names. Origin is the GRIN country and state of origin (developed, donated or collected); no coordinates are inferred. Trait values are per-accession means (numeric) or modes (coded) over the GRIN observations. Base maps: Natural Earth (public domain).'],
     ['Why does SNPGeo warn that carrier percentages understate frequencies?',
      'The carrier percentage for a country is over every line of the dataset known from it. If only some of those lines were genotyped (a partial SNPVersity selection), the rest count as non-carriers. Use the gene search, which queries every line, or the allele-composition and allele-frequency modes, which use only the called lines.'],
+    ['Why do SNPImpact, SNPFunction and SNPFold show fewer variants than SNPVersity?',
+     'Site QC. The lines of the GRIN-linked 2026 release are inbreds, so a site where heterozygous calls dominate usually means reads from another copy of the sequence map there. SNPImpact, SNPFunction and SNPFold hide flagged sites (het only, het excess) and sites with no carrier by default; SNPVersity and SNPGeo show every site with its class. To see them, use the Site QC filter in SNPImpact, open the Flagged calls and No carrier groups in SNPFunction, or untick Usable alleles only in SNPFold. Curated alleles stay in view. SNPTree, SNPMatrix and SNPCompare (region scope) likewise compute distances from usable sites, with a switch to all sites.'],
+    ['What do the gold, outline and grey marks mean?',
+     'They are SNPCurate marks on published alleles: gold (★) a validated causal change genotyped in this release, outline (☆) a published marker, associated change or tagging site genotyped here, grey (○) a known allele the release cannot show. In SNPVersity a curated row is also shaded light gold. Click a mark to open the allele’s record in SNPCurate.'],
+    ['Why is a line marked het?',
+     'Its sample is heterozygous at more than 5% of clean sites, where inbred lines are near 0.8%, which can mean residual heterozygosity, an outcross or a mixed sample. Read its calls with care. 20 lines of the release are marked; SNPTrait’s Sample heterozygosity facet selects or excludes them.'],
     ['Which tools are ready to use now?',
-     'SNPVersity, GWAS Explorer, SNPTrait, SNPImpact, SNPFunction, SNPFold, SNPGeo, SNPCompare, SNPTree, SNPMatrix, and PanEffect are live. SNPTrait and SNPGeo currently have metadata for the MaizeGDB GRIN-linked 2026 dataset only. SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap and marked in development in the sidebar.'],
+     'SNPVersity, GWAS Explorer, SNPTrait, SNPImpact, SNPFunction, SNPCurate, SNPFold, SNPGeo, SNPCompare, SNPTree, SNPMatrix, and PanEffect are live. SNPTrait and SNPGeo currently have metadata for the MaizeGDB GRIN-linked 2026 dataset only. SNPImpute, SNPDensity, and SNPGermplasm are on the roadmap.'],
+  ];
+
+  /* ---- what's new (the changes of October 2026) ---- */
+  const NEWS = [
+    ['SNPMaize', 'SNPTools is now SNPMaize: a SNP toolkit to explore variant diversity across maize germplasm.'],
+    ['Site QC', 'Every site of the GRIN-linked 2026 release is classed from its heterozygous and homozygous carriers (Pass, Het elevated, Het excess, Het only, No carrier). SNPVersity and SNPGeo show the class on every site; SNPImpact, SNPFunction and SNPFold hide flagged and no-carrier sites by default; SNPTree, SNPMatrix and SNPCompare compute distances from usable sites, with a switch to all sites. Downloaded VCFs carry NHET, NHOM and SITEQC.'],
+    ['Sample heterozygosity', 'Each line is classed Inbred, Elevated heterozygosity or Heterozygous sample from its share of heterozygous clean sites. SNPTrait filters by it and exports it; the 20 heterozygous samples are marked het in SNPVersity and SNPFunction.'],
+    ['SNPCurate', 'A new registry of published maize alleles and what this release shows of them. Its gold, outline and grey marks appear in SNPVersity (where a curated row is shaded light gold), SNPImpact, SNPFunction, SNPFold and SNPGeo.'],
+    ['Reference lines', 'SNPFunction and SNPFold can send the lines homozygous for the reference allele to SNPVersity, beside the homozygous, heterozygous and all carriers.'],
+    ['Load data from SNPVersity', 'SNPImpact, SNPCompare and SNPTree offer the current SNPVersity result on their empty page, in one click.'],
+    ['SNPCompare', 'A PI number column gives each line’s GRIN accession.'],
+    ['SNPVersity table', 'maxR² is shown to two decimals, the PlantCAD columns are as narrow as the other scores, and the gene models of the region link to their MaizeGDB pages.'],
+    ['Phones', 'SNPTrait and SNPFunction fit a 375 px screen.'],
   ];
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -384,7 +446,7 @@ const SNPHelp = (function () {
         <th>Dataset</th><th>Reference</th><th>Accessions</th><th>Sites</th>
         <th>Filters</th><th>Het</th><th>INDELs</th><th>Imputed</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hp-fine">This release offers the <b>MaizeGDB GRIN-linked 2026</b> dataset (release v1.4): 926 lines of Grzybowski et al. (2023), Beagle-imputed, plus 7 lines called separately at the same sites, including NAM founder CML103, each joined to its GRIN accession. Every SNPTools tool reads the same set.</p>`;
+      <p class="hp-fine">This release offers the <b>MaizeGDB GRIN-linked 2026</b> dataset (release v1.4): 926 lines of Grzybowski et al. (2023), Beagle-imputed, plus 7 lines called separately at the same sites, including NAM founder CML103, each joined to its GRIN accession. Every SNPMaize tool reads the same set. Each site also carries a Site QC class from its heterozygous and homozygous carriers, and each line a sample heterozygosity class; both are computed from the release’s genotypes and leave them unchanged.</p>`;
   }
 
   /* ---- in-depth MaizeGDB 2026 dataset description ---- */
@@ -471,7 +533,7 @@ const SNPHelp = (function () {
           <p class="hp-fine">“High Coverage” describes the broader filtered set; “High Quality” is the stricter subset. A locus count refers to a genomic variant position in the complete dataset, not the number of rows returned for a particular region or accession selection.</p>
 
           <h3>What is stored and displayed</h3>
-          <p>The underlying resource is maintained in VCF and HDF5 forms. SNPVersity sends the selected dataset, genomic interval, and accession list to the server, which extracts the requested slice and returns a VCF. SNPTools then reuses that same genotype matrix in SNPImpact, SNPCompare, SNPTree, SNPMatrix, and related pages. Each site may include REF and ALT alleles, accession genotypes, predicted molecular consequence, gene association, mapping quality, genotype completeness, linkage-disequilibrium support, allele frequency, Pfam domain context, and DNA- or protein-language-model scores when available.</p>
+          <p>The underlying resource is maintained in VCF and HDF5 forms. SNPVersity sends the selected dataset, genomic interval, and accession list to the server, which extracts the requested slice and returns a VCF. SNPMaize then reuses that same genotype matrix in SNPImpact, SNPCompare, SNPTree, SNPMatrix, and related pages. Each site may include REF and ALT alleles, accession genotypes, predicted molecular consequence, gene association, mapping quality, genotype completeness, linkage-disequilibrium support, allele frequency, Pfam domain context, and DNA- or protein-language-model scores when available.</p>
 
           <h3>Source projects</h3>
           <p>The panel was assembled from multiple public projects rather than one experiment. This increases biological and geographic diversity, but it also means sequencing depth, library preparation, and project design can differ among accessions. The standardized alignment, calling, and filtering workflow reduces—though does not completely remove—these study-to-study differences.</p>
@@ -552,16 +614,18 @@ const SNPHelp = (function () {
     const toolCards = PAGES.map(pageCard).join('');
     const gloss = GLOSSARY.map(g=>`<div class="hp-gl"><dt>${esc(g[0])}</dt><dd>${esc(g[1])}</dd></div>`).join('');
     const definitions = DEFINITIONS.map(definitionGroup).join('');
+    const news = NEWS.map(n=>`<li><b>${esc(n[0])}</b> ${esc(n[1])}</li>`).join('');
     const faq = FAQ.map(f=>`<details class="hp-faq"><summary>${esc(f[0])}<span class="hp-chev">${ico('caret')}</span></summary><div>${esc(f[1])}</div></details>`).join('');
 
     page.innerHTML = `
       <section class="hp-hero">
-        <div class="hp-eyebrow">SNPTools · SNPVersity 2.1 · B73 RefGen v5</div>
+        <div class="hp-eyebrow">SNPMaize · SNPVersity 2.1 · B73 RefGen v5</div>
         <h1>Help &amp; FAQ</h1>
-        <p>SNPTools is an integrated suite for exploring maize sequence variation. Everything starts from a genomic
+        <p>SNPMaize is a SNP toolkit to explore variant diversity across maize germplasm. Everything starts from a genomic
            query and flows between tools without re-running it — this page explains each tool, the datasets behind
            them, and the vocabulary you\u2019ll meet along the way.</p>
         <div class="hp-jump">
+          <a href="#hp-new">What’s new</a>
           <a href="#hp-flow">How it works</a>
           <a href="#hp-tools">The tools</a>
           <a href="#hp-data">Datasets</a>
@@ -571,8 +635,14 @@ const SNPHelp = (function () {
         </div>
       </section>
 
+      <section id="hp-new" class="hp-sec">
+        <div class="hp-h"><span class="hp-n">01</span><h2>What’s new</h2></div>
+        <p class="hp-lead">Changes of October 2026.</p>
+        <ul class="hp-news">${news}</ul>
+      </section>
+
       <section id="hp-flow" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">01</span><h2>How the suite fits together</h2></div>
+        <div class="hp-h"><span class="hp-n">02</span><h2>How the suite fits together</h2></div>
         <div class="hp-flow">
           <div class="hp-step"><span class="hp-si" style="background:#2563eb">${ico('search')}</span>
             <b>Query</b><p>In SNPVersity, provide a region or gene and the accessions you care about, or choose them from published results using GWAS Explorer.</p></div>
@@ -581,21 +651,21 @@ const SNPHelp = (function () {
             <b>Result</b><p>You get a genotype table and a VCF for exactly that slice of the genome.</p></div>
           <div class="hp-arrow">${ico('caret')}</div>
           <div class="hp-step"><span class="hp-si" style="background:#b45309">${ico('compare')}</span>
-            <b>Send onward</b><p>Hand the same matrix to any other tool with "Send selection to…" — no re-query.</p></div>
+            <b>Send onward</b><p>Hand the same matrix to any other tool with "Send selection to…", or press Load data from SNPVersity in the tool — no re-query.</p></div>
         </div>
         <p class="hp-fine">A query is run against the real variant store and returned as a VCF; every other tool reuses that
           one result, so a set you build once stays consistent as you rank it, compare it, cluster it, or draw it.</p>
       </section>
 
       <section id="hp-tools" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">02</span><h2>The tools</h2></div>
-        <p class="hp-lead">Twelve tools across five stages. Eight are live today; the rest are on the roadmap and share
-          the same data and coordinates. Expand any tool for what it does, what it takes, and what it returns.</p>
+        <div class="hp-h"><span class="hp-n">03</span><h2>The tools</h2></div>
+        <p class="hp-lead">Fourteen tools. Twelve are live today; SNPImpute and SNPGermplasm are on the roadmap and will
+          share the same data and coordinates. Expand any tool for what it does, what it takes, and what it returns.</p>
         <div class="hp-tools">${toolCards}</div>
       </section>
 
       <section id="hp-data" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">03</span><h2>Datasets</h2></div>
+        <div class="hp-h"><span class="hp-n">04</span><h2>Datasets</h2></div>
         <p class="hp-lead">Each query runs against one dataset. All are called against the B73 v5 reference; they differ
           in how they were filtered, how many accessions and sites they hold, and which score columns they carry.</p>
         ${datasetTable()}
@@ -603,25 +673,25 @@ const SNPHelp = (function () {
       </section>
 
       <section id="hp-definitions" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">04</span><h2>Definitions &amp; table columns</h2></div>
+        <div class="hp-h"><span class="hp-n">05</span><h2>Definitions &amp; table columns</h2></div>
         <p class="hp-lead">Definitions are grouped by tool and use the same labels shown in the interfaces. Expand a group or use your browser's find command to locate a column heading.</p>
         <div class="hp-defgroups">${definitions}</div>
       </section>
 
       <section id="hp-gloss" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">05</span><h2>Scores &amp; annotations</h2></div>
+        <div class="hp-h"><span class="hp-n">06</span><h2>Scores &amp; annotations</h2></div>
         <dl class="hp-gloss">${gloss}</dl>
       </section>
 
       <section id="hp-faq" class="hp-sec">
-        <div class="hp-h"><span class="hp-n">06</span><h2>Frequently asked</h2></div>
+        <div class="hp-h"><span class="hp-n">07</span><h2>Frequently asked</h2></div>
         <div class="hp-faqs">${faq}</div>
       </section>
 
       <section class="hp-foot">
         <div>
           <b>Still stuck?</b>
-          <p>SNPTools is part of MaizeGDB, the Maize Genetics and Genomics Database.</p>
+          <p>SNPMaize is part of MaizeGDB, the Maize Genetics and Genomics Database.</p>
         </div>
         <div class="hp-foot-btns">
           <button class="hp-open" onclick="go('snpversity')">Start in SNPVersity ${ico('caret')}</button>
@@ -671,6 +741,9 @@ const SNPHelp = (function () {
       .hp-lead{max-width:74ch;color:var(--muted,#5b6b83);font-size:14px;line-height:1.6;margin:0 0 16px}
       .hp-fine{max-width:78ch;color:var(--muted,#5b6b83);font-size:12.5px;line-height:1.6;margin:12px 0 0}
       .hp-fine b,.hp-lead b{color:var(--ink,#141922)}
+      .hp-news{max-width:80ch;margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.6;color:var(--muted,#5b6b83)}
+      .hp-news li{margin:0 0 7px}
+      .hp-news b{color:var(--ink,#141922)}
 
       /* flow */
       .hp-flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
@@ -737,14 +810,14 @@ const SNPHelp = (function () {
       .hp-defdot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
       .hp-count{font-size:11.5px;color:var(--muted,#5b6b83);margin-left:2px}
       .hp-defgroup summary .hp-chev{margin-left:auto}
-      .hp-deflist{margin:0;padding:0 15px 8px 35px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 28px}
+      .hp-deflist{margin:0;padding:0 15px 8px 35px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:0 28px}
       .hp-def{padding:11px 0;border-top:1px solid #eef1f6}
       .hp-def dt{font-family:var(--disp,'Space Grotesk',sans-serif);font-size:13.5px;font-weight:600;color:var(--ink,#141922);margin-bottom:3px}
-      .hp-def dd{margin:0;font-size:12.8px;line-height:1.55;color:var(--muted,#5b6b83)}
+      .hp-def dd{margin:0;font-size:12.8px;line-height:1.55;color:var(--muted,#5b6b83);overflow-wrap:anywhere}
 
 
       /* glossary */
-      .hp-gloss{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:2px 26px}
+      .hp-gloss{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:2px 26px}
       .hp-gl{padding:13px 0;border-bottom:1px solid #eef1f6}
       .hp-gl dt{font-family:var(--disp,'Space Grotesk',sans-serif);font-size:14px;font-weight:600;color:var(--ink,#141922);margin-bottom:4px}
       .hp-gl dd{margin:0;font-size:13px;line-height:1.55;color:var(--muted,#5b6b83)}
