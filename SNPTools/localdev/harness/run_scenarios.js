@@ -950,6 +950,59 @@ async function until(site, expr, ms = 8000){
     try { R.curateMarks.without = await marks(w.dir, false); } finally { w.cleanup(); }
   }
 
+  /* ---------- the change list of 3 October 2026 (check_ui_changes.py) ----------
+     Name and tagline; SNPVersity's maxR² to hundredths, two-line PlantCAD headers, MaizeGDB gene
+     links, a curated row on gold; "Load data from SNPVersity" in SNPTree, SNPImpact and SNPCompare;
+     SNPCompare's PI number column; the reference lines hand-off of SNPFunction. (Widths at 375 px
+     are checked in a browser: jsdom does no layout.) */
+  if (['chr2', 'chr4'].every(c => (R.store || {})[c] > 100000)){
+    const s13 = await openSite(ROOT); const $u = s13.$eval; const L = R.uiList = {};
+    L.brand = $u(`({title:document.title, rail:document.querySelector('.brand .name').textContent, railTag:document.querySelector('.brand .tag').textContent,
+      mast:document.querySelector('.mg-kicker').textContent, mastTag:document.querySelector('.mg-sub').textContent, crumb:document.querySelector('.crumb > b').textContent})`);
+    // empty tools before SNPVersity has a result
+    L.emptyBefore = {};
+    for (const t of ['snptree', 'snpimpact', 'snpcompare']){ $u(`go('${t}')`); await s13.wait(t === 'snpcompare' ? 400 : 100); L.emptyBefore[t] = $u(`!!document.getElementById('loadVersity')`); }
+    const nam = 'Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)';
+    L.versity = await $u(`(async()=>{ go('snpversity'); const r=await Data.queryVariants('zmgrin2026_imp','chr4',46647932,46652896,${nam});
+      r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:46647932,hi:46652896}; S.results=r; S.page=1; S.fQc=null; renderResults();
+      const hdr=[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')]; const col=k=>hdr.findIndex(t=>t.dataset.col===k);
+      const rows=[...document.querySelectorAll('#rtBody table.vcf tbody tr')];
+      const r2i=4+col('r2');
+      const cur=rows.filter(tr=>tr.classList.contains('cur-row'));
+      return {vcf:r.vcfUrl, r2:rows.map(tr=>[tr.children[1].querySelector('a').textContent, tr.children[r2i].textContent.trim()]),
+        pcHead:hdr.filter(t=>/^pc/.test(t.dataset.col)).map(t=>t.innerHTML), otherHead:hdr.filter(t=>/^(evo2|esm)/.test(t.dataset.col)).map(t=>t.innerHTML),
+        curRows:cur.map(tr=>({cls:tr.className, id:tr.dataset.curate, pos:tr.children[1].querySelector('a').textContent,
+          plain:[...tr.children].filter(td=>!td.classList.contains('score')&&!td.classList.contains('gt')).length,
+          score:[...tr.children].filter(td=>td.classList.contains('score')).length, gt:[...tr.children].filter(td=>td.classList.contains('gt')).length})),
+        genes:(()=>{ const d=document.querySelector('#rtBody details'); return d?[...d.querySelectorAll('div > a.c-mono')].map(a=>({gene:a.textContent, href:a.getAttribute('href'),
+          maizegdb:[...a.parentElement.querySelectorAll('a')].filter(x=>/MaizeGDB/.test(x.textContent)).map(x=>x.getAttribute('href'))})):[]; })()}; })()`);
+    // the empty tools offer the result, and the button loads it
+    L.load = {};
+    for (const [t, check] of [['snptree', `!!(SNPTree._ST.input && SNPTree._ST.input.rows && SNPTree._ST.input.rows.length===S.results.rows.length)`],
+                              ['snpimpact', `document.querySelectorAll('table.imp tbody tr').length>0`],
+                              ['snpcompare', `[...document.querySelectorAll('#page .qbtn')].some(b=>/This region/.test(b.textContent)&&!b.disabled)`]]){
+      $u(`S.${t === 'snptree' ? 'treeInput' : t === 'snpimpact' ? 'impactInput' : 'compareInput'}=null; go('${t}')`); await s13.wait(t === 'snpcompare' ? 400 : 100);
+      const offer = $u(`(document.getElementById('loadVersity')||{}).textContent||null`);
+      $u(`(document.querySelector('#loadVersity button')||{click(){}}).click()`); await s13.wait(t === 'snptree' ? 600 : 300);
+      L.load[t] = {offer: offer && offer.replace(/\s+/g, ' ').trim(), tool: $u('S.tool'), loaded: $u(check), block: $u(`!!document.getElementById('loadVersity')`)};
+    }
+    // SNPCompare: PI number column (genome-wide table)
+    $u(`S.compareInput=null; go('snpcompare')`); await s13.wait(400);
+    $u(`SNPCompare.setMode('global'); SNPCompare.setView('table')`);
+    await until(s13, `document.querySelectorAll('.cmp-table tbody tr').length>0`, 20000);
+    L.compare = $u(`(()=>{ const h=[...document.querySelectorAll('.cmp-table thead th')].map(t=>t.textContent.replace(/[▾▴]/g,'').trim()); const i=h.indexOf('PI number'), j=h.indexOf('Final_ID');
+      return {head:h, rows:[...document.querySelectorAll('.cmp-table tbody tr')].map(tr=>[tr.children[j].textContent, tr.children[i]?tr.children[i].textContent:null])}; })()`);
+    // SNPFunction: the reference lines of ZmWAK T102A to SNPVersity (replace)
+    $u(`S.functionGene='Zm00001eb116160'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+    await until(s13, `!!document.getElementById('fnAlleles')`, 60000); await s13.wait(150);
+    L.reference = await $u(`(async()=>{ const d=await Data.geneFunction('Zm00001eb116160','zmgrin2026_imp'); const v=d.damaging.find(x=>x.variant==='p.T102A');
+      FUNCTION.toggle(v.id); const btn=[...document.querySelectorAll('.fn-carriers .fn-sendrow button')].map(b=>b.textContent.trim());
+      Handoff.setMode && Handoff.setMode('replace'); FUNCTION.toVersity(v.id,'ref'); await new Promise(r=>setTimeout(r,300));
+      return {buttons:btn, nRef:v.nRef, het:v.carriersHet, hom:v.carriersHom, miss:v.carriersMiss, selected:[...S.selected].sort(), tool:S.tool, vcf:null}; })()`);
+    L.consoleErrors = s13.errors.filter(e => !/favicon/.test(e));
+    s13.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

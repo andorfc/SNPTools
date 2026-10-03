@@ -136,10 +136,17 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    stays in SNPImpact's default view with its "Het only" pill and outline badge and is listed by
    SNPFunction; a coding variant of Zm00001eb406050 gets SNPFold's ring and table badge. Then the
    same pages without `js/snpcurate.data.js`: no badge, no block, no error.
+17. The change list of 3 October 2026, `check_ui_changes.py` (needs the full chr2 and chr4 stores): the name
+   SNPMaize and its tagline in the left panel, masthead, breadcrumb and title; SNPVersity on the tga1
+   interval (maxR² to hundredths against the VCF, PlantCAD headers in two lines, the curated row's site
+   and annotation cells on gold, gene models linked to MaizeGDB); no "Load data from SNPVersity" before a
+   result, then the offer and the button in SNPTree, SNPImpact and SNPCompare; SNPCompare's PI number
+   column against the catalogue for all 933 lines; SNPFunction's "Reference lines" sending exactly the
+   panel minus the carriers and missing calls. Widths at 375 px are checked in a browser.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py` and `check_snpcurate.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py` and `check_ui_changes.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness
