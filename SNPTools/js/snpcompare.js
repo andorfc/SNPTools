@@ -498,6 +498,7 @@ const SNPCompare = (function () {
       <h1>SNPCompare</h1>
       <p>Rank and map accessions by identity-by-state similarity to a focal accession — genome-wide and within a queried region.</p>
     </div></section>
+    ${!local && typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToCompare', 'Compare those lines within that region (This region and Both scopes, Matrix, PCoA).') : ''}
 
     <div class="card pad" style="margin-bottom:16px">
       <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">

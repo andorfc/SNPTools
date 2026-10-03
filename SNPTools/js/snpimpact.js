@@ -326,7 +326,8 @@
   }
 
   function emptyState(){
-    return `<div class="empty-state"><div class="ei">${ICONS.star||''}</div>
+    return `${typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToImpact', 'Rank the variants of that region by predicted impact.') : ''}
+      <div class="empty-state"><div class="ei">${ICONS.star||''}</div>
       <h3>Send a region from SNPVersity</h3>
       <p>SNPImpact ranks the variants in a queried region by predicted impact — independent of
       which accessions you picked. Run a query in SNPVersity, then use

@@ -238,6 +238,7 @@ const SNPTree = (function () {
   function emptyState(){
     return `<section class="sec"><div class="bar"></div><div>
       <h1>SNPTree</h1><p>Local phylogeny &amp; similarity from a SNPVersity result.</p></div></section>
+      ${typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToTree', 'Build an identity-by-state tree of those lines over that region.') : ''}
       <div id="treeGW"></div>
       <div class="card pad fade" style="text-align:center">
         <div style="max-width:560px;margin:0 auto">

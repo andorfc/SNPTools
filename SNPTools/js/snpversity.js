@@ -933,6 +933,20 @@ function switchRT(rt){
   return renderTable();
 }
 /* hand the generated VCF matrix (+ metadata) to SNPTree for a local IBS phylogeny */
+/* "Load data from SNPVersity": SNPTree, SNPImpact and SNPCompare open empty until a result is sent
+   to them; when SNPVersity holds a table result, their empty page offers it in one click (the
+   button runs the same hand-off as SNPVersity's own Send button). Nothing when there is no result
+   or it was a VCF-only (wide) one. */
+function versityResultReady(){ return !!(S.results && S.results.rows && S.results.rows.length && !S.results.wide && S.results.accs); }
+function loadFromVersityHTML(sendFn, what){
+  if(!versityResultReady()) return '';
+  const q=resultQuery(), r=S.results;
+  return `<div class="load-versity" id="loadVersity">
+    <div><b>SNPVersity has a result</b> <span class="lv-sub">${escAttr(q.chr)}:${(+q.lo).toLocaleString()}–${(+q.hi).toLocaleString()} ·
+      ${r.accs.length.toLocaleString()} lines · ${r.rows.length.toLocaleString()} variants</span>
+      <div class="lv-sub">${what}</div></div>
+    <button class="btn primary" onclick="${sendFn}()">${ICONS.dna||''} Load data from SNPVersity</button></div>`;
+}
 function sendToTree(){
   if(S.results&&S.results.rows&&S.results.rows.length) S.treeInput=resultHandoff();
   go('snptree');   // navigates even with no result yet (SNPTree shows a guided empty state)
