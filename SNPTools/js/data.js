@@ -1167,6 +1167,24 @@ function sampleHetMark(acc){
     '% of clean sites. Inbred lines are near 0.8%.">het</span>';
 }
 
+/* Global helpers: the SNPCurate mark of a curated allele (window.SNP_CURATE, js/snpcurate.data.js)
+   as a small link that opens its record. Each mark has its own glyph, so color is not the only
+   cue: gold (validated causal change, genotyped here), outline (published marker, associated
+   change or tag, genotyped here), grey (known allele this release cannot show). */
+var CURATE_GLYPH = {gold:'\u2605', outline:'\u2606', grey:'\u25CB'};
+function curateBadge(e){
+  if (!e || !e.mark) return '';
+  var tips = (window.SNP_CURATE && window.SNP_CURATE.marks) || {};
+  var tt = String((tips[e.mark] || '') + ' ' + (e.symbol || '') + ' ' + (e.label || '') + ' (' + e.id + ')')
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  return '<a href="#" class="cur-badge cur-' + e.mark + '" data-curate="' + e.id + '" data-tt="' + tt + '" aria-label="' + tt +
+    '" onclick="openCurate(\'' + e.id + '\');return false;">' + (CURATE_GLYPH[e.mark] || CURATE_GLYPH.grey) + '</a>';
+}
+function openCurate(id){
+  if (typeof S !== 'undefined') S.curateId = id;
+  if (typeof go === 'function') go('snpcurate');
+}
+
 /* Global helper: render a "Name (PFxxxxx)" domain string as a chip with the
    Pfam accession linked to InterPro. Used by SNPVersity / SNPImpact / SNPFunction. */
 function pfamHref(pf){ return 'https://www.ebi.ac.uk/interpro/entry/pfam/' + pf + '/'; }

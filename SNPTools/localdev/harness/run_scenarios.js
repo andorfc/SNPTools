@@ -832,6 +832,52 @@ async function until(site, expr, ms = 8000){
     }
   }
 
+  /* ---------- SNPCurate (js/snpcurate.data.js from data/curate/snpcurate.source.json) ----------
+     The table, the filters and sorts, every record as drawn, and the three buttons of SC0001.
+     check_snpcurate.py recomputes each number from the stores, the catalogue, the trait file and
+     the source. Needs the full stores of the chromosomes the entries are on. */
+  if (['chr1', 'chr2', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chr10'].every(c => (R.store || {})[c] > 100000)){
+    const s12 = await openSite(ROOT); const $c = s12.$eval; const K = R.curate = {};
+    $c('S.curateId=null; go("snpcurate")');
+    K.nav = $c('[...document.querySelectorAll("#nav .navitem")].map(b=>b.textContent.trim().replace(/\\s+/g," ")).filter(t=>/SNPCurate/.test(t))');
+    K.legend = $c('[...document.querySelectorAll("#curLegend .cur-lg")].map(d=>({badge:d.querySelector(".cur-badge").className, glyph:d.querySelector(".cur-badge").textContent, text:d.textContent.replace(/\\s+/g," ").trim()}))');
+    const tableRows = `[...document.querySelectorAll('#curTable tbody tr')].map(tr=>({id:tr.dataset.id, badge:tr.querySelector('.cur-badge').className,
+      glyph:tr.querySelector('.cur-badge').textContent, cells:[...tr.children].slice(1).map(td=>td.textContent.replace(/\\s+/g,' ').trim())}))`;
+    K.table = $c(tableRows);
+    const ids = sel => $c(`(()=>{ ${sel}; return [...document.querySelectorAll('#curTable tbody tr')].map(tr=>tr.dataset.id); })()`);
+    K.filters = {gold: ids(`CURATE.setFilter('fMark','gold')`), grey: ids(`CURATE.setFilter('fMark','grey')`),
+                 site: ids(`CURATE.setFilter('fMark','all'); CURATE.setFilter('fStatus','site')`),
+                 kernel: ids(`CURATE.setFilter('fStatus','all'); CURATE.setFilter('fText','kernel')`),
+                 byCarriers: ids(`CURATE.setFilter('fText',''); CURATE.sort('carriers')`), byGene: ids(`CURATE.sort('gene')`)};
+    K.records = {};
+    for (const id of $c('window.SNP_CURATE.entries.map(e=>e.id)')){
+      $c(`S.curateId=null; CURATE.open(${JSON.stringify(id)})`);
+      K.records[id] = $c(`(()=>{ const r=document.querySelector('.cur-record'); if(!r) return null; const T=e=>e?e.textContent.replace(/\\s+/g,' ').trim():null;
+        const minis=[...r.querySelectorAll('.cur-two .cur-mini')];
+        return {badge:r.querySelector('.cur-rh .cur-badge').className, head:T(r.querySelector('.cur-rh > div')),
+          facts:[...r.querySelectorAll('.cur-facts > div')].map(T), scores:[...r.querySelectorAll('.cur-score')].map(d=>[...d.children].map(c=>c.textContent.trim())),
+          subpop:minis[0]?[...minis[0].querySelectorAll('tr')].map(T):null, country:minis[1]?[...minis[1].querySelectorAll('tr')].map(T):null,
+          trait:[...r.querySelectorAll('.cur-trait tbody tr')].map(T), traitHead:T([...r.querySelectorAll('.cur-k')].find(k=>/by genotype/.test(k.textContent))),
+          why:T(r.querySelector('.cur-why')), review:T(r.querySelector('.cur-review')), refs:[...r.querySelectorAll('.cur-refs li')].map(T),
+          dois:[...r.querySelectorAll('.cur-refs a')].map(a=>a.getAttribute('href')), note:[...r.querySelectorAll('p')].map(T),
+          buttons:[...r.querySelectorAll('.cur-actions button')].map(b=>b.textContent.trim())}; })()`);
+    }
+    // the three buttons on SC0001
+    $c(`openCurate('SC0001')`);
+    await $c(`CURATE.toVersity('SC0001')`); await s12.wait(300);
+    K.toVersity = {tool: $c('S.tool'), selected: $c('[...S.selected].sort()'), chr: $c('S.chr'), start: $c('S.start'), end: $c('S.end')};
+    $c(`openCurate('SC0001'); CURATE.toFunction('SC0001')`); await s12.wait(200);
+    K.toFunction = {tool: $c('S.tool'), gene: $c('(document.getElementById("fnGeneInput")||{}).value||null')};
+    await until(s12, `!!document.getElementById('fnAlleles') || !!document.querySelector('#page .fn-h')`, 60000); await s12.wait(200);
+    $c(`openCurate('SC0001')`);
+    await $c(`CURATE.toMap('SC0001')`); await s12.wait(400);
+    K.toMap = {tool: $c('S.tool'), rows: $c('GEO.rows.map(r=>[r.pos,r.ref,r.alt])'), accs: $c('(S.geoInput&&S.geoInput.accs||[]).length')};
+    await s12.wait(300);
+    K.data = $c('JSON.parse(JSON.stringify(window.SNP_CURATE))');
+    K.consoleErrors = s12.errors.filter(e => !/favicon/.test(e));
+    s12.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
@@ -845,6 +891,7 @@ async function until(site, expr, ms = 8000){
     ['on', 'off'].forEach(p => { const u = brief.siteqcui[p]; if (!u) return;
       Object.values(u.versity || {}).forEach(v => { delete v.qcRows; delete v.cellText; }); }); }
   if (brief.lineqc) Object.values(brief.lineqc).forEach(L => { if (L && L.exports){ L.exports.csv = L.exports.csv.length; L.exports.json = L.exports.json.length; } });
+  if (brief.curate){ delete brief.curate.data; brief.curate.records = Object.keys(brief.curate.records).length; }
   if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();

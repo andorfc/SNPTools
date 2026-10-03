@@ -325,6 +325,13 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .qcp.nocarrier{background:#f2f4f7;color:#4b5563;border-color:#c9d0da;border-style:dashed}
 .qcp.pass{background:none;border:none;color:var(--faint);font-weight:500;padding:1px 2px}
 .qc-note{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+/* SNPCurate marks (curateBadge in data.js): a glyph per mark; gold also has a gold border */
+.cur-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;margin-left:4px;
+  border-radius:5px;border:1px solid;font-size:11px;line-height:1;text-decoration:none;vertical-align:1px;cursor:pointer}
+.cur-badge.cur-gold{background:#fff6d6;color:#7a5600;border:1.5px solid #c99a06}
+.cur-badge.cur-outline{background:#fff;color:#6b5414;border-color:#d6c389}
+.cur-badge.cur-grey{background:#f2f4f7;color:#5b6472;border-color:#cdd3dc}
+.cur-badge:hover{box-shadow:0 0 0 2px rgba(201,154,6,.25)}
 /* line QC: a sample heterozygous as sequenced (sampleHetMark in data.js) */
 .het-mark{display:inline-block;margin-left:4px;padding:0 4px;border-radius:4px;font:700 9.5px/1.45 var(--body,'Inter',sans-serif);
   letter-spacing:.2px;background:#fdf1d6;color:#7a4a00;border:1px solid #efd59c;vertical-align:1px;white-space:nowrap}

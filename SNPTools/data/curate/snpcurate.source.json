@@ -1,0 +1,654 @@
+{
+ "schema": "snpcurate-seed-1",
+ "release": "zmgrin2026 v1.4",
+ "reference": "Zm-B73-REFERENCE-NAM-5.0",
+ "made": "2026-10-03",
+ "note": "Seed for SNPCurate: the 21 entries of Table 4 in benchmark_section_draft.md. Evidence tiers are proposed, not curated.",
+ "entries": [
+  {
+   "id": "SC0001",
+   "gene": "Zm00001eb175150",
+   "symbol": "tga1",
+   "label": "N6K (Lys6 in teosinte, Asn6 in maize)",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 46648374,
+   "ref": "C",
+   "alt": "G",
+   "site_gene": null,
+   "evidence": "validated",
+   "trait": "Glume architecture, naked kernels",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Wang H, et al. 2015. Genetics 200:965-974",
+     "doi": "10.1534/genetics.115.175752"
+    },
+    {
+     "cite": "Fairbanks RA, Ross-Ibarra J. 2025. Proc Natl Acad Sci USA 122:e2503748122",
+     "doi": "10.1073/pnas.2503748122"
+    }
+   ],
+   "note": "The only fixed difference in tga1 between teosinte and maize. The alternate allele is the teosinte lysine; B73 carries the maize asparagine.",
+   "needs_review": null,
+   "expect": {
+    "het": 0,
+    "hom": 7,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "N6K"
+  },
+  {
+   "id": "SC0002",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "T344N",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 91645900,
+   "ref": "C",
+   "alt": "A",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Kernel carotenoid content",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Fu Z, et al. 2013. Theor Appl Genet 126:923-935",
+     "doi": "10.1007/s00122-012-2026-0"
+    },
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "Thr to Asn in exon 5 of phytoene synthase, associated with total carotenoid content. Not required for yellow kernels: B73 is yellow and carries the reference threonine.",
+   "needs_review": null,
+   "expect": {
+    "het": 12,
+    "hom": 599,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "T344N"
+  },
+  {
+   "id": "SC0003",
+   "gene": "Zm00001eb277490",
+   "symbol": "DGAT1-2",
+   "label": "Phe469 insertion (high-oil allele)",
+   "kind": "causal",
+   "variant_type": "inframe_insertion",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 115184121,
+   "ref": "T",
+   "alt": "TGAA",
+   "site_gene": null,
+   "evidence": "validated",
+   "trait": "Kernel oil content and composition",
+   "grin_descriptor": "OIL",
+   "refs": [
+    {
+     "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
+     "doi": "10.1038/ng.85"
+    }
+   ],
+   "note": "A phenylalanine insertion that raises oil and oleic acid. In-frame insertions have no language-model score.",
+   "needs_review": null,
+   "expect": {
+    "het": 6,
+    "hom": 181,
+    "site_qc": "PASS"
+   },
+   "consequence": "conservative_inframe_insertion",
+   "substitution": "."
+  },
+  {
+   "id": "SC0004",
+   "gene": "Zm00001eb357090",
+   "symbol": "lcyE",
+   "label": "Exon 1 missense D70E",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 142587884,
+   "ref": "T",
+   "alt": "G",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Provitamin A, ratio of alpha to beta branch carotenoids",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Harjes CE, et al. 2008. Science 319:330-333",
+     "doi": "10.1126/science.1150255"
+    }
+   ],
+   "note": "The one missense change in exon 1. Its association with orange kernels in this set follows tropical ancestry.",
+   "needs_review": "Is this the SNP216 of Harjes et al.? Confirm against the published sequence.",
+   "expect": {
+    "het": 9,
+    "hom": 401,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "D70E"
+  },
+  {
+   "id": "SC0005",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "E214G",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 185149224,
+   "ref": "T",
+   "alt": "C",
+   "site_gene": null,
+   "evidence": "validated",
+   "trait": "Banded leaf and sheath blight resistance",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "One of two linked substitutions homozygous in about 710 lines. GRIN holds no descriptor for the disease.",
+   "needs_review": "Confirm that E214G and S217R are the two substitutions reported for the resistant allele.",
+   "expect": {
+    "het": 11,
+    "hom": 710,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "E214G"
+  },
+  {
+   "id": "SC0006",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "S217R",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 185149216,
+   "ref": "T",
+   "alt": "G",
+   "site_gene": null,
+   "evidence": "validated",
+   "trait": "Banded leaf and sheath blight resistance",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "Travels with E214G.",
+   "needs_review": "Confirm that E214G and S217R are the two substitutions reported for the resistant allele.",
+   "expect": {
+    "het": 10,
+    "hom": 708,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "S217R"
+  },
+  {
+   "id": "SC0007",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "F163L (second change of su1-ref)",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 43430966,
+   "ref": "C",
+   "alt": "G",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Sweet kernel (sugary1)",
+   "grin_descriptor": "KERNEL-TYPE",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "Present on the su1-ref allele with W578R, which is not a site. Homozygous in 22 of 33 sweet lines and in 91 other lines, so it does not identify sweet corn by itself.",
+   "needs_review": null,
+   "expect": {
+    "het": 6,
+    "hom": 113,
+    "site_qc": "PASS"
+   },
+   "consequence": "missense_variant",
+   "substitution": "F163L"
+  },
+  {
+   "id": "SC0008",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Promoter variant about 1.1 kb upstream (rare, late)",
+   "kind": "causal",
+   "variant_type": "promoter",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126681474,
+   "ref": "T",
+   "alt": "C",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Flowering time",
+   "grin_descriptor": "GDU-SILK-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "Rare group found in 4 of 7 teosinte lines and 20 of 86 tropical lines; carriers silk later. 1,097 bp upstream of the start codon in B73 v5.",
+   "needs_review": "Is this SNP-1245 of Guo et al.? Their flanking sequence settles it.",
+   "expect": {
+    "het": 2,
+    "hom": 35,
+    "site_qc": "PASS"
+   },
+   "consequence": "upstream_gene_variant",
+   "substitution": "."
+  },
+  {
+   "id": "SC0009",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Promoter indel about 2.5 kb upstream (common, early)",
+   "kind": "causal",
+   "variant_type": "promoter",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126682909,
+   "ref": "G",
+   "alt": "GTTTTGTA",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Flowering time",
+   "grin_descriptor": "GDU-SILK-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "Common group, homozygous in half of the lines, associated with earlier silking. 2,532 bp upstream of the start codon in B73 v5.",
+   "needs_review": "Is this the upstream block (Indel-2339) of Guo et al.? Confirm.",
+   "expect": {
+    "het": 11,
+    "hom": 481,
+    "site_qc": "PASS"
+   },
+   "consequence": "upstream_gene_variant",
+   "substitution": "."
+  },
+  {
+   "id": "SC0010",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "W578R (su1-ref)",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "evidence": "validated",
+   "trait": "Sweet kernel (sugary1)",
+   "grin_descriptor": "KERNEL-TYPE",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "The causal change of the su1-ref allele. No site in codon 578 in this release.",
+   "needs_review": null,
+   "tagged_by": null,
+   "codon_positions": [
+    43436836,
+    43436837,
+    43436838
+   ]
+  },
+  {
+   "id": "SC0011",
+   "gene": "Zm00001eb199880",
+   "symbol": "ub3",
+   "label": "Ser220Asn",
+   "kind": "causal",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "evidence": "associated",
+   "trait": "Kernel row number",
+   "grin_descriptor": "KERNEL-ROW-NUMBER",
+   "refs": [
+    {
+     "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
+     "doi": "10.1371/journal.pgen.1005670"
+    }
+   ],
+   "note": "Codon 220, base 2. The one significant marker inside ub3 in the NAM ear row number scan, and not a site in this release.",
+   "needs_review": null,
+   "tagged_by": null,
+   "pos": 205415107
+  },
+  {
+   "id": "SC0012",
+   "gene": "Zm00001eb116010",
+   "symbol": "Bx13",
+   "label": "Start codon change (natural knockout, Oh43 type)",
+   "kind": "causal",
+   "variant_type": "start_codon",
+   "status": "not_a_site",
+   "chr": "chr2",
+   "evidence": "validated",
+   "trait": "Benzoxazinoid profile (DIM2BOA-Glc)",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Handrick V, et al. 2016. Plant Cell 28:1682-1700",
+     "doi": "10.1105/tpc.16.00065"
+    }
+   ],
+   "note": "The start-codon site is not in this release. The haplotype is recovered by SC0017.",
+   "needs_review": null,
+   "tagged_by": "SC0017",
+   "pos": 237501769
+  },
+  {
+   "id": "SC0013",
+   "gene": "Zm00001eb300220",
+   "symbol": "tin1",
+   "label": "Splice-site variant",
+   "kind": "causal",
+   "variant_type": "splice_site",
+   "status": "not_locatable",
+   "chr": "chr7",
+   "evidence": "validated",
+   "trait": "Tillering",
+   "grin_descriptor": "TILLER-NUMBER",
+   "refs": [
+    {
+     "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
+     "doi": "10.1038/s41467-019-13425-6"
+    }
+   ],
+   "note": "The B73 v5 gene model has a single exon, so no splice consequence can be annotated, and no variant in the gene is enriched in sweet corn or popcorn.",
+   "needs_review": null,
+   "tagged_by": null,
+   "start": 6007514,
+   "end": 6008541
+  },
+  {
+   "id": "SC0014",
+   "gene": "Zm00001eb428470",
+   "symbol": "crtRB1",
+   "label": "5' transposon, InDel4 and 3' transposon alleles",
+   "kind": "causal",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr10",
+   "evidence": "associated",
+   "trait": "Beta-carotene content",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
+     "doi": "10.1038/ng.551"
+    }
+   ],
+   "note": "The favorable alleles are transposon and indel haplotypes, not sites. An 18 bp in-frame insertion (380 lines) and a stop-gained variant (10 lines) are present instead.",
+   "needs_review": null,
+   "tagged_by": null,
+   "start": 138687404,
+   "end": 138690534
+  },
+  {
+   "id": "SC0015",
+   "gene": "Zm00001eb360640",
+   "symbol": "Htn1",
+   "label": "Extracellular-domain allelic series",
+   "kind": "causal",
+   "variant_type": "series",
+   "status": "unreliable",
+   "chr": "chr8",
+   "evidence": "associated",
+   "trait": "Northern leaf blight resistance",
+   "grin_descriptor": "NORTHERN-LEAF-BLIGHT",
+   "refs": [
+    {
+     "cite": "Hurni S, et al. 2015. Proc Natl Acad Sci USA 112:8780-8785",
+     "doi": "10.1073/pnas.1502522112"
+    },
+    {
+     "cite": "Yang P, et al. 2021. Plant J 106:526-535",
+     "doi": "10.1111/tpj.15183"
+    }
+   ],
+   "note": "Most missense sites in the gene have more heterozygous than homozygous carriers, the signature of reads from related kinase genes.",
+   "needs_review": null,
+   "tagged_by": null,
+   "start": 156052116,
+   "end": 156063408
+  },
+  {
+   "id": "SC0016",
+   "gene": "Zm00001eb375610",
+   "symbol": "ZmCCoAOMT2",
+   "label": "Coding and promoter variants",
+   "kind": "causal",
+   "variant_type": "coding",
+   "status": "not_annotated",
+   "chr": "chr9",
+   "evidence": "validated",
+   "trait": "Resistance to several leaf diseases",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
+     "doi": "10.1038/ng.3919"
+    }
+   ],
+   "note": "The gene model is absent from the annotation behind the consequence calls, so the sites inside it are annotated only as upstream of a neighbor.",
+   "needs_review": null,
+   "tagged_by": null,
+   "start": 17958934,
+   "end": 17960272
+  },
+  {
+   "id": "SC0017",
+   "gene": "Zm00001eb116010",
+   "symbol": "Bx13",
+   "label": "Tag of the Oh43-type knockout haplotype",
+   "kind": "tag",
+   "variant_type": "frameshift_call",
+   "status": "site",
+   "chr": "chr2",
+   "pos": 237501369,
+   "ref": "G",
+   "alt": "GCACTC",
+   "site_gene": null,
+   "evidence": "tag",
+   "trait": "Benzoxazinoid profile (DIM2BOA-Glc)",
+   "grin_descriptor": null,
+   "refs": [
+    {
+     "cite": "Handrick V, et al. 2016. Plant Cell 28:1682-1700",
+     "doi": "10.1105/tpc.16.00065"
+    }
+   ],
+   "note": "Carried by Oh43 and lines descended from it. Annotated as a frameshift, but it is one half of a 9 bp in-frame insertion whose other half is not a site.",
+   "needs_review": null,
+   "expect": {
+    "het": 1,
+    "hom": 29,
+    "site_qc": "PASS"
+   },
+   "consequence": "frameshift_variant",
+   "substitution": null
+  },
+  {
+   "id": "SC0018",
+   "gene": "Zm00001eb402840",
+   "symbol": "White Cap (wc1)",
+   "label": "Tag of the White Cap haplotype",
+   "kind": "tag",
+   "variant_type": "upstream",
+   "status": "site",
+   "chr": "chr9",
+   "pos": 158489699,
+   "ref": "C",
+   "alt": "T",
+   "site_gene": "Zm00001eb402830",
+   "evidence": "tag",
+   "trait": "White endosperm",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
+     "doi": "10.1534/genetics.116.198911"
+    }
+   ],
+   "note": "The causal change is a tandem array of Ccd1 copies. This site, 616 bp from wc1, is homozygous in 58 of 97 white-kernel lines.",
+   "needs_review": null,
+   "expect": {
+    "het": 29,
+    "hom": 85,
+    "site_qc": "HET_ELEVATED"
+   },
+   "consequence": "upstream_gene_variant",
+   "substitution": "."
+  },
+  {
+   "id": "SC0019",
+   "gene": "Zm00001eb014290",
+   "symbol": "p1",
+   "label": "Lead SNP for pericarp and cob pigment",
+   "kind": "published_marker",
+   "variant_type": "synonymous",
+   "status": "site",
+   "chr": "chr1",
+   "pos": 47924442,
+   "ref": "T",
+   "alt": "C",
+   "site_gene": "Zm00001eb014260",
+   "evidence": "associated",
+   "trait": "Cob color, pericarp pigmentation",
+   "grin_descriptor": "COB-COLOR",
+   "refs": [
+    {
+     "cite": "Schoemaker DL, et al. 2024. G3 14:jkad256",
+     "doi": "10.1093/g3journal/jkad256"
+    }
+   ],
+   "note": "The strongest association for pericarp pigmentation in the Wisconsin Diversity panel, and homozygous in 335 of 346 white-cob lines here. It lies in the paralog p2, 24 kb from the p1 repeat cluster.",
+   "needs_review": null,
+   "expect": {
+    "het": 10,
+    "hom": 369,
+    "site_qc": "PASS"
+   },
+   "consequence": "synonymous_variant",
+   "substitution": "S165S"
+  },
+  {
+   "id": "SC0020",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "Tag of the sulfonylurea-susceptible haplotype",
+   "kind": "tag",
+   "variant_type": "synonymous",
+   "status": "site",
+   "chr": "chr5",
+   "pos": 6979580,
+   "ref": "G",
+   "alt": "A",
+   "site_gene": "Zm00001eb214420",
+   "evidence": "tag",
+   "trait": "Response to sulfonylurea herbicides",
+   "grin_descriptor": "RESPONSE_SULFONYLUREAS",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    },
+    {
+     "cite": "Nordby JN, et al. 2008. Weed Sci 56:376-382",
+     "doi": "10.1614/ws-07-145.1"
+    }
+   ],
+   "note": "Homozygous in 16 of 19 susceptible and 4 of 32 tolerant lines. It lies 14 kb from CYP81A9 in the neighboring P450 gene; no coding variant inside CYP81A9 separates the groups.",
+   "needs_review": null,
+   "expect": {
+    "het": 6,
+    "hom": 119,
+    "site_qc": "PASS"
+   },
+   "consequence": "synonymous_variant",
+   "substitution": "G363G"
+  },
+  {
+   "id": "SC0021",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "Lead NAM SNP of the photoperiod peak",
+   "kind": "published_marker",
+   "variant_type": "intergenic",
+   "status": "site",
+   "chr": "chr10",
+   "pos": 96218834,
+   "ref": "C",
+   "alt": "T",
+   "site_gene": null,
+   "evidence": "associated",
+   "trait": "Photoperiod response, flowering-time plasticity",
+   "grin_descriptor": "GDU-SILK-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
+     "doi": "10.1073/pnas.1203189109"
+    },
+    {
+     "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
+     "doi": "10.1073/pnas.1310949110"
+    },
+    {
+     "cite": "Wang C, et al. 2017. New Phytol 215:1503-1515",
+     "doi": "10.1111/nph.14688"
+    },
+    {
+     "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
+     "doi": "10.1101/gr.279027.124"
+    }
+   ],
+   "note": "The causal variant is a transposon in the promoter. This marker, 40 kb from the gene, is homozygous in 14 of 86 tropical lines and no Stiff Stalk, Non-Stiff Stalk or Iodent line.",
+   "needs_review": null,
+   "expect": {
+    "het": 2,
+    "hom": 23,
+    "site_qc": "PASS"
+   },
+   "consequence": "intergenic_region",
+   "substitution": null
+  }
+ ]
+}

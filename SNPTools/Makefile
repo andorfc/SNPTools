@@ -22,7 +22,7 @@ CHRS := 1 2 3 4 5 6 7 8 9 10
 # stores processed in parallel by the site-QC builder
 JOBS ?= 4
 
-.PHONY: help samples catalog regions geo-layers store site-qc site-qc-check local-store start stop test
+.PHONY: help samples catalog regions geo-layers store site-qc site-qc-check curate local-store start stop test
 help:
 	@echo "samples     data/zmgrin2026_samples.tsv       (T0= CROSSWALK= [RELEASE_MANIFEST=] [EXTRA_SAMPLES=])"
 	@echo "catalog     js/zmgrin.catalog.js + data/traits (T5= T4B= T4C= CROSSWALK=)"
@@ -31,6 +31,7 @@ help:
 	@echo "store       hdf5/version3/zmgrin2026_chr*_impute.h5 from RELEASE_VCF_DIR (full release; large)"
 	@echo "site-qc     per-site counts beside each store (*.siteqc.h5), data/qc/ + js/zmgrin.lineqc.js  [JOBS=4]"
 	@echo "site-qc-check  verify the sidecars against their stores"
+	@echo "curate      js/snpcurate.data.js from data/curate/snpcurate.source.json (needs the stores + sidecars)"
 	@echo "local-store small test store from localdev/fixtures"
 	@echo "start/stop  local PHP server on 127.0.0.1:8877;  test  headless end-to-end checks"
 
@@ -58,6 +59,8 @@ site-qc:
 	$(PYTHON_PATH) tools/build_site_qc.py --summary --jobs $(JOBS)
 site-qc-check:
 	$(PYTHON_PATH) tools/build_site_qc.py --check
+curate:
+	$(PYTHON_PATH) tools/build_snpcurate.py
 local-store:
 	PYTHON_PATH=$(PYTHON_PATH) localdev/build_test_store.sh
 start:

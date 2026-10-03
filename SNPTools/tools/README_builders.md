@@ -9,6 +9,7 @@ All builders are Python 3.8+ standard library unless noted. Outputs mirror `SNPT
 | `build_maize_snpgeo_data.py` | `js/snpgeo.regions.js` (and `data/geo/countries.geo.json`) | Natural Earth admin-0, samples TSV, T5, crosswalk |
 | `build_geo_layers.py` | `data/geo/countries.geo.json`, `data/geo/admin1_na.geo.json` | Natural Earth v5.1.2 admin-0 110m, admin-1 10m (see `data/geo/PROVENANCE.md`) |
 | `vcf_to_h5.py` (h5py, numpy) | `hdf5/version3/zmgrin2026_<chr>_impute.h5` | one release VCF per chromosome |
+| `build_snpcurate.py` (h5py, numpy) | `js/snpcurate.data.js`; with `--table`, the benchmark table (.tsv + .md) | `data/curate/snpcurate.source.json`, the stores and sidecars, `js/zmgrin.catalog.js`, `data/traits/zmgrin2026.traits.json`, `gff/genes_index.txt` |
 | `build_site_qc.py` (h5py, numpy) | `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5`; with `--summary`, `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv`, `js/zmgrin.lineqc.js` | the stores (read-only) |
 
 The files committed in this branch were built for release v1.4 (933 samples = 926 imputed
@@ -54,6 +55,24 @@ total, and the per-line table. A clean site is `PASS` with NHOM >= 3 (16,463,157
 v1.4). A line's share is its heterozygous calls at clean sites over the clean sites: class H
 (heterozygous sample) above 0.05, E (elevated heterozygosity) above 0.02, I (inbred) otherwise.
 Release v1.4: 20 H, 26 E, 887 I.
+
+## build_snpcurate.py (SNPCurate)
+
+`make curate`. The registry is `data/curate/snpcurate.source.json`, edited by hand (one entry per
+published allele: gene and symbol, label, kind `causal` / `published_marker` / `tag`, variant type,
+status `site` / `not_a_site` / `not_locatable` / `structural` / `unreliable` / `not_annotated`, the site
+(chr, pos, ref, alt) or the position or interval where known, `site_gene` when the site is annotated in
+another gene, evidence `validated` / `associated` / `tag`, the trait and its GRIN descriptor, references
+with DOIs, a note, `needs_review`, `tagged_by`, and an `expect` block of het / hom / class for tests).
+For each site entry the builder finds exactly one site (else it stops) and computes the carriers
+(per subpopulation and country of origin, with each group's total), the Site QC class, the allele
+frequency, MAF and maxR², the consequence and substitution of `site_gene` or `gene` read as the app
+reads them, the seven scores, the combined score and priority (as `Data.impactPriority`), the trait by
+genotype, and for a missense entry its rank by each score among the gene's missense variants with a
+carrier. A non-site entry is checked to have no site at its position or codon. It stops when a count
+differs from the `expect` block. Marks: gold (causal, validated, a site, nothing to review), outline
+(any other site), grey (not a site). Release v1.4: 21 entries, 14 sites; gold 2, outline 12, grey 7.
+`--table <out.tsv>` also writes the benchmark table, one row per entry, and the same as Markdown.
 
 ## annotate_release_info.py (SNPVersity annotation INFO for zmgrin2026_imp)
 

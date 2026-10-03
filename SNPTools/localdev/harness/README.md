@@ -121,9 +121,16 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    symlinks without the file: no facet, no marker, no error. With the file loaded, scenario 1's facet
    checks include the added facet.
 
+15. SNPCurate, `check_snpcurate.py` (needs the full stores): the table, the filters and the two sorts,
+   every record as drawn (facts, the seven scores with their rank in the gene, subpopulation, country
+   and trait rows, the reason a grey allele cannot be shown, references as DOI links) and the three
+   buttons of SC0001. The checker recomputes every number from `data/curate/snpcurate.source.json`, the
+   stores read through `h5_to_vcf.py`, the catalogue, the trait file and `gff/genes_index.txt`,
+   independently of `tools/build_snpcurate.py`, and confirms the 7 non-site entries have no site.
+
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py` and `check_site_qc_ui.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py` and `check_snpcurate.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

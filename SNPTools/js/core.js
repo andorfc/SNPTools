@@ -31,7 +31,7 @@ const ICONS = {
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snpgwas','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold', 'snpgeo']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction','snpcurate', 'snpfold', 'snpgeo']},
   {label:'Compare & Relate', tools:['snpcompare','snptree']},
   {label:'External plugin', tools:['paneffect']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
@@ -61,6 +61,10 @@ const TOOLS = {
     tag:'Give variants biological and genomic context',
     desc:'Add biological context by integrating gene models, regulatory features, conservation, and nearby genomic evidence — interpreting variants within their local genomic region.',
     feats:[['func','Gene & domain view','Place variants on gene models and protein domains.'],['dna','Conservation layers','Overlay conservation and functional evidence tracks.'],['search','Local context','Read variants against nearby genomic features.']]},
+  snpcurate:{name:'SNPCurate', icon:'check', color:'#a16207', cat:'Explore & Analyze',
+    tag:'Published alleles and what this release shows of them',
+    desc:'A registry of published maize alleles: validated causal changes, published markers and tagging sites, each with its carriers, Site QC class, scores and trait means in this release, or the reason the release cannot show it.',
+    feats:[['check','Curated alleles','Gold, outline and grey marks for what the release can show.'],['dna','Carriers','Hand the carriers to SNPVersity or the allele to SNPGeo.'],['func','Benchmark','The published alleles the paper benchmarks against.']]},
   snpcompare:{name:'SNPCompare', icon:'compare', color:'#0e7490', cat:'Compare & Relate',
     tag:'Compare accessions, loci, and haplotypes',
     desc:'Support side-by-side comparison of selected accessions, loci, or haplotypes to reveal shared and distinguishing variants.',
@@ -139,7 +143,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpgwas:'new',snpversity:'updated',snptrait:'new',snpgeo:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
+        const _bl={snpgwas:'new',snpversity:'updated',snptrait:'new',snpgeo:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpcurate:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">

@@ -208,6 +208,13 @@ chromosome by chromosome (a dashed header and a note above the table).
    *Heterozygous sample*, select visible and send them to SNPVersity: the 20 lines carry a "het" marker
    in the selection chips and the table header (ZmG_CH9: heterozygous at 27.1% of clean sites). The
    CSV and JSON exports add `sampleQC` and `hetShare`. SNPFunction marks them in the carrier chips.
+10. **SNPCurate** ("Explore & Analyze"): 21 published alleles, gold 2 / outline 12 / grey 7. Open
+   *tga1* (SC0001): homozygous in 7 of 7 *Z. parviglumis* lines and no other, priority LOW (combined
+   +0.65). *Carriers in SNPVersity* selects those 7 lines on the tga1 interval, *Gene in SNPFunction*
+   opens Zm00001eb175150, *On the map* shows the site for all 933 lines in SNPGeo. *p1* (SC0019): cob
+   color White 335 of 346, Red 11 of 543; United States 248 of 749, Mexico 43 of 44. A grey entry such
+   as *su1* W578R (SC0010) says why the release cannot show it. Rebuild with `make curate` after editing
+   `data/curate/snpcurate.source.json`.
 
 **Server limits and VCF clean-up (patch 0038).** `h5_to_vcf.py` refuses a request of more than
 `SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933

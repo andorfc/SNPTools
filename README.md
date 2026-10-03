@@ -84,6 +84,7 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
     │   ├── snppaneffect.js  paneffect-*.js  pe/                      # PanEffect (native port)
     │   ├── zmgrin.catalog.js           # GRIN-linked lines + SNPTrait schema (generated)
     │   ├── zmgrin.lineqc.js            # per-line heterozygosity (generated, tools/build_site_qc.py)
+    │   ├── snpcurate.js  snpcurate.data.js   # SNPCurate page + its registry (generated, tools/build_snpcurate.py)
     │   ├── accessions.catalog.js       # catalogue of the earlier datasets (generated)
     │   ├── accessions.real.js          # legacy flat accession list (fallback)
     │   └── mgdb-genome-groups.js       # NAM founder heterotic-group colours (from MaizeGDB)
@@ -116,6 +117,7 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
 | **SNPTrait** | Select lines by GRIN passport and evaluation data: panel, subpopulation, origin, improvement status, kernel type, binned and numeric trait ranges, and sample heterozygosity (Inbred / Elevated heterozygosity / Heterozygous sample, from `js/zmgrin.lineqc.js`). Several values in one filter section are ORed, sections are ANDed. Send the lines to SNPVersity (replace or add). |
 | **SNPImpact** | Ranks a region's variants by a combined PlantCAD + ESM score with the predicted consequence and Pfam domain; filters and a shortlist. Flagged and no-carrier sites are hidden by default (Site QC filter; the note above the table says how many). |
 | **SNPFunction** | A gene dossier: domains, MaizeGDB's Gene Ontology and pathway views (read live from the MaizeGDB record API; the local annotation file is the fallback), and the gene's variant burden and damaging alleles across the whole panel, with their carriers. It classes every site from its own carrier counts: the allele list, knockout lines and burden use usable sites, flagged calls and alleles with no carrier sit in two collapsed groups, and a banner warns when most protein-changing sites of the gene are flagged. |
+| **SNPCurate** | A registry of published maize alleles (21 in release v1.4: validated causal changes, published markers and tagging sites), each with its carriers by subpopulation and country, Site QC class, scores, priority, rank in its gene and GRIN trait means in this release, or the reason the release cannot show it. Gold, outline and grey marks; hand-offs of the carriers to SNPVersity, the gene to SNPFunction and the site to SNPGeo. |
 | **SNPFold** | Coding variants on the predicted protein structure (AlphaFold2, Boltz2 or ESMFold model): a linear protein browser (domains, secondary structure, pLDDT, InterProScan sites, disorder) and a 3D view. "Usable alleles only" (on by default) leaves flagged and no-carrier variants out of the track, the table and the 3D view. |
 | **SNPGeo** | Where each allele is found: countries, U.S. states, Canadian provinces and Mexican states coloured by reference/alternative composition, carrier fraction or allele frequency, from the GRIN origin of each line. Each variant shows its Site QC class. |
 | **SNPCompare** | Lines ranked by identity-by-state to a focal line: genome-wide (precomputed), in the region, or both with the difference. Opens SNPMatrix for the region's pairwise matrix. The region scope uses usable sites by default ("Region sites"); the genome-wide matrices use all sites. |
@@ -207,6 +209,8 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 | `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.3-2.6 GB per chromosome) |
 | `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | h5_to_vcf.py | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
 | `data/qc/zmgrin2026.siteqc.summary.json`, `zmgrin2026.lineqc.tsv` | reports, help text | site classes per chromosome and in total; per-line heterozygosity (generated) |
+| `data/curate/snpcurate.source.json` | build_snpcurate.py | SNPCurate's registry of published alleles, edited by hand |
+| `js/snpcurate.data.js` | SNPCurate (optional) | the registry with each site's carriers, class, scores, priority and trait means in this release (`window.SNP_CURATE`, generated) |
 | `js/zmgrin.lineqc.js` | SNPTrait, SNPVersity, SNPFunction (optional) | per-line heterozygous share at clean sites and its class (`window.SNP_LINE_QC`, generated); `Data.accessionsFor` adds `hetShare` and `sampleQC` to each line |
 | `data/domains/by_chr/<chr>.json` (fallback `domains.by_chr.json`) | SNPVersity, SNPImpact | Pfam domain blocks by genomic position |
 | `data/domains/domains.by_gene.json`, `domains.by_protein.json` | SNPImpact, SNPFold, SNPFunction | each gene's canonical-protein domains |
@@ -236,6 +240,7 @@ The builders for the GRIN-linked dataset are in `SNPTools/tools/` (details in
 | `annotate_release_info.py` | the SnpEff, MAF, maxR², site QC (`NHET`, `NHOM`, `SITEQC`) and language-model INFO fields of a release VCF |
 | `maxr2_chr.sh`, `check_r2.py` | the maxR² table (PLINK 1.9) and its independent check |
 | `vcf_to_h5.py` | `hdf5/version3/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
+| `build_snpcurate.py` | `js/snpcurate.data.js` from `data/curate/snpcurate.source.json` (`make curate`); `--table` writes the benchmark table |
 | `build_site_qc.py` | the `.siteqc.h5` sidecar beside each store; with `--summary`, `data/qc/` and `js/zmgrin.lineqc.js` (`make site-qc`) |
 | `build_gene_index.php` | `gff/genes_index.txt` |
 
