@@ -668,8 +668,11 @@ function injectTraitCSS(){
   .ds-pill.on{border-color:var(--blue-600);color:var(--blue-600);background:#eef4ff}
   .ds-pill.on .dot{background:var(--blue-600)}
   .trait-note{background:#fff8ec;border:1px solid #f0dcae;color:#8a6d1e;border-radius:9px;padding:9px 12px;font-size:12.5px;margin:10px 0}
-  .trait-shell{display:grid;grid-template-columns:230px 1fr;gap:16px;margin-top:14px;align-items:start}
-  @media(max-width:820px){.trait-shell{grid-template-columns:1fr}}
+  .trait-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;margin-top:14px;align-items:start}
+  /* minmax(0,1fr), not 1fr: a 1fr track is at least as wide as its content, and a filtered table
+     made the whole page 730-1,016 px wide on a 375 px phone */
+  @media(max-width:820px){.trait-shell{grid-template-columns:minmax(0,1fr)}}
+  .trait-shell>*{min-width:0}
   .trait-facets{border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;position:sticky;top:10px;max-height:80vh;overflow:auto}
   .facet-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:12.5px;margin-bottom:6px}
   .facet-block{margin:10px 0}

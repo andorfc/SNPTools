@@ -1062,12 +1062,12 @@
       .go-group{margin-top:14px}
       .go-ghead{font-size:12.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px;margin-bottom:8px}
       .go-chips{display:flex;flex-wrap:wrap;gap:8px}
-      .go-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-left-width:4px;
-        border-radius:9px;padding:6px 10px;background:#fff;font-size:12.5px;max-width:100%}
+      .go-chip{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;border:1px solid var(--line);border-left-width:4px;
+        border-radius:9px;padding:6px 10px;background:#fff;font-size:12.5px;max-width:100%;min-width:0}
       .go-chip.obs{opacity:.6}
       .go-id{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-decoration:none;white-space:nowrap}
       .go-id:hover{text-decoration:underline}
-      .go-name{color:var(--ink)}
+      .go-name{color:var(--ink);min-width:0;overflow-wrap:anywhere}
       .go-srcs{display:inline-flex;gap:4px}
       .go-src{font:600 9.5px/1 var(--body,'Inter',sans-serif);padding:3px 6px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
       .go-src.curated{background:#e7f3ec;color:#176c3a} .go-src.uniprot{background:#eaf1fc;color:#274b8f} .go-src.pred{background:#f2f0ea;color:#7a5b12}
