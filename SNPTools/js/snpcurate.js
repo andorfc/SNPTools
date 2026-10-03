@@ -21,6 +21,7 @@
     not_annotated: {label:'Gene not annotated', why:'The gene model is missing from the annotation behind the release’s consequence calls.'},
   };
   const MARK_NAME = {gold:'Gold', outline:'Outline', grey:'Grey'};
+  const MARK_ORDER = {gold:0, outline:1, grey:2};
   const SCORE_LABEL = [['pc1','PlantCAD1'],['pc2','PlantCAD2'],['evo2','Evo2'],['esm1','ESM1'],['esm2','ESM2'],['esm3','ESM3'],['esmc','ESM-C']];
   const KIND = {causal:'Causal change', published_marker:'Published marker', tag:'Tagging site'};
   const EVIDENCE = {validated:'Validated', associated:'Associated', tag:'Tag'};
@@ -50,6 +51,8 @@
       (!q || (e.trait+' '+e.symbol+' '+e.gene).toLowerCase().includes(q)) &&
       (CU.fMark==='all' || e.mark===CU.fMark) &&
       (CU.fStatus==='all' || e.status===CU.fStatus));
+    // default order: by mark (gold, outline, grey), then gene name; a header click sorts by gene or carriers
+    if (!CU.sortKey) L = L.slice().sort((a,b)=>(MARK_ORDER[a.mark]-MARK_ORDER[b.mark]) || String(a.symbol).localeCompare(String(b.symbol)) || a.id.localeCompare(b.id));
     if (CU.sortKey==='gene') L = L.slice().sort((a,b)=>CU.sortDir*String(a.symbol).localeCompare(String(b.symbol)) || a.id.localeCompare(b.id));
     if (CU.sortKey==='carriers') L = L.slice().sort((a,b)=>{ const x=carriers(a), y=carriers(b);
       if (x==null && y==null) return a.id.localeCompare(b.id); if (x==null) return 1; if (y==null) return -1; return CU.sortDir*(x-y); });

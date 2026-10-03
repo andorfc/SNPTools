@@ -230,7 +230,9 @@ check([l['badge'] for l in K['legend']] == ['cur-badge cur-gold', 'cur-badge cur
 
 # (d) the page as drawn
 check(K['nav'] == ['SNPCuratenew'] and not K.get('consoleErrors'), f"nav item {K['nav']}; no script errors {K.get('consoleErrors')}")
-order = [e['id'] for e in src['entries']]
+# the table opens sorted by mark (gold, outline, grey), then gene name (case-insensitive), then id
+MARK_ORDER = {'gold': 0, 'outline': 1, 'grey': 2}
+order = [e['id'] for e in sorted(src['entries'], key=lambda e: (MARK_ORDER[EXP[e['id']]['mark']], e['symbol'].lower(), e['id']))]
 tbl_ok = [r['id'] for r in K['table']] == order
 for r in K['table']:
     e = next(x for x in src['entries'] if x['id'] == r['id']); x = EXP[r['id']]
@@ -238,13 +240,14 @@ for r in K['table']:
     want = [f"{e['symbol']}{e['gene']}", e['label'], e['trait'], STATUS[e['status']],
             f"{x['nHet']:,} / {x['nHom']:,}" if 'nHet' in x else '—', QC_LABEL.get(x.get('qc'), ''), x.get('priority', '—')]
     if cells[:7] != want or r['badge'] != f"cur-badge cur-{x['mark']}": tbl_ok = False; print('   row', r['id'], cells[:7], want)
-check(tbl_ok, f"table: {len(K['table'])} rows in source order with mark, gene, change, trait, status, carriers, Site QC, priority")
+check(tbl_ok, f"table: {len(K['table'])} rows by mark then gene ({', '.join(order[:4])}, ...) with mark, gene, change, trait, status, carriers, Site QC, priority")
 F = K['filters']
 carr = lambda i: EXP[i]['nHet'] + EXP[i]['nHom'] if 'nHet' in EXP[i] else None
-want_c = sorted([i for i in order if carr(i) is not None], key=lambda i: (-carr(i), order.index(i))) + [i for i in order if carr(i) is None]
+src_order = [e['id'] for e in src['entries']]     # a header sort starts from the source order; ties by id
+want_c = sorted([i for i in src_order if carr(i) is not None], key=lambda i: (-carr(i), src_order.index(i))) + [i for i in src_order if carr(i) is None]
 want_g = sorted(order, key=lambda i: (next(e['symbol'] for e in src['entries'] if e['id'] == i).lower(), i))
-check(F['gold'] == marks['gold'] and F['grey'] == marks['grey'] and F['site'] == [i for i in order if 'nHet' in EXP[i]]
-      and F['kernel'] == [e['id'] for e in src['entries'] if 'kernel' in (e['trait'] + ' ' + e['symbol'] + ' ' + e['gene']).lower()] and len(F['kernel']) > 1
+check(F['gold'] == [i for i in order if i in marks['gold']] and F['grey'] == [i for i in order if i in marks['grey']] and F['site'] == [i for i in order if 'nHet' in EXP[i]]
+      and F['kernel'] == [i for i in order for e in src['entries'] if e['id'] == i and 'kernel' in (e['trait'] + ' ' + e['symbol'] + ' ' + e['gene']).lower()] and len(F['kernel']) > 1
       and F['byCarriers'] == want_c and [i.lower() for i in F['byGene']] == [i.lower() for i in want_g],
       f"filters (gold {len(F['gold'])}, grey {len(F['grey'])}, sites {len(F['site'])}, 'kernel' {len(F['kernel'])}) and sorts (carriers, gene)")
 for e in src['entries']:
