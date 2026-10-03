@@ -66,6 +66,8 @@ const SNPCompare = (function () {
     input:null,            // local hand-off {rows, accs, chr, start, end, dataset,...}
     globalCache:{},        // '<family>|<sites>|<focalId>' -> {rows, demo}
     gsites:'all',          // genome-wide matrix: 'all' variant sites or 'snp' (when the family has it)
+    sites:null,            // region scope: 'usable' | 'all' (null = Data.SITE_QC_DEFAULTS.distance)
+    _region:null,          // the region hand-off with the rows actually used
     allRows:[], gdemo:false, _meta:null, _metaDs:null,
 
     /* --- matrix / scale state --- */
@@ -103,10 +105,28 @@ const SNPCompare = (function () {
     return out;
   }
 
+  /* Site QC: by default the region scope uses usable sites only (PASS, HET_ELEVATED); "All
+     sites" uses every site. A result without Site QC classes always uses every site. The
+     genome-wide matrices are precomputed over all sites. */
+  function siteMode(){ return ST.sites || Data.SITE_QC_DEFAULTS.distance; }
+  function regionHasQc(){ return !!(ST.input && Data.hasSiteQc(ST.input.rows)); }
+  function regionInput(){
+    if(!ST.input) return null;
+    const mode = regionHasQc() ? siteMode() : 'all';
+    if(ST._region && ST._region.src===ST.input && ST._region.mode===mode) return ST._region.input;
+    const input = mode==='all' ? ST.input : Object.assign({}, ST.input, {rows: Data.usableRows(ST.input.rows), siteMode: mode});
+    ST._region = {src:ST.input, mode, input};
+    return input;
+  }
+  function sitesUsedText(){
+    const r=regionInput();
+    return (r && regionHasQc()) ? ` · <span id="cmpSitesUsed"><b>${r.rows.length.toLocaleString()}</b> of ${ST.input.rows.length.toLocaleString()} sites used</span>` : '';
+  }
+
   /* full n×n IBS from a SNPVersity result, cached on the hand-off */
   function pairKey(input){
     return [input.dataset,input.chr,input.start,input.end,
-            input.rows.length,input.accs.map(a=>a.id).join('|')].join('~');
+            input.rows.length,input.siteMode||'all',input.accs.map(a=>a.id).join('|')].join('~');
   }
   function allPairs(input){
     if(!input||!input.accs||!input.rows) return null;
@@ -358,7 +378,7 @@ const SNPCompare = (function () {
     const ds=ST.dataset, meta=metaMap(ds);
     let g=null, l=null;
     if(ST.mode==='global'||ST.mode==='both') g=await getGlobal(ds, ST.focal);
-    if(ST.mode==='local' ||ST.mode==='both') l=localCompute(ST.input, ST.focal);
+    if(ST.mode==='local' ||ST.mode==='both') l=localCompute(regionInput(), ST.focal);
     const byId={};
     const add=id=>{ if(!byId[id]) byId[id]=Object.assign({id}, meta[id]||{name:id,run:id,bio:''}); return byId[id]; };
     if(g) g.rows.forEach(r=>{ const x=add(r.id); x.gsim=r.sim; x.gmiss=r.miss; });
@@ -505,6 +525,9 @@ const SNPCompare = (function () {
             <option value="all" ${ST.gsites!=='snp'?'selected':''}>All variants</option>
             <option value="snp" ${ST.gsites==='snp'?'selected':''}>SNPs only</option></select></div>` : ''}
         ${region?`<div><div class="fl-lbl">Region</div><div class="c-mono" style="color:var(--blue-600);font-size:13px;padding:8px 0">${region}</div></div>`:''}
+        ${region && regionHasQc()?`<div id="cmpSites"><div class="fl-lbl" data-tt="Region scope: usable sites leave out flagged sites (het only, het excess) and sites with no carrier in this release. The genome-wide matrices use all sites.">Region sites</div>
+          <button class="qbtn ${siteMode()==='usable'?'solid':''}" onclick="SNPCompare.setSites('usable')">Usable only</button>
+          <button class="qbtn ${siteMode()==='all'?'solid':''}" onclick="SNPCompare.setSites('all')">All sites</button></div>`:''}
       </div>
       ${!gAvail?`<div class="mtx-note" style="margin-top:12px">No precomputed genome-wide IBS matrix is installed for <b>${esc(dsName)}</b> (expected in <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>). Use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`
         :(Data.familyOf(ds)!=='mgdb2026'?`<div class="mtx-note" id="cmpGNote" style="margin-top:12px">Genome-wide: precomputed IBS over the whole release (${((gProbe()||{}).n||0).toLocaleString()} lines${ST.gsites==='snp'?', SNPs only':', all variant sites'}), <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>.</div>`:'')}
@@ -596,8 +619,8 @@ const SNPCompare = (function () {
       </div>`;
       return;
     }
-    const P = hasLocal()? allPairs(ST.input) : null;
-    const total = P? P.total : (ST.input? ST.input.rows.length : 0);
+    const P = hasLocal()? allPairs(regionInput()) : null;
+    const total = P? P.total : (ST.input? regionInput().rows.length : 0);
     const thr = minSites(total);
     const needScale = ST.view==='matrix'||ST.view==='spread';
     const needMask  = ST.view!=='table';
@@ -780,20 +803,22 @@ const SNPCompare = (function () {
       return `<tr class="${focal?'cmp-focal':''}">${tds}</tr>`;
     }).join('');
     wrap.innerHTML=`<table class="cmp-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-    counter(`Showing <b>${rows.length.toLocaleString()}</b> of <b>${ST.allRows.length.toLocaleString()}</b> accessions for “${esc(ST.focal||'')}”.`);
+    counter(`Showing <b>${rows.length.toLocaleString()}</b> of <b>${ST.allRows.length.toLocaleString()}</b> accessions for “${esc(ST.focal||'')}”.${ST.mode!=='global'?sitesUsedText():''}`);
     banner();
   }
   function counter(html){ const c=document.getElementById('cmpCount'); if(c) c.innerHTML=html; }
   function banner(){
     const ban=document.getElementById('cmpBanner'); if(!ban) return;
-    ban.innerHTML = (ST.gdemo && ST.mode!=='local')
-      ? `<div class="mtx-note">Genome-wide values shown here are <b>demonstration data</b>. Connect <span class="c-mono">ibsCompare.php</span> and set <span class="c-mono">useDemoGlobal=false</span> in snpcompare.js to load your precomputed IBS scores.</div>` : '';
+    ban.innerHTML = ((ST.gdemo && ST.mode!=='local')
+      ? `<div class="mtx-note">Genome-wide values shown here are <b>demonstration data</b>. Connect <span class="c-mono">ibsCompare.php</span> and set <span class="c-mono">useDemoGlobal=false</span> in snpcompare.js to load your precomputed IBS scores.</div>` : '')
+      + ((ST.mode==='both' && regionHasQc() && siteMode()!=='all')
+      ? `<div class="mtx-note" id="cmpGwAllSites">Genome-wide values include all sites.</div>` : '');
   }
 
   /* ---------------- matrix ---------------- */
   function renderMatrix(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
     const L=layout(P), order=L.order, k=order.length;
     if(!k){ wrap.innerHTML=notice('Every accession was removed by the missing-data filter. Raise the threshold.'); return; }
@@ -915,14 +940,14 @@ const SNPCompare = (function () {
     });
 
     const dropped=P.n-k;
-    counter(`<b>${k}</b> accessions × <b>${P.total.toLocaleString()}</b> sites${dropped?` · <b>${dropped}</b> hidden by the missing-data filter`:''} · region ${esc(ST.input.chr)}:${(+ST.input.start).toLocaleString()}–${(+ST.input.end).toLocaleString()}`);
+    counter(`<b>${k}</b> accessions × <b>${P.total.toLocaleString()}</b> sites${dropped?` · <b>${dropped}</b> hidden by the missing-data filter`:''} · region ${esc(ST.input.chr)}:${(+ST.input.start).toLocaleString()}–${(+ST.input.end).toLocaleString()}${sitesUsedText()}`);
     banner();
   }
 
   /* ---------------- PCoA map ---------------- */
   function renderMDS(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<3){ wrap.innerHTML=notice('PCoA needs at least three accessions in the region result.'); return; }
     const L=layout(P), res=pcoa(P,L.order);
     if(!res){ wrap.innerHTML=notice('Not enough measurable pairs to place the accessions.'); return; }
@@ -971,7 +996,7 @@ const SNPCompare = (function () {
       <div class="mtx-note" style="margin-top:10px">Classical multidimensional scaling of the distance matrix (1 − similarity).
       Distances between unmeasurable pairs are imputed with the panel mean, so a poorly covered accession drifts toward the centre
       rather than to an extreme — points are faded in proportion to their mean missing data. Click a point to make it focal.${declutNote}</div>`;
-    counter(`<b>${res.pts.length}</b> accessions placed · masking below <b>${thr.toLocaleString()}</b> co-called sites.`);
+    counter(`<b>${res.pts.length}</b> accessions placed · masking below <b>${thr.toLocaleString()}</b> co-called sites.${sitesUsedText()}`);
     banner();
   }
 
@@ -1064,14 +1089,14 @@ const SNPCompare = (function () {
     becomes the full width of the panel. ${unmeas?`<b>${unmeas}</b> accession${unmeas>1?'s are':' is'} not shown — too few co-called sites to estimate.`:''}
     Hover for values, click a point to make it focal.</div>`;
     drawLegend(sc);
-    counter(`<b>${items.length}</b> accessions plotted for “${esc(ST.focal||'')}”.`);
+    counter(`<b>${items.length}</b> accessions plotted for “${esc(ST.focal||'')}”.${ST.mode!=='global'?sitesUsedText():''}`);
     banner();
   }
 
   /* ---------------- diagnostics ---------------- */
   function renderDiag(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
     const thr=minSites(P.total);
     const pts=[]; const fi=P.ids.indexOf(ST.focal);
@@ -1119,7 +1144,7 @@ const SNPCompare = (function () {
       if(wrap) wrap.innerHTML=notice(`Focal accession “${esc(ST.focal)}” isn’t in the region result. Pick one of the accessions you queried, or switch scope to Genome-wide.`); return;
     }
     if(ST.mode!=='global' && ST.input){
-      const A=ST.input.accs.length, V=(ST.input.rows&&ST.input.rows.length)||0;
+      const A=ST.input.accs.length, V=regionInput().rows.length;   // the sites actually used
       if(ibsWork(V,A) > IBS_COST.cmpWorkBlock || V*A > IBS_COST.cmpMemBlock){
         if(wrap) wrap.innerHTML=notice('Selected data too large for SNPCompare - choose a smaller region, a lower-density SNP set, or fewer accessions, then re-run in SNPVersity.'); return;
       }
@@ -1175,6 +1200,9 @@ const SNPCompare = (function () {
   /* clicking inside a rendered plot refocuses AND re-runs that view */
   function pick(id){ ST.focal=id; ST._layout=null;
     const el=document.getElementById('cmpFocal'); if(el) el.value=id; refreshAccList(); recompute(); }
+  /* region sites are an option like scope: switching does not run — it returns to idle */
+  function setSites(v){ ST.sites=v; ST._layout=null; ST.ran=false;
+    document.getElementById('page').innerHTML=shell(); showIdle(); }
   /* scope is an option: switching it does not run — it returns to idle */
   function setMode(m){
     if((m==='local'||m==='both') && !ST.input) return;
@@ -1277,7 +1305,7 @@ const SNPCompare = (function () {
   }
   /* long-format matrix export: one row per pair, with the mask flag kept explicit */
   function exportMatrixCSV(){
-    const P=allPairs(ST.input); if(!P) return;
+    const P=allPairs(regionInput()); if(!P) return;
     const thr=minSites(P.total);
     const out=['a_id,b_id,a_name,b_name,similarity,distance,co_called_sites,total_sites,missing_pct,measurable'];
     for(let a=0;a<P.n;a++) for(let b=a+1;b<P.n;b++){
@@ -1331,7 +1359,7 @@ const SNPCompare = (function () {
 
   if(typeof SNPTools!=='undefined') SNPTools.register('snpcompare', { render });
 
-  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setView, setGSites, setDataset, globalAvailable,
+  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setSites, regionInput, setView, setGSites, setDataset, globalAvailable,
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
            clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage, forceRun,
            // testing / debugging

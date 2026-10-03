@@ -36,7 +36,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    the GRIN-linked set (release v1.4: all 26 NAM names translated to 26 ZmG_* samples, none
    reported as not available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
-7. SNPVersity annotation columns: the 13 columns (Gene model ... ESM3) for the GRIN-linked set
+7. SNPVersity annotation columns: the 14 columns (Gene model ... ESM-C, with Site QC after MAF when the
+   chr2 store has its site-QC sidecar) for the GRIN-linked set
    (chr2 GWAS window from the store; MaizeGDB 2026 HQ and HC, from `../fixtures/mgdb2026_*`, only
    when those sets are offered); MQ and COMP are absent for the GRIN-linked set ('hidden') and
    every row has as many cells as the header; the Domain column is expected filled wherever `data/domains/`
@@ -52,7 +53,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    `distance/zmgrin2026/` files (`check_global_compare.py`, `check_ibs_files.py`: ids = catalogue,
    shapes, symmetry, diagonals, fractions, tree tips).
 9. One gene's consequences at sites SnpEff annotates in several genes (1,464 of the 3,744 fixture sites):
-   SNPFunction's burden and allele catalog and SNPFold's coding variants for Zm00001eb374230,
+   SNPFunction's burden and allele catalog (over usable sites: Site QC PASS or HET_ELEVATED, with the
+   flagged and no-carrier damaging alleles counted apart) and SNPFold's coding variants for Zm00001eb374230,
    Zm00001eb404750, Zm00001eb374090 and Zm00001eb056510; SNPGeo's gene search for
    Zm00001eb374230 (site 13,120,567 reads A471G, not the neighbour's R65P); SNPVersity's "+N"
    markers and gene list on chr9:13,118,306-13,124,164. `check_gene_consequences.py` recomputes
@@ -98,10 +100,22 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    sites, every INFO key of the fixture keeps its value (`ESMC_score`, which the fixtures predate, is
    added), and a store built from its chr9 output gets no second set of the three keys from
    `h5_to_vcf.py`, with or without a sidecar.
+13. Site QC in the pages, `check_site_qc_ui.py` (needs the full chr2/chr4/chr6/chr8/chr10 stores;
+   skipped otherwise). SNPVersity on eight gene intervals (y1, su1, ZmWAK, Bx13, DGAT1-2, Htn1, tga1,
+   crtRB1) with the 26 NAM lines: each row's class, the rows under the three filter choices, the
+   summary line, the column after MAF and its cell text. SNPFunction on the same genes, read from the
+   page: "<v> of <n> sites vary", the allele list and its two groups with their pills, knockout lines and
+   those only in flagged calls, the burden's usable-site count, the banner; recomputed from the
+   933-line VCF its query wrote. SNPImpact on su1 under each choice with the hidden-count note,
+   SNPFold's "Usable alleles only" on Zm00001eb406050, SNPGeo's pills, and SNPTree / SNPMatrix /
+   SNPCompare sites used on chr6:91,593,082-91,793,082 under both settings. The JS rule
+   (`Data.siteQc`) against the rule on all 3,721 (het, hom) pairs 0-60. Then everything again with
+   `SNPTOOLS_SITEQC=0`: no Site QC column, select, note, pill or site control, while SNPFunction (and
+   SNPFold, built on it) give the same lists from their own carrier counts.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py` and `check_site_qc.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py` and `check_site_qc_ui.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

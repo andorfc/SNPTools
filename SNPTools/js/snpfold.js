@@ -30,6 +30,9 @@
     modelPref: 'best',   // 'best' | 'alphafold' | 'boltz' | 'esmfold' — user's model choice for the next load
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
     locus: null,         // {chr,start,end,dataset} for this gene — used for the SNPVersity handoff
+    allVariants: [],     // every coding variant; FD.variants is what the track, table and 3D show
+    hasQc: false,        // the variants carry a Site QC class (geneFunction's full-panel counts)
+    usableOnly: (typeof Data !== 'undefined' && Data.SITE_QC_DEFAULTS) ? Data.SITE_QC_DEFAULTS.fold === 'usable' : true,
     sort: { key: null, dir: 'asc' },     // variant-table sort: column key + direction ('asc'|'desc'); null key = file order
     pendingVariant: null,// {chr,pos,ref,alt,sub,…} handed over by another tool; selected once variants are in hand
     truncation: null,    // {structureLength,maxVariantResidue,beyondCount,sourceLabel} when variants extend past the loaded model
@@ -513,6 +516,7 @@
       esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
       evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
+      qc:v.qc != null ? v.qc : null, nHet:v.nHet != null ? v.nHet : v.het, nHom:v.nHom != null ? v.nHom : v.hom,
     };
   }
   function normalizePrimaryVariant(v, model, index){
@@ -543,6 +547,7 @@
         if (existing.resi == null && normalized.resi != null) existing.resi = normalized.resi;
         if ((!existing.variant || /^\d+\s/.test(existing.variant)) && normalized.variant) existing.variant = normalized.variant;
         if (severeFoldConsequence(normalized)) existing.priority = 'TOP';
+        if (existing.qc == null && normalized.qc != null){ existing.qc = normalized.qc; existing.nHet = normalized.nHet; existing.nHom = normalized.nHom; }
         return;
       }
       if (normalized.resi != null || severeFoldConsequence(normalized)){
@@ -1073,7 +1078,9 @@
          query fails, and convert genomic LOF positions through the canonical CDS
          before drawing the residue lollipop. */
       mergeCanonicalDomains(fn, domainRecords);
-      FD.variants = mergeFoldVariants(variants, fn, geneModel);
+      FD.allVariants = mergeFoldVariants(variants, fn, geneModel);
+      FD.hasQc = FD.allVariants.some(v => v.qc != null);
+      FD.variants = shownVariants();
       detectStructureTruncation();
 
       /* If the app state did not expose the dataset, actual returned 2026 score fields
@@ -1092,7 +1099,7 @@
     catch (e){
       if (stale()) return;
       console.error('SNPFold variant loading error', e);
-      FD.variants = [];
+      FD.variants = []; FD.allVariants = []; FD.hasQc = false;
       FD.carriers = null;
       FD.locus = null;
       FD.truncation = null;
@@ -1114,7 +1121,8 @@
         <span class="dot">·</span><span><b>${s.length}</b> aa</span>
         ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${s.uniprot}" target="_blank" rel="noopener">${s.uniprot}</a></span>`:''}
         <span class="dot">·</span><span>mean pLDDT <b>${meanP}</b></span>
-        <span class="dot">·</span><span><b>${FD.variants.length}</b> coding variants</span>
+        <span class="dot">·</span><span id="foldNVar">${nVariantsHTML()}</span>
+        ${FD.hasQc?`<span class="dot">·</span><label class="chk" data-tt="Hide coding variants whose site is flagged (het only, het excess) or has no carrier in this release, from the track, the table and the 3D view."><input type="checkbox" id="foldUsableOnly" ${FD.usableOnly?'checked':''} onchange="FOLD.setUsableOnly(this.checked)"> Usable alleles only</label>`:''}
       </div>
       ${truncationWarningHTML()}
 
@@ -1614,13 +1622,25 @@
     { key:'priority',    label:'Priority',    type:'num', desc1:true,
       get:v => { const p = v.priority ? PRIO_RANK[String(v.priority).toLowerCase()] : null;
                  return p == null ? null : p; } },
+    { key:'qc',          label:'Site QC',     type:'str', qc:true,
+      get:v => v.qc || null },
     { key:'carriers',    label:'Carriers',    type:'num', num:true, desc1:true,
       get:v => { const c = carrierOf(v);
                  if (!c) return null;
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
+  function foldVisibleCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.qc || FD.hasQc)); }
+  /* Site QC: with "Usable alleles only" (the default) the track, the table and the 3D view show
+     only variants at usable sites (PASS, HET_ELEVATED); flagged and no-carrier ones are hidden. */
+  function shownVariants(){
+    const all = FD.allVariants || [];
+    return (FD.hasQc && FD.usableOnly) ? all.filter(v => Data.qcUsable(v.qc)) : all.slice();
+  }
+  function nVariantsHTML(){
+    const n = (FD.variants || []).length, all = (FD.allVariants || []).length;
+    return n === all ? `<b>${n}</b> coding variants` : `<b>${n}</b> of ${all} coding variants shown`;
+  }
   function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
@@ -1664,6 +1684,7 @@
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',
     priority:'Integrated evidence tier — TOP, HIGH, MODERATE, LOW.',
+    qc:'Site QC — the class of the site from its heterozygous and homozygous carriers across the panel (pass, het elevated, het excess, het only, no carrier).',
     carriers:'Number of accessions carrying this variant (heterozygous plus homozygous).',
   };
   function tableHeadHTML(){
@@ -1703,6 +1724,7 @@
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>
       <td>${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
+      ${FD.hasQc?`<td>${siteQcPill(v.qc, v.nHet, v.nHom)}</td>`:''}
       <td style="text-align:center">${carrierBtn(v, cr, openC)}</td>
       <td style="text-align:center" onclick="event.stopPropagation()">
         <input type="checkbox" title="Highlight this residue in the 3D view even if Variant residues is hidden"
@@ -1990,6 +2012,13 @@
     color(m){ FD.colorMode=m; document.querySelectorAll('.fold-toolbar .seg-b').forEach(b=>b.classList.remove('on'));
       const map={plddt:0,domain:1,impact:2}; const btns=document.querySelectorAll('.fold-toolbar .seg-b'); if(btns[map[m]])btns[map[m]].classList.add('on'); applyStyle(); },
     toggleVar(on){ FD.showVar=on; applyStyle(); },
+    setUsableOnly(on){
+      FD.usableOnly = !!on;
+      FD.variants = shownVariants();
+      if (FD.selId && !FD.variants.some(v => v.id === FD.selId)){ FD.selId = null; if (FD.viewer) FD.viewer.removeAllLabels(); }
+      const n = document.getElementById('foldNVar'); if (n) n.innerHTML = nVariantsHTML();
+      refreshSelection(); applyStyle();
+    },
     /* Force-show/hide a single variant residue in the 3D view independent of
        the blanket "Variant residues" toggle — lets a user highlight just the
        residues they care about instead of all-or-nothing. */

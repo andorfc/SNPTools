@@ -477,7 +477,8 @@ async function until(site, expr, ms = 8000){
       P.genes[gene] = {
         interval: await $(`Data.lookupGene(${g})`),
         fn: await $(`Data.geneFunction(${g}, "zmgrin2026_imp").then(d=>({n:d.nVariants, nAcc:d.nAccessions, byClass:d.burden.byClass, damaging:d.damaging.length,
-              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, evo2:v.evo2, esmc:v.esmc, hom:v.hom, het:v.het})),
+              damagingFlagged:d.damagingFlagged.length, damagingNoCarrier:d.damagingNoCarrier.length, nUsed:d.burden.nUsed,
+              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, evo2:v.evo2, esmc:v.esmc, hom:v.hom, het:v.het, qc:v.qc})),
               means:{evo2:d.burden.meanEvo2, esmc:d.burden.meanEsmc}}))`),
         fold: await $(`Data.queryFoldVariants(${g}, "zmgrin2026_imp").then(a=>a.map(v=>({pos:v.pos, resi:v.resi, variant:v.variant, cls:v.consClass, esm:v.esm, evo2:v.evo2, esmc:v.esmc})))`)};
     }
@@ -660,6 +661,113 @@ async function until(site, expr, ms = 8000){
     s8.window.close();
   }
 
+  /* ---------- Site QC in the pages (check_site_qc_ui.py) ----------
+     With the full stores: SNPVersity on eight gene intervals with the 26 NAM lines (classes, the
+     three filter choices, the note); SNPFunction on the same genes as drawn (sites that vary, the
+     allele list and its two hidden groups, knockout lines, the banner) with the VCF its query
+     wrote; SNPImpact on su1 under each choice; SNPFold's usable filter on Zm00001eb406050 (the gene
+     with a local structure); SNPGeo's pills; SNPTree, SNPMatrix and SNPCompare on
+     chr6:91,593,082-91,793,082 under both site settings; the JS rule on every (het, hom) pair
+     0-60; then all of it again with SNPTOOLS_SITEQC=0 for the PHP process. */
+  if (['chr2', 'chr4', 'chr6', 'chr8', 'chr10'].every(c => (R.store || {})[c] > 100000)){
+    const U = R.siteqcui = {};
+    const GENES = {y1: 'Zm00001eb271860', su1: 'Zm00001eb174590', ZmWAK: 'Zm00001eb116160', Bx13: 'Zm00001eb116010',
+                   'DGAT1-2': 'Zm00001eb277490', Htn1: 'Zm00001eb360640', tga1: 'Zm00001eb175150', crtRB1: 'Zm00001eb428470'};
+    const lastVcf = s => { const e = s.log.filter(x => x.url === 'processForm.php').slice(-1)[0];
+                           try { return JSON.parse(e.reply).outFile || null; } catch (err) { return null; } };
+    const pass = async (s, off) => {
+      const $u = s.$eval, O = {};
+      const nam = $u('JSON.stringify(Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id))');
+      // SNPVersity: each gene interval, 26 NAM lines
+      O.versity = {};
+      for (const [sym, gene] of Object.entries(GENES)){
+        O.versity[sym] = await $u(`(async()=>{ const g=await Data.lookupGene(${JSON.stringify(gene)}); go('snpversity');
+          const r=await Data.queryVariants('zmgrin2026_imp', g.chr, g.start, g.end, ${nam});
+          r.q={dataset:'zmgrin2026_imp', chr:g.chr, lo:g.start, hi:g.end}; S.chr=g.chr; S.start=g.start; S.end=g.end;
+          S.results=r; S.page=1; S.fQc=null; renderResults();
+          const out={interval:g, vcf:r.vcfUrl, rows:r.rows.length, qcRows:r.rows.map(x=>x.qc),
+            select:!!document.getElementById('versityQc'), selected:(document.getElementById('versityQc')||{}).value||null,
+            note:(document.getElementById('versityQcNote')||{}).textContent||null,
+            headers:[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')].map(t=>t.textContent.trim()), filter:{}};
+          for (const v of ['all','usable','pass']){ S.fQc=v; S.page=1; renderTable(); out.filter[v]=tableView(S.results.rows).fr.length; }
+          S.fQc=null; renderTable();
+          const host=document.createElement('tbody'); host.innerHTML=S.results.rows.slice(0,400).map(x=>rowHTML(x)).join('');
+          out.cellText=[...host.querySelectorAll('td.qc-cell')].map(td=>td.textContent.trim());
+          return out; })()`);
+      }
+      // SNPFunction, as drawn
+      O.func = {};
+      for (const [sym, gene] of Object.entries(GENES)){
+        $u(`S.functionGene=${JSON.stringify(gene)}; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles') || /alleles/.test((document.querySelector('#page .card.pad:last-child .fn-h')||{}).textContent||'')`, 60000);
+        await s.wait(150);
+        O.func[sym] = $u(`(()=>{ const txt=id=>(document.getElementById(id)||{}).textContent||null;
+          const rows=sel=>[...document.querySelectorAll(sel+' tbody tr.imp-row')].map(tr=>({variant:tr.children[0].getAttribute('data-tt')||tr.children[0].textContent.trim(),
+            qc:(tr.querySelector('td.fn-qc')||{}).textContent||null}));
+          const stat=[...document.querySelectorAll('.fn-stat')].find(e=>/Candidate KO lines/.test(e.textContent));
+          return {variable:txt('fnVariable'), burden:txt('fnBurdenSites'), banner:!!document.getElementById('fnQcBanner'),
+            koLines:stat?stat.querySelector('.fn-statv').textContent:null, koFlagged:txt('fnKoFlagged'),
+            list:rows('#fnAlleles'), flagged:rows('#fnQc_flagged'), nocarrier:rows('#fnQc_nocarrier')}; })()`);
+        O.func[sym].vcf = lastVcf(s);
+        O.func[sym].data = await $u(`Data.geneFunction(${JSON.stringify(gene)}, 'zmgrin2026_imp').then(d=>({gene:d.gene, chr:d.chr, start:d.start, end:d.end,
+          nVariants:d.nVariants, nVariable:d.nVariable, qcCounts:d.qcCounts, share:d.codingFlaggedShare, koLines:d.koLines, koLinesFlagged:d.koLinesFlagged,
+          koGenotypes:d.koGenotypes, burden:{nUsed:d.burden.nUsed, nSites:d.burden.nSites, byClass:d.burden.byClass},
+          damaging:d.damaging.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc]), damagingFlagged:d.damagingFlagged.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc]),
+          damagingNoCarrier:d.damagingNoCarrier.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc])}))`);
+      }
+      // SNPImpact on su1 (26 NAM lines)
+      O.impact = await $u(`(async()=>{ const g=await Data.lookupGene('${GENES.su1}'); go('snpversity');
+        const r=await Data.queryVariants('zmgrin2026_imp', g.chr, g.start, g.end, ${nam});
+        r.q={dataset:'zmgrin2026_imp', chr:g.chr, lo:g.start, hi:g.end}; S.results=r; S.impactInput=resultHandoff(r); go('snpimpact');
+        const shown=()=>document.querySelectorAll('table.imp tbody tr').length, out={vcf:r.vcfUrl, select:[...document.querySelectorAll('.imp-filters select')].length,
+          header:[...document.querySelectorAll('table.imp thead th')].map(t=>t.textContent.replace(/[⇅▲▼]/g,'').trim())};
+        for (const v of ['usable','pass','all']){ IMPACT.setFilter('fQc', v); out[v]={rows:shown(), note:(document.getElementById('impQcNote')||{}).textContent||null}; }
+        IMPACT.setFilter('fQc','usable'); return out; })()`);
+      // SNPFold: the gene with a local structure
+      $u(`goFold('Zm00001eb406050')`);
+      await until(s, `S.tool==='snpfold' && !document.querySelector('#page .spinner') && !!document.querySelector('.fold-context')`, 60000);
+      await s.wait(200);
+      O.fold = $u(`(()=>{ const rows=()=>document.querySelectorAll('#foldTableBody tr.fold-row').length, cb=document.getElementById('foldUsableOnly');
+        const out={checkbox:!!cb, checked:cb?cb.checked:null, count:(document.getElementById('foldNVar')||{}).textContent||null, rows:rows(),
+          header:[...document.querySelectorAll('#foldTableHead th')].map(t=>t.textContent.replace(/[↕▲▼]/g,'').trim()).filter(Boolean)};
+        if (cb){ FOLD.setUsableOnly(false); out.rowsAll=rows(); out.countAll=document.getElementById('foldNVar').textContent; FOLD.setUsableOnly(true); }
+        return out; })()`);
+      O.fold.data = await $u(`Data.geneFunction('Zm00001eb406050','zmgrin2026_imp').then(d=>({vcf:null, fold:d.foldVariants.map(f=>[f.pos,f.refNt,f.altNt,f.qc])}))`);
+      O.fold.vcf = lastVcf(s);
+      // SNPGeo: the pill in the variant table and beside the label (su1 interval, all lines)
+      O.geo = await $u(`(async()=>{ go('snpgeo'); document.getElementById('geoGeneInput').value='${GENES.su1}'; await geoLookupGene();
+        await new Promise(r=>setTimeout(r,400));
+        return {rows:GEO.rows.length, pills:document.querySelectorAll('#geoTable .qcp').length, withQc:GEO.rows.filter(r=>r.qc).length,
+                label:!!document.querySelector('.geo-pane-sub .qcp')}; })()`);
+      await s.wait(300);
+      // SNPTree / SNPMatrix / SNPCompare on chr6:91,593,082-91,793,082, 26 NAM lines
+      O.distance = await $u(`(async()=>{ go('snpversity'); const r=await Data.queryVariants('zmgrin2026_imp','chr6',91593082,91793082,${nam});
+        r.q={dataset:'zmgrin2026_imp', chr:'chr6', lo:91593082, hi:91793082}; S.results=r; const h=resultHandoff(r);
+        const out={vcf:r.vcfUrl, rows:r.rows.length};
+        S.treeInput=h; go('snptree'); out.treeDefault=SNPTree.siteMode(); out.treeControl=!!document.getElementById('treeSites');
+        SNPTree._ST.force=true; for (const v of ['usable','all']){ SNPTree.setOpt('sites', v); await new Promise(res=>setTimeout(res,120));
+          out['tree_'+v]={sites:SNPTree._ST.built.sites, total:SNPTree._ST.built.total, text:(document.getElementById('treeSitesUsed')||{}).textContent||null}; }
+        SNPTree.setOpt('sites','usable');
+        S.matrixInput=h; go('snpmatrix'); SNPMatrix.force(); out.mtxControl=!!document.getElementById('mtxSites');
+        for (const v of ['usable','all']){ SNPMatrix.set('sites', v); SNPMatrix.force(); out['mtx_'+v]=(document.getElementById('mtxSitesUsed')||{}).textContent||null; }
+        SNPMatrix.set('sites','usable');
+        S.compareInput=h; S.compareRequest={view:'table', mode:'local', autorun:false}; go('snpcompare'); out.cmpControl=!!document.getElementById('cmpSites');
+        for (const v of ['usable','all']){ SNPCompare.setSites(v); out['cmp_'+v]=SNPCompare.regionInput().rows.length; }
+        SNPCompare.setSites('usable');
+        return out; })()`);
+      O.consoleErrors = s.errors.filter(e => !/favicon/.test(e));
+      return O;
+    };
+    const s9 = await openSite(ROOT);
+    U.jsRule = s9.$eval(`(()=>{ const o=[]; for (let a=0;a<=60;a++) for (let b=0;b<=60;b++) o.push([a,b,Data.siteQc(a,b)]); return o; })()`);
+    U.defaults = s9.$eval('Data.SITE_QC_DEFAULTS');
+    U.on = await pass(s9, false);
+    s9.window.close();
+    process.env.SNPTOOLS_SITEQC = '0';
+    try { const s10 = await openSite(ROOT); U.off = await pass(s10, true); s10.window.close(); }
+    finally { delete process.env.SNPTOOLS_SITEQC; }
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
@@ -669,6 +777,9 @@ async function until(site, expr, ms = 8000){
   if (brief.pergene){ delete brief.pergene.geo; Object.values(brief.pergene.genes).forEach(g => { g.fn.v = g.fn.v.length; g.fold = g.fold.length; });
     brief.pergene.versity.markers = brief.pergene.versity.markers.filter(Boolean).length; }
   brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
+  if (brief.siteqcui){ delete brief.siteqcui.jsRule;
+    ['on', 'off'].forEach(p => { const u = brief.siteqcui[p]; if (!u) return;
+      Object.values(u.versity || {}).forEach(v => { delete v.qcRows; delete v.cellText; }); }); }
   if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
   fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
   site.window.close();

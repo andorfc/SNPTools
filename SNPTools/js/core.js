@@ -125,6 +125,7 @@ const S = {
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,
+  fQc:null,                        // Site QC filter; null = Data.SITE_QC_DEFAULTS.versity (data.js loads later)
 };
 
 /* ================= TOOL REGISTRY ================= */

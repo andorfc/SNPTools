@@ -5,7 +5,9 @@
     zmgrin2026_imp (and mgdb2026_hq / mgdb2026_hc, when those sets are offered): a field a set
     lacks stays as an empty column ('na'), except one the call set never records, which is
     left out ('hidden': MQ and COMP for zmgrin2026_imp); every row has as many cells as the
-    header.
+    header. Site QC ('auto') is shown, filled on every row, exactly when the queried store has
+    its site-QC sidecar (h5_to_vcf.py then adds NHET/NHOM/SITEQC); the classes themselves are
+    checked by check_site_qc_ui.py.
 (b) Per set and column, the number of filled cells equals what the INFO predicts
     (zmgrin2026_imp: fixtures/zmgrin2026_v1.4_chr2_testregions.vcf.gz; MaizeGDB 2026:
     fixtures/mgdb2026_{hq,hc}_chr2_4491424_4499434.sites.vcf.gz), and columns a set lacks
@@ -16,14 +18,16 @@
     rounded llr_esm1b / llr_esm2 / llr_esm3 of fixtures/annotation/grz2023_missense_esm_testregions.tsv.gz
     (llr_esm2 = the store ESM-2 layer, i.e. esm2_store_score); TYPE/EFFECT/GENEMODEL/SUB equal
     the Schnable scored VCF rows. Standard library only."""
-import csv, gzip, io, json, sys
+import csv, gzip, io, json, os, sys
 
 res, root = sys.argv[1:3]
 A = json.load(open(res))['annot']
 FX = f'{root}/localdev/fixtures'
-LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR²', 'MAF',
+LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR²', 'MAF', 'Site QC',
           'PlantCAD1', 'PlantCAD2', 'Evo2', 'ESM1', 'ESM2', 'ESM3', 'ESM-C']
-KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
+KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'qc', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
+# the chr2 store's site-QC sidecar: with it every row of the result carries a class
+SIDECAR = os.path.exists(f'{root}/hdf5/version3/zmgrin2026_chr2_impute.siteqc.h5')
 bad = 0
 
 
@@ -69,6 +73,7 @@ def expected(path, status):
         f['impact'] += 1                                  # pill always shown (MODIFIER default)
         f['mq'] += present(I.get('MQ')); f['comp'] += present(I.get('CVP')); f['r2'] += present(I.get('MAXR2'))
         f['maf'] += present(I.get('MAF'))
+        f['qc'] += SIDECAR                                # a class on every row (pass shown faintly)
         f['pc1'] += present(I.get('plantcad1_score')) or present(I.get('DNA_SCORE'))
         f['pc2'] += present(I.get('plantcad2_score'))
         f['evo2'] += present(I.get('evo2_score'))
@@ -99,7 +104,11 @@ for ds, path in SETS.items():
     hdr = a['headers']
     # a 'hidden' column (MQ and COMP for the GRIN-linked call set) is left out of the table
     hidden = {x['key'] for x in a.get('fields', []) if x['status'] == 'hidden'}
-    shown = [k for k in KEYS if k not in hidden]
+    # an 'auto' column (Site QC) is shown only when the result carries its values
+    auto = {x['key'] for x in a.get('fields', []) if x['status'] == 'auto'}
+    if ds == 'zmgrin2026_imp' and auto != {'qc'}:
+        bad += 1; print('auto columns', ds, sorted(auto))
+    shown = [k for k in KEYS if k not in hidden and (k not in auto or SIDECAR)]
     if hdr[:4] != ['CHR', 'POS', 'REF', 'ALT'] or hdr[4:] != [LABELS[KEYS.index(k)] for k in shown]:
         bad += 1; print('columns differ', ds, hdr)
     if a.get('cellsPerRow') != a.get('headerCells'):
@@ -122,7 +131,7 @@ for ds, path in SETS.items():
             PREC[k] = {'info_max_decimals': dec, 'rendered_max_decimals': a.get('decimals', {}).get(k), 'rendered_examples': a.get('sample', {}).get(k)}
     if any(v != 'ok' for v in status.values()) != bool(a['note']):
         bad += 1; print('availability note', ds, repr(a['note'][:80]))
-    summary[ds] = {k: ('hidden' if k in hidden else status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
+    summary[ds] = {k: ('hidden' if k in hidden else 'absent' if k not in status else status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
 
 # (c) the GRIN-linked INFO against its sources, all 3,495 fixture sites
 snp = {}

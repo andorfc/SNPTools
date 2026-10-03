@@ -64,12 +64,15 @@ const Data = (function () {
      set, whether a column is filled ('ok'), not available for that set ('na': shown empty,
      with the reason in the header tooltip and the note above the table), waiting for a data
      merge ('pending'), or left out of that set's table altogether ('hidden': a field the
-     call set never records, so an always-empty column says nothing). */
+     call set never records, so an always-empty column says nothing). 'auto' (Site QC): shown
+     as 'ok' when a row of the result carries a value, left out otherwise, so a store without
+     a site-QC sidecar shows the table exactly as before. */
   const ANNOTATION_COLUMNS = [
     {key:'gene',   label:'Gene model'},   {key:'effect', label:'Effect'},
     {key:'impact', label:'SNPEff Impact'},{key:'domain', label:'Domain'},
     {key:'mq',     label:'MQ'},           {key:'comp',   label:'COMP'},
     {key:'r2',     label:'maxR²'},        {key:'maf',    label:'MAF'},
+    {key:'qc',     label:'Site QC', status:'auto'},
     {key:'pc1',    label:'PlantCAD1'},    {key:'pc2',    label:'PlantCAD2'},
     {key:'evo2',   label:'Evo2'},
     {key:'esm1',   label:'ESM1'},         {key:'esm2',   label:'ESM2'},
@@ -98,6 +101,7 @@ const Data = (function () {
       evo2: {status:'ok', note:'Evo2 7B log-likelihood ratio (256-bp left context), SNPs within 1 kb of a gene only, rounded to 0.1.'},
       esmc: {status:'ok', note:'ESM C 600M log-likelihood ratio, missense variants only.'},
       maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
+      qc:   {status:'auto', note:'Heterozygous and homozygous carriers among all 933 lines (tools/build_site_qc.py sidecars).'},
     },
   };
   /* Precomputed genome-wide IBS files per dataset family (ibsCompare.php?probe=1).
@@ -120,7 +124,7 @@ const Data = (function () {
   }
   function annotationFields(datasetId){
     const over = FIELD_STATUS[datasetId] || {};
-    return ANNOTATION_COLUMNS.map(c => Object.assign({key:c.key, label:c.label, status:'ok', note:''}, over[c.key] || {}));
+    return ANNOTATION_COLUMNS.map(c => Object.assign({key:c.key, label:c.label, status:c.status || 'ok', note:''}, over[c.key] || {}));
   }
 
   /*const DATASETS = [
@@ -368,9 +372,64 @@ const Data = (function () {
     const f = parseFloat(v);
     return Number.isNaN(f) ? null : f;
   }
+  function intOrNull(v){
+    if (v == null || v === '' || v === '.') return null;
+    const n = parseInt(v, 10);
+    return Number.isNaN(n) ? null : n;
+  }
   function firstNum(v){                       // first of a possibly comma-listed value
     if (v == null) return null;
     return numOrNull(String(v).split(/[;,]+/)[0]);
+  }
+
+  /* ---- Site QC ----
+     A store with a site-QC sidecar gives every variant NHET and NHOM, its heterozygous and
+     homozygous-alternate carriers among ALL the release's lines, and SITEQC (h5_to_vcf.py). The
+     class comes from the two counts by one rule, first match wins; the same rule is
+     site_qc_codes in tools/build_site_qc.py and h5_to_vcf.py and site_qc in
+     tools/annotate_release_info.py. Usable = PASS or HET_ELEVATED (or no class at all);
+     flagged = HET_ONLY or HET_EXCESS. */
+  function siteQc(nHet, nHom){
+    if (nHet == null || nHom == null) return null;
+    const c = nHet + nHom;
+    if (c === 0) return 'NO_CARRIER';
+    if (nHom === 0) return 'HET_ONLY';
+    if (nHet > nHom) return 'HET_EXCESS';
+    if (nHet * 4 >= c) return 'HET_ELEVATED';
+    return 'PASS';
+  }
+  const SITE_QC = {
+    PASS:         {label:'Pass',         group:'pass',      tip:'Fewer than a quarter of the carriers are heterozygous.'},
+    HET_ELEVATED: {label:'Het elevated', group:'caution',   tip:'A quarter or more of the carriers are heterozygous. Read with caution.'},
+    HET_EXCESS:   {label:'Het excess',   group:'flagged',   tip:'Heterozygous carriers outnumber homozygous ones. In inbred lines this usually means reads from another copy of the sequence map here.'},
+    HET_ONLY:     {label:'Het only',     group:'flagged',   tip:'No line is homozygous for this allele.'},
+    NO_CARRIER:   {label:'No carrier',   group:'nocarrier', tip:'No line in this release carries the allele. The site comes from the larger panel the site list was built on.'},
+  };
+  function qcGroup(code){ return (code && SITE_QC[code]) ? SITE_QC[code].group : null; }
+  function qcUsable(code){ return code == null || code === 'PASS' || code === 'HET_ELEVATED'; }
+  function qcFlagged(code){ return code === 'HET_ONLY' || code === 'HET_EXCESS'; }
+  /* The views' filter choices: 'all' (All sites), 'usable' (Hide flagged and no-carrier),
+     'pass' (Passing only). A row with no class passes every choice. */
+  function qcKeep(code, mode){
+    if (code == null || !mode || mode === 'all') return true;
+    return mode === 'pass' ? code === 'PASS' : qcUsable(code);
+  }
+  /* Each view's default choice, in one place. SNPFunction ('func') always applies it; the
+     others only to results that carry the class. */
+  const SITE_QC_DEFAULTS = {versity:'all', impact:'usable', func:'usable', fold:'usable', geo:'all', distance:'usable'};
+  const SITE_QC_CHOICES = [['all', 'All sites'], ['usable', 'Hide flagged and no-carrier'], ['pass', 'Passing only']];
+  function releaseLines(){ return (accessionsFor(DATASETS[0].id) || []).length || 933; }
+  function qcTip(code, nHet, nHom){
+    const q = SITE_QC[code]; if (!q) return '';
+    return q.tip + (nHet != null && nHom != null
+      ? ` ${nHet.toLocaleString()} heterozygous, ${nHom.toLocaleString()} homozygous among ${releaseLines().toLocaleString()} lines.` : '');
+  }
+  /* rows whose class is usable, or every row when none carries a class (SNPTree, SNPMatrix,
+     SNPCompare region scope) */
+  function hasSiteQc(rows){ return !!(rows && rows.some(r => r.qc != null)); }
+  function usableRows(rows){
+    if (!hasSiteQc(rows)) return rows || [];
+    return rows.filter(r => qcUsable(r.qc));
   }
 
   /* A region's genotype matrix is variants × accessions — by far the biggest
@@ -441,6 +500,8 @@ const Data = (function () {
       }
 
       const mq = firstNum(II.MQ), cvp = firstNum(II.CVP), pos = parseInt(t[1], 10);
+      const nHet = intOrNull(II.NHET), nHom = intOrNull(II.NHOM), qv = II.SITEQC;
+      const qc = (qv && SITE_QC[qv]) ? qv : siteQc(nHet, nHom);
       rows.push({
         pos,
         ref:    t[3],
@@ -457,6 +518,8 @@ const Data = (function () {
         comp:   (cvp != null) ? cvp : 'N/A',
         r2:     firstNum(II.MAXR2),
         maf:    firstNum(II.MAF),         // null when the store has no MAF (shown empty, not 0)
+        // site QC (h5_to_vcf.py, from the store's sidecar): carriers among ALL the release's lines
+        nHet, nHom, qc,
         // 2026 uses plantcad1/2 + ESM1/2/3; older projects (2024/Schnable/NAM)
         // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
         pc1:    numOrNull(II.plantcad1_score != null ? II.plantcad1_score : II.DNA_SCORE),
@@ -818,7 +881,7 @@ const Data = (function () {
         plantcad2: (r.pc2 != null ? r.pc2 : null), esm2: (r.esm2 != null ? r.esm2 : null),
         esm3: (r.esm3 != null ? r.esm3 : null),
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
-        combined,
+        combined, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
         priority: combined == null ? null
                 : (combined <= -7 ? 'TOP' : combined <= -4 ? 'HIGH' : combined <= -1 ? 'MODERATE' : 'LOW'),
       });
@@ -884,7 +947,7 @@ const Data = (function () {
         plantcad2: (r.pc2 != null ? r.pc2 : null),
         pc1: r.pc1, pc2: r.pc2, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
-        maf: r.maf, r2: r.r2, mq: r.mq,
+        maf: r.maf, r2: r.r2, mq: r.mq, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
         priority: impactPriority(cls, combined, r.impact), percentile: null,
       });
     }
@@ -937,6 +1000,7 @@ const Data = (function () {
     catch (e){ return {gene, chr:g.chr, start:g.start, end:g.end, dataset, datasetName:dsName, error:'Variant query failed: '+(e&&e.message)}; }
 
     const accs = res.accs || [];
+    const qcDiffer = [];
     // every site with a consequence in this gene, read as this gene's consequence
     // (rowForGene): a first-listed-gene filter dropped 31 of Zm00001eb374230's 51 coding sites
     const rows = (res.rows || []).map(r => rowForGene(r, gene)).filter(Boolean);
@@ -957,24 +1021,40 @@ const Data = (function () {
       const p = parseSub(r.sub);
       const coding = (cls.klass==='missense'||cls.klass==='lof'||cls.klass==='indel');
       const variant = (p && p.resi!=null && coding) ? hgvsProtein(p, {label:cls.label, klass:cls.klass}) : `${r.pos} ${r.ref}>${r.alt}`;
+      // site QC from this variant's own full-panel counts; the store's class should agree
+      const qc = siteQc(het, hom);
+      if (r.qc != null && r.qc !== qc) qcDiffer.push(r.pos);
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
         domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, evo2, esmc, combined,
         priority: impactPriority(cls, combined, r.impact),
-        het, hom, af, carriersHom:homIds, carriersHet:hetIds};
+        het, hom, af, carriersHom:homIds, carriersHet:hetIds, qc, nHet:het, nHom:hom};
     });
+    if (qcDiffer.length) console.warn(`[geneFunction] ${gene}: the store's SITEQC differs from the panel counts at ${qcDiffer.length} site(s), e.g. ${qcDiffer[0]}`);
+
+    /* Site QC: the allele list, knockouts and burden use usable variants only (PASS or
+       HET_ELEVATED); flagged and no-carrier alleles are kept apart for the page to show on demand. */
+    const qcCounts = {PASS:0, HET_ELEVATED:0, HET_EXCESS:0, HET_ONLY:0, NO_CARRIER:0};
+    variants.forEach(v => { qcCounts[v.qc]++; });
+    const nVariable = variants.length - qcCounts.NO_CARRIER;
+    const used = variants.filter(v => qcUsable(v.qc));
+    const proteinChanging = v => v.consClass==='missense' || v.consClass==='lof' || v.consClass==='indel' || (v.consClass==='splice' && v.severe);
+    const pcCarrier = variants.filter(v => proteinChanging(v) && v.qc !== 'NO_CARRIER');
+    const pcFlagged = pcCarrier.filter(v => qcFlagged(v.qc)).length;
+    const codingFlaggedShare = {share: pcCarrier.length ? +(pcFlagged / pcCarrier.length).toFixed(4) : 0,
+                                flagged: pcFlagged, withCarrier: pcCarrier.length};
 
     const byClass = {missense:0, lof:0, splice:0, indel:0, syn:0, other:0};
-    variants.forEach(v => { byClass[v.consClass] = (byClass[v.consClass]||0) + 1; });
+    used.forEach(v => { byClass[v.consClass] = (byClass[v.consClass]||0) + 1; });
     const nonsyn = byClass.missense + byClass.lof + byClass.indel + byClass.splice, syn = byClass.syn;
-    const domainDisrupting = variants.filter(v => v.domain!=='\u2014' && (v.consClass==='missense'||v.consClass==='lof'||v.consClass==='indel')).length;
+    const domainDisrupting = used.filter(v => v.domain!=='\u2014' && (v.consClass==='missense'||v.consClass==='lof'||v.consClass==='indel')).length;
     const afSpectrum = {
-      rare:   variants.filter(v => v.af>0 && v.af<0.01).length,
-      low:    variants.filter(v => v.af>=0.01 && v.af<0.05).length,
-      common: variants.filter(v => v.af>=0.05).length,
+      rare:   used.filter(v => v.af>0 && v.af<0.01).length,
+      low:    used.filter(v => v.af>=0.01 && v.af<0.05).length,
+      common: used.filter(v => v.af>=0.05).length,
     };
     // exon vs intron: prefer the real gene model; else fall back to consequence
     let exonic=0, intronic=0;
-    for (const v of variants){
+    for (const v of used){
       let inExon;
       if (gm && gm.exons) inExon = gm.exons.some(e => v.pos>=e[0] && v.pos<=e[1]);
       else inExon = (v.consClass!=='other') || /utr/i.test(v.consequence);
@@ -982,27 +1062,39 @@ const Data = (function () {
       else if (inExon) exonic++;
     }
     const PR = ['TOP','HIGH','MODERATE','LOW'];
-    const damaging = variants
+    const allDamaging = variants
       .filter(v => v.consClass==='lof' || v.severe || (v.consClass==='missense' && v.combined!=null && v.combined<=-4))
       .sort((a,b) => (PR.indexOf(a.priority)-PR.indexOf(b.priority)) || ((a.combined==null?0:a.combined)-(b.combined==null?0:b.combined)));
+    const damaging = allDamaging.filter(v => qcUsable(v.qc));
+    const damagingFlagged = allDamaging.filter(v => qcFlagged(v.qc));
+    const damagingNoCarrier = allDamaging.filter(v => v.qc === 'NO_CARRIER');
     const koGenotypes = damaging.filter(v=>v.consClass==='lof').reduce((n,v)=>n+v.hom, 0);
     const koLines = new Set(); damaging.filter(v=>v.consClass==='lof').forEach(v=>v.carriersHom.forEach(id=>koLines.add(id)));
+    // lines homozygous only for a flagged loss-of-function allele
+    const koFlagged = new Set();
+    damagingFlagged.filter(v=>v.consClass==='lof').forEach(v=>v.carriersHom.forEach(id=>{ if (!koLines.has(id)) koFlagged.add(id); }));
+    // SNPFold's list carries the same class, from the same counts
+    const qcAt = new Map(variants.map(v => [v.pos + '|' + v.ref + '|' + v.alt, v]));
+    const foldVariants = foldVariantsFromRows(res.rows, gene);
+    foldVariants.forEach(f => { const v = qcAt.get(f.pos + '|' + f.refNt + '|' + f.altNt);
+      if (v){ f.qc = v.qc; f.nHet = v.het; f.nHom = v.hom; } });
 
     return {
       gene, chr:g.chr, start:g.start, end:g.end, strand: gm?gm.strand:null, dataset, datasetName:dsName,
-      nAccessions: accs.length, nVariants: variants.length,
+      nAccessions: accs.length, nVariants: variants.length, nVariable, qcCounts, codingFlaggedShare,
       protLen: gd?gd.len:null, protein: gd?gd.protein:null, domains: gd?(gd.domains||[]):[],
       burden: { byClass, nonsyn, syn, nonsynSyn: syn ? +(nonsyn/syn).toFixed(2) : (nonsyn?null:0),
                 exonic, intronic, exonIntron: intronic ? +(exonic/intronic).toFixed(2) : (exonic?null:0),
-                domainDisrupting, meanPlantcad:_avg(variants.map(v=>v.plantcad).filter(x=>x!=null)),
-                meanEsm:_avg(variants.map(v=>v.esm).filter(x=>x!=null)),
-                meanPlantcad2:_avg(variants.map(v=>v.plantcad2).filter(x=>x!=null)),
-                meanEsm2:_avg(variants.map(v=>v.esm2).filter(x=>x!=null)),
-                meanEsm3:_avg(variants.map(v=>v.esm3).filter(x=>x!=null)),
-                meanEvo2:_avg(variants.map(v=>v.evo2).filter(x=>x!=null)),
-                meanEsmc:_avg(variants.map(v=>v.esmc).filter(x=>x!=null)), afSpectrum },
-      damaging, koGenotypes, koLines: koLines.size, variants,
-      foldVariants: foldVariantsFromRows(res.rows, gene),   // SNPFold's list, same rows
+                domainDisrupting, meanPlantcad:_avg(used.map(v=>v.plantcad).filter(x=>x!=null)),
+                meanEsm:_avg(used.map(v=>v.esm).filter(x=>x!=null)),
+                meanPlantcad2:_avg(used.map(v=>v.plantcad2).filter(x=>x!=null)),
+                meanEsm2:_avg(used.map(v=>v.esm2).filter(x=>x!=null)),
+                meanEsm3:_avg(used.map(v=>v.esm3).filter(x=>x!=null)),
+                meanEvo2:_avg(used.map(v=>v.evo2).filter(x=>x!=null)),
+                meanEsmc:_avg(used.map(v=>v.esmc).filter(x=>x!=null)), afSpectrum,
+                nUsed: used.length, nSites: variants.length },
+      damaging, damagingFlagged, damagingNoCarrier, koGenotypes, koLines: koLines.size, koLinesFlagged: koFlagged.size, variants,
+      foldVariants,                                          // SNPFold's list, same rows
     };
   }
 
@@ -1017,6 +1109,8 @@ const Data = (function () {
     parseVcf, parseSub, classifyConsequence,
     annotationsOf, rowForGene, genesOf,   // per-gene reading of multi-consequence sites
     annotationFields,       // per-set status of the SNPVersity annotation columns
+    // site QC: the class rule, its labels and tips, and each view's default filter
+    siteQc, SITE_QC, SITE_QC_DEFAULTS, SITE_QC_CHOICES, qcGroup, qcUsable, qcFlagged, qcKeep, qcTip, hasSiteQc, usableRows,
     globalDistance, globalDistanceKnown,   // precomputed genome-wide IBS / trees per family
     // backwards-compatible defaults (first dataset)
     projects:    () => projectsFor(DEFAULT_DS),
@@ -1043,6 +1137,17 @@ const Data = (function () {
     geneFunction,
   };
 })();
+
+/* Global helper: the Site QC mark of a variant (Data.SITE_QC): a pill with the class label for
+   the four non-pass classes, a faint "pass" for PASS, nothing without a class. The label is
+   always text, so color is never the only cue; the tooltip ends with the carrier counts.
+   Used by SNPVersity, SNPImpact, SNPFunction, SNPFold and SNPGeo. */
+function siteQcPill(code, nHet, nHom){
+  if (code == null || typeof Data === 'undefined' || !Data.SITE_QC[code]) return '';
+  var q = Data.SITE_QC[code];
+  var tt = String(Data.qcTip(code, nHet, nHom)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  return '<span class="qcp ' + q.group + '" data-tt="' + tt + '">' + (code === 'PASS' ? 'pass' : q.label) + '</span>';
+}
 
 /* Global helper: render a "Name (PFxxxxx)" domain string as a chip with the
    Pfam accession linked to InterPro. Used by SNPVersity / SNPImpact / SNPFunction. */

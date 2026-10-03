@@ -988,17 +988,30 @@ function setMaf(el){
 }
 /* Cache the O(rows) work (full-table filter + distinct-effects scan) so that
    paging — which doesn't change the filter — doesn't re-scan every variant on
-   each click. Keyed on the result set + the three filter controls. */
-let _tblCache=null;
+   each click. Keyed on the result set + the four filter controls. The Site QC
+   counts are taken once per result. */
+let _tblCache=null, _qcCache={res:null, val:null};
+function versityQc(){ return S.fQc || Data.SITE_QC_DEFAULTS.versity; }
+function qcSummary(rows){
+  const res=S.results||null;
+  if(_qcCache.res===res && _qcCache.val) return _qcCache.val;
+  const n={flagged:0, nocarrier:0, any:false};
+  for(const r of rows){ if(r.qc==null) continue; n.any=true;
+    const g=Data.qcGroup(r.qc); if(g==='flagged') n.flagged++; else if(g==='nocarrier') n.nocarrier++; }
+  _qcCache={res, val:n};
+  return n;
+}
 function tableView(rows){
-  const key=S.results&&S.results.vcfUrl+'|'+S.fImpact+'|'+S.fEffect+'|'+S.fMaf;
+  const fq=versityQc();
+  const key=S.results&&S.results.vcfUrl+'|'+S.fImpact+'|'+S.fEffect+'|'+S.fMaf+'|'+fq;
   if(_tblCache&&_tblCache.key===key) return _tblCache;
+  const qc=qcSummary(rows);
   const fr=rows.filter(r=>
     (S.fImpact==='all'||r.impact===S.fImpact) &&
     (S.fEffect==='all'||r.effect===S.fEffect) &&
-    (r.maf>=S.fMaf));
+    (r.maf>=S.fMaf) && Data.qcKeep(r.qc, fq));
   const effects=['all',...new Set(rows.map(r=>r.effect))];
-  _tblCache={key,fr,effects};
+  _tblCache={key,fr,effects,qc};
   return _tblCache;
 }
 
@@ -1007,7 +1020,7 @@ function renderTable(){
   // accession header height scales to the longest full ID so it isn't clipped
   const maxIdLen=accs.length?Math.max(...accs.map(a=>String(a.id).length)):8;
   const thH=Math.max(118, Math.min(300, Math.round(maxIdLen*6.4)+30));
-  const {fr,effects}=tableView(rows);
+  const {fr,effects,qc}=tableView(rows);
   const perPage=S.perPage, pages=Math.max(1,Math.ceil(fr.length/perPage));
   if(S.page>pages)S.page=1;
   const slice=fr.slice((S.page-1)*perPage, S.page*perPage);
@@ -1028,7 +1041,12 @@ function renderTable(){
           title="Enter a value between 0.0 and 0.5" onchange="setMaf(this)"
           onkeydown="if(event.key==='Enter'){this.blur();}">
       </div>
+      ${qc.any?`<div class="fld"><label data-tt="Site QC classes each site by its heterozygous and homozygous carriers among all lines of the release. Flagged: het only or het excess. The downloaded VCF keeps every site.">Site QC</label>
+        <select id="versityQc" onchange="S.fQc=this.value;S.page=1;renderTable()">
+          ${Data.SITE_QC_CHOICES.map(([v,l])=>`<option value="${v}" ${v===versityQc()?'selected':''}>${l}</option>`).join('')}
+        </select></div>`:''}
     </div>
+    ${qc.any?`<div class="qc-note" id="versityQcNote">${qc.flagged.toLocaleString()} flagged, ${qc.nocarrier.toLocaleString()} with no carrier in this release, of ${rows.length.toLocaleString()} sites.</div>`:''}
     <div class="legend">
       <span style="font-weight:600;color:var(--ink)">Genotype</span>
       <span class="li"><span class="sw" style="background:#e9f4ec"></span>Reference allele (0)</span>
@@ -1073,6 +1091,7 @@ const ANNOT_TT={
   comp:'Completeness — fraction of accessions with a non-missing call at this site.',
   r2:'Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.',
   maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
+  qc:'Site QC — the class of the site from its heterozygous and homozygous carriers among all lines of the release. Pass: fewer than a quarter of carriers heterozygous. Het elevated: a quarter or more. Het excess: more heterozygous than homozygous carriers. Het only: no homozygous carrier. No carrier: no line carries the allele. Hover a cell for its counts.',
   pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
   pc2:'Second-generation PlantCAD DNA score.',
   evo2:'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene; more negative is more disruptive.',
@@ -1090,8 +1109,12 @@ function annotFields(){
   // A 'pending' column is shown as soon as the queried store carries it (e.g. PlantCAD merged
   // for one chromosome first); it stays pending (empty + note) where the store has no value.
   const rows=(res&&res.rows)||[];
-  const val=F.filter(f=>f.status!=='hidden').map(f=>(f.status==='pending' && rows.some(r=>r[f.key]!=null))
-    ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome (rounded to 0.1); sites without a score show N/A.'}) : f);
+  // An 'auto' column (Site QC) is shown only when a row of the result carries a value, and
+  // left out otherwise, so a store without a sidecar shows the table as before.
+  const val=F.filter(f=>f.status!=='hidden' && (f.status!=='auto' || rows.some(r=>r[f.key]!=null)))
+    .map(f=>f.status==='auto' ? Object.assign({}, f, {status:'ok'})
+      : (f.status==='pending' && rows.some(r=>r[f.key]!=null))
+      ? Object.assign({}, f, {status:'ok', note:'Merged for this chromosome (rounded to 0.1); sites without a score show N/A.'}) : f);
   _annotCache={ds, res, val};
   return val;
 }
@@ -1148,6 +1171,7 @@ function rowHTML(r){
     comp:  ()=>off('comp')?blank('comp'):`<td class="num">${r.comp}</td>`,
     r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2===null?'<span style="color:var(--faint)">NA</span>':r.r2}</td>`,
     maf:   ()=>off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`,
+    qc:    ()=>`<td class="qc-cell">${siteQcPill(r.qc, r.nHet, r.nHom)}</td>`,
     pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), evo2:()=>sc(r.evo2,'evo2'),
     esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'), esmc:()=>sc(r.esmc,'esmc'),
   };

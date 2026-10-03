@@ -12,6 +12,8 @@
     rows: [], input: null, _sig: null,
     sortKey: 'priority', sortDir: 1,        // 1 = TOP first
     fCons: 'all', fImpact: 'all', fScore: 'all', fDomain: 'all',
+    fQc: (typeof Data !== 'undefined' && Data.SITE_QC_DEFAULTS) ? Data.SITE_QC_DEFAULTS.impact : 'usable',
+    hasQc: false,          // the region's rows carry a Site QC class (store with a sidecar)
     openId: null,
     shortlist: new Set(),
     force: false,          // "Rank anyway" past the variant-count guard
@@ -170,15 +172,22 @@
      touch the filters or sort — expanding a detail row, starring a variant —
      don't re-scan every variant. Keyed on the region + all filter/sort state. */
   let _fCache = null;
+  /* Site QC hides flagged and no-carrier variants by default; what it hides among the rows
+     the other filters keep is counted for the note above the table. */
+  function qcHidden(){ filtered(); return _fCache.hidden; }
   function filtered(){
-    const key = [IMP._sig, IMP.fCons, IMP.fImpact, IMP.fScore, IMP.fDomain, IMP.sortKey, IMP.sortDir].join('|');
+    const key = [IMP._sig, IMP.fCons, IMP.fImpact, IMP.fScore, IMP.fDomain, IMP.fQc, IMP.sortKey, IMP.sortDir].join('|');
     if (_fCache && _fCache.key === key) return _fCache.rows;
+    const hidden = {flagged:0, nocarrier:0, caution:0};
     let r = IMP.rows.filter(v =>
       (IMP.fCons==='all'   || v.consClass===IMP.fCons) &&
       (IMP.fImpact==='all' || v.priority===IMP.fImpact) &&
       (IMP.fScore==='all'  || (v.combined!=null && v.combined<=-4)) &&
       (IMP.fDomain==='all' || (IMP.fDomain==='dom' ? v.domain!=='—' : v.domain==='—'))
-    );
+    ).filter(v => {
+      if (Data.qcKeep(v.qc, IMP.fQc)) return true;
+      hidden[Data.qcGroup(v.qc)]++; return false;
+    });
     const k = IMP.sortKey, dir = IMP.sortDir;
     r.sort((a,b)=>{
       if (k==='priority'){
@@ -193,7 +202,7 @@
       if (na&&nb) return 0; if (na) return 1; if (nb) return -1;
       return dir*(av-bv);
     });
-    _fCache = { key, rows: r };
+    _fCache = { key, rows: r, hidden };
     return r;
   }
 
@@ -238,6 +247,7 @@
     if (IMP._sig !== sig){
       IMP.rows = Data.rankImpact(input.rows);
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
+      IMP.hasQc = Data.hasSiteQc(IMP.rows);
     }
     // PlantCAD2 / Evo2 / ESM2 / ESM3 / ESM-C columns when the dataset carries them (empty where a
     // store has no score yet: Evo2 and ESM-C come with the rebuilt stores)
@@ -271,6 +281,7 @@
         ${sel('Priority','fImpact',[['all','All priorities'],['TOP','TOP'],['HIGH','HIGH'],['MODERATE','MODERATE'],['LOW','LOW']])}
         ${sel('AI score','fScore',[['all','All scores'],['high','AI high-priority (≤ −4)']])}
         ${sel('Domain effect','fDomain',[['all','All'],['dom','In a Pfam domain'],['nodom','No domain hit']])}
+        ${IMP.hasQc?sel('Site QC','fQc',Data.SITE_QC_CHOICES):''}
         <div class="right">
           <button class="btn" onclick="IMPACT.exportCSV()">${ICONS.download||''} Export CSV</button>
           <button class="btn" onclick="IMPACT.sendCompare()">
@@ -280,11 +291,12 @@
         </div>
       </div>
 
+      ${IMP.hasQc?qcNoteHTML():''}
       <div class="tbl-wrap" style="max-height:none">
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${th('Priority','priority')}<th></th>
+            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -295,6 +307,16 @@
       <div id="impDetail">${IMP.openId ? detailHTML(IMP.rows.find(r=>r.id===IMP.openId)) : ''}</div>
     `;
     if (typeof attachTT==='function') attachTT();
+  }
+
+  /* "<n> flagged and <m> no-carrier variants hidden. Show all." */
+  function qcNoteHTML(){
+    const h = qcHidden();
+    if (!h.flagged && !h.nocarrier && !h.caution) return '';
+    const parts = [`${h.flagged.toLocaleString()} flagged`, `${h.nocarrier.toLocaleString()} no-carrier`]
+      .concat(h.caution ? [`${h.caution.toLocaleString()} het-elevated`] : []);
+    const list = parts.length > 2 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length-1] : parts.join(' and ');
+    return `<div class="qc-note" id="impQcNote">${list} variants hidden. <a href="#" onclick="IMPACT.setFilter('fQc','all');return false;">Show all.</a></div>`;
   }
 
   function emptyState(){
@@ -325,6 +347,7 @@
     'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene.',
     'ESM-C':'ESM-C protein language-model score for the amino-acid substitution.',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
+    'Site QC':'Class of the site from its heterozygous and homozygous carriers among all lines of the release. Flagged (het only, het excess) and no-carrier variants are hidden by default.',
   };
   function th(label, key, cls){
     const active = IMP.sortKey===key;
@@ -358,6 +381,7 @@
       <td class="num">${scoreCell(r.esm)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.esm2)}</td><td class="num">${scoreCell(r.esm3)}</td>`:''}
       ${IMP.sec?`<td class="num">${scoreCell(r.esmc)}</td>`:''}
+      ${IMP.hasQc?`<td>${siteQcPill(r.qc, r.nHet, r.nHom)}</td>`:''}
       <td>${prioPill(r.priority)}</td>
       <td style="text-align:center">
         <button class="star-btn ${star?'on':''}" title="Add to shortlist"

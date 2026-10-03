@@ -191,6 +191,18 @@ chromosome by chromosome (a dashed header and a note above the table).
    `window.SNPTOOLS_MAIZEGDB_BASE` before `js/snpfunction-ontology.js` loads to read another
    MaizeGDB host. Offline, or if MaizeGDB fails, the card says so and the old GO/KEGG lists from
    `data/function/annotations/` are shown instead.
+8. **Site QC** (needs the sidecars, `make site-qc`): in SNPVersity query su1, `Zm00001eb174590`
+   (chr4:43,430,007-43,438,753), with the NAM lines. The *Site QC* column follows MAF; the line under
+   the filters reads "14 flagged, 104 with no carrier in this release, of 208 sites", and the *Site
+   QC* filter leaves 90 rows (hide flagged and no-carrier) or 84 (passing only). *Send to SNPImpact*:
+   90 rows, "14 flagged and 104 no-carrier variants hidden. Show all." In SNPFunction, su1 lists only
+   K662E (het elevated), with G627W under *Flagged calls* and V17M under *No carrier in this
+   release*, and "104 of 208 sites vary among the 933 lines". `Zm00001eb116160` (ZmWAK) shows the
+   banner (12 of 20 protein-changing sites with a carrier are flagged), 0 knockout lines and "25 more
+   lines only in flagged calls". SNPFold on `Zm00001eb406050` shows "8 of 10 coding variants" with
+   *Usable alleles only*. SNPTree on chr6:91,593,082-91,793,082 for the NAM lines uses 2,705 of 5,919
+   sites; *Sites: All* uses every site. `SNPTOOLS_SITEQC=0 make start` brings back the pages as they
+   were (SNPFunction and SNPFold still class sites from SNPFunction's own carrier counts).
 
 **Server limits and VCF clean-up (patch 0038).** `h5_to_vcf.py` refuses a request of more than
 `SNPTOOLS_MAX_CELLS` genotype cells (variants x accessions, default 2e9: about 100 Mb for all 933

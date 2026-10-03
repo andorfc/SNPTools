@@ -22,6 +22,7 @@
     goCurated:false,               // fallback GO filter: true = hide terms only InterPro2GO suggests
     onto:null,                     // MaizeGDB GO + pathways: {gene, status:'loading'|'ok'|'missing'|'error', fn, el, handle}
     ontoView:null,                 // 'go' | 'pathways' once the user picks one (kept across genes)
+    qcOpen:{flagged:false, nocarrier:false},   // the two Site QC groups under the allele table
   };
 
   /* directory of per-gene functional-annotation JSON (one file per canonical model) */
@@ -361,7 +362,7 @@
       if (typeof attachTT==='function') attachTT();
       return;
     }
-    FN.root.innerHTML = datasetChooser() + searchBar() + hero(d) + dossier(d) + annotationSection() + burden(d) + catalog(d);
+    FN.root.innerHTML = datasetChooser() + searchBar() + hero(d) + dossier(d) + annotationSection() + qcBanner(d) + burden(d) + catalog(d);
     mountOntology();
     if (typeof Handoff!=='undefined') Handoff.sync(FN.root);
     if (typeof attachTT==='function') attachTT();
@@ -408,7 +409,9 @@
       <div class="fn-grid">
         <div><div class="fn-k">Location</div><div class="fn-v mono">${region}</div></div>
         <div><div class="fn-k">Protein</div><div class="fn-v">${d.protLen?`${d.protLen} aa`:'—'}${d.protein?` <span class="muted mono">${esc(d.protein)}</span>`:''}</div></div>
-        <div><div class="fn-k">Variants in gene</div><div class="fn-v"><b>${d.nVariants.toLocaleString()}</b></div></div>
+        <div><div class="fn-k">Variants in gene</div><div class="fn-v" id="fnVariable">${d.nVariable!=null
+          ? `<b>${d.nVariable.toLocaleString()}</b> of ${d.nVariants.toLocaleString()} sites vary among the ${d.nAccessions.toLocaleString()} lines`
+          : `<b>${d.nVariants.toLocaleString()}</b>`}</div></div>
         <div style="flex:1 1 100%"><div class="fn-k">Pfam domains</div><div class="fn-v">${doms}</div></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -425,17 +428,18 @@
   function burden(d){
     const b = d.burden, bc = b.byClass;
     const sec = Data.hasSecondaryScores(d.dataset);
-    const total = d.nVariants || 1;
+    const total = (b.nUsed != null ? b.nUsed : d.nVariants) || 1;
     const barSeg = (n,cls,label)=> n? `<span class="fn-seg ${cls}" style="width:${Math.max(2,100*n/total)}%" title="${label}: ${n}"></span>`:'';
     const nss = b.nonsynSyn==null ? '∞' : b.nonsynSyn;
     const af = b.afSpectrum;
     return `<div class="card pad" style="margin-bottom:16px">
-      <div class="fn-h">Variant burden</div>
+      <div class="fn-h">Variant burden${b.nUsed!=null?` <span class="muted" id="fnBurdenSites" style="font-weight:400;font-size:12px" data-tt="Flagged sites (het only, het excess) and sites with no carrier in this release are left out of the burden.">over ${b.nUsed.toLocaleString()} usable sites of ${b.nSites.toLocaleString()}</span>`:''}</div>
       <div class="fn-stats">
         ${stat('Non-syn : syn', nss, 'coding constraint (higher = more nonsynonymous)')}
         ${stat('Exon : intron', b.exonIntron==null?'∞':b.exonIntron, 'variants in exons vs introns of the gene model')}
         ${stat('Domain-disrupting', b.domainDisrupting, 'coding variants inside a Pfam domain')}
-        ${stat('Candidate KO lines', d.koLines, 'accessions homozygous for a loss-of-function allele')}
+        ${stat('Candidate KO lines', d.koLines, 'accessions homozygous for a loss-of-function allele at a usable site',
+          d.koLinesFlagged ? `<div class="fn-statn" id="fnKoFlagged">${d.koLinesFlagged.toLocaleString()} more lines only in flagged calls</div>` : '')}
         ${stat('Mean PlantCAD1', b.meanPlantcad==null?'—':b.meanPlantcad, 'average PlantCAD1 DNA language-model score')}
         ${sec?stat('Mean PlantCAD2', b.meanPlantcad2==null?'—':b.meanPlantcad2, 'average PlantCAD2 DNA language-model score'):''}
         ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
@@ -455,19 +459,28 @@
       <div class="fn-af">Allele frequency: <b>${af.rare}</b> rare (&lt;1%) · <b>${af.low}</b> low (1–5%) · <b>${af.common}</b> common (≥5%)</div>
     </div>`;
   }
-  function stat(k,v,tip){ return `<div class="fn-stat" title="${esc(tip)}"><div class="fn-statv">${v}</div><div class="fn-statk">${k}</div></div>`; }
+  function stat(k,v,tip,extra){ return `<div class="fn-stat" title="${esc(tip)}"><div class="fn-statv">${v}</div><div class="fn-statk">${k}</div>${extra||''}</div>`; }
+  /* A gene whose protein-changing sites are mostly flagged: reads from related genes probably
+     map here. Shown when more than half of at least 5 such sites with a carrier are flagged. */
+  function qcBanner(d){
+    const c = d.codingFlaggedShare;
+    if (!c || !(c.share > 0.5) || c.withCarrier < 5) return '';
+    return `<div class="fn-qcbanner" id="fnQcBanner" role="note"><b>Most protein-changing sites in this gene are dominated by heterozygous calls.</b>
+      Reads from related genes probably map here. Treat its alleles with caution.
+      <span class="muted">(${c.flagged.toLocaleString()} of ${c.withCarrier.toLocaleString()} protein-changing sites with a carrier are flagged.)</span></div>`;
+  }
   function leg(cls,label,n){ return `<span class="fn-lg"><span class="fn-sw ${cls}"></span>${label} ${n}</span>`; }
 
-  /* ---------- damaging / knockout catalog ---------- */
-  function catalog(d){
-    if (!d.damaging.length)
-      return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div><div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles found in this gene across the panel.</div></div>`;
-    const sec = Data.hasSecondaryScores(d.dataset);
-    const rows = d.damaging.map(v=>{
+  /* ---------- damaging / knockout catalog ----------
+     The list holds usable alleles (Site QC PASS or HET_ELEVATED); flagged calls and alleles with
+     no carrier in this release sit in two collapsed groups below it, with the same columns. */
+  function allAlleles(d){ return (d.damaging||[]).concat(d.damagingFlagged||[], d.damagingNoCarrier||[]); }
+  function alleleRows(list, sec, d){
+    return list.map(v=>{
       const open = FN.openId===v.id;
       const vDisp = truncVariant(v.variant);
       const vTrunc = vDisp !== String(v.variant==null?'':v.variant);
-      return `<tr class="imp-row ${open?'open':''}" onclick="FUNCTION.toggle('${v.id}')">
+      return `<tr class="imp-row ${open?'open':''}" data-allele="${esc(v.id)}" onclick="FUNCTION.toggle('${v.id}')">
         <td class="c-mono c-alt" style="padding-left:11px"${vTrunc?` data-tt="${esc(v.variant)}"`:''}>${esc(vDisp)}</td>
         <td>${consPill(v)}${peJump(v)}${foldJump(v)}</td>
         <td>${domTag(v.domain)}</td>
@@ -478,6 +491,7 @@
         ${sec?`<td class="num">${scoreCell(v.esm2)}</td><td class="num">${scoreCell(v.esm3)}</td>`:''}
         ${sec?`<td class="num">${scoreCell(v.esmc)}</td>`:''}
         <td>${prioPill(v.priority)}</td>
+        <td class="fn-qc">${siteQcPill(v.qc, v.het, v.hom)}</td>
         <td class="num">${v.het}</td>
         <td class="num">${v.hom?`<b>${v.hom}</b>`:'0'}</td>
         <td class="num">${(v.af*100).toFixed(1)}%</td>
@@ -487,6 +501,26 @@
           : '<span class="muted">—</span>'}</td>
       </tr>${open?carrierRow(v,sec,d):''}`;
     }).join('');
+  }
+  function alleleTable(list, sec, d){
+    return `<div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score.">PlantCAD2</th>':''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), SNPs within 1 kb of a gene.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th data-tt="Site QC: the class of the site from its heterozygous and homozygous carriers across the panel.">Site QC</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <tbody>${alleleRows(list, sec, d)}</tbody>
+      </table></div>`;
+  }
+  function qcGroupHTML(key, title, list, sec, d){
+    if (!list || !list.length) return '';
+    return `<details class="fn-qcgroup" id="fnQc_${key}" ${FN.qcOpen[key]?'open':''} ontoggle="FUNCTION.qcGroup('${key}', this.open)">
+      <summary>${title} (${list.length.toLocaleString()})</summary>
+      ${alleleTable(list, sec, d)}
+    </details>`;
+  }
+  function catalog(d){
+    const sec = Data.hasSecondaryScores(d.dataset);
+    const groups = qcGroupHTML('flagged', 'Flagged calls', d.damagingFlagged, sec, d)
+                 + qcGroupHTML('nocarrier', 'No carrier in this release', d.damagingNoCarrier, sec, d);
+    if (!d.damaging.length)
+      return `<div class="card pad"><div class="fn-h">Damaging &amp; knockout alleles</div><div class="muted" style="padding:6px 0">No loss-of-function or high-impact damaging alleles${groups?' at usable sites':''} found in this gene across the panel.</div>${groups}</div>`;
     const anyCarrier = d.damaging.some(v=>(v.hom+v.het)>0);
     const dsId = d.dataset!=null ? d.dataset : FN.dataset;
     return `<div class="card pad">
@@ -504,10 +538,8 @@
         <span class="fn-handoff-k">Handoff to SNPVersity</span>
         <span data-ho-mount data-ho-id="fnMergeReplace" data-ho-target="SNPVersity" data-ho-dataset="${esc(dsId==null?'':dsId)}"></span>
       </div>`:''}
-      <div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">PlantCAD1</th>${sec?'<th class="num" data-tt="Second-generation PlantCAD DNA score.">PlantCAD2</th>':''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), SNPs within 1 kb of a gene.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>
+      <div id="fnAlleles">${alleleTable(d.damaging, sec, d)}</div>
+      ${groups}
     </div>`;
   }
   function carrierRow(v, sec, d){
@@ -517,7 +549,7 @@
     const send = (mode,label,n)=> n
       ? `<button class="btn tiny" onclick="event.stopPropagation();FUNCTION.toVersity('${esc(v.id)}','${mode}')">${label} (${n}) →</button>`
       : '';
-    return `<tr class="fn-carriers"><td colspan="${sec?15:10}">
+    return `<tr class="fn-carriers"><td colspan="${sec?16:11}">
       <div class="fn-cwrap">
         <div><div class="fn-k">Homozygous ${v.consClass==='lof'?'(candidate knockouts)':''} · ${v.carriersHom.length}</div>
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${v.carriersHom.length>60?` <span class="muted">+${v.carriersHom.length-60} more</span>`:''}</div></div>
@@ -811,16 +843,17 @@
     load(){ const el=document.getElementById('fnGeneInput'); if(!el)return; const g=el.value.trim(); if(!g)return;
       FN.gene=g; FN.data=null; FN.openId=null; analyzeGene(); },
     toggle(id){ FN.openId = (FN.openId===id?null:id); paint(); },
+    qcGroup(key, open){ FN.qcOpen[key] = !!open; },
     panEffect(id){ const d=FN.data; if(!d||!d.damaging) return;
-      panEffectTo(d.damaging.find(v=>String(v.id)===String(id))); },
+      panEffectTo(allAlleles(d).find(v=>String(v.id)===String(id))); },
     /* whole-gene jump (no specific allele) — used by the dossier card's PanEffect button */
     panEffectGene(){ panEffectTo(); },
     fold(id){ const d=FN.data; if(!d||!d.damaging) return;
-      foldTo(d.damaging.find(v=>String(v.id)===String(id))); },
+      foldTo(allAlleles(d).find(v=>String(v.id)===String(id))); },
 
     /* Hand this gene's region + the accessions carrying an alternative allele
        over to SNPVersity.
-         alleleId : 'all' = every damaging allele in the table
+         alleleId : 'all' = every damaging allele in the table (usable sites only)
                     a single id, or an array of ids (union of their carriers)
          mode     : 'hom' | 'het' | 'all' (homozygous, heterozygous, or both)
        Whether SNPVersity adds these to its current selection or replaces it is
@@ -832,8 +865,8 @@
       mode = mode || 'all';
       const ids = Array.isArray(alleleId) ? alleleId.map(String) : null;
       const vs = alleleId==='all' ? d.damaging
-               : ids              ? d.damaging.filter(v=>ids.indexOf(String(v.id))>=0)
-               :                    d.damaging.filter(v=>String(v.id)===String(alleleId));
+               : ids              ? allAlleles(d).filter(v=>ids.indexOf(String(v.id))>=0)
+               :                    allAlleles(d).filter(v=>String(v.id)===String(alleleId));
       if(!vs.length) return;
       const acc=new Set();
       vs.forEach(v=>{
@@ -885,7 +918,7 @@
         .concat(['esm'])
         .concat(sec?['esm2','esm3']:[])
         .concat(sec?['esmc']:[])
-        .concat(['combined','priority','het','hom','af','homozygous_carriers','het_carriers']);
+        .concat(['combined','priority','site_qc','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
         const base=[v.variant,v.consequence,v.domain,v.plantcad];
         if(sec) base.push(v.plantcad2);
@@ -893,11 +926,12 @@
         base.push(v.esm);
         if(sec) base.push(v.esm2, v.esm3);
         if(sec) base.push(v.esmc);
-        base.push(v.combined,v.priority,v.het,v.hom,v.af.toFixed(4),
+        base.push(v.combined,v.priority,v.qc,v.het,v.hom,v.af.toFixed(4),
           '"'+v.carriersHom.join(';')+'"','"'+v.carriersHet.join(';')+'"');
         return base.map(x=>x==null?'':x).join(',');
       };
-      const csv=[cols.join(',')].concat(d.damaging.map(line)).join('\n');
+      // the usable alleles of the list, then the flagged and no-carrier ones (site_qc says which)
+      const csv=[cols.join(',')].concat(allAlleles(d).map(line)).join('\n');
       const blob=new Blob([csv],{type:'text/csv'}), u=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=u; a.download=`snpfunction_${d.gene}_damaging.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500);
     },
@@ -915,6 +949,12 @@
       .fn-stat{background:#f5f8fc;border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:120px}
       .fn-statv{font-size:20px;font-weight:700;color:var(--ink);font-family:var(--mono)}
       .fn-statk{font-size:11px;color:var(--muted);margin-top:2px}
+      .fn-statn{font-size:11px;color:#8a5300;margin-top:4px;max-width:170px}
+      .fn-qcbanner{background:#fff7e6;border:1px solid #f0d9a8;border-left:4px solid #c27c0e;border-radius:10px;
+        padding:10px 14px;margin:0 0 16px;font-size:13px;color:var(--ink);line-height:1.5}
+      .fn-qcgroup{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+      .fn-qcgroup>summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:8px}
+      td.fn-qc{white-space:nowrap}
       .fn-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#eef1f5}
       .fn-seg{display:inline-block;height:100%}
       .fn-seg.lof,.fn-sw.lof{background:#c0362c}.fn-seg.splice,.fn-sw.splice{background:#b8862b}

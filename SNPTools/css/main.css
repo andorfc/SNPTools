@@ -318,6 +318,14 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .pill.moderate{background:#fdeecb;color:#b54708}
 .pill.low{background:#dcf5e3;color:#176c3a}
 .pill.modifier{background:#e6eeff;color:#3358bf}
+/* Site QC mark (siteQcPill in data.js): every class carries its text label */
+.qcp{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.2px;white-space:nowrap;border:1px solid transparent;line-height:1.5}
+.qcp.flagged{background:#fde3e1;color:#9f1f14;border-color:#f3b9b2}
+.qcp.caution{background:#fdf1d6;color:#7a4a00;border-color:#efd59c}
+.qcp.nocarrier{background:#f2f4f7;color:#4b5563;border-color:#c9d0da;border-style:dashed}
+.qcp.pass{background:none;border:none;color:var(--faint);font-weight:500;padding:1px 2px}
+.qc-note{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+.qc-note a{color:var(--blue-600)}
 .dom-tag{font-size:10px;font-family:var(--mono);background:#f1ebfb;color:#6d28d9;padding:2px 7px;border-radius:6px}
 
 .score{text-align:center;color:#fff;font-family:var(--mono);font-size:11px;font-weight:600;min-width:46px}

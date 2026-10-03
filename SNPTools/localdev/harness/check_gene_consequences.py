@@ -7,8 +7,10 @@ SnpEff writes GENEMODEL, TYPE, EFFECT and SUB as parallel comma lists, one entry
 (most severe first). A tool showing one gene must use that gene's entry (its most severe,
 the first on a tie), not the row's first entry:
 (a) SNPFunction (Data.geneFunction): every site with an entry for the gene, its consequence
-    class, residue substitution, ESM1/2/3, and homozygous / heterozygous carriers among the
-    933 lines; the burden by class and the damaging-allele count.
+    class, residue substitution, ESM1/2/3, homozygous / heterozygous carriers among the 933
+    lines and the Site QC class they give; the burden by class and the damaging-allele count
+    over usable sites (PASS, HET_ELEVATED), and the flagged and no-carrier damaging alleles
+    kept apart.
 (b) SNPFold (Data.queryFoldVariants): the coding entries with a residue.
 (c) ESM: a site carries one ESM score, computed for the FIRST missense entry of TYPE
     (tools/annotate_release_info.py, pick_esm); it may appear only on that entry, and every
@@ -134,6 +136,14 @@ def esmc(I, e):            # ESM-C goes with the same entry as ESM1-3
     return num(I.get('ESMC_score')) if e[4] else None
 
 
+def site_qc(het, hom):     # the Site QC rule, first match wins
+    if het + hom == 0: return 'NO_CARRIER'
+    if hom == 0: return 'HET_ONLY'
+    if het > hom: return 'HET_EXCESS'
+    if 4 * het >= het + hom: return 'HET_ELEVATED'
+    return 'PASS'
+
+
 def residue(sub):
     m = re.search(r'\d+', sub or '')
     return int(m.group()) if m else None
@@ -151,7 +161,7 @@ for gene, got in P['genes'].items():
         cls, severe = klass(e[1]); esm = scores(I, e)
         d = [dose(c) for c in cells]
         hom, het = sum(x == 2 for x in d), sum(x == 1 for x in d)
-        exp_v.append({'pos': pos, 'ref': ref, 'alt': alt, 'cls': cls, 'esm': esm, 'hom': hom, 'het': het,
+        exp_v.append({'pos': pos, 'ref': ref, 'alt': alt, 'cls': cls, 'esm': esm, 'hom': hom, 'het': het, 'qc': site_qc(het, hom),
                       'severe': severe, 'sub': e[3], 'evo2': num(I.get('evo2_score')), 'esmc': esmc(I, e),
                       'pc1': num(I.get('plantcad1_score'))})
         if fold_coding(e[1]) and residue(e[3]) is not None:
@@ -165,14 +175,17 @@ for gene, got in P['genes'].items():
     gv = {(v['pos'], v['ref'], v['alt']): v for v in fn['v']}
     if fn['n'] != len(exp_v) or set(gv) != {(v['pos'], v['ref'], v['alt']) for v in exp_v}:
         bad += 1; print('SNPFunction sites', gene, fn['n'], len(exp_v))
+    # the burden, the allele list and the means count usable sites only
+    used = [v for v in exp_v if v['qc'] in ('PASS', 'HET_ELEVATED')]
+    if fn.get('nUsed') != len(used): bad += 1; print('usable sites', gene, fn.get('nUsed'), len(used))
     by = {}
-    for v in exp_v: by[v['cls']] = by.get(v['cls'], 0) + 1
+    for v in used: by[v['cls']] = by.get(v['cls'], 0) + 1
     if {k: n for k, n in fn['byClass'].items() if n} != by:
         bad += 1; print('burden by class', gene, fn['byClass'], by)
     for v in exp_v:
         g = gv.get((v['pos'], v['ref'], v['alt']))
         if not g: continue
-        if g['cls'] != v['cls'] or (g['hom'], g['het']) != (v['hom'], v['het']) or \
+        if g['cls'] != v['cls'] or (g['hom'], g['het']) != (v['hom'], v['het']) or g.get('qc') != v['qc'] or \
            (g['esm'], g['esm2'], g['esm3']) != v['esm'] or g.get('evo2') != v['evo2'] or g.get('esmc') != v['esmc']:
             bad += 1; print('SNPFunction variant', gene, v['pos'], g, v)
         if v['cls'] == 'missense' and g['sub'] != v['sub']:
@@ -180,8 +193,12 @@ for gene, got in P['genes'].items():
     def combined(v):       # Data.geneFunction: mean of PlantCAD1 and ESM1 when both, else whichever is present
         pc, es = v['pc1'], v['esm'][0]
         return round((pc + es) / 2, 2) if pc is not None and es is not None else (pc if pc is not None else es)
-    dmg = sum(v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and combined(v) is not None and combined(v) <= -4) for v in exp_v)
-    if fn['damaging'] != dmg: bad += 1; print('damaging', gene, fn['damaging'], dmg)
+    is_dmg = lambda v: v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and combined(v) is not None and combined(v) <= -4)
+    dmg = sum(is_dmg(v) for v in used)
+    dmg_f = sum(is_dmg(v) and v['qc'] in ('HET_ONLY', 'HET_EXCESS') for v in exp_v)
+    dmg_n = sum(is_dmg(v) and v['qc'] == 'NO_CARRIER' for v in exp_v)
+    if (fn['damaging'], fn.get('damagingFlagged'), fn.get('damagingNoCarrier')) != (dmg, dmg_f, dmg_n):
+        bad += 1; print('damaging (usable, flagged, no carrier)', gene, (fn['damaging'], fn.get('damagingFlagged'), fn.get('damagingNoCarrier')), (dmg, dmg_f, dmg_n))
     if fn['nAcc'] != 933: bad += 1; print('panel', gene, fn['nAcc'])
     key = lambda v: (v['pos'], v['resi'], 'none' if v['esm'] is None else f"{v['esm']:.1f}")   # JSON writes -3.0 as -3
     fold = sorted(key(v) for v in got['fold'])
@@ -189,7 +206,7 @@ for gene, got in P['genes'].items():
         bad += 1; print('SNPFold variants', gene, len(fold), len(exp_fold))
     # Evo2 is allele-level (every entry), ESM-C follows the ESM entry; the burden means
     for k in ('evo2', 'esmc'):
-        vals = [v[k] for v in exp_v if v[k] is not None]
+        vals = [v[k] for v in used if v[k] is not None]
         mean = sum(vals) / len(vals) if vals else None
         got_m = (fn.get('means') or {}).get(k)
         if (got_m is None) != (mean is None) or (mean is not None and abs(got_m - mean) > 0.005 + 1e-9):   # JS rounds to 2 places
@@ -198,8 +215,8 @@ for gene, got in P['genes'].items():
     for v in exp_v:
         if v['pos'] in fold_x and fold_x[v['pos']] != (v['evo2'], v['esmc']): bad += 1; print('SNPFold Evo2/ESM-C', gene, v['pos'], fold_x[v['pos']], (v['evo2'], v['esmc']))
     summary.append(f"{gene}: {len(exp_v)} sites (first-listed rule kept {first_rule}), "
-                   f"{by.get('missense', 0)} missense ({sum(v['esm'][0] is not None for v in exp_v if v['cls'] == 'missense')} with ESM), "
-                   f"{len(exp_fold)} on the structure, {dmg} damaging"
+                   f"{sum(v['cls'] == 'missense' for v in exp_v)} missense ({sum(v['esm'][0] is not None for v in exp_v if v['cls'] == 'missense')} with ESM), "
+                   f"{len(exp_fold)} on the structure, {dmg} damaging at {len(used)} usable sites ({dmg_f} flagged, {dmg_n} no carrier)"
                    + (f", Evo2 on {sum(v['evo2'] is not None for v in exp_v)}, ESM-C on {sum(v['esmc'] is not None for v in exp_v)}" if any(v['evo2'] is not None or v['esmc'] is not None for v in exp_v) else ''))
 
 # (d) SNPGeo, gene search Zm00001eb374230

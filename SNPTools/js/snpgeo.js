@@ -473,7 +473,7 @@ function geoRenderTable(){
           tabindex="-1" ${active ? 'checked' : ''}
           aria-label="Show ${escGeoAttr(variant)} on the map"></td>
         <td class="c-mono">${escGeo(variant)}</td>
-        <td class="effect-cell">${escGeo(consequence)}${impact?` <span class="pill ${impact}">${escGeo(row.impact)}</span>`:''}</td>
+        <td class="effect-cell">${escGeo(consequence)}${impact?` <span class="pill ${impact}">${escGeo(row.impact)}</span>`:''}${row.qc?` ${siteQcPill(row.qc, row.nHet, row.nHom)}`:''}</td>
         <td class="num">${resi != null ? resi : '—'}</td>
         <td class="c-mono">${resiVariant ? escGeo(resiVariant) : '—'}</td>
         ${models.map(m=>sc(row[m.key])).join('')}
@@ -705,6 +705,8 @@ function geoAdmin1Stats(stats){
   return out;
 }
 
+/* Site QC mark beside the variant label (nothing is hidden in SNPGeo). */
+function geoQcMark(row){ return (row && row.qc) ? ' ' + siteQcPill(row.qc, row.nHet, row.nHom) : ''; }
 /* Label for the variant currently driving the map. */
 function geoVariantLabel(row){
   if (!row) return '';
@@ -1047,7 +1049,7 @@ function geoRenderOverview(){
     <div class="geo-pane">
       <div class="geo-pane-head">
         <h4 style="margin:0">Overview</h4>
-        <span class="geo-pane-sub">${escGeo(geoVariantLabel(GEO.rows[GEO.snpIndex]))}</span>
+        <span class="geo-pane-sub">${escGeo(geoVariantLabel(GEO.rows[GEO.snpIndex]))}${geoQcMark(GEO.rows[GEO.snpIndex])}</span>
       </div>
       <div class="geo-pane-body">
         <div class="geo-stat-block">
