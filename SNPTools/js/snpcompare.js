@@ -331,7 +331,7 @@ const SNPCompare = (function () {
     const projBio={};
     (Data.projectsFor(ds)||[]).forEach(p=>{ projBio[p.id]=(p.bioprojects&&p.bioprojects.length)?p.bioprojects.join(', '):(p.title||''); });
     const m={};
-    (Data.accessionsFor(ds)||[]).forEach(a=>{ m[a.id]={id:a.id, name:a.founder, run:a.run, proj:a.proj, projColor:a.projColor, bio:projBio[a.proj]||''}; });
+    (Data.accessionsFor(ds)||[]).forEach(a=>{ m[a.id]={id:a.id, name:a.founder, run:a.run, proj:a.proj, projColor:a.projColor, bio:projBio[a.proj]||'', grin:a.grin||''}; });
     ST._meta=m; ST._metaDs=ds; return m;
   }
   function projectOptions(ds){
@@ -402,7 +402,7 @@ const SNPCompare = (function () {
     const k=ST.sortKey, d=ST.sortDir;
     rows.sort((a,b)=>{
       let va=a[k], vb=b[k];
-      if(k==='id'||k==='name'||k==='run'||k==='bio'){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
+      if(k==='id'||k==='name'||k==='run'||k==='bio'||k==='grin'){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
       va=va==null?-Infinity:va; vb=vb==null?-Infinity:vb; return d*(va-vb);
     });
     return rows;
@@ -770,7 +770,8 @@ const SNPCompare = (function () {
     } else {
       c.push({k:'gsim',t:'Similarity'},{k:'gmiss',t:'Missing%'});
     }
-    c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'});
+    c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'},
+           {k:'grin',t:'PI number',tt:'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'});
     return c;
   }
   const fmtSim=v=>v==null?'—':v.toFixed(4);
@@ -793,7 +794,7 @@ const SNPCompare = (function () {
       if(c.k==='rank') return `<th>#</th>`;
       const active = (c.k===sortKey) || (c.k==='gsim'&&ST.sortKey==='sim'&&ST.mode!=='local') || (c.k==='lsim'&&ST.sortKey==='sim'&&ST.mode==='local');
       const arrow = active ? (ST.sortDir<0?' ▾':' ▴') : '';
-      return `<th onclick="SNPCompare.sortBy('${c.k}')" style="cursor:pointer;white-space:nowrap">${esc(c.t)}${arrow}</th>`;
+      return `<th onclick="SNPCompare.sortBy('${c.k}')" style="cursor:pointer;white-space:nowrap"${c.tt?` data-tt="${esc(c.tt)}"`:''}>${esc(c.t)}${arrow}</th>`;
     }).join('');
     const body=rows.map((r,i)=>{
       const focal=r.id===ST.focal;
@@ -1229,7 +1230,7 @@ const SNPCompare = (function () {
     if(ST.ran) paint(); else showIdle();
   }
   function sortBy(k){ if(k==='rank'||!ST.ran)return;
-    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio')?1:-1; }
+    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio'||k==='grin')?1:-1; }
     renderTable(); }
   function toTree(){ if(!ST.input)return; S.treeInput=ST.input; go('snptree'); }
   function toMatrix(){ if(!ST.input)return; S.matrixInput=ST.input; go('snpmatrix'); }
