@@ -504,7 +504,7 @@
   }
   function alleleTable(list, sec, d){
     return `<div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">${scoreHeadHTML('PlantCAD1')}</th>${sec?`<th class="num" data-tt="Second-generation PlantCAD DNA score.">${scoreHeadHTML('PlantCAD2')}</th>`:''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), SNPs within 1 kb of a gene.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPTools evidence tier for the allele.">Priority</th><th data-tt="Site QC: the class of the site from its heterozygous and homozygous carriers across the panel.">Site QC</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">${scoreHeadHTML('PlantCAD1')}</th>${sec?`<th class="num" data-tt="Second-generation PlantCAD DNA score.">${scoreHeadHTML('PlantCAD2')}</th>`:''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), SNPs within 1 kb of a gene.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPMaize evidence tier for the allele.">Priority</th><th data-tt="Site QC: the class of the site from its heterozygous and homozygous carriers across the panel.">Site QC</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
         <tbody>${alleleRows(list, sec, d)}</tbody>
       </table></div>`;
   }
@@ -661,7 +661,7 @@
       ? `MaizeGDB has no gene record for <span class="mono">${esc(FN.gene)}</span>.`
       : `Couldn’t load GO and pathways from MaizeGDB: ${esc(o.error || 'request failed')}.`;
     const fallback = a
-      ? ' Showing SNPTools’ own annotation file below instead: its GO terms are listed but not placed in the ontology, and its KEGG pathways come from UniProt/Entrez cross-references only.'
+      ? ' Showing SNPMaize’s own annotation file below instead: its GO terms are listed but not placed in the ontology, and its KEGG pathways come from UniProt/Entrez cross-references only.'
       : '';
     return `<div class="card pad fn-onto-note" style="margin-bottom:16px">${head}
         <div class="muted" style="font-size:13px">${why}${fallback}
@@ -805,7 +805,7 @@
     const nPred = all.filter(isPredictedOnly).length;
     return `<div class="card pad" style="margin-bottom:16px">
       <div class="fn-h" style="display:flex;align-items:center;gap:10px">Gene Ontology
-        <span class="muted" style="font-weight:400;font-size:12px">${terms.length} of ${all.length} terms${curatedOnly?' · domain-only terms hidden':''} · SNPTools annotation file</span>
+        <span class="muted" style="font-weight:400;font-size:12px">${terms.length} of ${all.length} terms${curatedOnly?' · domain-only terms hidden':''} · SNPMaize annotation file</span>
         ${nPred?`<button class="btn" style="margin-left:auto;font-size:12px;padding:6px 11px" onclick="FUNCTION.toggleGO()">${curatedOnly?'Show domain-only terms':'Hide domain-only terms'}</button>`:''}
       </div>
       <div class="go-summary"><div class="go-bar">${summary}</div><div class="go-legend">${legend}</div></div>

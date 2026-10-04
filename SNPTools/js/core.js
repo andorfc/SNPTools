@@ -181,7 +181,7 @@ function go(id){
 /* ================= TOOL PLACEHOLDER PAGES ================= */
 function renderToolPage(id){
   const t=TOOLS[id]; const p=document.getElementById('page'); p.className='page fade';
-  const feats=t.feats||[['star','In development','This module is part of the SNPTools roadmap.'],['compare','Connected','It will share selections with the rest of the suite.'],['dna','Same data','Built on the unified variant database.']];
+  const feats=t.feats||[['star','In development','This module is part of the SNPMaize roadmap.'],['compare','Connected','It will share selections with the rest of the suite.'],['dna','Same data','Built on the unified variant database.']];
   p.innerHTML=`
     <div class="tool-hero">
       <div class="ti" style="background:${t.color}">${ICONS[t.icon]}</div>
@@ -196,7 +196,7 @@ function renderToolPage(id){
       ${feats.map(f=>`<div class="feat"><div class="fi">${ICONS[f[0]]}</div><h4>${f[1]}</h4><p>${f[2]}</p></div>`).join('')}
     </div>
     <div class="mock-strip">
-      <div class="ms-h">Part of the integrated SNPTools platform</div>
+      <div class="ms-h">Part of the integrated SNPMaize platform</div>
       <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and B73 v5 coordinates.</p>
     </div>`;
 }

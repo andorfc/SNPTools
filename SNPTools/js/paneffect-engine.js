@@ -485,7 +485,7 @@
     return '' +
       '<div class="pe-scheme" id="pe-scheme' + sfx + '">' +
         '<span class="pe-scheme-lab">Colour scheme</span>' +
-        '<label><input type="radio" name="' + name + '" value="snptools" checked> SNPTools</label>' +
+        '<label><input type="radio" name="' + name + '" value="snptools" checked> SNPMaize</label>' +
         '<label><input type="radio" name="' + name + '" value="classic"> Classic</label>' +
       '</div>';
   }

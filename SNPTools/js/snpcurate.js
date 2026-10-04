@@ -125,7 +125,7 @@
         ${th('Gene','gene','Gene symbol and B73 v5 model. Click to sort.')}${th('Change','','The published change.')}${th('Trait','','The trait the allele affects.')}
         ${th('Status in this release','','Whether the release genotypes the allele, and why not when it does not.')}
         ${th('Carriers (het / hom)','carriers','Heterozygous / homozygous carriers among the release lines. Click to sort.')}
-        ${th('Site QC','','The class of the site from its heterozygous and homozygous carriers.')}${th('Priority','','The SNPTools priority of the change, as SNPImpact computes it.')}${th('Reference','','The first publication; the record lists all.')}</tr></thead>
+        ${th('Site QC','','The class of the site from its heterozygous and homozygous carriers.')}${th('Priority','','The SNPMaize priority of the change, as SNPImpact computes it.')}${th('Reference','','The first publication; the record lists all.')}</tr></thead>
       <tbody>${rows}</tbody></table></div>
       <div class="pager"><div class="info">Showing <span class="mono">${L.length}</span> of <span class="mono">${entries().length}</span> curated alleles</div></div>`;
   }
