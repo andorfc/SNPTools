@@ -227,7 +227,7 @@
      "doi": "10.1104/pp.125.3.1406"
     }
    ],
-   "note": "Present on the su1-ref allele with W578R, which is not a site. Homozygous in 22 of 33 sweet lines and in 91 other lines, so it does not identify sweet corn by itself.",
+   "note": "Present on the su1-ref allele with W578R, which is not a site. Homozygous in all 11 lines whose GRIN kernel type is sweet and in 102 other lines, so it does not identify sweet corn by itself.",
    "needs_review": null,
    "expect": {
     "het": 6,
@@ -392,7 +392,7 @@
      "doi": "10.1038/s41467-019-13425-6"
     }
    ],
-   "note": "The B73 v5 gene model has a single exon, so no splice consequence can be annotated, and no variant in the gene is enriched in sweet corn or popcorn.",
+   "note": "The published variant (G/GT to C/GT) is at the 5' splice site of an intron in the 5' UTR. The B73 v5 gene model has a single exon, so no splice consequence can be annotated, and none of the 12 sites in that region (chr7:6,008,413-6,008,669) matches the change. By GRIN kernel type, missense T166A (chr7:6,007,879) is homozygous in 12 of the 24 lines recorded as sweet or pop and in 94 of the 835 field-type lines (dent, semident, semiflint or flint), and a haplotype of six sites just past the 3' end of the gene (chr7:6,007,105-6,007,322; counted at its last site) in 19 of 24 against 140 of 835. That is not evidence for the gene: 2,241 of the 21,246 other 100-kb windows of the genome hold a usable site that separates sweet or pop lines from field types more strongly than any in the window around tin1.",
    "needs_review": null,
    "tagged_by": null,
    "start": 6007514,
