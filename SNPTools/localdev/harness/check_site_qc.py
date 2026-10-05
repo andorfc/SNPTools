@@ -162,11 +162,11 @@ def php(rt, post, env=None):
 
 
 def temp_root():
-    """A site root of its own: the two scripts, hdf5/version3/ and vcf/. Returns it and its store folder."""
+    """A site root of its own: the two scripts, hdf5/grin2026/ and vcf/. Returns it and its store folder."""
     tmp = tempfile.mkdtemp(prefix='snpt_siteqc_')
     for f in ('processForm.php', 'h5_to_vcf.py'):
         shutil.copy(os.path.join(root, f), tmp)
-    hd = os.path.join(tmp, 'hdf5', 'version3'); os.makedirs(hd); os.makedirs(os.path.join(tmp, 'vcf'))
+    hd = os.path.join(tmp, 'hdf5', 'grin2026'); os.makedirs(hd); os.makedirs(os.path.join(tmp, 'vcf'))
     return tmp, hd
 
 
@@ -207,8 +207,8 @@ print(sum(b'SITEQC=' in (v if isinstance(v, bytes) else str(v).encode()) for v i
 q5 = Q['queries'].get('five')
 if q5 and 'five' in V and 'five_off' in V:
     store = f"zmgrin2026_{q5['chr']}_impute"
-    real_store = os.path.join(root, 'hdf5', 'version3', store + '.h5')
-    real_side = os.path.join(root, 'hdf5', 'version3', store + '.siteqc.h5')
+    real_store = os.path.join(root, 'hdf5', 'grin2026', store + '.h5')
+    real_side = os.path.join(root, 'hdf5', 'grin2026', store + '.siteqc.h5')
     sn = subprocess.run([PY, '-c', stored_snippet, real_store, str(q5['start']), str(q5['end'])], capture_output=True, text=True)
     try:
         n_qc, n_rows = [int(x) for x in sn.stdout.split()]
@@ -355,7 +355,7 @@ try:
         check(len(r0) == len(r1) and not own and all(info_ids(m1).count(k) == 1 for k in QC_IDS),
               f"annotate_release_info.py {chrom}: NHET / NHOM / SITEQC equal the fixture's genotypes on {len(r1)} rows {own[:3]}")
         check(kept, f"annotate_release_info.py {chrom}: every INFO key of the fixture unchanged")
-        store = os.path.join(root, 'hdf5', 'version3', f'zmgrin2026_{chrom}_impute.h5')
+        store = os.path.join(root, 'hdf5', 'grin2026', f'zmgrin2026_{chrom}_impute.h5')
         if not os.path.isfile(store[:-3] + '.siteqc.h5'):
             check(False, f"{chrom}: no sidecar beside {os.path.basename(store)} to compare with"); continue
         keys = [f'{r[1]}:{r[3]}:{r[4]}' for r in r1]

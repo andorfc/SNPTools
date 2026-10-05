@@ -35,7 +35,7 @@ if (!$PYTHON_PATH) {
 }
 
 // 2) Where the .h5 files live, relative to this PHP file.
-$VERSION_PATH = './hdf5/version3/';
+$VERSION_PATH = './hdf5/grin2026/';
 
 // 3) Where VCFs are written (must be web-served AND writable). Matches CFG.vcfDir in data.js.
 $VCF_DIR = './vcf/';
@@ -99,7 +99,7 @@ switch ($dataset) {
     case 'schnable2023': $ds_part0 = 'schnable2023'; $ds_part2 = 'impute'; break;
     // MaizeGDB GRIN-linked 2026 release (v1.4): Grzybowski et al. 2023 sites,
     // Beagle-imputed; sample columns are release sample_ids (ZmG_<genotype>).
-    // Store: hdf5/version3/zmgrin2026_<chr>_impute.h5
+    // Store: hdf5/grin2026/zmgrin2026_<chr>_impute.h5
     case 'zmgrin2026_imp': $ds_part0 = 'zmgrin2026'; $ds_part2 = 'impute'; break;
     case 'nam2021':      // new UI sends the bare id
     case 'nam2021_hq':   $ds_part0 = 'nam2021';      $ds_part2 = 'HQ';     break;

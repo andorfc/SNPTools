@@ -116,7 +116,7 @@ try:
     for f in ('processForm.php', 'h5_to_vcf.py', 'ibsCompare.php'):
         shutil.copy(os.path.join(ROOT, f), tmp)
     os.makedirs(os.path.join(tmp, 'hdf5'))
-    os.symlink(os.path.join(ROOT, 'hdf5', 'version3'), os.path.join(tmp, 'hdf5', 'version3'))
+    os.symlink(os.path.join(ROOT, 'hdf5', 'grin2026'), os.path.join(tmp, 'hdf5', 'grin2026'))
     vdir = os.path.join(tmp, 'vcf'); os.makedirs(vdir)
     old = time.time() - 3 * 86400
     for name in ('snpv_1_old_1_2.vcf.gz', 'snpv_1_old_1_2.vcf.gz.acc.json', 'notes.txt'):

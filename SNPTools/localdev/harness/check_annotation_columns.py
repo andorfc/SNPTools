@@ -30,7 +30,7 @@ LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR
 KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'qc', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
 # the chr2 store's site-QC sidecar: with it every row of the result carries a class (without it,
 # the rows whose INFO has SITEQC in the release itself)
-SIDECAR = os.path.exists(f'{root}/hdf5/version3/zmgrin2026_chr2_impute.siteqc.h5')
+SIDECAR = os.path.exists(f'{root}/hdf5/grin2026/zmgrin2026_chr2_impute.siteqc.h5')
 bad = 0
 
 

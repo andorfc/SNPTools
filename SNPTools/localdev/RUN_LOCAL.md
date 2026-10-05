@@ -25,7 +25,7 @@ Versions used here: PHP 8.5.9 (CLI built-in server), Python 3.12 + h5py + numpy,
 ## 2. Variant stores
 
 **All ten chromosomes (release v1.4.2 builds, installed 2026-10-04).**
-`hdf5/version3/zmgrin2026_chr{1..10}_impute.h5` are the full builds of the v1.4.2 annotation update
+`hdf5/grin2026/zmgrin2026_chr{1..10}_impute.h5` are the full builds of the v1.4.2 annotation update
 (the lines, sites and genotypes of release v1.4, unchanged): 46,054,265 sites x 933 samples in all
 (chr1 6,706,560; chr2 5,179,690; chr3
 5,192,152; chr4 5,793,751; chr5 4,774,127; chr6 3,625,217; chr7 3,893,628; chr8 3,886,650; chr9
@@ -273,4 +273,4 @@ To get the branch with its 25 commits:
     # optional: git rebase -r --exec 'git commit --amend --no-edit --reset-author' 4bf370d8
 
 `diff -r SNPTools_git/SNPTools ~/Documents/code/SNPTools_maize_port/SNPTools` should then
-differ only in ignored local files (hdf5/version3/*.h5, vcf/*, localdev/out, node_modules).
+differ only in ignored local files (hdf5/grin2026/*.h5, vcf/*, localdev/out, node_modules).

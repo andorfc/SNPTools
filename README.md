@@ -54,7 +54,7 @@ Browser (core.js + tool modules)
 processForm.php ─► h5_to_vcf.py           lookupGeneModel.php         ibsCompare.php
    │                 │                        │ gff/genes_index.txt        │ distance/<family>/
    │                 ▼                        ▼                            ▼
-   │   hdf5/version3/zmgrin2026_<chr>_impute.h5    {chromosome, start, end}   one IBS row
+   │   hdf5/grin2026/zmgrin2026_<chr>_impute.h5    {chromosome, start, end}   one IBS row
    ▼
 vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table and the other tools
                                    ├─ data/domains/by_chr/<chr>.json      Pfam domain by position
@@ -94,7 +94,7 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
     ├── gene_index_lib.php              # sorted gene index used by lookupGeneModel.php
     ├── ibsCompare.php                  # precomputed genome-wide IBS rows and trees
     ├── gff/                            # genes_data.serialized (source) + genes_index.txt
-    ├── hdf5/version3/                  # variant stores (not in git)
+    ├── hdf5/grin2026/                  # variant stores (not in git)
     ├── distance/<family>/              # genome-wide IBS matrices and trees (not in git)
     ├── data/                           # static annotation files (only data/gwas is in git)
     ├── paneffect/                      # PanEffect score files (not in git)
@@ -192,7 +192,7 @@ GRIN accession, panel memberships, subpopulation and origin) and `window.SNPTRAI
 `h5_to_vcf.py <store.h5> <out.vcf[.gz]> <start> <end> <accessions.json>` reads the store in
 chunk-aligned blocks (peak memory about 0.3 GB for any interval), fills an id the store lacks with
 `./.`, and writes gzip when the output name ends in `.gz`. Store files are named
-`hdf5/version3/<family>_<chr>_<tier>.h5` (`zmgrin2026_chr1_impute.h5`); each holds the datasets
+`hdf5/grin2026/<family>_<chr>_<tier>.h5` (`zmgrin2026_chr1_impute.h5`); each holds the datasets
 `CHROM, POS, REF, ALT, QUAL, INFO` and one int8 genotype column per sample (0 = 0/0, 1 = 0/1,
 2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`. Each row's INFO ends with `NHET`, `NHOM`
 (heterozygous and homozygous-alternate carriers among all 933 lines, whatever lines were asked for)
@@ -217,8 +217,8 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 
 | Path | Used by | Content |
 | --- | --- | --- |
-| `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.4-2.8 GB per chromosome) |
-| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | build_snpcurate.py, build_site_qc.py `--summary`; h5_to_vcf.py for a store without the fields in its INFO | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
+| `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.4-2.8 GB per chromosome) |
+| `hdf5/grin2026/zmgrin2026_<chr>_impute.siteqc.h5` | build_snpcurate.py, build_site_qc.py `--summary`; h5_to_vcf.py for a store without the fields in its INFO | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
 | `data/qc/zmgrin2026.siteqc.summary.json`, `zmgrin2026.lineqc.tsv` | reports, help text | site classes per chromosome and in total; per-line heterozygosity (generated) |
 | `data/curate/snpcurate.source.json` | build_snpcurate.py | SNPCurate's registry of published alleles, edited by hand |
 | `js/snpcurate.data.js` | SNPCurate (optional) | the registry with each site's carriers, class, scores, priority and trait means in this release (`window.SNP_CURATE`, generated) |
@@ -250,7 +250,7 @@ The builders for the GRIN-linked dataset are in `SNPTools/tools/` (details in
 | `build_maize_snpgeo_data.py`, `build_geo_layers.py` | `js/snpgeo.regions.js`, `data/geo/*.geo.json` |
 | `annotate_release_info.py` | the SnpEff, MAF, maxR², site QC (`NHET`, `NHOM`, `SITEQC`) and language-model INFO fields of a release VCF |
 | `maxr2_chr.sh`, `check_r2.py` | the maxR² table (PLINK 1.9) and its independent check |
-| `vcf_to_h5.py` | `hdf5/version3/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
+| `vcf_to_h5.py` | `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
 | `build_snpcurate.py` | `js/snpcurate.data.js` from `data/curate/snpcurate.source.json` (`make curate`); `--table` writes the benchmark table |
 | `build_site_qc.py` | the `.siteqc.h5` sidecar beside each store; with `--summary`, `data/qc/` and `js/zmgrin.lineqc.js` (`make site-qc`) |
 | `build_gene_index.php` | `gff/genes_index.txt` |
@@ -269,7 +269,7 @@ repository.
   built-in server). Tested with PHP 8.5.
 - Python 3 with `h5py` and `numpy` for `h5_to_vcf.py` (tested with Python 3.12, h5py 3.16,
   numpy 2.5).
-- The variant stores in `hdf5/version3/` with their site-QC sidecars (`make site-qc`), and the data
+- The variant stores in `hdf5/grin2026/` with their site-QC sidecars (`make site-qc`), and the data
   files above.
 
 ### Local instance
@@ -288,7 +288,7 @@ installed (it never replaces a store larger than 50 MB unless `FORCE=1`).
 ### Deployment
 
 1. Put `SNPTools/` under the web root.
-2. Install the stores in `hdf5/version3/`, the matrices in `distance/zmgrin2026/` and the data files.
+2. Install the stores in `hdf5/grin2026/`, the matrices in `distance/zmgrin2026/` and the data files.
    Run `make site-qc` where the stores are (or copy their `.siteqc.h5` sidecars with them): it writes
    the sidecars (about 1.5 minutes with `JOBS=4`) and regenerates `data/qc/` and `js/zmgrin.lineqc.js`,
    which are also in git. The v1.4.2 stores carry the site-QC fields themselves, so the pages show

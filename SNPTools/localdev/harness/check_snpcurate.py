@@ -61,7 +61,7 @@ def vcf(chrom, lo, hi, ids):
     """Rows of h5_to_vcf.py for the interval: (pos, ref, alt, info dict, {sample: dose or None})."""
     out = os.path.join(tmp, 'q.vcf')
     if os.path.exists(out): os.remove(out)
-    p = subprocess.run([PY, os.path.join(root, 'h5_to_vcf.py'), f'{root}/hdf5/version3/zmgrin2026_{chrom}_impute.h5', out, str(lo), str(hi), ids],
+    p = subprocess.run([PY, os.path.join(root, 'h5_to_vcf.py'), f'{root}/hdf5/grin2026/zmgrin2026_{chrom}_impute.h5', out, str(lo), str(hi), ids],
                        capture_output=True, text=True, cwd=root)
     if not os.path.exists(out): return []
     rows, samples = [], []

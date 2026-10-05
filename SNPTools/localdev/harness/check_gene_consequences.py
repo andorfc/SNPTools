@@ -85,7 +85,7 @@ for f in SOURCES:
             # were cut around a few genes, and the app reads the store's every site in the gene
             spans = [(g['interval']['start'], g['interval']['end']) for g in P['genes'].values()
                      if (g.get('interval') or {}).get('chr') == chrom]
-            rows, extra = window_rows(root, f, f'{root}/hdf5/version3/zmgrin2026_{chrom}_impute.h5', spans)
+            rows, extra = window_rows(root, f, f'{root}/hdf5/grin2026/zmgrin2026_{chrom}_impute.h5', spans)
         except StoreMismatch as e:
             bad += 1; print('store window:', e); continue
         store_notes.append(f"{chrom} {len(rows) - extra}" + (f" (+{extra} outside the fixture)" if extra else ''))

@@ -4,7 +4,7 @@
     python3 tools/vcf_to_h5.py <in.vcf[.gz]> <out.h5> [--samples ids.txt] [--chunk 200000] [--h5-chunk 65536]
 
 Writes the layout h5_to_vcf.py / processForm.php read (one file per chromosome;
-name it hdf5/version3/<family>_<chr>_<quality>.h5, e.g. zmgrin2026_chr10_impute.h5):
+name it hdf5/grin2026/<family>_<chr>_<quality>.h5, e.g. zmgrin2026_chr10_impute.h5):
 
   POS                   int64 [n]            sorted positions
   CHROM, REF, ALT, QUAL vlen bytes [n]

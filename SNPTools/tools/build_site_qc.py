@@ -6,7 +6,7 @@ release's per-line heterozygosity table (line QC).
     python3 tools/build_site_qc.py --check [store.h5 ...]                verify them (exit 1 on a mismatch)
     python3 tools/build_site_qc.py --summary [--jobs N] [store.h5 ...]   summary + line QC files
 
-With no store named, the ten stores hdf5/version3/zmgrin2026_chr{1..10}_impute.h5 are used.
+With no store named, the ten stores hdf5/grin2026/zmgrin2026_chr{1..10}_impute.h5 are used.
 
 Sidecar. For <name>.h5 the sidecar is <name>.siteqc.h5 in the same folder. The store is opened
 read-only and never changed. The sidecar holds, per site of the store and in the store's order,
@@ -90,7 +90,7 @@ def sidecar_path(store):
 
 
 def default_stores(root):
-    return [os.path.join(root, 'hdf5', 'version3', f'zmgrin2026_chr{c}_impute.h5') for c in range(1, 11)]
+    return [os.path.join(root, 'hdf5', 'grin2026', f'zmgrin2026_chr{c}_impute.h5') for c in range(1, 11)]
 
 
 def samples_of(f, store):

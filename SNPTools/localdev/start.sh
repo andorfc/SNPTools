@@ -13,7 +13,7 @@ if [ -f "$here/server.pid" ] && kill -0 "$(cat "$here/server.pid")" 2>/dev/null;
   echo "already running (pid $(cat "$here/server.pid")) on port $(cat "$here/server.port" 2>/dev/null || echo "$PORT")"; exit 0
 fi
 "$PYTHON_PATH" -c 'import h5py, numpy' || { echo "PYTHON_PATH=$PYTHON_PATH lacks h5py/numpy" >&2; exit 1; }
-ls "$root"/hdf5/version3/zmgrin2026_chr*_impute.h5 >/dev/null 2>&1 || echo "note: no zmgrin2026 HDF5 store yet - run localdev/build_test_store.sh" >&2
+ls "$root"/hdf5/grin2026/zmgrin2026_chr*_impute.h5 >/dev/null 2>&1 || echo "note: no zmgrin2026 HDF5 store yet - run localdev/build_test_store.sh" >&2
 mkdir -p "$root/vcf"
 cd "$root"
 nohup "$PHP" -d max_execution_time=0 -S "127.0.0.1:$PORT" -t "$root" > "$here/server.log" 2>&1 &

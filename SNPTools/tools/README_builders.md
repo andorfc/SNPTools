@@ -8,9 +8,9 @@ All builders are Python 3.8+ standard library unless noted. Outputs mirror `SNPT
 | `build_maize_trait_catalog.py` | `js/zmgrin.catalog.js` (`SNP_CATALOG.families.zmgrin2026`, `SNPTRAIT_SCHEMA.zmgrin2026`), `data/traits/zmgrin2026.traits.json` | samples TSV, T5 passport/geo, T4b trait summary, T4c trait dictionary, crosswalk |
 | `build_maize_snpgeo_data.py` | `js/snpgeo.regions.js` (and `data/geo/countries.geo.json`) | Natural Earth admin-0, samples TSV, T5, crosswalk |
 | `build_geo_layers.py` | `data/geo/countries.geo.json`, `data/geo/admin1_na.geo.json` | Natural Earth v5.1.2 admin-0 110m, admin-1 10m (see `data/geo/PROVENANCE.md`) |
-| `vcf_to_h5.py` (h5py, numpy) | `hdf5/version3/zmgrin2026_<chr>_impute.h5` | one release VCF per chromosome |
+| `vcf_to_h5.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` | one release VCF per chromosome |
 | `build_snpcurate.py` (h5py, numpy) | `js/snpcurate.data.js`; with `--table`, the benchmark table (.tsv + .md) | `data/curate/snpcurate.source.json`, the stores and sidecars, `js/zmgrin.catalog.js`, `data/traits/zmgrin2026.traits.json`, `gff/genes_index.txt` |
-| `build_site_qc.py` (h5py, numpy) | `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5`; with `--summary`, `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv`, `js/zmgrin.lineqc.js` | the stores (read-only) |
+| `build_site_qc.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.siteqc.h5`; with `--summary`, `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv`, `js/zmgrin.lineqc.js` | the stores (read-only) |
 
 The files committed in this branch were built for release v1.4 (933 samples = 926 imputed
 + 7 companion direct-call lines; v1.4 adds NAM founder CML103, `ZmG_CML103`, PI 690319). The

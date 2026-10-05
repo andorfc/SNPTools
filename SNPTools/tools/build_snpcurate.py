@@ -6,7 +6,7 @@
                                                              # also the benchmark table (.tsv + .md)
 
 Inputs (all read-only): data/curate/snpcurate.source.json (the registry; its fields are described in
-that file's "fields" block), the variant stores hdf5/version3/zmgrin2026_<chr>_impute.h5 and their
+that file's "fields" block), the variant stores hdf5/grin2026/zmgrin2026_<chr>_impute.h5 and their
 site-QC sidecars (tools/build_site_qc.py), js/zmgrin.catalog.js (the 933 lines: subpopulation,
 country) and data/traits/zmgrin2026.traits.json (GRIN trait summaries per line), gff/genes_index.txt
 (gene intervals).
@@ -143,7 +143,7 @@ def combined_of(sc):
 class Store:
     """One chromosome's store, read-only, with its sidecar (checked against the store)."""
     def __init__(self, root, chrom):
-        self.path = os.path.join(root, 'hdf5', 'version3', f'zmgrin2026_{chrom}_impute.h5')
+        self.path = os.path.join(root, 'hdf5', 'grin2026', f'zmgrin2026_{chrom}_impute.h5')
         if not os.path.isfile(self.path): raise BuildError(f'no store for {chrom}: {self.path}')
         self.f = h5py.File(self.path, 'r')
         self.pos = self.f['POS'][:].astype(np.int64)
