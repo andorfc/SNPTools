@@ -10,7 +10,8 @@
  *       (domain, local confidence, secondary structure, predicted ΔΔG).
  *
  *  Structure data + PDB come from structure-<gene>.js via Data.structureFor()
- *  / Data.pdbFor(); variants from Data.queryFoldVariants().
+ *  / Data.pdbFor(); variants from Data.geneFunction()'s foldVariants (one
+ *  query of the gene's interval; Data.queryFoldVariants() is the fallback).
  * ===================================================================== */
 (function () {
   const THREEDMOL_URL = 'https://3Dmol.org/build/3Dmol-min.js';
@@ -24,11 +25,14 @@
     showVar: true,
     highlight: new Set(),   // variant ids force-shown in the 3D view regardless of showVar
     viewer: null, libState: 'idle',
-    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
+    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (datasets that carry them)
     structSource: null,  // 'alphafold' | 'boltz' | 'esmfold' | null — which folder the current FD.struct/FD.pdb came from
     modelPref: 'best',   // 'best' | 'alphafold' | 'boltz' | 'esmfold' — user's model choice for the next load
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
     locus: null,         // {chr,start,end,dataset} for this gene — used for the SNPVersity handoff
+    allVariants: [],     // every coding variant; FD.variants is what the track, table and 3D show
+    hasQc: false,        // the variants carry a Site QC class (geneFunction's full-panel counts)
+    usableOnly: (typeof Data !== 'undefined' && Data.SITE_QC_DEFAULTS) ? Data.SITE_QC_DEFAULTS.fold === 'usable' : true,
     sort: { key: null, dir: 'asc' },     // variant-table sort: column key + direction ('asc'|'desc'); null key = file order
     pendingVariant: null,// {chr,pos,ref,alt,sub,…} handed over by another tool; selected once variants are in hand
     truncation: null,    // {structureLength,maxVariantResidue,beyondCount,sourceLabel} when variants extend past the loaded model
@@ -55,13 +59,21 @@
   const CONS_FILL = { lof:'#d6322a', missense:'#2f5bbf', lod:'#b54708', splice:'#6d28d9', indel:'#176c3a', syn:'#8a93a3' };
   const SS_LABEL = { H:'α-helix', E:'β-strand', C:'loop / coil' };
 
-  /* ---------- structure source (AlphaFold2 vs Boltz2) ----------
+  /* ---------- structure source (AlphaFold2 / Boltz2 / ESMFold) ----------
      Checked in this order — first folder that actually has the gene's file wins. */
   const STRUCT_SOURCES = [
     { key: 'alphafold', dir: './data/structures/alphafold', label: 'AlphaFold2', badge: 'AF2' },
     { key: 'boltz',      dir: './data/structures/boltz',     label: 'Boltz2',     badge: 'B2'  },
     { key: 'esmfold',    dir: './data/structures/esmfold',   label: 'ESMFold',    badge: 'ESM'  },
   ];
+
+  /* The model the current structure came from, for labels: "AlphaFold2", "Boltz2", "ESMFold".
+     Every source carries its own per-residue pLDDT, so the confidence legend names the model
+     shown instead of always saying AlphaFold. */
+  function structModelLabel(){
+    const src = STRUCT_SOURCES.find(s => s.key === FD.structSource);
+    return src ? src.label : 'Model';
+  }
 
   /* Loads structure-<gene>.js as a <script> tag (same mechanism the app already uses to
      bring in per-gene structure files) and resolves true once it has run, or rejects if
@@ -176,6 +188,8 @@
     esm:       ['esm', 'esm1', 'esm_1', 'ESM', 'ESM1'],
     esm2:      ['esm2', 'esm_2', 'ESM2'],
     esm3:      ['esm3', 'esm_3', 'ESM3'],
+    evo2:      ['evo2', 'EVO2'],
+    esmc:      ['esmc', 'esm_c', 'ESMC'],
   };
   function modelScore(v, model){
     if (!v) return null;
@@ -196,11 +210,13 @@
     const scores = [
       ['PlantCAD', modelScore(v, 'plantcad')],
       ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
+      ...(FD.sec ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
       ...(FD.sec ? [
         ['ESM2', modelScore(v, 'esm2')],
         ['ESM3', modelScore(v, 'esm3')],
       ] : []),
+      ...(FD.sec ? [['ESM-C', modelScore(v, 'esmc')]] : []),
     ];
     if (!scores.some(([, value]) => value != null)) return 'n/a';
     //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
@@ -498,7 +514,9 @@
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
       esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
+      evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
+      qc:v.qc != null ? v.qc : null, nHet:v.nHet != null ? v.nHet : v.het, nHom:v.nHom != null ? v.nHom : v.hom,
     };
   }
   function normalizePrimaryVariant(v, model, index){
@@ -529,6 +547,7 @@
         if (existing.resi == null && normalized.resi != null) existing.resi = normalized.resi;
         if ((!existing.variant || /^\d+\s/.test(existing.variant)) && normalized.variant) existing.variant = normalized.variant;
         if (severeFoldConsequence(normalized)) existing.priority = 'TOP';
+        if (existing.qc == null && normalized.qc != null){ existing.qc = normalized.qc; existing.nHet = normalized.nHet; existing.nHom = normalized.nHom; }
         return;
       }
       if (normalized.resi != null || severeFoldConsequence(normalized)){
@@ -649,10 +668,11 @@
       }
     }
 
-    /* Fallback accepts labels/IDs such as MaizeGDB2026, maizegdb_2026_hq,
-       or "MaizeGDB 2026 (High Coverage)". */
+    /* Fallback, when Data.hasSecondaryScores is unavailable: the sets that carry the
+       second-generation scores, by id or label (zmgrin2026_imp, "MaizeGDB GRIN-linked 2026",
+       MaizeGDB2026, maizegdb_2026_hq, "MaizeGDB 2026 (High Coverage)"). */
     const normalized = datasetText(dataset).toLowerCase().replace(/[^a-z0-9]+/g, '');
-    return normalized.includes('maizegdb2026');
+    return /maizegdb2026|zmgrin2026|grinlinked2026/.test(normalized);
   }
 
   /* ---------- dataset chooser (compact; shares Data.datasets() with SNPVersity) ---------- */
@@ -973,6 +993,10 @@
   /* The heavy path: fetch the model + variants and render the full SNPFold UI into
      FD.root. Used both for autoload-from-tool and for explicit user loads. */
   async function loadStructure(){
+    /* a later gene (or model / dataset pick) overtakes this load: after each wait, an
+       overtaken load stops instead of painting its gene over the newer one */
+    const seq = FD.loadSeq = (FD.loadSeq || 0) + 1;
+    const stale = () => seq !== FD.loadSeq;
     FD.viewer = null;
     FD.truncation = null;
     FD.loaded = true;               // commit to the loaded view (keep across navigation)
@@ -986,6 +1010,7 @@
     FD.structSource = null;
     let matched = null;
     try { matched = await resolveStructureSource(FD.gene, FD.modelPref); } catch (e){ /* no file for this gene in the checked folder(s) */ }
+    if (stale()) return;
 
     FD.struct = matched ? matched.data.struct : null;
     FD.pdb    = matched ? matched.data.pdb    : null;
@@ -1027,28 +1052,38 @@
     FD.sites = null;
     FD.trackZoom = 1;
     try {
-      /* Passing the dataset as a second argument is backward-compatible in JavaScript:
-         older one-argument implementations simply ignore it. */
-      const variantsPromise = Promise.resolve(Data.queryFoldVariants(FD.gene, FD.dataset));
+      /* One query of the gene's interval: geneFunction() reads the full panel and also returns
+         the coding variants drawn here (foldVariants). queryFoldVariants() ran a second query of
+         the same interval in parallel; it is now only the fallback for a data layer without
+         that list. */
       const functionPromise = typeof Data.geneFunction === 'function'
         ? Promise.resolve(Data.geneFunction(FD.gene, FD.dataset)).catch(()=>null)
         : Promise.resolve(null);
+      const variantsPromise = functionPromise.then(fn => (fn && Array.isArray(fn.foldVariants))
+        ? fn.foldVariants : Data.queryFoldVariants(FD.gene, FD.dataset));
       const iupredPromise = loadIupredForGene(FD.gene, s.length).catch(()=>null);
       const sitesPromise = loadSitesForGene(FD.gene, s.length).catch(()=>null);
 
       const [variants, fn, iupred, sites] = await Promise.all([variantsPromise, functionPromise, iupredPromise, sitesPromise]);
+      if (stale()) return;
       FD.iupred = iupred || null;
       FD.sites = sites || null;
       const [geneModel, domainRecords] = await Promise.all([
         loadFoldGeneModel(fn),
         loadCanonicalDomainRecords(fn),
       ]);
+      if (stale()) return;
 
       /* Use canonical protein-coordinate domains even when the full-panel variant
          query fails, and convert genomic LOF positions through the canonical CDS
          before drawing the residue lollipop. */
       mergeCanonicalDomains(fn, domainRecords);
-      FD.variants = mergeFoldVariants(variants, fn, geneModel);
+      FD.allVariants = mergeFoldVariants(variants, fn, geneModel);
+      // SNPCurate: a curated coding variant gets a ring on the track and its mark in the table
+      const curChr = fn && fn.chr;
+      FD.allVariants.forEach(v => { v.curated = (curChr && Data.curatedAt) ? Data.curatedAt(curChr, v.pos, v.refNt, v.altNt) : null; });
+      FD.hasQc = FD.allVariants.some(v => v.qc != null);
+      FD.variants = shownVariants();
       detectStructureTruncation();
 
       /* If the app state did not expose the dataset, actual returned 2026 score fields
@@ -1065,8 +1100,9 @@
         : null;
     }
     catch (e){
+      if (stale()) return;
       console.error('SNPFold variant loading error', e);
-      FD.variants = [];
+      FD.variants = []; FD.allVariants = []; FD.hasQc = false;
       FD.carriers = null;
       FD.locus = null;
       FD.truncation = null;
@@ -1088,7 +1124,8 @@
         <span class="dot">·</span><span><b>${s.length}</b> aa</span>
         ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${s.uniprot}" target="_blank" rel="noopener">${s.uniprot}</a></span>`:''}
         <span class="dot">·</span><span>mean pLDDT <b>${meanP}</b></span>
-        <span class="dot">·</span><span><b>${FD.variants.length}</b> coding variants</span>
+        <span class="dot">·</span><span id="foldNVar">${nVariantsHTML()}</span>
+        ${FD.hasQc?`<span class="dot">·</span><label class="chk" data-tt="Hide coding variants whose site is flagged (het only, het excess) or has no carrier in this release, from the track, the table and the 3D view."><input type="checkbox" id="foldUsableOnly" ${FD.usableOnly?'checked':''} onchange="FOLD.setUsableOnly(this.checked)"> Usable alleles only</label>`:''}
       </div>
       ${truncationWarningHTML()}
 
@@ -1120,7 +1157,7 @@
             <span class="lg"><span class="sw" style="background:#cbd4e1"></span>coil</span>
           </div>
           <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-            <div class="lg-title" style="font-weight:600;color:var(--ink)">AlphaFold confidence score (pLDDT):</div>
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">${escFold(structModelLabel())} confidence score (pLDDT):</div>
             <span class="lg"><span class="sw" style="background:#0053d6"></span>≥90</span>
             <span class="lg"><span class="sw" style="background:#65cbf3"></span>70–90</span>
             <span class="lg"><span class="sw" style="background:#ffdb13"></span>50–70</span>
@@ -1335,8 +1372,10 @@
       const head=base - 6 - (sev/maxSev)*(lolliH-10);
       const col=CONS_FILL[v.consClass]||'#2f5bbf';
       const on=v.id===FD.selId;
-      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${v.variant} · ${v.consequence} · residue ${resi}">`;
+      const cur=v.curated;
+      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${escFold(v.variant)} · ${escFold(v.consequence)} · residue ${resi}${cur?` · curated: ${escFold(cur.symbol)} ${escFold(cur.label)}`:''}">`;
       g+=`<line x1="${xx.toFixed(1)}" y1="${base}" x2="${xx.toFixed(1)}" y2="${head.toFixed(1)}" stroke="${col}" stroke-width="${on?2:1.4}"/>`;
+      if (cur) g+=`<circle class="cur-ring" data-curate="${escFold(cur.id)}" cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${(on?6:4.5)+3.2}" fill="none" stroke="${cur.mark==='gold'?'#c99a06':'#8a7642'}" stroke-width="1.8"/>`;
       g+=`<circle cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${on?6:4.5}" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
       if (v.consClass==='lof') g+=`<text x="${xx.toFixed(1)}" y="${(head-8).toFixed(1)}" class="vlab" text-anchor="middle">✱</text>`;
       g+=`</g>`;
@@ -1545,7 +1584,7 @@
   /* ---------- variant table: sortable column model ----------
      One entry per <th>, in display order. `get` returns the value the column is
      sorted on (null/undefined => always sorted to the bottom, either direction).
-     `sec` marks the MaizeGDB-2026-only columns, so the header and the row markup
+     `sec` marks the second-generation score columns (PlantCAD2, Evo2, ESM2, ESM3, ESM-C), so the header and the row markup
      stay in sync automatically. `desc1` = first click sorts high→low, which reads
      better for counts/ranks; everything else starts low→high. */
   const PRIO_RANK = { top:4, high:3, moderate:2, medium:2, low:1, modifier:0 };
@@ -1566,12 +1605,16 @@
       get:v => modelScore(v, 'plantcad') },
     { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
       get:v => modelScore(v, 'plantcad2') },
+    { key:'evo2',        label:'Evo2',        type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'evo2') },
     { key:'esm',         label:'ESM1',        type:'num', num:true,
       get:v => modelScore(v, 'esm') },
     { key:'esm2',        label:'ESM2',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm2') },
     { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm3') },
+    { key:'esmc',        label:'ESM-C',       type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'esmc') },
     { key:'disorder',    label:'IUPred2', type:'num', num:true,
       get:v => { const c = iupredAt(v.resi); return c ? c.disorder : null; } },
     { key:'anchor2',     label:'Anchor2',     type:'num', num:true,
@@ -1584,13 +1627,25 @@
     { key:'priority',    label:'Priority',    type:'num', desc1:true,
       get:v => { const p = v.priority ? PRIO_RANK[String(v.priority).toLowerCase()] : null;
                  return p == null ? null : p; } },
+    { key:'qc',          label:'Site QC',     type:'str', qc:true,
+      get:v => v.qc || null },
     { key:'carriers',    label:'Carriers',    type:'num', num:true, desc1:true,
       get:v => { const c = carrierOf(v);
                  if (!c) return null;
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
+  function foldVisibleCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.qc || FD.hasQc)); }
+  /* Site QC: with "Usable alleles only" (the default) the track, the table and the 3D view show
+     only variants at usable sites (PASS, HET_ELEVATED); flagged and no-carrier ones are hidden. */
+  function shownVariants(){
+    const all = FD.allVariants || [];
+    return (FD.hasQc && FD.usableOnly) ? all.filter(v => Data.qcUsable(v.qc)) : all.slice();
+  }
+  function nVariantsHTML(){
+    const n = (FD.variants || []).length, all = (FD.allVariants || []).length;
+    return n === all ? `<b>${n}</b> coding variants` : `<b>${n}</b> of ${all} coding variants shown`;
+  }
   function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
@@ -1621,17 +1676,20 @@
     consequence:'Predicted molecular consequence of the change.',
     resi:'Residue — protein position of the affected amino acid.',
     domain:'Pfam domain overlapping the affected residue, when present.',
-    plddt:'Local pLDDT — AlphaFold per-residue confidence (0 to 100); higher is more reliable.',
+    plddt:'Local pLDDT — per-residue confidence (0 to 100) of the structure model shown (AlphaFold2, Boltz2 or ESMFold); higher is more reliable.',
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
     plantcad:'PlantCAD DNA language-model score for the change.',
-    plantcad2:'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    plantcad2:'Second-generation PlantCAD DNA score.',
     esm:'ESM protein language-model score for the substitution.',
-    esm2:'ESM2 protein language-model score (MaizeGDB 2026).',
-    esm3:'ESM3 protein language-model score (MaizeGDB 2026).',
+    esm2:'ESM2 protein language-model score.',
+    esm3:'ESM3 protein language-model score.',
+    evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
+    esmc:'ESM-C protein language-model score for the substitution.',
     disorder:'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).',
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',
     priority:'Integrated evidence tier — TOP, HIGH, MODERATE, LOW.',
+    qc:'Site QC — the class of the site from its heterozygous and homozygous carriers across the panel (pass, het elevated, het excess, het only, no carrier).',
     carriers:'Number of accessions carrying this variant (heterozygous plus homozygous).',
   };
   function tableHeadHTML(){
@@ -1644,7 +1702,7 @@
         : ' · click to sort';
       return `<th class="fold-th${c.num ? ' num' : ''}${on ? ' sorted' : ''}" data-tt="${escFold(def + sortNote)}"
         aria-sort="${on ? (FD.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"
-        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${escFold(c.label)}<span class="fold-ar">${arrow}</span></span></th>`;
+        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${scoreHeadHTML(escFold(c.label))}<span class="fold-ar">${arrow}</span></span></th>`;
     }).join('') + '<th class="fold-send-th" data-tt="Force-show this residue in the 3D view, independent of the Variant residues toggle.">3D</th><th class="fold-send-th"></th></tr>';
   }
 
@@ -1655,7 +1713,7 @@
     const cr = carrierOf(v);
     const openC = FD.openCarrier===v.id;
     return `<tr class="fold-row ${on?'sel':''}" onclick="FOLD.select('${v.id}')">
-      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}</td>
+      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}${v.curated?curateBadge(v.curated):''}</td>
       <td><span class="cons ${v.consClass}">${v.consequence}</span>${peJump(v)}</td>
       <td class="num">${finiteNumber(v.resi)==null?'<span style="color:var(--faint)">—</span>':v.resi}</td>
       <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
@@ -1663,12 +1721,15 @@
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
       <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esmc'))}</td>`:''}
       <td class="num">${iupredCell(iupredAt(v.resi)?.disorder)}</td>
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>
       <td>${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
+      ${FD.hasQc?`<td>${siteQcPill(v.qc, v.nHet, v.nHom)}</td>`:''}
       <td style="text-align:center">${carrierBtn(v, cr, openC)}</td>
       <td style="text-align:center" onclick="event.stopPropagation()">
         <input type="checkbox" title="Highlight this residue in the 3D view even if Variant residues is hidden"
@@ -1706,11 +1767,13 @@
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${carriersHom.length>60?` <span class="muted">+${carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${carriersHet.length>60?` <span class="muted">+${carriersHet.length-60} more</span>`:''}</div></div>
+        ${cr.nRef!=null?`<div style="margin-top:8px"><div class="fn-k">Reference (homozygous for the reference allele) · ${cr.nRef.toLocaleString()}</div></div>`:''}
         <div class="fold-sendrow">
           <span class="fn-k" style="margin:0">Open in SNPVersity</span>
           ${send('hom','Homozygous carriers',carriersHom.length)}
           ${send('het','Heterozygous carriers',carriersHet.length)}
           ${send('all','All carriers',carriersHom.length+carriersHet.length)}
+          ${send('ref','Reference lines',cr.nRef||0)}
         </div>
       </div></td></tr>`;
   }
@@ -1900,10 +1963,11 @@
       const acc=new Set();
       vs.forEach(v=>{
         const c=carrierOf(v); if(!c) return;
+        if(mode==='ref'){ Data.referenceLines(c, datasetId(FD.dataset)).forEach(a=>acc.add(a)); return; }
         if(mode!=='het') (c.carriersHom||[]).forEach(a=>acc.add(a));
         if(mode!=='hom') (c.carriersHet||[]).forEach(a=>acc.add(a));
       });
-      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+      if(!acc.size){ alert(mode==='ref' ? 'No line is homozygous for the reference allele here.' : 'No carriers to send for this allele.'); return; }
 
       const locus = await foldLocus();
       if(!locus){
@@ -1912,6 +1976,7 @@
       }
       const what = mode==='hom' ? 'homozygous carriers'
                  : mode==='het' ? 'heterozygous carriers'
+                 : mode==='ref' ? 'lines homozygous for the reference allele'
                  : 'carriers of an alternative allele';
       const note = id==='all'
         ? `${what} across ${vs.length} coding variant${vs.length>1?'s':''}`
@@ -1956,6 +2021,13 @@
     color(m){ FD.colorMode=m; document.querySelectorAll('.fold-toolbar .seg-b').forEach(b=>b.classList.remove('on'));
       const map={plddt:0,domain:1,impact:2}; const btns=document.querySelectorAll('.fold-toolbar .seg-b'); if(btns[map[m]])btns[map[m]].classList.add('on'); applyStyle(); },
     toggleVar(on){ FD.showVar=on; applyStyle(); },
+    setUsableOnly(on){
+      FD.usableOnly = !!on;
+      FD.variants = shownVariants();
+      if (FD.selId && !FD.variants.some(v => v.id === FD.selId)){ FD.selId = null; if (FD.viewer) FD.viewer.removeAllLabels(); }
+      const n = document.getElementById('foldNVar'); if (n) n.innerHTML = nVariantsHTML();
+      refreshSelection(); applyStyle();
+    },
     /* Force-show/hide a single variant residue in the 3D view independent of
        the blanket "Variant residues" toggle — lets a user highlight just the
        residues they care about instead of all-or-nothing. */

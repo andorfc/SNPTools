@@ -12,7 +12,7 @@
  *  through Handoff.toVersity() rather than rolling its own copy:
  *
  *    <span data-ho-mount data-ho-id="fnMergeReplace"
- *          data-ho-target="SNPVersity" data-ho-dataset="nam2026"></span>
+ *          data-ho-target="SNPVersity" data-ho-dataset="zmgrin2026_imp"></span>
  *
  *  …then call Handoff.sync() after the container's innerHTML is written.
  *

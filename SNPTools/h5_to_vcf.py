@@ -18,10 +18,36 @@ Python loop over every position in the file.
 The INFO column is stored verbatim in the HDF5 and passed straight through,
 so every annotation key -- GENEMODEL, TYPE, EFFECT, SUB, MQ, CVP, MAXR2,
 MAF, plantcad1/2_score, ESM1/2/3_score -- survives unchanged.
+
+Site QC: when the store has a valid sidecar (<store>.siteqc.h5, written by
+tools/build_site_qc.py), every row's INFO gains NHET, NHOM and SITEQC: the
+heterozygous and homozygous-alternate carriers among ALL the release's samples
+(not the requested ones) and the class derived from them. The sidecar is used
+only while its site count and recorded store size match the store; otherwise a
+"Note:" line says so and the VCF is written without the three fields.
+Rows whose stored INFO already has SITEQC= (stores built from release VCFs
+annotated with the counts, as the release v1.4.2 stores are) are left alone.
+SNPTOOLS_SITEQC=0 writes the VCF without the three fields, whatever their
+source: the merge is off, the fields a store carries itself are taken out of
+its rows, and the header has no ##INFO line for them.
+
+Memory is bounded by a block of rows, not by the request: the fixed columns
+and the genotypes are read one block at a time (blocks aligned to the
+store's 65,536-row chunks). Reading the whole slice at once held every
+column for the whole interval -- a 6.6 GB peak footprint for chromosome 2
+with only 5 lines, the INFO column alone padded to its longest entry over
+5.18 M rows; now ~0.3 GB for any interval. (On macOS the resident size reads
+higher: freed memory stays mapped as reusable until the OS reclaims it.)
+
+A request larger than SNPTOOLS_MAX_CELLS (variants x accessions, default
+2e9, about 8 GB of genotype text) is refused before anything is written:
+the script prints "TOO_LARGE: ..." and exits 3, and processForm.php passes
+the message on.
 """
 import gzip
 import h5py
 import os
+import re
 import sys
 import json
 import datetime
@@ -42,12 +68,22 @@ if os.path.isfile(arg5):
 else:
     json_string = arg5
 genome_list = json.loads(json_string)
+if not isinstance(genome_list, list):
+    genome_list = []
+# ids are column names: anything that is not a string becomes a missing column's name
+genome_list = [g if isinstance(g, str) else str(g) for g in genome_list]
 
 # HDF5 genotype code -> VCF genotype string. Anything outside 0..3 is clamped
 # to 3 ('./.'), matching the old dict-with-default behaviour.
 GT_LUT = np.array([b'0/0', b'1/0', b'1/1', b'./.'], dtype='S3')
 FIXED_COLS = ['CHROM', 'POS', 'REF', 'ALT', 'QUAL', 'INFO']
-ROW_CHUNK = 20000
+ROW_CHUNK = 20000                 # rows per write (string assembly), fewer for wide requests
+GT_BLOCK_CELLS = 50_000_000       # genotype cells read at once (~50 MB of int8)
+MAX_BLOCK_CHUNKS = 4              # and at most 4 store chunks (262,144 rows) per read
+try:
+    MAX_CELLS = int(float(os.environ.get('SNPTOOLS_MAX_CELLS') or 2e9))
+except ValueError:
+    MAX_CELLS = int(2e9)
 current_date = datetime.date.today().strftime('%Y%m%d')
 
 
@@ -59,50 +95,204 @@ def as_bytes_col(arr):
 
 
 # ---------------------------------------------------------------------------
-# Read the requested slice out of the HDF5 store
+# Locate the requested slice in the HDF5 store
 # ---------------------------------------------------------------------------
-with h5py.File(hdf5_file_path, 'r') as hdf5_file:
-    if 'POS' not in hdf5_file:
-        print("No 'POS' dataset found in the file.")
-        sys.exit(1)
+# No chunk cache: blocks are cut on chunk boundaries, so each chunk is read once, and the
+# default 1 MB cache per dataset doubled the footprint for a full panel's 933 genotype
+# columns (chr2:100-130 Mb: 711 MB with it, 356 MB without).
+hdf5_file = h5py.File(hdf5_file_path, 'r', rdcc_nbytes=0)
+if 'POS' not in hdf5_file:
+    print("No 'POS' dataset found in the file.")
+    sys.exit(1)
 
-    pos_raw = hdf5_file['POS'][:]
-    try:
-        pos_data = pos_raw.astype(np.int64)
-    except (ValueError, TypeError):
-        pos_data = np.array(
-            [int(p.decode('utf-8')) if isinstance(p, bytes) else int(p) for p in pos_raw],
-            dtype=np.int64,
-        )
+pos_raw = hdf5_file['POS'][:]
+try:
+    pos_data = pos_raw.astype(np.int64)
+except (ValueError, TypeError):
+    pos_data = np.array(
+        [int(p.decode('utf-8')) if isinstance(p, bytes) else int(p) for p in pos_raw],
+        dtype=np.int64,
+    )
+del pos_raw
 
-    lower_index = int(np.searchsorted(pos_data, lower_bound, side='left'))
-    upper_index = int(np.searchsorted(pos_data, upper_bound, side='right'))
-    n_rows = upper_index - lower_index
+lower_index = int(np.searchsorted(pos_data, lower_bound, side='left'))
+upper_index = int(np.searchsorted(pos_data, upper_bound, side='right'))
+n_rows = upper_index - lower_index
+n_store = len(pos_data)
+del pos_data
 
-    if n_rows == 0:
-        print("No data found in the specified position range.")
-        sys.exit(0)
-
-    fixed_cols = {c: as_bytes_col(hdf5_file[c][lower_index:upper_index]) for c in FIXED_COLS}
-
-    # Only read columns that actually exist in this file; a stray/foreign
-    # accession id in the request is filled with './.' rather than aborting.
-    present = [g for g in genome_list if g in hdf5_file]
-    missing = [g for g in genome_list if g not in hdf5_file]
-    if missing:
-        print(f"Note: {len(missing)} requested accession(s) not in {hdf5_file_path}; "
-              f"filling with ./.  e.g. {missing[:5]}")
-
-    # Genotype code matrix (n_rows, n_accessions) in request order.
-    gt_codes = np.empty((n_rows, len(genome_list)), dtype=np.int8)
-    for k, g in enumerate(genome_list):
-        gt_codes[:, k] = hdf5_file[g][lower_index:upper_index] if g in hdf5_file else 3
-    np.clip(gt_codes, 0, 3, out=gt_codes)
+if n_rows == 0:
+    print("No data found in the specified position range.")
+    sys.exit(0)
 
 n_acc = len(genome_list)
-ID_COL = np.full(n_rows, b'.', dtype='S1')
-FILTER_COL = np.full(n_rows, b'.', dtype='S1')
-FORMAT_COL = np.full(n_rows, b'GT', dtype='S2')
+if n_rows * max(1, n_acc) > MAX_CELLS:
+    print(f"TOO_LARGE: {n_rows:,} variants x {n_acc:,} accessions is more than this server builds "
+          f"in one request ({MAX_CELLS:,} genotype cells). Choose a smaller interval or fewer accessions.")
+    sys.exit(3)
+
+
+def genotype_dataset(g):
+    """The store's genotype column for accession id g, or None. The fixed columns (POS,
+    INFO, ...) and anything that is not a top-level dataset are not accessions."""
+    if g in FIXED_COLS or '/' in g or g not in hdf5_file:
+        return None
+    d = hdf5_file[g]
+    return d if isinstance(d, h5py.Dataset) else None
+
+
+# A stray/foreign accession id in the request is filled with './.' rather than aborting.
+gt_dsets = [genotype_dataset(g) for g in genome_list]
+missing = [g for g, d in zip(genome_list, gt_dsets) if d is None]
+if missing:
+    print(f"Note: {len(missing)} requested accession(s) not in {hdf5_file_path}; "
+          f"filling with ./.  e.g. {missing[:5]}")
+fixed_dsets = {c: hdf5_file[c] for c in FIXED_COLS}
+
+
+# ---------------------------------------------------------------------------
+# Site QC: carrier counts per site from the sidecar beside the store
+# ---------------------------------------------------------------------------
+SITEQC_NAMES = ['NO_CARRIER', 'HET_ONLY', 'HET_EXCESS', 'HET_ELEVATED', 'PASS']
+SITEQC_BYTES = np.array([n.encode() for n in SITEQC_NAMES])
+# SNPTOOLS_SITEQC=0: the VCF is written without NHET, NHOM and SITEQC, whatever their source
+SITEQC_OFF = (os.environ.get('SNPTOOLS_SITEQC') or '').strip() == '0'
+
+
+def site_qc_codes(het, hom):            # numpy integer arrays -> int8 codes 0..4
+    # The rule of tools/build_site_qc.py, first match wins; keep the copies equal (also
+    # site_qc in tools/annotate_release_info.py).
+    het = np.asarray(het, dtype=np.int32); hom = np.asarray(hom, dtype=np.int32)
+    c = het + hom
+    f = np.full(len(het), 4, dtype=np.int8)
+    f[het * 4 >= c] = 3
+    f[(het > hom) & (hom >= 1)] = 2
+    f[(hom == 0) & (het >= 1)] = 1
+    f[c == 0] = 0
+    return f
+
+
+def open_site_qc():
+    """(NHET, NHOM) datasets of the store's sidecar, or None: merge off, no sidecar, or one that
+    no longer matches the store (each but the first says so on a Note: line)."""
+    if SITEQC_OFF:
+        return None
+    path = (hdf5_file_path[:-3] if hdf5_file_path.endswith('.h5') else hdf5_file_path) + '.siteqc.h5'
+    name = os.path.basename(path)
+    if not os.path.isfile(path):
+        print(f"Note: no site QC sidecar {name}; NHET, NHOM and SITEQC not added.")
+        return None
+    try:
+        s = h5py.File(path, 'r', rdcc_nbytes=0)
+        n_sites, store_bytes = int(s.attrs['n_sites']), int(s.attrs['store_bytes'])
+        if n_sites != n_store or store_bytes != os.path.getsize(hdf5_file_path):
+            print(f"Note: site QC sidecar {name} does not match its store ({n_sites} sites, {store_bytes} bytes "
+                  f"recorded; {n_store} sites, {os.path.getsize(hdf5_file_path)} bytes now); NHET, NHOM and SITEQC not added.")
+            s.close()
+            return None
+        return s['NHET'], s['NHOM'], int(s.attrs['n_samples'])
+    except (OSError, KeyError, ValueError) as e:
+        print(f"Note: site QC sidecar {name} is unreadable ({e.__class__.__name__}); NHET, NHOM and SITEQC not added.")
+        return None
+
+
+qc_dsets = open_site_qc()
+
+
+def stored_site_qc():
+    """True when the store's own INFO carries SITEQC (checked on the first requested row)."""
+    v = hdf5_file['INFO'][lower_index]
+    return (b'SITEQC=' in v) if isinstance(v, bytes) else ('SITEQC=' in str(v))
+
+
+QC_HEADER = not SITEQC_OFF and (qc_dsets is not None or stored_site_qc())
+
+
+# The suffix text per count, built once: two lookups and two adds per chunk instead of
+# converting and joining five columns (a third of the merge's cost on a whole chromosome).
+if qc_dsets is not None:
+    NHET_TXT = np.array([b';NHET=%d' % i for i in range(qc_dsets[2] + 1)])
+    NHOM_TXT = np.array([b';NHOM=%d;SITEQC=' % i for i in range(qc_dsets[2] + 1)])
+
+
+def with_site_qc(info, het, hom):
+    """INFO + ';NHET=<n>;NHOM=<n>;SITEQC=<CODE>' per row: '.' becomes the three fields alone, and
+    a row whose INFO already has SITEQC= stays as it is."""
+    core = np.char.add(np.char.add(NHET_TXT[het], NHOM_TXT[hom]), SITEQC_BYTES[site_qc_codes(het, hom)])
+    out = np.char.add(info, core)
+    empty = (info == b'.') | (info == b'')
+    if empty.any():
+        out[empty] = np.char.lstrip(core[empty], b';')
+    native = np.char.find(info, b'SITEQC=') >= 0
+    if native.any():
+        out[native] = info[native]
+    return out
+
+
+# SNPTOOLS_SITEQC=0 on a store that carries the three fields itself: they are taken out of each
+# INFO, every other key and every row without them stays as stored, and an INFO that held nothing
+# else becomes '.'. QC_RUN is the layout the builders write, the three after the other keys
+# (...;NHET=<n>;NHOM=<n>;SITEQC=<CLASS>); its literal start keeps the search fast.
+QC_ITEMS = (b'NHET=', b'NHOM=', b'SITEQC=')
+QC_RUN = re.compile(rb';NHET=[^;\n]*(?:;(?:NHET|NHOM|SITEQC)=[^;\n]*)*')
+
+
+def has_site_qc(text):
+    return b'NHET=' in text or b'NHOM=' in text or b'SITEQC=' in text
+
+
+def without_site_qc(info):
+    """INFO values without NHET, NHOM and SITEQC. The chunk is joined by newlines (an INFO holds
+    none) and the builders' layout is removed in one pass over the text; a row that keeps one of
+    the three after that (the fields first, alone or apart) is rewritten item by item."""
+    blob = b'\n'.join(info.tolist())
+    if not has_site_qc(blob):
+        return info
+    blob = QC_RUN.sub(b'', blob)
+    rows = blob.split(b'\n')
+    if has_site_qc(blob):
+        rows = [b';'.join(kv for kv in v.split(b';') if not kv.startswith(QC_ITEMS)) if has_site_qc(v) else v
+                for v in rows]
+    out = np.array(rows, dtype=info.dtype)
+    out[(out == b'') & (info != b'')] = b'.'
+    return out
+
+# Rows per read block: whole store chunks (65,536 rows in the vcf_to_h5.py stores), as many
+# as GT_BLOCK_CELLS genotype cells allow, from 1 to MAX_BLOCK_CHUNKS of them.
+STORE_CHUNK = (hdf5_file['POS'].chunks or (65536,))[0]
+BLOCK = STORE_CHUNK * min(MAX_BLOCK_CHUNKS, max(1, GT_BLOCK_CELLS // (STORE_CHUNK * max(1, n_acc))))
+
+
+def blocks():
+    """(a, b) store-index ranges covering [lower_index, upper_index), cut at multiples of
+    BLOCK so each store chunk is decompressed once."""
+    a = lower_index
+    while a < upper_index:
+        b = min(upper_index, (a // BLOCK + 1) * BLOCK)
+        yield a, b
+        a = b
+
+
+def read_block(a, b):
+    """Fixed columns as stored, the genotype code matrix (rows, accessions) in request order,
+    and the site QC counts (NHET, NHOM) or None. The fixed columns become fixed-width bytes per
+    write chunk, not per block: the conversion pads every value to the longest INFO in the slice
+    it is given."""
+    cols = {c: d[a:b] for c, d in fixed_dsets.items()}
+    gt = np.empty((b - a, n_acc), dtype=np.int8)
+    for k, d in enumerate(gt_dsets):
+        gt[:, k] = d[a:b] if d is not None else 3
+    np.clip(gt, 0, 3, out=gt)
+    qc = (qc_dsets[0][a:b], qc_dsets[1][a:b]) if qc_dsets is not None else None
+    return cols, gt, qc
+
+
+# A write chunk's strings take about rows x (4 bytes per accession + the INFO); keep the
+# genotype text of one chunk near 40 MB, so a full panel writes ~10,000 rows at a time.
+ROW_CHUNK = max(1000, min(ROW_CHUNK, 40_000_000 // (4 * max(1, n_acc) + 512)))
+ID_COL = np.full(ROW_CHUNK, b'.', dtype='S1')
+FILTER_COL = np.full(ROW_CHUNK, b'.', dtype='S1')
+FORMAT_COL = np.full(ROW_CHUNK, b'GT', dtype='S2')
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +300,15 @@ FORMAT_COL = np.full(n_rows, b'GT', dtype='S2')
 # ---------------------------------------------------------------------------
 def common_info_header():
     return ["##fileformat=VCFv4.2", "##fileDate=" + current_date]
+
+
+SITEQC_INFO_DEFS = [   # the same three lines as tools/annotate_release_info.py
+    '##INFO=<ID=NHET,Number=1,Type=Integer,Description="Heterozygous carriers among the release samples (all of them, whatever the selection)">',
+    '##INFO=<ID=NHOM,Number=1,Type=Integer,Description="Homozygous-alternate carriers among the release samples">',
+    '##INFO=<ID=SITEQC,Number=1,Type=String,Description="Site QC class from NHET and NHOM, first match wins: NO_CARRIER (no carrier), '
+    'HET_ONLY (no homozygous carrier), HET_EXCESS (more heterozygous than homozygous carriers), HET_ELEVATED (heterozygous carriers '
+    'at least a quarter of all carriers), PASS (otherwise)">',
+]
 
 
 def info_defs():
@@ -123,6 +322,7 @@ def info_defs():
         '##INFO=<ID=SUB,Number=.,Type=String,Description="The amino acid substitution for missense and non-synonymous variants">',
         '##INFO=<ID=MAXR2,Number=1,Type=Float,Description="The maximum R2 for a given loci">',
         '##INFO=<ID=MAF,Number=1,Type=Float,Description="Minor Allele Frequency">',
+    ] + (SITEQC_INFO_DEFS if QC_HEADER else []) + [
         '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
         "#" + "\t".join(["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT"] + genome_list),
     ]
@@ -148,7 +348,18 @@ def header_text():
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
         lines.append("##doi=https://doi.org/10.1111/tpj.16123")
         lines += info_defs()
-    return ("\n".join(lines) + "\n").encode() if lines else b""
+    if "zmgrin" in hdf5_file_path:
+        lines += common_info_header()
+        lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.4; Grzybowski et al. 2023 sites, Beagle-imputed + direct-call companion lines)")
+        lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
+        lines.append("##doi=https://doi.org/10.1111/tpj.16123")
+        lines += info_defs()
+    if not lines:
+        # Unknown family: still emit a minimal header. Without the #CHROM line the
+        # browser's parseVcf() cannot map sample columns and reads every call as missing.
+        lines += common_info_header()
+        lines += info_defs()
+    return ("\n".join(lines) + "\n").encode()
 
 
 # ---------------------------------------------------------------------------
@@ -163,27 +374,35 @@ def _open(path, mode):
 with _open(output_vcf_path, 'wb') as vcf_file:
     vcf_file.write(header_text())
 
-    for a in range(0, n_rows, ROW_CHUNK):
-        b = min(a + ROW_CHUNK, n_rows)
-        m = b - a
+    for blo, bhi in blocks():
+        fixed_cols, gt_codes, qc_counts = read_block(blo, bhi)
+        for a in range(0, bhi - blo, ROW_CHUNK):
+            b = min(a + ROW_CHUNK, bhi - blo)
+            m = b - a
 
-        # 9 fixed columns, tab-joined: only 9 vectorized adds.
-        line = fixed_cols['CHROM'][a:b]
-        for col in (fixed_cols['POS'][a:b], ID_COL[a:b], fixed_cols['REF'][a:b],
-                    fixed_cols['ALT'][a:b], fixed_cols['QUAL'][a:b], FILTER_COL[a:b],
-                    fixed_cols['INFO'][a:b], FORMAT_COL[a:b]):
-            line = np.char.add(np.char.add(line, b'\t'), col)
+            # 9 fixed columns, tab-joined: only 9 vectorized adds.
+            fc = {c: as_bytes_col(v[a:b]) for c, v in fixed_cols.items()}
+            if qc_counts is not None:
+                fc['INFO'] = with_site_qc(fc['INFO'], qc_counts[0][a:b], qc_counts[1][a:b])
+            elif SITEQC_OFF:
+                fc['INFO'] = without_site_qc(fc['INFO'])
+            line = fc['CHROM']
+            for col in (fc['POS'], ID_COL[:m], fc['REF'], fc['ALT'], fc['QUAL'], FILTER_COL[:m],
+                        fc['INFO'], FORMAT_COL[:m]):
+                line = np.char.add(np.char.add(line, b'\t'), col)
 
-        # Genotype block: one vectorized LUT map over the whole (m, n_acc)
-        # slice, prefix each cell with a tab, then reinterpret each row's
-        # contiguous 4-byte cells ('\t' + 'x/y') as a single string.
-        if n_acc:
-            cells = np.ascontiguousarray(np.char.add(b'\t', GT_LUT[gt_codes[a:b]]))
-            gt_lines = cells.view(f'S{4 * n_acc}').reshape(m)
-            line = np.char.add(line, gt_lines)
+            # Genotype block: one vectorized LUT map over the whole (m, n_acc)
+            # slice, prefix each cell with a tab, then reinterpret each row's
+            # contiguous 4-byte cells ('\t' + 'x/y') as a single string.
+            if n_acc:
+                cells = np.ascontiguousarray(np.char.add(b'\t', GT_LUT[gt_codes[a:b]]))
+                gt_lines = cells.view(f'S{4 * n_acc}').reshape(m)
+                line = np.char.add(line, gt_lines)
 
-        vcf_file.write(b'\n'.join(line.tolist()))
-        vcf_file.write(b'\n')
+            vcf_file.write(b'\n'.join(line.tolist()))
+            vcf_file.write(b'\n')
+        del fixed_cols, gt_codes, qc_counts
 
+hdf5_file.close()
 print(f"variants: {n_rows}")
 print(f"VCF data has been saved to {output_vcf_path}")

@@ -1,0 +1,1025 @@
+/* run_scenarios.js <siteRoot> <outDir> -- end-to-end checks of SNPTrait and SNPGeo
+ * on the zmgrin2026_imp dataset (the only set offered in the initial release); writes results.json, map PNG/SVG renders
+ * (the app's own geoBuildExportSVG() output, rasterised with resvg) and static
+ * HTML snapshots of the rendered pages. */
+const fs = require('fs'), path = require('path');
+const {Resvg} = require('@resvg/resvg-js');
+const {openSite} = require('./ui_harness');
+const [,, ROOT, OUT] = process.argv;
+fs.mkdirSync(OUT, {recursive: true});
+const R = {};
+
+function snapshot(site, name, title){
+  const w = site.window, d = w.document;
+  const css = ['css/main.css', 'css/paneffect-native.css'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+  const inj = [...d.querySelectorAll('style')].map(s => s.textContent).join('\n');
+  const body = d.body.cloneNode(true);
+  body.querySelectorAll('script').forEach(s => s.remove());
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<!-- Static DOM snapshot produced by harness/run_scenarios.js (jsdom); scripts removed. -->
+<style>${css}\n${inj}</style></head>${body.outerHTML}</html>`;
+  fs.writeFileSync(path.join(OUT, name + '.html'), html);
+}
+function mapPNG(site, name){
+  const built = site.$eval('geoBuildExportSVG()');
+  if (!built) return null;
+  const str = new site.window.XMLSerializer().serializeToString(built.svg);
+  fs.writeFileSync(path.join(OUT, name + '.svg'), str);
+  const png = new Resvg(str, {fitTo: {mode: 'zoom', value: 2}, font: {loadSystemFonts: true}, background: '#ffffff'}).render().asPng();
+  fs.writeFileSync(path.join(OUT, name + '.png'), png);
+  return {w: built.W, h: built.H, bytes: png.length};
+}
+/* SNPVersity annotation columns as rendered: header labels + status, and per column the
+   number of body cells with a value (every page of the current filter, via rowHTML). */
+function annotStats(site){
+  return site.$eval(`(()=>{
+    const th=[...document.querySelectorAll('#rtBody table.vcf thead th')].map(t=>t.textContent.trim());
+    const cols=[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')].map(t=>({key:t.dataset.col, label:t.textContent.trim(), status:t.dataset.status}));
+    const first=th.indexOf('Gene model');
+    const host=document.createElement('tbody');
+    host.innerHTML=tableView(S.results.rows).fr.map(r=>rowHTML(r)).join('');
+    const filled={}, decimals={}, sample={};
+    cols.forEach((c,j)=>{ let n=0, d=0; const ex=[]; host.querySelectorAll('tr').forEach(tr=>{ const td=tr.children[first+j];
+      const v=td?td.textContent.trim():''; if(v && !/^(—|N\\/A|NA|\\.|intergenic)$/.test(v)){ n++;
+        if(/^-?[0-9.]+$/.test(v)){ d=Math.max(d,(v.split('.')[1]||'').length); if(ex.length<5) ex.push(v); } } });
+      filled[c.key]=n; decimals[c.key]=d; sample[c.key]=ex; });
+    return {dataset:S.dataset, headers:th.slice(0, first+cols.length), cols, rows:S.results.rows.length, filled, decimals, sample,
+            fields:Data.annotationFields(S.dataset).map(f=>({key:f.key, label:f.label, status:f.status})),
+            cellsPerRow:host.querySelector('tr') ? host.querySelector('tr').children.length : 0, headerCells:document.querySelectorAll('#rtBody table.vcf thead th').length,
+            note:(document.getElementById('annotNote')||{}).textContent||''};
+  })()`);
+}
+/* A temporary site root of symlinks to everything in ROOT but one file of js/ (to test a page
+   without an optional data file). Cleaned up by unlinking each link, never a recursive delete. */
+function rootWithout(root, jsFile){
+  const os = require('os'), abs = path.resolve(root);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-without-'));
+  for (const e of fs.readdirSync(abs)) if (e !== 'js') fs.symlinkSync(path.join(abs, e), path.join(tmp, e));
+  fs.mkdirSync(path.join(tmp, 'js'));
+  for (const e of fs.readdirSync(path.join(abs, 'js'))) if (e !== jsFile) fs.symlinkSync(path.join(abs, 'js', e), path.join(tmp, 'js', e));
+  return {dir: tmp, cleanup(){
+    const js = path.join(tmp, 'js');
+    if (fs.existsSync(js)){ for (const e of fs.readdirSync(js)) fs.unlinkSync(path.join(js, e)); fs.rmdirSync(js); }
+    for (const e of fs.readdirSync(tmp)) fs.unlinkSync(path.join(tmp, e));
+    fs.rmdirSync(tmp);
+  }};
+}
+async function until(site, expr, ms = 8000){
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms){ if (site.$eval(expr)) return true; await site.wait(50); }
+  return false;
+}
+
+(async () => {
+  const site = await openSite(ROOT);
+  const $ = site.$eval;
+  /* which zmgrin2026 stores are installed: the 3,495-site demo store or a full chromosome */
+  try {
+    R.store = JSON.parse(require('child_process').execFileSync(process.env.PYTHON_PATH || 'python3', ['-c',
+      'import h5py,json,glob,os,sys\nr={}\nfor f in sorted(glob.glob(sys.argv[1]+"/hdf5/grin2026/zmgrin2026_chr*_impute.h5")):\n  h=h5py.File(f,"r"); r[os.path.basename(f).split("_")[1]]=int(h["POS"].shape[0]); h.close()\nprint(json.dumps(r))', ROOT]).toString());
+  } catch (e) { R.store = {error: String(e.message || e).slice(0, 200)}; }
+  R.load = {registry: $('Object.keys(SNPTools.registry)'), nav: $('[...document.querySelectorAll("#nav .navitem")].map(b=>b.textContent.trim().replace(/\\s+/g," "))'),
+            datasets: $('Data.datasets().map(d=>d.id)'), zmgrinN: $('Data.accessionsFor("zmgrin2026_imp").length'),
+            otherFamilies: $('Object.keys(window.SNP_CATALOG.families)'),
+            defaultDataset: $('S.dataset')};   // initial release: zmgrin2026_imp only (MaizeGDB 2026 commented out)
+
+  /* ---------- SNPTrait ---------- */
+  $('S.dataset="zmgrin2026_imp"; go("snptrait")');
+  const T = R.snptrait = {};
+  T.header = $('document.querySelector("#page h2").textContent');
+  T.schemaGroupBy = $('TRAIT.schema.groupBy'); T.hasMeta = $('TRAIT.hasMeta'); T.rows = $('TRAIT.rows.length');
+  T.facetKeys = $('TRAIT.schema.facets.map(f=>f[0])');
+  T.facetCounts = $('JSON.parse(JSON.stringify(facetCounts(traitVisible())))');
+  T.domGroups = $('[...document.querySelectorAll("#traitGrid .tg-head b")].map(b=>b.textContent)');
+  T.domFacetBlocks = $('document.querySelectorAll("#traitFacets .facet-block").length');
+  T.statusInitial = $('document.getElementById("traitStatus").textContent');
+  snapshot(site, 'snptrait_initial', 'SNPTrait - zmgrin2026_imp (initial)');
+  $('traitToggleFacet("subpop","SS",true); traitToggleFacet("inAmes282","yes",true); traitToggleFacet("kernelType","Dent",true)');
+  T.filterSS_Ames_Dent = $('traitVisible().map(r=>r.id).sort()');
+  T.domRowsFiltered = $('document.querySelectorAll("#traitGrid tbody tr").length');
+  T.statusFiltered = $('document.getElementById("traitStatus").textContent');
+  /* OR within a section, AND between sections: each section is counted under the OTHER
+     sections' filters, so ticking SS leaves the other subpopulations listed (+n) */
+  T.facetsWhileFiltered = $('JSON.parse(JSON.stringify(traitFacetCounts()))');
+  T.subpopListed = $('[...document.querySelectorAll(\'[data-facet="subpop"] .facet-row .fv\')].map(e=>e.textContent)');
+  $('traitToggleFacet("subpop","NSS",true)');
+  T.filterSSorNSS_Ames_Dent = $('traitVisible().map(r=>r.id).sort()');
+  $('traitToggleFacet("subpop","NSS",false)');
+  $('TRAIT.q="iowa"; traitRenderTable(); traitRenderFacets(); traitStatus()');
+  T.filterPlusIowa = $('traitVisible().map(r=>r.id).sort()');
+  T.statusIowa = $('document.getElementById("traitStatus").textContent');
+  // numeric range facet from data/traits/zmgrin2026.traits.json (lazy-loaded)
+  $('TRAIT.q=""; traitClearFacets()');
+  await until(site, 'traitSideFile() && traitSideFile()!=="loading"');
+  T.rangeTraits = $('traitNumericTraits().length');
+  $('traitAddRange("KERNEL-WEIGHT-1000", 250, 300)');
+  T.rangeKW = $('traitVisible().map(r=>r.id).sort()');
+  T.rangeKWHeader = $('[...document.querySelectorAll("#traitGrid thead th")].map(t=>t.textContent).filter(t=>/mean/.test(t))[0]||null');
+  T.rangeKWStatus = $('document.getElementById("traitStatus").textContent');
+  $('traitToggleFacet("panel","Ames282",true)');
+  T.rangeKW_Ames = $('traitVisible().length');
+  snapshot(site, 'snptrait_range', 'SNPTrait - 1000-kernel weight 250-300 g x Ames282');
+  $('traitClearFacets(); traitToggleFacet("subpop","SS",true); traitToggleFacet("inAmes282","yes",true); traitToggleFacet("kernelType","Dent",true)');
+  $('TRAIT.q=""; traitSelectVisible(true)');
+  T.selectedAfterSelectVisible = $('TRAIT.selected.size');
+  T.runbar = $('document.getElementById("traitRunbar").textContent.replace(/\\s+/g," ").trim()');
+  snapshot(site, 'snptrait_filtered', 'SNPTrait - SS x Ames282 x Dent');
+  $('traitSendToVersity()'); await site.wait(300);
+  T.handoff = {tool: $('S.tool'), selected: $('S.selected.size'), dataset: $('S.dataset')};
+  /* the Send dialog, as in GWAS Explorer: replace pre-ticked; "add" keeps SNPVersity's
+     selection (here 5 lines SNPTrait has not selected, so add and replace differ) and adds
+     the SNPTrait lines to it */
+  $('go("snptrait"); S.selected=new Set(Data.accessionsFor("zmgrin2026_imp").map(a=>a.id).filter(id=>!TRAIT.selected.has(id)).slice(0,5)); traitRenderRunbar()');
+  T.dialogBefore = {versity: $('[...S.selected].sort()'), trait: $('[...TRAIT.selected].sort()'),
+                    button: $('[...document.querySelectorAll("#traitRunbar button")].map(b=>b.textContent.trim()).find(t=>/SNPVersity/.test(t))')};
+  $('[...document.querySelectorAll("#traitRunbar button")].find(b=>/SNPVersity/.test(b.textContent)).click()');
+  T.dialog = {open: $('!!document.querySelector("#traitSendDlg .trait-send")'), text: $('document.querySelector(".trait-send").textContent.replace(/\\s+/g," ").trim()'),
+              replace: $('document.getElementById("traitSendReplace").checked'), add: $('document.getElementById("traitSendAdd").checked')};
+  $('document.getElementById("traitSendAdd").click()');
+  T.dialog.afterAdd = {replace: $('document.getElementById("traitSendReplace").checked'), add: $('document.getElementById("traitSendAdd").checked'),
+                       sendDisabled: $('document.getElementById("traitSendGo").disabled')};
+  snapshot(site, 'snptrait_send_dialog', 'SNPTrait - Send to SNPVersity (add to the current selection)');
+  $('document.getElementById("traitSendGo").click()'); await site.wait(300);
+  T.handoffAdd = {tool: $('S.tool'), dialogClosed: $('!document.getElementById("traitSendDlg")'), selected: $('[...S.selected].sort()'),
+                  banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 300)};
+  /* A family without a generated schema falls back to the neutral schema: no listed dataset
+     lacks one while only the GRIN-linked set is offered, so the MaizeGDB 2026 case is off.
+  $('S.dataset="mgdb2026_hq"; go("snptrait")');
+  T.mgdb2026 = {groupBy: $('TRAIT.schema.groupBy'), facets: $('TRAIT.schema.facets.map(f=>f[0])'), rows: $('TRAIT.rows.length'), header: $('document.querySelector("#page h2").textContent')};
+  */
+
+  /* ---------- SNPVersity step 3: quick picks, the SNPTrait drawer, a pasted list ----------
+     Step 3 shows the selection (count, panel mix, chips) with one-click picks and a pasted or
+     uploaded list; "Browse & filter lines…" opens SNPTrait over the page on a draft of the
+     selection (TraitDrawer). check_snptrait.py recomputes every expected set from the catalogue. */
+  {
+    const Q = R.step3 = {};
+    // the SNPTrait page's own selection, which the drawer must leave alone
+    $('go("snptrait"); traitClearFacets(); TRAIT.q=""; TRAIT.onlySel=false; TRAIT.selected=new Set(["ZmG_B73"]); traitRenderTable()');
+    Q.pageSel = $('[...TRAIT.selected]');
+    $('S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")'); await site.wait(100);
+    Q.before = $('[...S.selected].sort()');
+    Q.initial = {count: $('document.getElementById("selCount").textContent'), oldPicker: $('!!document.getElementById("accList")'),
+                 picks: $('[...document.querySelectorAll("#accPicks .qbtn")].map(b=>[b.textContent.replace(/\\s+/g," ").trim(), b.classList.contains("on")])'),
+                 mix: $('(document.querySelector(".acc2-legend")||{}).textContent||""').replace(/\s+/g, ' ').trim()};
+    snapshot(site, 'snpversity_step3', 'SNPVersity - step 3: selection summary and quick picks');
+    // a quick pick replaces the selection and offers Undo
+    $('applyPick("inAmes282")');
+    Q.pick = {selected: $('[...S.selected].sort()'), on: $('[...document.querySelectorAll("#accPicks .qbtn.on")].map(b=>b.textContent.replace(/\\s+/g," ").trim())'),
+              say: $('document.getElementById("accSay").textContent').replace(/\s+/g, ' ').trim()};
+    $('document.querySelector("#accSay .ho-undo").click()');
+    Q.undo = $('[...S.selected].sort()');
+    // the drawer: SNPTrait on a draft of the selection; Apply writes it back
+    $('openLineSelector()');
+    Q.drawer = {open: $('!!document.querySelector("#traitDrawer .tdr")'), mode: $('TRAIT.mode'), draft: $('[...TRAIT.selected].sort()'),
+                facetBlocks: $('document.querySelectorAll("#traitDrawer .facet-block").length')};
+    $('traitToggleFacet("subpop","SS",true); traitToggleFacet("inAmes282","yes",true); traitToggleFacet("kernelType","Dent",true); traitSelectVisible(true)');
+    Q.drawer.visible = $('traitVisible().map(r=>r.id).sort()');
+    Q.drawer.foot = $('document.getElementById("tdrFoot").textContent').replace(/\s+/g, ' ').trim();
+    snapshot(site, 'snpversity_drawer', 'SNPVersity - Browse & filter lines (SNPTrait drawer)');
+    $('document.getElementById("tdrApply").click()');
+    Q.applied = {selected: $('[...S.selected].sort()'), closed: $('!document.getElementById("traitDrawer")'), mode: $('TRAIT.mode'),
+                 say: $('document.getElementById("accSay").textContent').replace(/\s+/g, ' ').trim()};
+    // Escape cancels; the drawer keeps its own filters for the next opening
+    $('openLineSelector()');
+    Q.reopenFilters = $('[...(TRAIT.facets.subpop||[])]');
+    $('traitSelectGroup("WiDiv",true); document.dispatchEvent(new window.KeyboardEvent("keydown",{key:"Escape"}))');
+    Q.afterCancel = {selected: $('[...S.selected].sort()'), closed: $('!document.getElementById("traitDrawer")')};
+    $('go("snptrait")');
+    Q.pageAfter = {selected: $('[...TRAIT.selected]'), filtered: $('Object.values(TRAIT.facets).some(x=>x.size)')};
+    // a pasted list: GRIN accession numbers and line names resolve
+    $('go("snpversity")'); await site.wait(100);
+    $('Handoff.setMode("replace"); applyAccList("PI 550473\\nMo17\\nnot-a-line", "pasted list")');
+    Q.paste = {selected: $('[...S.selected].sort()'), unmatched: $('[...document.querySelectorAll("#uplReport li .mono")].map(e=>e.textContent)')};
+    $('Handoff.setMode("add")');
+  }
+
+  /* ---------- the top bar's selection chip ----------
+     SNPVersity's selection in every tool; it opens the same drawer. Outside SNPVersity, Apply
+     sets the selection and a toast offers Undo. On the SNPTrait page the page's nodes wait
+     outside the document while the drawer (same element ids) is open. */
+  {
+    const C = R.chip = {};
+    $('S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpgeo")');
+    C.onGeo = $('document.getElementById("selChipN").textContent');
+    $('document.getElementById("selChip").click()');
+    C.open = {drawer: $('!!document.querySelector("#traitDrawer .tdr")'), title: $('document.getElementById("tdrTitle").textContent'), draft: $('TRAIT.selected.size')};
+    $('traitClearFacets(); TRAIT.onlySel=false; traitSelectGroup("Other GRIN", true); document.getElementById("tdrApply").click()');
+    C.applied = {n: $('S.selected.size'), chip: $('document.getElementById("selChipN").textContent'), tool: $('S.tool'),
+                 toast: $('document.getElementById("snpToast").textContent').replace(/\s+/g, ' ').trim()};
+    $('[...document.querySelectorAll("#snpToast button.act")].find(b=>b.textContent==="Undo").click()');
+    C.undone = {n: $('S.selected.size'), chip: $('document.getElementById("selChipN").textContent')};
+    $('go("snptrait")');
+    $('document.getElementById("selChip").click()');
+    C.onTrait = {grids: $('document.querySelectorAll("#traitGrid").length'), pageSetAside: $('!document.querySelector("#page #traitGrid")')};
+    $('TraitDrawer.close(false)');
+    C.traitBack = $('!!document.querySelector("#page #traitGrid")');
+  }
+
+  /* ---------- Help page ---------- */
+  $('openHelp()'); await site.wait(150);
+  R.help = {hasSNPGeo: $('/SNPGeo/.test(document.getElementById("page").textContent)'),
+            traitLive: $('(()=>{const t=document.getElementById("page").textContent; return /Select lines by passport and trait metadata/.test(t);})()')};
+
+  /* ---------- SNPGeo: gene search ---------- */
+  $('S.dataset="zmgrin2026_imp"; S.geoInput=null; go("snpgeo")');
+  const G = R.snpgeo_gene = {};
+  G.emptyState = $('document.getElementById("geoGeneInput").value');
+  $('document.getElementById("geoGeneInput").value="Zm00001eb374090"');
+  await $('geoLookupGene()');
+  G.status = $('(document.getElementById("geoLookupStatus")||{}).textContent');
+  await until(site, 'GEO.rows && GEO.rows.length && document.querySelector("#geoMap svg")');
+  await site.wait(300);
+  G.header = $('document.querySelector(".page .card .n").textContent');
+  G.coverage = $('[...document.querySelectorAll(".page .card")].map(c=>c.textContent).find(t=>/genotyped/.test(t)).replace(/\\s+/g," ").trim()');
+  G.nRows = $('GEO.rows.length'); G.nAccs = $('GEO.accs.length'); G.gtsType = $('Object.prototype.toString.call(GEO.rows[0].gts)');
+  G.view = $('geoView()'); G.admin1Paths = $('document.querySelectorAll("#geoMap path.admin1").length');
+  G.tableRows = $('document.querySelectorAll("#geoTable tbody tr").length');
+  G.tableHead = $('[...document.querySelectorAll("#geoTable thead th")].map(t=>t.textContent.trim())');
+  // pick the site with the most carriers below half of the called samples for display
+  G.pick = $(`(()=>{let best=-1,bi=0; GEO.rows.forEach((r,i)=>{let c=0,n=0; for(const g of r.gts){ if(g!==3){n++; if(g>0)c++;} } const f=c/n; if(f<0.5 && c>best){best=c;bi=i;} }); return {idx:bi, pos:GEO.rows[bi].pos, carriers:best};})()`);
+  $(`geoSelectSnp(${G.pick.idx})`); await site.wait(100);
+  G.overview = $('[...document.querySelectorAll("#geoDetail tbody tr")].slice(0,8).map(tr=>[...tr.children].map(td=>td.textContent.trim()))');
+  // the default view is Reference <-> Alternative (carriers among called)
+  G.defaultMode = $('GEO.colorMode');
+  G.modeSelects = $('[...document.querySelectorAll(".geo-mode-sel")].map(s=>[...s.options].map(o=>o.value))');
+  G.pngNA_refalt = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_refalt');
+  $('geoSetColorMode("freq")'); G.pngNA_freq = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_freq');
+  $('geoSetColorMode("af")'); G.pngNA_af = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_NA_af');
+  G.fillsNA_af = $('[...document.querySelectorAll("#geoMap path.admin1")].filter(p=>p.style.fill && p.style.fill!=="rgb(228, 232, 238)" && p.style.fill!=="#e4e8ee").length');
+  $('geoSetMapView("world"); geoSetColorMode("freq")'); await site.wait(50);
+  G.worldPaths = $('document.querySelectorAll("#geoMap path.country").length');
+  G.pngWorld_freq = mapPNG(site, 'snpgeo_gene_Zm00001eb374090_world_freq');
+  $('geoShowDetail("USA")');
+  G.usaDetail = $('document.getElementById("geoDetail").textContent.replace(/\\s+/g," ").trim().slice(0,600)');
+  G.usaStates = $('[...document.querySelectorAll("#geoDetail .geo-region-table tbody tr")].slice(0,6).map(tr=>[...tr.children].map(td=>td.textContent.trim()))');
+  snapshot(site, 'snpgeo_gene_Zm00001eb374090', 'SNPGeo - Zm00001eb374090');
+  // full per-site statistics for the independent recomputation
+  G.allStats = $(`JSON.parse(JSON.stringify(GEO.rows.map((r,i)=>{GEO.snpStats={}; const st=aggregateGeoData(i); const o={pos:r.pos, c:{}}; for(const [k,v] of Object.entries(st)) o.c[k]={total:v.total,called:v.called,count:v.count,ref:v.ref,missing:v.missing,het:v.het,altAlleles:v.altAlleles,calledAlleles:v.calledAlleles, states:Object.fromEntries(Object.entries(v.states).map(([s,x])=>[s,{total:x.total,called:x.called,count:x.count,het:x.het,altAlleles:x.altAlleles,calledAlleles:x.calledAlleles,code:x.code}]))}; return o;})))`);
+  G.accOrder = $('GEO.accs.map(a=>a.id)');
+
+  /* ---------- SNPGeo: gene with no store (chr3) -> graceful error ---------- */
+  $('S.geoInput=null; go("snpgeo"); document.getElementById("geoGeneInput").value="Zm00001eb118470"');
+  await $('geoLookupGene()');
+  R.snpgeo_nostore = $('document.getElementById("geoLookupStatus").textContent');
+
+  /* ---------- SNPVersity region (26 NAM lines, B73 + 25 founders) -> Send to SNPGeo ---------- */
+  const V = R.versity_to_geo = {};
+  $('S.dataset="zmgrin2026_imp"; S.chr="chr10"; S.start=9788000; S.end=9826500; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
+  await site.wait(100);
+  await $('runQuery()');
+  V.versityRows = $('S.results && S.results.rows.length'); V.versityAccs = $('S.results && S.results.accs.length');
+  V.versityTableRows = $('document.querySelectorAll("#rtBody tbody tr").length');
+  V.sendButton = $('[...document.querySelectorAll("button")].some(b=>/Send to SNPGeo/.test(b.textContent))');
+  snapshot(site, 'snpversity_chr10_region', 'SNPVersity - chr10:9,788,000-9,826,500, 26 NAM lines');
+  await $('sendToGeo()');
+  await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
+  V.geo = {requeried: $('S.geoInput.requeried'), accs: $('S.geoInput.accs.length'), rows: $('GEO.rows.length'),
+           header: $('document.querySelector(".page .card .n").textContent'), partialBanner: $('!!document.querySelector(".geo-partial")')};
+  V.png = mapPNG(site, 'snpgeo_from_snpversity_chr10_NA_freq');
+  snapshot(site, 'snpgeo_from_snpversity_chr10', 'SNPGeo - hand-off from SNPVersity');
+  // partial hand-off (no re-query) must show the warning banner
+  $('S.geoInput = Object.assign({}, S.geoInput, {accs: S.results.accs, rows: S.results.rows, requeried:false}); renderGeo(document.getElementById("page"))');
+  await site.wait(300);
+  V.partialBannerWhenPartial = $('!!document.querySelector(".geo-partial")');
+  V.partialBannerText = $('(document.querySelector(".geo-partial")||{}).textContent||""').replace(/\s+/g, ' ').trim();
+
+  /* ---------- GWAS Explorer -> SNPVersity (VCF-set dropdown) ---------- */
+  const W = R.gwas = {};
+  $('go("snpgwas")');
+  await until(site, 'document.querySelector(".gwx-trait-dd-opt")', 15000);
+  $('[...document.querySelectorAll(".gwx-trait-dd-opt")].find(b=>b.getAttribute("data-value")==="Tassel Branch Number").click()');
+  await site.wait(100);
+  await until(site, 'document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\')');
+  $('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\').click()');
+  await until(site, 'SNPTools.registry.snpgwas.activeEntryId()==="tibbscortes2024_nam_tpbn_intcp" && document.getElementById("gwxOpenSendBtn")', 20000);
+  W.entry = $('SNPTools.registry.snpgwas.activeEntryId()');
+  const openPopup = async () => {
+    $('SNPTools.registry.snpgwas.selectRegion(2, 4491424, 4499434)'); await site.wait(50);
+    $('document.getElementById("gwxOpenSendBtn").click()'); await site.wait(50);
+  };
+  await openPopup();
+  W.region = $('document.getElementById("gwxRegionCoord").textContent');
+  W.regionStats = {total: $('document.getElementById("gwxStatTotal").textContent'), sig: $('document.getElementById("gwxStatSig").textContent')};
+  W.options = $('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>[o.value,o.textContent,o.selected])');
+  W.defaultMapText = $('document.getElementById("gwxSendMap").textContent');
+  W.replacePreticked = $('document.getElementById("gwxSendAccReplaceChk").checked');
+  W.perSet = {};
+  for (const ds of $('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>o.value)')){   // the sets offered
+    $(`(()=>{const s=document.getElementById("gwxSendDataset"); s.value="${ds}"; s.dispatchEvent(new Event("change"));})()`);
+    W.perSet[ds] = {map: $('document.getElementById("gwxSendMap").textContent'),
+                    missing: $('(document.querySelector("#gwxSendMap .gwx-ho-miss")||{}).textContent||""'),
+                    replaceChecked: $('document.getElementById("gwxSendAccReplaceChk").checked')};
+  }
+  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value=s.options[0].value; s.dispatchEvent(new Event("change"));})()');
+  // (a) default VCF set: the first one offered (the GRIN-linked set in this release; MaizeGDB 2026 HQ before)
+  $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change")); document.getElementById("gwxSendConfirmBtn").click();})()');
+  await site.wait(300);
+  W.defaultSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('S.selected.size'), ids: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+                   banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 400),
+                   founders: $('[...new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder))].sort()')};
+  // (b) GRIN-linked release: NAM names translated to ZmG_* sample ids
+  $('go("snpgwas")'); await until(site, 'document.getElementById("gwxOpenSendBtn")', 10000);
+  await openPopup();
+  $('(()=>{const s=document.getElementById("gwxSendDataset"); s.value="zmgrin2026_imp"; s.dispatchEvent(new Event("change"));})()');
+  W.grinMapText = $('document.getElementById("gwxSendMap").textContent');
+  W.grinMissing = $('(document.querySelector("#gwxSendMap .gwx-ho-miss")||{}).textContent||""');
+  $('(()=>{const c=document.getElementById("gwxSendAccReplaceChk"); c.checked=true; c.dispatchEvent(new Event("change"));})()');
+  snapshot(site, 'gwas_send_popup_grin', 'GWAS Explorer - Send to SNPVersity (GRIN-linked VCF set)');
+  $('document.getElementById("gwxSendConfirmBtn").click()'); await site.wait(300);
+  W.grinSend = {tool: $('S.tool'), dataset: $('S.dataset'), selected: $('[...S.selected].sort()'), chr: $('S.chr'), start: $('S.start'), end: $('S.end'),
+                banner: $('(document.getElementById("inboundBanner")||{}).textContent||""').replace(/\s+/g, ' ').trim().slice(0, 400)};
+  W.pageHasNotAvailable = $('/not available in this set/i.test(document.getElementById("page").textContent)');
+  await $('runQuery()');
+  W.versity = {rows: $('S.results && S.results.rows.length'), accs: $('S.results && S.results.accs.length')};
+  R.annot = {zmgrin2026_imp: annotStats(site)};
+  snapshot(site, 'snpversity_from_gwas_grin', 'SNPVersity - GWAS region chr2:4,491,424-4,499,434, 26 NAM lines (GRIN-linked, release v1.4)');
+  await $('sendToGeo()');
+  await until(site, 'S.tool==="snpgeo" && document.querySelector("#geoMap svg")'); await site.wait(300);
+  const idx = $('GEO.rows.findIndex(r=>r.pos===4494625)');
+  W.geo = {requeried: $('S.geoInput.requeried'), accs: $('S.geoInput.accs.length'), rows: $('GEO.rows.length'), idx494625: idx};
+  if (idx >= 0){ $(`geoSelectSnp(${idx})`); await site.wait(50);
+    W.geo.usa = $('(()=>{const s=aggregateGeoData(GEO.snpIndex).USA; return s && {count:s.count,total:s.total,het:s.het,af:s.alleleFreq};})()');
+    W.geo.nam = $('(()=>{const ids=new Set(Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)); const r=GEO.rows[GEO.snpIndex]; let c=0,n=0; GEO.accs.forEach((a,i)=>{ if(ids.has(a.id)&&r.gts[i]!==3){n++; if(r.gts[i]>0)c++;} }); return {carriers:c, called:n};})()');
+    W.geo.png = mapPNG(site, 'snpgeo_from_gwas_tpbn_chr2_4494625_NA_freq'); }
+
+  /* ---------- fresh page: GWAS -> SNPVersity on the default set (the path a user takes first) ---------- */
+  {
+    const f = await openSite(ROOT); const $f = f.$eval;
+    const F = R.gwas_fresh = {selectedBefore: $f('S.selected.size'), datasetBefore: $f('S.dataset'),
+      b73InDefault: $f('[...S.selected].some(id=>/^(B73_|ZmG_B73$)/.test(id))')};
+    $f('go("snpgwas")');
+    const u = async (e, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms){ if ($f(e)) return; await f.wait(50); } };
+    await u('document.querySelector(".gwx-trait-dd-opt")');
+    $f('[...document.querySelectorAll(".gwx-trait-dd-opt")].find(b=>b.getAttribute("data-value")==="Tassel Branch Number").click()');
+    await u('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\')');
+    $f('document.querySelector(\'button.gwx-chip[data-entry="tibbscortes2024_nam_tpbn_intcp"]\').click()');
+    await u('SNPTools.registry.snpgwas.activeEntryId()==="tibbscortes2024_nam_tpbn_intcp" && document.getElementById("gwxOpenSendBtn")');
+    $f('SNPTools.registry.snpgwas.selectRegion(2, 4491424, 4499434)'); await f.wait(50);
+    $f('document.getElementById("gwxOpenSendBtn").click()'); await f.wait(50);
+    F.popupDefault = {value: $f('document.getElementById("gwxSendDataset").value'), replace: $f('document.getElementById("gwxSendAccReplaceChk").checked'),
+                      map: $f('document.getElementById("gwxSendMap").textContent'),
+                      options: $f('[...document.querySelectorAll("#gwxSendDataset option")].map(o=>o.textContent)')};
+    $f('document.getElementById("gwxSendConfirmBtn").click()'); await f.wait(300);
+    F.after = {tool: $f('S.tool'), dataset: $f('S.dataset'), selected: $f('S.selected.size'),
+               b73: $f('[...S.selected].filter(id=>/^(B73_|ZmG_B73$)/.test(id)).length'),
+               lines: $f('new Set([...S.selected].map(id=>(Data.accessionById(id)||{}).founder)).size')};
+    f.window.close();
+  }
+
+  /* ---------- SNPVersity annotation columns for MaizeGDB 2026 HQ / HC ----------
+     No MaizeGDB 2026 HDF5 store exists locally, so the table is rendered from the real INFO
+     of the MaizeGDB 2026 VCFs at the same chr2 window (sites only; fixtures/mgdb2026_*). The
+     rows go through the same Data.parseVcf() + renderResults() path as a store query.
+     Off while the initial release offers the GRIN-linked set only (uncomment with the sets). */
+  if (false) for (const [ds, fx] of [['mgdb2026_hq', 'mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz'],
+                          ['mgdb2026_hc', 'mgdb2026_hc_chr2_4491424_4499434.sites.vcf.gz']]){
+    const text = require('zlib').gunzipSync(fs.readFileSync(path.join(ROOT, 'localdev/fixtures', fx))).toString('utf8');
+    site.window.__fixtureVcf = text;
+    $(`go("snpversity"); S.dataset=${JSON.stringify(ds)}; S.chr="chr2"; S.start=4491424; S.end=4499434;
+       (()=>{ const ids=Data.defaultSelectionFor(S.dataset).slice(0,5);
+              const acc=new Map(Data.accessionsFor(S.dataset).map(a=>[a.id,a]));
+              S.results={rows:Data.parseVcf(window.__fixtureVcf, ids).rows, accs:ids.map(id=>acc.get(id)||{id}), vcfUrl:'fixture:${ds}'};
+              S.page=1; renderResults(); })()`);
+    R.annot[ds] = annotStats(site);
+    snapshot(site, 'snpversity_annotation_' + ds, 'SNPVersity - annotation columns, ' + ds + ' (MaizeGDB 2026 INFO, chr2 window)');
+  }
+
+  /* ---------- SNPCompare genome-wide scope + SNPTree genome-wide Newick ----------
+     Synthetic distance files (make_synthetic_distance.py) in a temp dir, served by the real
+     ibsCompare.php through SNPTOOLS_DISTANCE_DIR: zmgrin2026 (933 ids, all + SNP-only
+     matrices, 2 trees) and the unchanged MaizeGDB 2026 layout (60 ids). Then the same page
+     with an empty distance dir (genome-wide scope must be disabled for zmgrin2026). */
+  {
+    const os = require('os'), {execFileSync} = require('child_process');
+    const dd = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-dist-')), empty = fs.mkdtempSync(path.join(os.tmpdir(), 'snpt-nodist-'));
+    const gen = JSON.parse(execFileSync(process.env.PYTHON_PATH || 'python3', [path.join(__dirname, 'make_synthetic_distance.py'), dd, ROOT]).toString());
+    const prevDD = process.env.SNPTOOLS_DISTANCE_DIR;
+    const C = R.compare = {gen, distanceDir: dd};
+    const cmpRun = async (s, ds, focal, sites) => {
+      const $s = s.$eval;
+      $s(`S.dataset=${JSON.stringify(ds)}; S.compareInput=null; go("snpcompare")`);
+      await until(s, 'document.getElementById("cmpFocal")', 20000);
+      const out = {gAvail: $s('SNPCompare.globalAvailable()'),
+        scopeDisabled: $s('[...document.querySelectorAll("button")].filter(b=>b.textContent.trim()==="Genome-wide").map(b=>b.disabled)[0]'),
+        sitesSelect: $s('!!document.getElementById("cmpGSites")'),
+        note: $s('[...document.querySelectorAll(".mtx-note")].map(n=>n.textContent.replace(/\\s+/g," ").trim()).join(" | ")')};
+      if (out.gAvail && focal){
+        if (sites) $s(`SNPCompare.setGSites(${JSON.stringify(sites)})`);
+        $s(`SNPCompare.pickFocal(${JSON.stringify(focal)}); SNPCompare.setMode("global"); SNPCompare.setView("table")`);
+        await until(s, 'SNPCompare._ST.ran', 20000);
+        out.focal = focal;
+        out.rows = $s('SNPCompare._ST.allRows.map(r=>[r.id, r.gsim, r.gmiss])');
+        out.tableRows = $s('document.querySelectorAll("#cmpViewWrap tbody tr").length');
+        out.count = $s('(document.getElementById("cmpCount")||{}).textContent||""');
+      }
+      return out;
+    };
+    process.env.SNPTOOLS_DISTANCE_DIR = dd;
+    const s2 = await openSite(ROOT);
+    C.zmgrin_all = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_B73');
+    C.zmgrin_snp = await cmpRun(s2, 'zmgrin2026_imp', 'ZmG_CML103', 'snp');
+    snapshot(s2, 'snpcompare_zmgrin2026_global', 'SNPCompare - zmgrin2026_imp genome-wide (synthetic matrices)');
+    /* MaizeGDB 2026's legacy layout (./distance/maizegdb_allchr_final_*): off while that set
+       is not offered; an unknown dataset id now resolves to the GRIN-linked family.
+    const mFocal = fs.readFileSync(path.join(dd, 'ids.txt'), 'utf8').split('\n')[3];
+    C.mgdb = await cmpRun(s2, 'mgdb2026_hq', mFocal);
+    */
+    s2.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")');
+    await until(s2, 'document.querySelector("#treeGW a")', 20000);
+    C.tree = {links: s2.$eval('[...document.querySelectorAll("#treeGW a")].map(a=>[a.textContent.trim(), a.getAttribute("href"), a.getAttribute("download")])'),
+              nj: await s2.$eval('fetch(document.getElementById("treeGW_nj").getAttribute("href")).then(r=>r.text())'),
+              upgma: await s2.$eval('fetch(document.getElementById("treeGW_upgma").getAttribute("href")).then(r=>r.text())')};
+    C.requests = s2.log.filter(x => x.url === 'ibsCompare.php').map(x => x.query);
+    s2.window.close();
+    process.env.SNPTOOLS_DISTANCE_DIR = empty;
+    const s3 = await openSite(ROOT);
+    C.zmgrin_nofiles = await cmpRun(s3, 'zmgrin2026_imp', null);
+    s3.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")'); await s3.wait(300);
+    C.tree_nofiles = s3.$eval('(document.getElementById("treeGW")||{}).innerHTML||""');
+    s3.window.close();
+    if (prevDD === undefined) delete process.env.SNPTOOLS_DISTANCE_DIR; else process.env.SNPTOOLS_DISTANCE_DIR = prevDD;
+    // the installed files, when present (./distance/zmgrin2026/, not part of the tree)
+    if (fs.existsSync(path.join(ROOT, 'distance/zmgrin2026/similarity.csv'))){
+      const s4 = await openSite(ROOT);
+      C.real = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_B73');
+      C.real_mo17 = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_MO17');
+      C.real_snp = await cmpRun(s4, 'zmgrin2026_imp', 'ZmG_B73', 'snp');
+      snapshot(s4, 'snpcompare_zmgrin2026_global_real', 'SNPCompare - zmgrin2026_imp genome-wide, ZmG_B73 (installed matrices, SNPs only)');
+      s4.$eval('S.dataset="zmgrin2026_imp"; S.treeInput=null; go("snptree")');
+      await until(s4, 'document.querySelector("#treeGW a")', 20000);
+      C.real_tree = {links: s4.$eval('[...document.querySelectorAll("#treeGW a")].map(a=>a.getAttribute("href"))'),
+                     njBytes: (await s4.$eval('fetch("ibsCompare.php?tree=nj&dataset=zmgrin2026").then(r=>r.text())')).length};
+      s4.window.close();
+    }
+  }
+
+  /* ---------- query timing on a full-chromosome store (chr2), when installed ---------- */
+  if ((R.store || {}).chr2 > 100000){
+    const s5 = await openSite(ROOT); const $t = s5.$eval;
+    const Tm = R.timing = {};
+    const nam = $t('Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)');
+    for (const [name, lo, hi] of [['gene_Zm00001eb067740', 4493424, 4497434], ['region_1Mb', 4000000, 5000000]]){
+      for (const [sel, ids] of [['26_NAM', nam], ['all_933', null]]){
+        const t0 = Date.now();
+        const r = await $t(`Data.queryVariants("zmgrin2026_imp","chr2",${lo},${hi},${ids ? JSON.stringify(ids) : 'Data.accessionsFor("zmgrin2026_imp").map(a=>a.id)'})
+          .then(r=>({rows:r.rows?r.rows.length:0, accs:r.accs?r.accs.length:0, wide:!!r.wide, variants:r.variants||null,
+                     pc1:r.rows?r.rows.filter(x=>x.pc1!=null).length:0}))`);
+        const t1 = Date.now();
+        const php = s5.log.filter(x => x.url === 'processForm.php').slice(-1)[0] || {};
+        Tm[name + '_' + sel] = Object.assign(r, {total_ms: t1 - t0, php_ms: php.ms, vcf_bytes: php.bytes});
+      }
+    }
+    // table render for the 1-Mb x 26 NAM result (what SNPVersity draws)
+    $t(`S.dataset="zmgrin2026_imp"; go("snpversity")`);
+    const t2 = Date.now();
+    await $t(`Data.queryVariants("zmgrin2026_imp","chr2",4000000,5000000,${JSON.stringify(nam)}).then(r=>{S.chr="chr2";S.start=4000000;S.end=5000000;S.results=r;S.page=1;renderResults();})`);
+    Tm.region_1Mb_26_NAM_with_table_ms = Date.now() - t2;
+    s5.window.close();
+  }
+
+  /* ---------- one gene's consequences at multi-gene sites (GRIN-linked) ----------
+     SnpEff lists one consequence per gene; 1,464 of the 3,744 fixture sites list several. SNPFunction
+     (Data.geneFunction), SNPFold (Data.queryFoldVariants) and SNPGeo's gene search must read the
+     gene's own entry, with ESM only where it was computed for that entry; SNPVersity marks the
+     other entries (+N) and lists every gene. check_gene_consequences.py recomputes all of it
+     from the fixture VCFs and the ESM table. */
+  {
+    const P = R.pergene = {genes: {}};
+    // + a chr2 gene when the full chr2 store (with Evo2 and ESM-C) is installed
+    for (const gene of ['Zm00001eb374230', 'Zm00001eb404750', 'Zm00001eb374090', 'Zm00001eb056510'].concat((R.store || {}).chr2 > 100000 ? ['Zm00001eb067740'] : [])){
+      const g = JSON.stringify(gene);
+      P.genes[gene] = {
+        interval: await $(`Data.lookupGene(${g})`),
+        fn: await $(`Data.geneFunction(${g}, "zmgrin2026_imp").then(d=>({n:d.nVariants, nAcc:d.nAccessions, byClass:d.burden.byClass, damaging:d.damaging.length,
+              damagingFlagged:d.damagingFlagged.length, damagingNoCarrier:d.damagingNoCarrier.length, nUsed:d.burden.nUsed,
+              v:d.variants.map(v=>({pos:v.pos, ref:v.ref, alt:v.alt, cls:v.consClass, sub:v.resi!=null?(v.aaRef||'')+v.resi+(v.aaAlt||''):null, esm:v.esm, esm2:v.esm2, esm3:v.esm3, evo2:v.evo2, esmc:v.esmc, hom:v.hom, het:v.het, qc:v.qc})),
+              means:{evo2:d.burden.meanEvo2, esmc:d.burden.meanEsmc}}))`),
+        fold: await $(`Data.queryFoldVariants(${g}, "zmgrin2026_imp").then(a=>a.map(v=>({pos:v.pos, resi:v.resi, variant:v.variant, cls:v.consClass, esm:v.esm, evo2:v.evo2, esmc:v.esmc})))`)};
+    }
+    $('S.dataset="zmgrin2026_imp"; S.geoInput=null; go("snpgeo"); document.getElementById("geoGeneInput").value="Zm00001eb374230"');
+    await $('geoLookupGene()');
+    // geoLookupGene() re-renders the page 200 ms later; let that land before leaving SNPGeo
+    await until(site, 'GEO.rows && GEO.rows.length && document.querySelector("#geoMap svg")'); await site.wait(300);
+    P.geo = $('JSON.parse(JSON.stringify(GEO.rows.map(r=>({pos:r.pos, gene:r.gene, effect:r.effect, sub:r.sub, esm1:r.esm1}))))');
+    $('S.dataset="zmgrin2026_imp"; S.chr="chr9"; S.start=13118306; S.end=13124164; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
+    await site.wait(100);
+    await $('runQuery()');
+    P.versity = $(`(()=>{ const host=document.createElement('tbody'); host.innerHTML=S.results.rows.map(r=>rowHTML(r)).join('');
+      return {window:[S.chr,S.start,S.end], rows:S.results.rows.length,
+              markers:[...host.querySelectorAll('tr')].map(tr=>{ const m=tr.querySelector('.gene-more'); return m ? m.textContent : ''; }),
+              genes:[...document.querySelectorAll('details .c-mono')].map(e=>e.textContent.trim())}; })()`);
+    snapshot(site, 'snpversity_chr9_multigene', 'SNPVersity - chr9:13,118,306-13,124,164, sites with several consequences (+N)');
+  }
+
+  /* ---------- review fixes (patch 0038) ----------
+     Late answers are simulated with stubbed data calls resolved in a chosen order (the
+     harness runs PHP synchronously, so real requests cannot overtake each other).
+     check_review_fixes.py reads R.fixes. */
+  {
+    const s6 = await openSite(ROOT); const $r = s6.$eval;
+    const F = R.fixes = {};
+    const php = name => s6.log.filter(x => x.url === name).length;
+    // (a) SNPTrait "Random %" with no line visible: no error, selection untouched
+    $r('S.dataset="zmgrin2026_imp"; go("snptrait"); TRAIT.selected=new Set(["ZmG_B73"]); TRAIT.q="no-line-matches-this"; traitRenderTable()');
+    F.traitRandomEmpty = $r(`(()=>{ let threw=null; try{ traitRandom(.05); }catch(e){ threw=String(e.message||e); }
+      return {visible:traitVisible().length, threw, selected:[...TRAIT.selected]}; })()`);
+    $r('TRAIT.q=""; TRAIT.selected=new Set(); traitRenderTable()');
+    F.traitRandom10 = $r('(()=>{ traitRandom(.10); return {visible:traitVisible().length, selected:TRAIT.selected.size}; })()');
+    // (b) randomSample (Random % in SNPTrait and SNPVersity): k distinct ids, flat over catalogue order
+    F.sample = $r(`(()=>{ const ids=Data.accessionsFor("zmgrin2026_imp").map(a=>a.id), N=ids.length, k=Math.ceil(N*.05), T=3000;
+      const pos=new Map(ids.map((id,i)=>[id,i])), c=new Array(N).fill(0); let distinct=true;
+      for(let t=0;t<T;t++){ const x=randomSample(ids,k); if(new Set(x).size!==k) distinct=false; x.forEach(id=>c[pos.get(id)]++); }
+      const m=(a,b)=>c.slice(a,b).reduce((u,v)=>u+v,0)/(b-a);
+      return {N, k, T, distinct, first100:m(0,100), last100:m(N-100,N), expected:T*k/N,
+              zero:randomSample(ids,0).length, over:randomSample(ids.slice(0,3),10).length}; })()`);
+    $r('go("snpversity"); applyPick("r0.05")');
+    F.quickPick5 = $r('({selected:S.selected.size, of:ACCESSIONS.length})');
+    // (c) a result keeps its own region after the form moves on
+    $r('S.chr="chr9"; S.start=13118306; S.end=13124164; S.selected=new Set(Data.defaultSelectionFor("zmgrin2026_imp")); go("snpversity")');
+    await s6.wait(50);
+    await $r('runQuery()');
+    F.queried = $r('S.results.q');
+    $r('document.getElementById("chrInput").value="chr2"; document.getElementById("startInput").value="4000000"; document.getElementById("endInput").value="4100000"; onRegion(); setPage(1)');
+    F.afterFormChange = $r(`(()=>{ const tr=document.querySelector('#rtBody table.vcf tbody tr');
+      return {form:[S.chr,S.start,S.end], chrCell:tr.children[0].textContent.trim(), jbrowse:tr.querySelector('a.gene-link').getAttribute('href'),
+              heading:document.querySelector('#resultsAnchor h2').textContent.replace(/\\s+/g,' ').trim()}; })()`);
+    $r('sendToTree()');
+    F.treeInput = $r('({chr:S.treeInput.chr, start:S.treeInput.start, end:S.treeInput.end, dataset:S.treeInput.dataset, rows:S.treeInput.rows.length})');
+    $r('go("snpversity")');
+    F.backHeading = $r('document.querySelector("#resultsAnchor h2").textContent.replace(/\\s+/g," ").trim()');
+    // (d) two Builds: the second one's answer stands even when the first answers last
+    F.runRace = await $r(`(async()=>{ const real=Data.queryVariants, calls=[];
+      Data.queryVariants=(ds,chr,lo,hi)=>new Promise(res=>calls.push({res, chr}));
+      const mk=c=>({rows:[], accs:[], chr:c.chr, vcfUrl:null, span:0, wide:false, empty:true});
+      try{ S.chr="chr9"; S.start=13118306; S.end=13124164; const p1=runQuery();
+           S.chr="chr10"; S.start=1000; S.end=2000; const p2=runQuery();
+           calls[1].res(mk(calls[1])); await p2; calls[0].res(mk(calls[0])); await p1;
+           return {calls:calls.length, resultChr:S.results.q.chr}; }
+      finally { Data.queryVariants=real; } })()`);
+    // (e) SNPFunction: gene B searched after gene A; A's slower answer must not replace B's
+    $r('go("snpfunction")');
+    F.functionRace = await $r(`(async()=>{ const real=Data.geneFunction, calls=[];
+      Data.geneFunction=(g)=>new Promise(res=>calls.push({res, g}));
+      try{ const inp=()=>document.getElementById('fnGeneInput');
+           inp().value='Zm00001eb374230'; FUNCTION.load(); inp().value='Zm00001eb374090'; FUNCTION.load();
+           calls[1].res({gene:calls[1].g, error:'answer for '+calls[1].g}); await new Promise(r=>setTimeout(r,20));
+           calls[0].res({gene:calls[0].g, error:'answer for '+calls[0].g}); await new Promise(r=>setTimeout(r,20));
+           const t=document.getElementById('page').textContent;
+           return {calls:calls.map(c=>c.g), showsB:t.includes('answer for Zm00001eb374090'), showsA:t.includes('answer for Zm00001eb374230')}; }
+      finally { Data.geneFunction=real; } })()`);
+    // (f) SNPGeo: a gene search answered after the user left SNPGeo must not draw over SNPVersity;
+    //     and of two searches, the newer one's answer stands
+    const geoReal = {
+      A: await $r('Data.queryVariantsByGene("zmgrin2026_imp","Zm00001eb374230",Data.accessionsFor("zmgrin2026_imp").map(a=>a.id))'),
+      B: await $r('Data.queryVariantsByGene("zmgrin2026_imp","Zm00001eb374090",Data.accessionsFor("zmgrin2026_imp").map(a=>a.id))')};
+    s6.window.__geoReal = geoReal;
+    F.geoLeft = await $r(`(async()=>{ const real=Data.queryVariantsByGene, calls=[];
+      Data.queryVariantsByGene=()=>new Promise(res=>calls.push(res));
+      try{ S.geoInput=null; go('snpgeo'); document.getElementById('geoGeneInput').value='Zm00001eb374230';
+           const p=geoLookupGene(); go('snpversity'); calls[0](window.__geoReal.A); await p;
+           await new Promise(r=>setTimeout(r,400));
+           return {tool:S.tool, geoMap:!!document.getElementById('geoMap'), runbar:!!document.getElementById('runbar'), geoInput:!!S.geoInput}; }
+      finally { Data.queryVariantsByGene=real; } })()`);
+    F.geoTwo = await $r(`(async()=>{ const real=Data.queryVariantsByGene, calls=[];
+      Data.queryVariantsByGene=()=>new Promise(res=>calls.push(res));
+      try{ S.geoInput=null; go('snpgeo'); const inp=()=>document.getElementById('geoGeneInput');
+           inp().value='Zm00001eb374230'; const pA=geoLookupGene();
+           inp().value='Zm00001eb374090'; const pB=geoLookupGene();
+           calls[1](window.__geoReal.B); await pB; calls[0](window.__geoReal.A); await pA;
+           await new Promise(r=>setTimeout(r,400));
+           return {gene:S.geoInput&&S.geoInput.gene, rows:S.geoInput&&S.geoInput.rows.length, tool:S.tool}; }
+      finally { Data.queryVariantsByGene=real; } })()`);
+    await until(s6, 'S.tool!=="snpgeo" || !document.getElementById("geoMap") || document.querySelector("#geoMap svg")'); await s6.wait(300);
+    // (g) SNPFold: one variant query and one gene lookup per gene
+    const pf0 = php('processForm.php'), lk0 = php('lookupGeneModel.php');
+    $r('goFold("Zm00001eb406050")');
+    await until(s6, 'S.tool==="snpfold" && !document.querySelector("#page .spinner")', 20000); await s6.wait(200);
+    F.foldRequests = {processForm: php('processForm.php') - pf0, lookupGeneModel: php('lookupGeneModel.php') - lk0,
+                      shown: $r('(document.querySelector(".fold-context .g")||{}).textContent||null'),
+                      variants: $r('(document.querySelector(".fold-context")||{textContent:""}).textContent.match(/(\\d+) coding variants/)?.[1]||null')};
+    // (h) SNPFold: gene B loaded after gene A; A's slower answer must not replace B's
+    F.foldRace = await $r(`(async()=>{ const real=Data.geneFunction, calls=[];
+      Data.geneFunction=(g)=>new Promise(res=>calls.push({res, g}));
+      try{ const load=g=>{ document.getElementById('foldGeneInput').value=g; FOLD.loadGene(); };
+           const until=async n=>{ for (let i=0;i<250 && calls.length<n;i++) await new Promise(r=>setTimeout(r,20)); };
+           load('Zm00001eb378140'); await until(1);          // A is waiting on its variants
+           load('Zm00001eb406050'); await until(2);          // then B is too
+           const stub=c=>({gene:c.g, dataset:'zmgrin2026_imp', variants:[], foldVariants:[], chr:null});
+           const b=calls.find(c=>c.g==='Zm00001eb406050'), a=calls.find(c=>c.g==='Zm00001eb378140');
+           if (b) b.res(stub(b)); await new Promise(r=>setTimeout(r,200));
+           if (a) a.res(stub(a)); await new Promise(r=>setTimeout(r,200));
+           return {calls:calls.map(c=>c.g), shown:(document.querySelector('.fold-context .g')||{}).textContent||null}; }
+      finally { Data.geneFunction=real; } })()`);
+    /* patch 0040 */
+    // (i) tooltips: no per-element listeners however often a page is shown; one delegated set
+    F.ttListeners = await $r(`(async()=>{ const orig=EventTarget.prototype.addEventListener; let n=0;
+      EventTarget.prototype.addEventListener=function(t,...a){ if(/^mouse(enter|leave|move)$/.test(t) && this.nodeType===1 && this.hasAttribute && this.hasAttribute('data-tt')) n++; return orig.call(this,t,...a); };
+      try{ for (let i=0;i<3;i++){ go('snpfunction'); go('snpfold'); go('snpversity'); await new Promise(r=>setTimeout(r,30)); } return n; }
+      finally{ EventTarget.prototype.addEventListener=orig; } })()`);
+    F.ttBehaviour = $r(`(()=>{ const host=document.createElement('div');
+      host.innerHTML='<span id="ttA" data-tt="outer <b>A</b>">a<i id="ttB" data-tt="inner B">b</i></span><span id="ttC">c</span>';
+      document.body.appendChild(host); const tt=document.getElementById('tt'), out=[];
+      const over=el=>el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+      over(document.getElementById('ttA')); out.push(tt.classList.contains('show')&&tt.textContent);
+      over(document.getElementById('ttB')); out.push(tt.textContent);
+      over(document.getElementById('ttC')); out.push(tt.classList.contains('show'));
+      over(document.getElementById('ttA')); host.remove(); document.dispatchEvent(new MouseEvent('mousemove',{clientX:5,clientY:5})); out.push(tt.classList.contains('show'));
+      return out; })()`);
+    // (j) SNPFold's confidence legend names the model shown
+    F.foldLegend = {};
+    for (const pref of ['alphafold', 'esmfold']){
+      $r(`go("snpfold"); FOLD.setModelPref ? FOLD.setModelPref(${JSON.stringify(pref)}) : null; document.getElementById('foldGeneInput').value='Zm00001eb406050'; FOLD.loadGene();`);
+      await until(s6, 'S.tool==="snpfold" && !document.querySelector("#page .spinner") && document.querySelector(".fold-context")', 30000); await s6.wait(200);
+      F.foldLegend[pref] = $r(`({badge:(document.querySelector('.fold-src-badge')||{}).textContent||null,
+        legend:[...document.querySelectorAll('.lg-title')].map(e=>e.textContent.trim()).find(t=>/pLDDT/.test(t))||null})`);
+    }
+    // (k) score columns of the GRIN-linked set, now that every chromosome's store carries them
+    F.fieldStatus = $r('Object.fromEntries(Data.annotationFields("zmgrin2026_imp").map(f=>[f.key,f.status]))');
+    // (l) SNPFunction's default gene has variants in the local stores (a fresh page: the race
+    //     tests above typed other genes into this one)
+    { const s7 = await openSite(ROOT);
+      s7.$eval('go("snpfunction")');
+      F.functionDefault = await s7.$eval(`(async()=>{ const g=(document.getElementById('fnGeneInput')||{}).value;
+        const d=await Data.geneFunction(g, "zmgrin2026_imp"); return {gene:g, n:d.nVariants, missense:(d.burden.byClass||{}).missense||0, error:d.error||null}; })()`);
+      s7.window.close(); }
+    F.consoleErrors = s6.errors.filter(e => !/favicon/.test(e));
+    s6.window.close();
+  }
+
+  /* ---------- site QC counts in every VCF (NHET, NHOM, SITEQC: the store's own INFO in the release
+     v1.4.2 stores, else the .siteqc.h5 sidecar) ----------
+     The page's own query path (Data.queryVariants -> processForm.php -> h5_to_vcf.py) for three
+     intervals, once as is and once with SNPTOOLS_SITEQC=0 for the PHP process. With the full stores:
+     y1 for five lines and for all 933, su1 and chr10:96.08-96.28 Mb for all 933; with only the test
+     stores, two fixture windows. check_site_qc.py reads the VCFs back and recomputes the counts. */
+  {
+    const s8 = await openSite(ROOT); const $q = s8.$eval;
+    const full = ['chr4', 'chr6', 'chr10'].every(c => (R.store || {})[c] > 100000);
+    const five = ['ZmG_B73', 'ZmG_MO17', 'ZmG_OH43', 'ZmG_CML103', 'ZmG_TZI8'];
+    const all = 'Data.accessionsFor("zmgrin2026_imp").map(a=>a.id)';
+    const runs = full
+      ? [['five', 'chr6', 91643082, 91646759, JSON.stringify(five)], ['five_all', 'chr6', 91643082, 91646759, all],
+         ['gene_all', 'chr4', 43430007, 43438753, all], ['region_all', 'chr10', 96075873, 96278559, all]]
+      : [['five', 'chr9', 13118306, 13124164, JSON.stringify(five)], ['five_all', 'chr9', 13118306, 13124164, all],
+         ['gene_all', 'chr9', 12836008, 12846000, all], ['region_all', 'chr10', 9788000, 9826500, all]];
+    const Q = R.siteqc = {full, queries: {}};
+    for (const off of [false, true]){
+      if (off) process.env.SNPTOOLS_SITEQC = '0';
+      try {
+        for (const [name, chr, lo, hi, ids] of runs){
+          Q.queries[name + (off ? '_off' : '')] = Object.assign({chr, start: lo, end: hi}, await $q(`Data.queryVariants("zmgrin2026_imp",${JSON.stringify(chr)},${lo},${hi},${ids},{forceTable:true})
+            .then(r=>({vcf:r.vcfUrl, rows:r.rows.length, accs:r.accs.length, error:r.error||null}))`));
+        }
+      } finally { delete process.env.SNPTOOLS_SITEQC; }
+    }
+    Q.consoleErrors = s8.errors.filter(e => !/favicon/.test(e));
+    s8.window.close();
+  }
+
+  /* ---------- Site QC in the pages (check_site_qc_ui.py) ----------
+     With the full stores: SNPVersity on eight gene intervals with the 26 NAM lines (classes, the
+     three filter choices, the note); SNPFunction on the same genes as drawn (sites that vary, the
+     allele list and its two hidden groups, knockout lines, the banner) with the VCF its query
+     wrote; SNPImpact on su1 under each choice; SNPFold's usable filter on Zm00001eb406050 (the gene
+     with a local structure); SNPGeo's pills; SNPTree, SNPMatrix and SNPCompare on
+     chr6:91,593,082-91,793,082 under both site settings; the JS rule on every (het, hom) pair
+     0-60; then all of it again with SNPTOOLS_SITEQC=0 for the PHP process. */
+  if (['chr2', 'chr4', 'chr6', 'chr8', 'chr10'].every(c => (R.store || {})[c] > 100000)){
+    const U = R.siteqcui = {};
+    const GENES = {y1: 'Zm00001eb271860', su1: 'Zm00001eb174590', ZmWAK: 'Zm00001eb116160', Bx13: 'Zm00001eb116010',
+                   'DGAT1-2': 'Zm00001eb277490', Htn1: 'Zm00001eb360640', tga1: 'Zm00001eb175150', crtRB1: 'Zm00001eb428470'};
+    const lastVcf = s => { const e = s.log.filter(x => x.url === 'processForm.php').slice(-1)[0];
+                           try { return JSON.parse(e.reply).outFile || null; } catch (err) { return null; } };
+    const pass = async (s, off) => {
+      const $u = s.$eval, O = {};
+      const nam = $u('JSON.stringify(Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id))');
+      // SNPVersity: each gene interval, 26 NAM lines
+      O.versity = {};
+      for (const [sym, gene] of Object.entries(GENES)){
+        O.versity[sym] = await $u(`(async()=>{ const g=await Data.lookupGene(${JSON.stringify(gene)}); go('snpversity');
+          const r=await Data.queryVariants('zmgrin2026_imp', g.chr, g.start, g.end, ${nam});
+          r.q={dataset:'zmgrin2026_imp', chr:g.chr, lo:g.start, hi:g.end}; S.chr=g.chr; S.start=g.start; S.end=g.end;
+          S.results=r; S.page=1; S.fQc=null; renderResults();
+          const out={interval:g, vcf:r.vcfUrl, rows:r.rows.length, qcRows:r.rows.map(x=>x.qc),
+            select:!!document.getElementById('versityQc'), selected:(document.getElementById('versityQc')||{}).value||null,
+            note:(document.getElementById('versityQcNote')||{}).textContent||null,
+            headers:[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')].map(t=>t.textContent.trim()), filter:{}};
+          for (const v of ['all','usable','pass']){ S.fQc=v; S.page=1; renderTable(); out.filter[v]=tableView(S.results.rows).fr.length; }
+          S.fQc=null; renderTable();
+          const host=document.createElement('tbody'); host.innerHTML=S.results.rows.slice(0,400).map(x=>rowHTML(x)).join('');
+          out.cellText=[...host.querySelectorAll('td.qc-cell')].map(td=>td.textContent.trim());
+          return out; })()`);
+      }
+      // SNPFunction, as drawn
+      O.func = {};
+      for (const [sym, gene] of Object.entries(GENES)){
+        $u(`S.functionGene=${JSON.stringify(gene)}; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles') || /alleles/.test((document.querySelector('#page .card.pad:last-child .fn-h')||{}).textContent||'')`, 60000);
+        await s.wait(150);
+        O.func[sym] = $u(`(()=>{ const txt=id=>(document.getElementById(id)||{}).textContent||null;
+          const rows=sel=>[...document.querySelectorAll(sel+' tbody tr.imp-row')].map(tr=>({variant:tr.children[0].getAttribute('data-tt')||tr.children[0].textContent.trim(),
+            qc:(tr.querySelector('td.fn-qc')||{}).textContent||null}));
+          const stat=[...document.querySelectorAll('.fn-stat')].find(e=>/Candidate KO lines/.test(e.textContent));
+          return {variable:txt('fnVariable'), burden:txt('fnBurdenSites'), banner:!!document.getElementById('fnQcBanner'),
+            koLines:stat?stat.querySelector('.fn-statv').textContent:null, koFlagged:txt('fnKoFlagged'),
+            list:rows('#fnAlleles'), flagged:rows('#fnQc_flagged'), nocarrier:rows('#fnQc_nocarrier')}; })()`);
+        O.func[sym].vcf = lastVcf(s);
+        O.func[sym].data = await $u(`Data.geneFunction(${JSON.stringify(gene)}, 'zmgrin2026_imp').then(d=>({gene:d.gene, chr:d.chr, start:d.start, end:d.end,
+          nVariants:d.nVariants, nVariable:d.nVariable, qcCounts:d.qcCounts, share:d.codingFlaggedShare, koLines:d.koLines, koLinesFlagged:d.koLinesFlagged,
+          koGenotypes:d.koGenotypes, burden:{nUsed:d.burden.nUsed, nSites:d.burden.nSites, byClass:d.burden.byClass},
+          damaging:d.damaging.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc]), damagingFlagged:d.damagingFlagged.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc]),
+          damagingNoCarrier:d.damagingNoCarrier.map(v=>[v.pos,v.ref,v.alt,v.variant,v.het,v.hom,v.qc])}))`);
+      }
+      // SNPImpact on su1 (26 NAM lines)
+      O.impact = await $u(`(async()=>{ const g=await Data.lookupGene('${GENES.su1}'); go('snpversity');
+        const r=await Data.queryVariants('zmgrin2026_imp', g.chr, g.start, g.end, ${nam});
+        r.q={dataset:'zmgrin2026_imp', chr:g.chr, lo:g.start, hi:g.end}; S.results=r; S.impactInput=resultHandoff(r); go('snpimpact');
+        const shown=()=>document.querySelectorAll('table.imp tbody tr').length, out={vcf:r.vcfUrl, select:[...document.querySelectorAll('.imp-filters select')].length,
+          header:[...document.querySelectorAll('table.imp thead th')].map(t=>t.textContent.replace(/[⇅▲▼]/g,'').trim())};
+        for (const v of ['usable','pass','all']){ IMPACT.setFilter('fQc', v); out[v]={rows:shown(), note:(document.getElementById('impQcNote')||{}).textContent||null}; }
+        IMPACT.setFilter('fQc','usable'); return out; })()`);
+      // SNPFold: the gene with a local structure
+      $u(`goFold('Zm00001eb406050')`);
+      await until(s, `S.tool==='snpfold' && !document.querySelector('#page .spinner') && !!document.querySelector('.fold-context')`, 60000);
+      await s.wait(200);
+      O.fold = $u(`(()=>{ const rows=()=>document.querySelectorAll('#foldTableBody tr.fold-row').length, cb=document.getElementById('foldUsableOnly');
+        const out={checkbox:!!cb, checked:cb?cb.checked:null, count:(document.getElementById('foldNVar')||{}).textContent||null, rows:rows(),
+          header:[...document.querySelectorAll('#foldTableHead th')].map(t=>t.textContent.replace(/[↕▲▼]/g,'').trim()).filter(Boolean)};
+        if (cb){ FOLD.setUsableOnly(false); out.rowsAll=rows(); out.countAll=document.getElementById('foldNVar').textContent; FOLD.setUsableOnly(true); }
+        return out; })()`);
+      O.fold.data = await $u(`Data.geneFunction('Zm00001eb406050','zmgrin2026_imp').then(d=>({vcf:null, fold:d.foldVariants.map(f=>[f.pos,f.refNt,f.altNt,f.qc])}))`);
+      O.fold.vcf = lastVcf(s);
+      // SNPGeo: the pill in the variant table and beside the label (su1 interval, all lines)
+      O.geo = await $u(`(async()=>{ go('snpgeo'); document.getElementById('geoGeneInput').value='${GENES.su1}'; await geoLookupGene();
+        await new Promise(r=>setTimeout(r,400));
+        return {rows:GEO.rows.length, pills:document.querySelectorAll('#geoTable .qcp').length, withQc:GEO.rows.filter(r=>r.qc).length,
+                label:!!document.querySelector('.geo-pane-sub .qcp')}; })()`);
+      await s.wait(300);
+      // SNPTree / SNPMatrix / SNPCompare on chr6:91,593,082-91,793,082, 26 NAM lines
+      O.distance = await $u(`(async()=>{ go('snpversity'); const r=await Data.queryVariants('zmgrin2026_imp','chr6',91593082,91793082,${nam});
+        r.q={dataset:'zmgrin2026_imp', chr:'chr6', lo:91593082, hi:91793082}; S.results=r; const h=resultHandoff(r);
+        const out={vcf:r.vcfUrl, rows:r.rows.length};
+        S.treeInput=h; go('snptree'); out.treeDefault=SNPTree.siteMode(); out.treeControl=!!document.getElementById('treeSites');
+        SNPTree._ST.force=true; for (const v of ['usable','all']){ SNPTree.setOpt('sites', v); await new Promise(res=>setTimeout(res,120));
+          out['tree_'+v]={sites:SNPTree._ST.built.sites, total:SNPTree._ST.built.total, text:(document.getElementById('treeSitesUsed')||{}).textContent||null}; }
+        SNPTree.setOpt('sites','usable');
+        S.matrixInput=h; go('snpmatrix'); SNPMatrix.force(); out.mtxControl=!!document.getElementById('mtxSites');
+        for (const v of ['usable','all']){ SNPMatrix.set('sites', v); SNPMatrix.force(); out['mtx_'+v]=(document.getElementById('mtxSitesUsed')||{}).textContent||null; }
+        SNPMatrix.set('sites','usable');
+        S.compareInput=h; S.compareRequest={view:'table', mode:'local', autorun:false}; go('snpcompare'); out.cmpControl=!!document.getElementById('cmpSites');
+        for (const v of ['usable','all']){ SNPCompare.setSites(v); out['cmp_'+v]=SNPCompare.regionInput().rows.length; }
+        SNPCompare.setSites('usable');
+        return out; })()`);
+      O.consoleErrors = s.errors.filter(e => !/favicon/.test(e));
+      return O;
+    };
+    const s9 = await openSite(ROOT);
+    U.jsRule = s9.$eval(`(()=>{ const o=[]; for (let a=0;a<=60;a++) for (let b=0;b<=60;b++) o.push([a,b,Data.siteQc(a,b)]); return o; })()`);
+    U.defaults = s9.$eval('Data.SITE_QC_DEFAULTS');
+    U.on = await pass(s9, false);
+    s9.window.close();
+    process.env.SNPTOOLS_SITEQC = '0';
+    try { const s10 = await openSite(ROOT); U.off = await pass(s10, true); s10.window.close(); }
+    finally { delete process.env.SNPTOOLS_SITEQC; }
+  }
+
+  /* ---------- line QC (js/zmgrin.lineqc.js): SNPTrait's Sample heterozygosity facet, its exports,
+     the hand-off of the heterozygous samples, and the "het" marker in SNPVersity's header cells and
+     selected-line chips and in SNPFunction's carrier chips; then the same page without the file
+     (a temporary root of symlinks that leaves it out): no facet, no marker, no error. ---------- */
+  {
+    const lineqc = async (root) => {
+      const s = await openSite(root); const $l = s.$eval, L = {};
+      $l('S.dataset="zmgrin2026_imp"; go("snptrait")');
+      L.facetKeys = $l('TRAIT.schema.facets.map(f=>f[0])');
+      L.counts = $l('JSON.parse(JSON.stringify(facetCounts(traitVisible()))).sampleQC||null');
+      L.facetBlock = $l(`!!document.querySelector('[data-facet="sampleQC"]')`);
+      L.hasLineQc = $l('!!(window.SNP_LINE_QC && window.SNP_LINE_QC.zmgrin2026)');
+      if (L.facetBlock) $l('traitToggleFacet("sampleQC","Heterozygous sample",true)');
+      else $l('["ZmG_CH9","ZmG_B73","ZmG_MO17"].forEach(id=>TRAIT.selected.add(id))');
+      $l('traitSelectVisible(true)');
+      if (!L.facetBlock) $l('TRAIT.selected=new Set(["ZmG_CH9","ZmG_B73","ZmG_MO17"])');
+      L.selectedTrait = $l('[...TRAIT.selected].sort()');
+      L.exports = await $l(`(async()=>{ const o={}, orig=URL.createObjectURL; let last=null; URL.createObjectURL=b=>{ last=b; return 'blob:harness'; };
+        try{ traitExport('csv'); o.csv=(await last.text()).split('\\n'); traitExport('json'); o.json=JSON.parse(await last.text()); }
+        finally{ URL.createObjectURL=orig; } return o; })()`);
+      $l('traitSendToVersity()'); await s.wait(300);
+      L.versity = {tool: $l('S.tool'), selected: $l('[...S.selected].sort()')};
+      L.header = await $l(`(async()=>{ const ids=[...S.selected]; const r=await Data.queryVariants('zmgrin2026_imp','chr4',43430007,43438753,ids);
+        r.q={dataset:'zmgrin2026_imp', chr:'chr4', lo:43430007, hi:43438753}; S.results=r; S.page=1; renderResults();
+        const ths=[...document.querySelectorAll('#rtBody th.acc-th')], idOf=t=>t.querySelector('.v').firstChild.textContent;
+        const ch9=ths.find(t=>idOf(t)==='ZmG_CH9');
+        return {n:ths.length, marked:ths.filter(t=>t.querySelector('.het-mark')).map(idOf).sort(),
+                ch9:ch9&&ch9.querySelector('.het-mark')?{text:ch9.querySelector('.het-mark').textContent, tt:ch9.querySelector('.het-mark').getAttribute('data-tt')}:null}; })()`);
+      $l('go("snpversity")');
+      L.chips = $l('[...document.querySelectorAll("#selChips .sel-chip")].map(c=>({run:c.textContent.replace(/het|×/g,"").trim(), het:!!c.querySelector(".het-mark")}))');
+      // SNPFunction: the first allele of ZmWAK's list with a heterozygous-sample carrier, opened
+      $l(`S.functionGene='Zm00001eb116160'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+      await until(s, `!!document.getElementById('fnAlleles')`, 60000); await s.wait(150);
+      L.carriers = await $l(`(async()=>{ const d=await Data.geneFunction('Zm00001eb116160','zmgrin2026_imp');
+        const H=new Set(Data.accessionsFor('zmgrin2026_imp').filter(a=>a.sampleQC==='Heterozygous sample').map(a=>a.id));
+        const v=d.damaging.find(x=>x.carriersHom.slice(0,60).concat(x.carriersHet.slice(0,60)).some(id=>H.has(id))) || d.damaging[0];
+        FUNCTION.toggle(v.id);
+        const chips=[...document.querySelectorAll('.fn-carriers .carrier')];
+        return {allele:v.variant, shown:chips.length, marked:chips.filter(c=>c.querySelector('.het-mark')).map(c=>c.textContent.replace(/het$/,'')).sort(),
+                hom:v.carriersHom.slice(0,60), het:v.carriersHet.slice(0,60)}; })()`);
+      // the exports click a download link, which jsdom reports as a navigation it cannot do
+      L.consoleErrors = s.errors.filter(e => !/favicon|Not implemented: navigation/.test(e));
+      s.window.close();
+      return L;
+    };
+    R.lineqc = {with: await lineqc(ROOT)};
+    // the same pages without js/zmgrin.lineqc.js
+    const w = rootWithout(ROOT, 'zmgrin.lineqc.js');
+    try { R.lineqc.without = await lineqc(w.dir); } finally { w.cleanup(); }
+  }
+
+  /* ---------- SNPCurate (js/snpcurate.data.js from data/curate/snpcurate.source.json) ----------
+     The table, the filters and sorts, every record as drawn, and the three buttons of SC0001.
+     check_snpcurate.py recomputes each number from the stores, the catalogue, the trait file and
+     the source. Needs the full stores of the chromosomes the entries are on. */
+  if (['chr1', 'chr2', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chr10'].every(c => (R.store || {})[c] > 100000)){
+    const s12 = await openSite(ROOT); const $c = s12.$eval; const K = R.curate = {};
+    $c('S.curateId=null; go("snpcurate")');
+    K.nav = $c('[...document.querySelectorAll("#nav .navitem")].map(b=>b.textContent.trim().replace(/\\s+/g," ")).filter(t=>/SNPCurate/.test(t))');
+    K.legend = $c('[...document.querySelectorAll("#curLegend .cur-lg")].map(d=>({badge:d.querySelector(".cur-badge").className, glyph:d.querySelector(".cur-badge").textContent, text:d.textContent.replace(/\\s+/g," ").trim()}))');
+    const tableRows = `[...document.querySelectorAll('#curTable tbody tr')].map(tr=>({id:tr.dataset.id, badge:tr.querySelector('.cur-badge').className,
+      glyph:tr.querySelector('.cur-badge').textContent, cells:[...tr.children].slice(1).map(td=>td.textContent.replace(/\\s+/g,' ').trim())}))`;
+    K.table = $c(tableRows);
+    const ids = sel => $c(`(()=>{ ${sel}; return [...document.querySelectorAll('#curTable tbody tr')].map(tr=>tr.dataset.id); })()`);
+    K.filters = {gold: ids(`CURATE.setFilter('fMark','gold')`), grey: ids(`CURATE.setFilter('fMark','grey')`),
+                 site: ids(`CURATE.setFilter('fMark','all'); CURATE.setFilter('fStatus','site')`),
+                 kernel: ids(`CURATE.setFilter('fStatus','all'); CURATE.setFilter('fText','kernel')`),
+                 byCarriers: ids(`CURATE.setFilter('fText',''); CURATE.sort('carriers')`), byGene: ids(`CURATE.sort('gene')`)};
+    K.records = {};
+    for (const id of $c('window.SNP_CURATE.entries.map(e=>e.id)')){
+      $c(`S.curateId=null; CURATE.open(${JSON.stringify(id)})`);
+      K.records[id] = $c(`(()=>{ const r=document.querySelector('.cur-record'); if(!r) return null; const T=e=>e?e.textContent.replace(/\\s+/g,' ').trim():null;
+        const minis=[...r.querySelectorAll('.cur-two .cur-mini')];
+        return {badge:r.querySelector('.cur-rh .cur-badge').className, head:T(r.querySelector('.cur-rh > div')),
+          facts:[...r.querySelectorAll('.cur-facts > div')].map(T), scores:[...r.querySelectorAll('.cur-score')].map(d=>[...d.children].map(c=>c.textContent.trim())),
+          subpop:minis[0]?[...minis[0].querySelectorAll('tr')].map(T):null, country:minis[1]?[...minis[1].querySelectorAll('tr')].map(T):null,
+          trait:[...r.querySelectorAll('.cur-trait tbody tr')].map(T), traitHead:T([...r.querySelectorAll('.cur-k')].find(k=>/by genotype/.test(k.textContent))),
+          why:T(r.querySelector('.cur-why')), review:T(r.querySelector('.cur-review')), refs:[...r.querySelectorAll('.cur-refs li')].map(T),
+          dois:[...r.querySelectorAll('.cur-refs a')].map(a=>a.getAttribute('href')), note:[...r.querySelectorAll('p')].map(T),
+          buttons:[...r.querySelectorAll('.cur-actions button')].map(b=>b.textContent.trim())}; })()`);
+    }
+    // the three buttons on SC0001
+    $c(`openCurate('SC0001')`);
+    await $c(`CURATE.toVersity('SC0001')`); await s12.wait(300);
+    K.toVersity = {tool: $c('S.tool'), selected: $c('[...S.selected].sort()'), chr: $c('S.chr'), start: $c('S.start'), end: $c('S.end')};
+    $c(`openCurate('SC0001'); CURATE.toFunction('SC0001')`); await s12.wait(200);
+    K.toFunction = {tool: $c('S.tool'), gene: $c('(document.getElementById("fnGeneInput")||{}).value||null')};
+    await until(s12, `!!document.getElementById('fnAlleles') || !!document.querySelector('#page .fn-h')`, 60000); await s12.wait(200);
+    $c(`openCurate('SC0001')`);
+    await $c(`CURATE.toMap('SC0001')`); await s12.wait(400);
+    K.toMap = {tool: $c('S.tool'), rows: $c('GEO.rows.map(r=>[r.pos,r.ref,r.alt])'), accs: $c('(S.geoInput&&S.geoInput.accs||[]).length')};
+    await s12.wait(300);
+    K.data = $c('JSON.parse(JSON.stringify(window.SNP_CURATE))');
+    K.consoleErrors = s12.errors.filter(e => !/favicon/.test(e));
+    s12.window.close();
+  }
+
+  /* ---------- SNPCurate marks in the other tools ----------
+     SNPVersity (the tga1 interval, the 7 Z.parviglumis lines + the 26 NAM lines: badge beside the
+     position, the line above the table, the badge opening the record), SNPFunction's "Curated
+     alleles" block (su1, Bx13, DGAT1-2), SNPImpact on tga1 under the default filter, SNPGeo's table
+     and label. Then test-only entries added to the loaded copy (never to the source): su1 G627W
+     (HET_ONLY, 31 het / 0 hom) must stay in SNPImpact's default view with its pill and badge and be
+     listed by SNPFunction; a coding variant of Zm00001eb406050 must get SNPFold's ring and badge.
+     Then the same pages without js/snpcurate.data.js: no badge, no block, no error. */
+  if ((R.curate || null) !== null){
+    const marks = async (root, withData) => {
+      const s = await openSite(root); const $m = s.$eval, M = {};
+      const lines = `Data.accessionsFor('zmgrin2026_imp').filter(a=>a.subpop==='Z.parviglumis').map(a=>a.id).concat(Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id))`;
+      M.versity = await $m(`(async()=>{ go('snpversity'); const ids=${lines};
+        const r=await Data.queryVariants('zmgrin2026_imp','chr4',46647932,46652896,ids); r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:46647932,hi:46652896};
+        S.results=r; S.page=1; renderResults();
+        const b=[...document.querySelectorAll('#rtBody td.c-pos .cur-badge')].map(x=>({pos:x.closest('td').querySelector('a').textContent, cls:x.className, id:x.dataset.curate, glyph:x.textContent}));
+        const line=(document.getElementById('versityCurated')||{}).textContent||null;
+        const first=document.querySelector('#rtBody td.c-pos .cur-badge'); if (first) first.click();
+        return {lines:ids.length, rows:r.rows.length, badges:b, line, opened:{tool:S.tool, id:S.curateId}}; })()`);
+      M.func = {};
+      for (const [k, g] of [['su1', 'Zm00001eb174590'], ['Bx13', 'Zm00001eb116010'], ['DGAT1-2', 'Zm00001eb277490']]){
+        $m(`S.functionGene='${g}'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles') || /Damaging/.test((document.querySelector('#page .card.pad:last-child .fn-h')||{}).textContent||'')`, 60000); await s.wait(150);
+        M.func[k] = $m(`({block:[...document.querySelectorAll('#fnCurated .fn-cur-item')].map(d=>({id:d.dataset.curate, cls:d.querySelector('.cur-badge').className, text:d.textContent.replace(/\\s+/g,' ').trim()})),
+          listPos:[...document.querySelectorAll('#fnAlleles tbody tr.imp-row')].map(tr=>tr.getAttribute('data-allele'))})`);
+        M.func[k].list = await $m(`Data.geneFunction('${g}','zmgrin2026_imp').then(d=>d.damaging.map(v=>[v.pos,v.ref,v.alt]))`);
+      }
+      const impact = async (lo, hi) => $m(`(async()=>{ go('snpversity'); const ids=Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id);
+        const r=await Data.queryVariants('zmgrin2026_imp','chr4',${lo},${hi},ids); r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:${lo},hi:${hi}};
+        S.results=r; S.impactInput=resultHandoff(r); go('snpimpact');
+        const rows=[...document.querySelectorAll('table.imp tbody tr')];
+        return {filter:[...document.querySelectorAll('.imp-filters select')].map(x=>x.value).pop()||null, rows:rows.length,
+          curated:rows.filter(tr=>tr.querySelector('.cur-badge')).map(tr=>({variant:tr.children[1].textContent.replace(/[★☆○]/g,''), cls:tr.querySelector('.cur-badge').className,
+            id:tr.querySelector('.cur-badge').dataset.curate, qc:(tr.querySelector('.qcp')||{}).textContent||null}))}; })()`);
+      M.impactTga1 = await impact(46647932, 46652896);
+      M.geo = await $m(`(async()=>{ go('snpgeo'); document.getElementById('geoGeneInput').value='Zm00001eb175150'; await geoLookupGene();
+        await new Promise(r=>setTimeout(r,400)); const i=GEO.rows.findIndex(r=>r.pos===46648374); if (i>=0) geoSelectSnp(i);
+        return {rows:GEO.rows.length, badges:[...document.querySelectorAll('#geoTable .cur-badge')].map(b=>b.dataset.curate), label:!!document.querySelector('.geo-pane-sub .cur-badge')}; })()`);
+      await s.wait(300);
+      if (withData){
+        // test-only entries, added to the loaded copy only
+        M.testEntry = $m(`(()=>{ const e={id:'SC9901', gene:'Zm00001eb174590', symbol:'su1', label:'G627W (test only)', kind:'tag', evidence:'tag', status:'site',
+          chr:'chr4', pos:43437627, ref:'G', alt:'T', trait:'test', refs:[], mark:'outline', site:{nHet:31, nHom:0, nMiss:0, qc:'HET_ONLY', priority:'TOP'}};
+          window.SNP_CURATE.entries.push(e); return Data.curatedAt('chr4',43437627,'G','T')===e; })()`);
+        M.impactSu1 = await impact(43430007, 43438753);
+        $m(`S.functionGene='Zm00001eb174590'; go('snpfunction')`);
+        await until(s, `!!document.getElementById('fnAlleles')`, 60000); await s.wait(150);
+        M.funcSu1Test = $m(`[...document.querySelectorAll('#fnCurated .fn-cur-item')].map(d=>d.dataset.curate)`);
+        M.foldTest = await $m(`(async()=>{ const d=await Data.geneFunction('Zm00001eb406050','zmgrin2026_imp'); const f=d.foldVariants.find(v=>Data.qcUsable(v.qc));
+          window.SNP_CURATE.entries.push({id:'SC9902', gene:'Zm00001eb406050', symbol:'test', label:f.variant+' (test only)', kind:'tag', evidence:'tag', status:'site',
+            chr:d.chr, pos:f.pos, ref:f.refNt, alt:f.altNt, trait:'test', refs:[], mark:'gold', site:{nHet:f.nHet, nHom:f.nHom, nMiss:0, qc:f.qc, priority:f.priority}});
+          return {pos:f.pos, variant:f.variant}; })()`);
+        $m(`goFold('Zm00001eb406050')`);
+        await until(s, `S.tool==='snpfold' && !document.querySelector('#page .spinner') && !!document.querySelector('.fold-context')`, 60000); await s.wait(200);
+        M.foldTest.ring = $m(`[...document.querySelectorAll('#foldTrack .cur-ring')].map(c=>c.dataset.curate)`);
+        M.foldTest.table = $m(`[...document.querySelectorAll('#foldTableBody .cur-badge')].map(b=>b.dataset.curate)`);
+        M.sourceUntouched = $m(`window.SNP_CURATE.entries.filter(e=>/^SC99/.test(e.id)).length`);
+      } else {
+        $m(`S.curateId=null; go('snpcurate')`);
+        M.curatePage = $m(`({empty:!!document.querySelector('#page .empty-state'), text:document.querySelector('#page .empty-state h3')?.textContent||null})`);
+      }
+      M.consoleErrors = s.errors.filter(e => !/favicon/.test(e));
+      s.window.close();
+      return M;
+    };
+    R.curateMarks = {with: await marks(ROOT, true)};
+    const w = rootWithout(ROOT, 'snpcurate.data.js');
+    try { R.curateMarks.without = await marks(w.dir, false); } finally { w.cleanup(); }
+  }
+
+  /* ---------- the change list of 3 October 2026 (check_ui_changes.py) ----------
+     Name and tagline; SNPVersity's maxR² to hundredths, two-line PlantCAD headers, MaizeGDB gene
+     links, a curated row on gold; "Load data from SNPVersity" in SNPTree, SNPImpact and SNPCompare;
+     SNPCompare's PI number column; the reference lines hand-off of SNPFunction. (Widths at 375 px
+     are checked in a browser: jsdom does no layout.) */
+  if (['chr2', 'chr4'].every(c => (R.store || {})[c] > 100000)){
+    const s13 = await openSite(ROOT); const $u = s13.$eval; const L = R.uiList = {};
+    L.brand = $u(`({title:document.title, rail:document.querySelector('.brand .name').textContent, railTag:document.querySelector('.brand .tag').textContent,
+      mast:document.querySelector('.mg-kicker').textContent, mastTag:document.querySelector('.mg-sub').textContent, crumb:document.querySelector('.crumb > b').textContent})`);
+    // empty tools before SNPVersity has a result
+    L.emptyBefore = {};
+    for (const t of ['snptree', 'snpimpact', 'snpcompare']){ $u(`go('${t}')`); await s13.wait(t === 'snpcompare' ? 400 : 100); L.emptyBefore[t] = $u(`!!document.getElementById('loadVersity')`); }
+    const nam = 'Data.accessionsFor("zmgrin2026_imp").filter(a=>a.namFounder).map(a=>a.id)';
+    L.versity = await $u(`(async()=>{ go('snpversity'); const r=await Data.queryVariants('zmgrin2026_imp','chr4',46647932,46652896,${nam});
+      r.q={dataset:'zmgrin2026_imp',chr:'chr4',lo:46647932,hi:46652896}; S.results=r; S.page=1; S.fQc=null; renderResults();
+      const hdr=[...document.querySelectorAll('#rtBody table.vcf thead th[data-col]')]; const col=k=>hdr.findIndex(t=>t.dataset.col===k);
+      const rows=[...document.querySelectorAll('#rtBody table.vcf tbody tr')];
+      const r2i=4+col('r2');
+      const cur=rows.filter(tr=>tr.classList.contains('cur-row'));
+      return {vcf:r.vcfUrl, r2:rows.map(tr=>[tr.children[1].querySelector('a').textContent, tr.children[r2i].textContent.trim()]),
+        pcHead:hdr.filter(t=>/^pc/.test(t.dataset.col)).map(t=>t.innerHTML), otherHead:hdr.filter(t=>/^(evo2|esm)/.test(t.dataset.col)).map(t=>t.innerHTML),
+        curRows:cur.map(tr=>({cls:tr.className, id:tr.dataset.curate, pos:tr.children[1].querySelector('a').textContent,
+          plain:[...tr.children].filter(td=>!td.classList.contains('score')&&!td.classList.contains('gt')).length,
+          score:[...tr.children].filter(td=>td.classList.contains('score')).length, gt:[...tr.children].filter(td=>td.classList.contains('gt')).length})),
+        genes:(()=>{ const d=document.querySelector('#rtBody details'); return d?[...d.querySelectorAll('div > a.c-mono')].map(a=>({gene:a.textContent, href:a.getAttribute('href'),
+          maizegdb:[...a.parentElement.querySelectorAll('a')].filter(x=>/MaizeGDB/.test(x.textContent)).map(x=>x.getAttribute('href'))})):[]; })()}; })()`);
+    // the empty tools offer the result, and the button loads it
+    L.load = {};
+    for (const [t, check] of [['snptree', `!!(SNPTree._ST.input && SNPTree._ST.input.rows && SNPTree._ST.input.rows.length===S.results.rows.length)`],
+                              ['snpimpact', `document.querySelectorAll('table.imp tbody tr').length>0`],
+                              ['snpcompare', `[...document.querySelectorAll('#page .qbtn')].some(b=>/This region/.test(b.textContent)&&!b.disabled)`]]){
+      $u(`S.${t === 'snptree' ? 'treeInput' : t === 'snpimpact' ? 'impactInput' : 'compareInput'}=null; go('${t}')`); await s13.wait(t === 'snpcompare' ? 400 : 100);
+      const offer = $u(`(document.getElementById('loadVersity')||{}).textContent||null`);
+      $u(`(document.querySelector('#loadVersity button')||{click(){}}).click()`); await s13.wait(t === 'snptree' ? 600 : 300);
+      L.load[t] = {offer: offer && offer.replace(/\s+/g, ' ').trim(), tool: $u('S.tool'), loaded: $u(check), block: $u(`!!document.getElementById('loadVersity')`)};
+    }
+    // SNPCompare: PI number column (genome-wide table)
+    $u(`S.compareInput=null; go('snpcompare')`); await s13.wait(400);
+    $u(`SNPCompare.setMode('global'); SNPCompare.setView('table')`);
+    await until(s13, `document.querySelectorAll('.cmp-table tbody tr').length>0`, 20000);
+    L.compare = $u(`(()=>{ const h=[...document.querySelectorAll('.cmp-table thead th')].map(t=>t.textContent.replace(/[▾▴]/g,'').trim()); const i=h.indexOf('PI number'), j=h.indexOf('Final_ID');
+      return {head:h, rows:[...document.querySelectorAll('.cmp-table tbody tr')].map(tr=>[tr.children[j].textContent, tr.children[i]?tr.children[i].textContent:null])}; })()`);
+    // SNPFunction: the reference lines of ZmWAK T102A to SNPVersity (replace)
+    $u(`S.functionGene='Zm00001eb116160'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);
+    await until(s13, `!!document.getElementById('fnAlleles')`, 60000); await s13.wait(150);
+    L.reference = await $u(`(async()=>{ const d=await Data.geneFunction('Zm00001eb116160','zmgrin2026_imp'); const v=d.damaging.find(x=>x.variant==='p.T102A');
+      FUNCTION.toggle(v.id); const btn=[...document.querySelectorAll('.fn-carriers .fn-sendrow button')].map(b=>b.textContent.trim());
+      Handoff.setMode && Handoff.setMode('replace'); FUNCTION.toVersity(v.id,'ref'); await new Promise(r=>setTimeout(r,300));
+      return {buttons:btn, nRef:v.nRef, het:v.carriersHet, hom:v.carriersHom, miss:v.carriersMiss, selected:[...S.selected].sort(), tool:S.tool, vcf:null}; })()`);
+    L.consoleErrors = s13.errors.filter(e => !/favicon/.test(e));
+    s13.window.close();
+  }
+
+  R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
+  R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
+  R.consoleErrors = site.errors;
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(R));
+  const brief = JSON.parse(JSON.stringify(R)); delete brief.snpgeo_gene.allStats; delete brief.snpgeo_gene.accOrder;
+  brief.gwas.grinSend.selected = brief.gwas.grinSend.selected.length; delete brief.gwas.defaultSend.ids;
+  if (brief.pergene){ delete brief.pergene.geo; Object.values(brief.pergene.genes).forEach(g => { g.fn.v = g.fn.v.length; g.fold = g.fold.length; });
+    brief.pergene.versity.markers = brief.pergene.versity.markers.filter(Boolean).length; }
+  brief.snptrait.filterSS_Ames_Dent = brief.snptrait.filterSS_Ames_Dent.length; brief.snptrait.rangeKW = brief.snptrait.rangeKW.length; delete brief.snptrait.facetCounts; brief.snptrait.filterPlusIowa = brief.snptrait.filterPlusIowa.length;
+  if (brief.siteqcui){ delete brief.siteqcui.jsRule;
+    ['on', 'off'].forEach(p => { const u = brief.siteqcui[p]; if (!u) return;
+      Object.values(u.versity || {}).forEach(v => { delete v.qcRows; delete v.cellText; }); }); }
+  if (brief.lineqc) Object.values(brief.lineqc).forEach(L => { if (L && L.exports){ L.exports.csv = L.exports.csv.length; L.exports.json = L.exports.json.length; } });
+  if (brief.curate){ delete brief.curate.data; brief.curate.records = Object.keys(brief.curate.records).length; }
+  if (brief.compare) Object.values(brief.compare).forEach(v => { if (v && Array.isArray(v.rows)) { v.top3 = v.rows.slice().sort((x, y) => y[1] - x[1]).slice(0, 3); v.rows = v.rows.length; } });
+  fs.writeFileSync(path.join(OUT, 'results_brief.json'), JSON.stringify(brief, null, 1));
+  site.window.close();
+  console.log('done');
+})().catch(e => { console.error('HARNESS FAILURE', e); process.exit(1); });

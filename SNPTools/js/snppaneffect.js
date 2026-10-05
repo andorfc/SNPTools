@@ -64,8 +64,11 @@
          substitution ring lives), a plain gene jump defaults to Both */
       option:  (opts.option || (variant ? 'b73' : 'both')),
       variant: variant,
-      /* external modules open in the MaizeGDB 2026 view, not "all variants" */
-      wgs:     (opts.wgs || 'maize2026'),
+      /* External modules open on "all variant effects". They opened on the MaizeGDB 2026
+         view, which colours only substitutions seen in that set; PanEffect's per-gene files
+         flag WGS2024/WGS2026 only, so a GRIN-linked substitution could be hidden. Pass
+         wgs:'maize2026' to get that view back. */
+      wgs:     (opts.wgs || 'all'),
     };
     go('paneffect');
   };
@@ -124,7 +127,7 @@
       .map(m => `<option value="${m}" ${m === st.esm ? 'selected' : ''}>${m}</option>`).join('');
     const examples = PE.cfg.examples
       .map(g => `<a href="#" class="pe-ex" data-gene="${g}">${g}</a>`)
-      .join('<span class="pe-ex-sep">·</span>');
+      .join('<span class="pe-ex-sep">·</span><wbr>');  /* <wbr>: the row may wrap on a phone */
     const vLbl = variantLabel(st.variant);
 
     return `

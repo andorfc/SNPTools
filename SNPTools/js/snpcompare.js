@@ -47,9 +47,9 @@
 const SNPCompare = (function () {
 
   const CFG = {
-    globalEndpoint : 'ibsCompare.php', // ?focal=<ID> -> {rows:[{id,similarity,missing}]}
+    globalEndpoint : 'ibsCompare.php', // ?focal=<ID>&dataset=<family>[&sites=snp] -> {rows:[{id,similarity,missing}]}
     useDemoGlobal  : false,
-    defaultDataset : 'mgdb2026_hq',
+    defaultDataset : 'zmgrin2026_imp',   // initial release: GRIN-linked 2026 (was mgdb2026_hq)
     minSitesFloor  : 20,               // never mask below this many sites
     minSitesFrac   : 0.05,             // default mask threshold = 5% of sites
   };
@@ -64,7 +64,10 @@ const SNPCompare = (function () {
     ran:false, ranFocal:null, ranMode:null, force:false,
     mdsLabels:'auto',      // PCoA label strategy: auto | all | focal | none
     input:null,            // local hand-off {rows, accs, chr, start, end, dataset,...}
-    globalCache:{},        // focalId -> {rows, demo}
+    globalCache:{},        // '<family>|<sites>|<focalId>' -> {rows, demo}
+    gsites:'all',          // genome-wide matrix: 'all' variant sites or 'snp' (when the family has it)
+    sites:null,            // region scope: 'usable' | 'all' (null = Data.SITE_QC_DEFAULTS.distance)
+    _region:null,          // the region hand-off with the rows actually used
     allRows:[], gdemo:false, _meta:null, _metaDs:null,
 
     /* --- matrix / scale state --- */
@@ -102,10 +105,28 @@ const SNPCompare = (function () {
     return out;
   }
 
+  /* Site QC: by default the region scope uses usable sites only (PASS, HET_ELEVATED); "All
+     sites" uses every site. A result without Site QC classes always uses every site. The
+     genome-wide matrices are precomputed over all sites. */
+  function siteMode(){ return ST.sites || Data.SITE_QC_DEFAULTS.distance; }
+  function regionHasQc(){ return !!(ST.input && Data.hasSiteQc(ST.input.rows)); }
+  function regionInput(){
+    if(!ST.input) return null;
+    const mode = regionHasQc() ? siteMode() : 'all';
+    if(ST._region && ST._region.src===ST.input && ST._region.mode===mode) return ST._region.input;
+    const input = mode==='all' ? ST.input : Object.assign({}, ST.input, {rows: Data.usableRows(ST.input.rows), siteMode: mode});
+    ST._region = {src:ST.input, mode, input};
+    return input;
+  }
+  function sitesUsedText(){
+    const r=regionInput();
+    return (r && regionHasQc()) ? ` · <span id="cmpSitesUsed"><b>${r.rows.length.toLocaleString()}</b> of ${ST.input.rows.length.toLocaleString()} sites used</span>` : '';
+  }
+
   /* full n×n IBS from a SNPVersity result, cached on the hand-off */
   function pairKey(input){
     return [input.dataset,input.chr,input.start,input.end,
-            input.rows.length,input.accs.map(a=>a.id).join('|')].join('~');
+            input.rows.length,input.siteMode||'all',input.accs.map(a=>a.id).join('|')].join('~');
   }
   function allPairs(input){
     if(!input||!input.accs||!input.rows) return null;
@@ -310,7 +331,7 @@ const SNPCompare = (function () {
     const projBio={};
     (Data.projectsFor(ds)||[]).forEach(p=>{ projBio[p.id]=(p.bioprojects&&p.bioprojects.length)?p.bioprojects.join(', '):(p.title||''); });
     const m={};
-    (Data.accessionsFor(ds)||[]).forEach(a=>{ m[a.id]={id:a.id, name:a.founder, run:a.run, proj:a.proj, projColor:a.projColor, bio:projBio[a.proj]||''}; });
+    (Data.accessionsFor(ds)||[]).forEach(a=>{ m[a.id]={id:a.id, name:a.founder, run:a.run, proj:a.proj, projColor:a.projColor, bio:projBio[a.proj]||'', grin:a.grin||''}; });
     ST._meta=m; ST._metaDs=ds; return m;
   }
   function projectOptions(ds){
@@ -333,19 +354,23 @@ const SNPCompare = (function () {
     });
   }
   async function getGlobal(ds, focalId){
-    if(ST.globalCache[focalId]) return ST.globalCache[focalId];
+    const fam=Data.familyOf(ds), sites=gSitesFor(fam), ck=fam+'|'+sites+'|'+focalId;
+    if(ST.globalCache[ck]) return ST.globalCache[ck];
     let res;
     if(CFG.useDemoGlobal){ res={rows:globalDemo(ds,focalId), demo:true}; }
     else {
-      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}`,{cache:'no-store'});
+      // the family is always named: ibsCompare.php's default is this release's set, not MaizeGDB 2026
+      const q=`&dataset=${encodeURIComponent(fam)}${(fam!=='mgdb2026' && sites==='snp')?'&sites=snp':''}`;
+      const resp=await fetch(`${CFG.globalEndpoint}?focal=${encodeURIComponent(focalId)}${q}`,{cache:'no-store'});
       if(!resp.ok) throw new Error('ibsCompare.php failed (HTTP '+resp.status+')');
       const raw=await resp.text(); let j;
       try{ j=JSON.parse(raw); }catch(e){ throw new Error('ibsCompare.php did not return JSON:\n'+raw.slice(0,500)); }
       const rows=(j.rows|| (j.ids? j.ids.map((id,i)=>({id, similarity:j.sim[i], missing:j.miss[i]})):[]))
         .map(r=>({id:r.id, sim:+(r.similarity!=null?r.similarity:r.sim), miss:Math.max(0,+(r.missing!=null?r.missing:r.miss))}));
+      if(!rows.length && j.error) throw new Error(j.error);
       res={rows, demo:false};
     }
-    ST.globalCache[focalId]=res; return res;
+    ST.globalCache[ck]=res; return res;
   }
 
   /* ---------------- build the combined row set ---------------- */
@@ -353,7 +378,7 @@ const SNPCompare = (function () {
     const ds=ST.dataset, meta=metaMap(ds);
     let g=null, l=null;
     if(ST.mode==='global'||ST.mode==='both') g=await getGlobal(ds, ST.focal);
-    if(ST.mode==='local' ||ST.mode==='both') l=localCompute(ST.input, ST.focal);
+    if(ST.mode==='local' ||ST.mode==='both') l=localCompute(regionInput(), ST.focal);
     const byId={};
     const add=id=>{ if(!byId[id]) byId[id]=Object.assign({id}, meta[id]||{name:id,run:id,bio:''}); return byId[id]; };
     if(g) g.rows.forEach(r=>{ const x=add(r.id); x.gsim=r.sim; x.gmiss=r.miss; });
@@ -377,14 +402,27 @@ const SNPCompare = (function () {
     const k=ST.sortKey, d=ST.sortDir;
     rows.sort((a,b)=>{
       let va=a[k], vb=b[k];
-      if(k==='id'||k==='name'||k==='run'||k==='bio'){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
+      if(k==='id'||k==='name'||k==='run'||k==='bio'||k==='grin'){ va=(va||'').toString(); vb=(vb||'').toString(); return d*va.localeCompare(vb,undefined,{numeric:true}); }
       va=va==null?-Infinity:va; vb=vb==null?-Infinity:vb; return d*(va-vb);
     });
     return rows;
   }
 
   /* ---------------- shell ---------------- */
-  function globalAvailable(){ try{ return Data.familyOf(ST.dataset)==='mgdb2026'; }catch(e){ return true; } }
+  /* Genome-wide scope: MaizeGDB 2026 always (fixed ./distance/ files, unchanged); any other
+     family once ibsCompare.php?probe=1&dataset=<family> finds ./distance/<family>/ files. */
+  function globalAvailable(){
+    try{ const fam=Data.familyOf(ST.dataset); if(fam==='mgdb2026') return true;
+         const p=Data.globalDistanceKnown && Data.globalDistanceKnown(fam); return !!(p && p.available); }
+    catch(e){ return true; }
+  }
+  /* the site-wide dataset (S.dataset, set by SNPVersity / the dataset pickers), if valid */
+  function pageDataset(){ try{ return (S.dataset && Data.datasets().some(d=>d.id===S.dataset)) ? S.dataset : null; }catch(e){ return null; } }
+  function setDataset(id){ if(!Data.datasets().some(d=>d.id===id)) return; S.dataset=id; S.compareInput=null; ST.input=null; render(); }
+  function gProbe(){ try{ return Data.globalDistanceKnown(Data.familyOf(ST.dataset)); }catch(e){ return null; } }
+  function gSitesFor(fam){ const p=Data.globalDistanceKnown&&Data.globalDistanceKnown(fam);
+    return (ST.gsites==='snp' && p && (p.sites||[]).indexOf('snp')>=0) ? 'snp' : 'all'; }
+  function setGSites(v){ ST.gsites=(v==='snp')?'snp':'all'; ST.allRows=[]; showIdle(); }
   function hasLocal(){ return !!(ST.input&&ST.input.accs&&ST.input.accs.length>1); }
 
   function render(){
@@ -397,8 +435,18 @@ const SNPCompare = (function () {
     const request=S.compareRequest||null;
     S.compareRequest=null;
     const prevDs=ST.dataset;
+    // Genome-wide availability of a non-MaizeGDB-2026 family is probed once (async);
+    // render again when it is known, keeping any pending hand-off request.
+    { const fam0=Data.familyOf((S.compareInput&&S.compareInput.dataset)||pageDataset()||ST.dataset);
+      if(fam0!=='mgdb2026' && Data.globalDistance && !Data.globalDistanceKnown(fam0)){
+        page.className='page fade';
+        page.innerHTML=`<div class="card pad"><div class="loading"><div class="spinner"></div><div>Checking genome-wide matrices…</div></div></div>`;
+        Data.globalDistance(fam0).then(()=>{ S.compareRequest=request; if(S.tool==='snpcompare') render(); });
+        return;
+      } }
     if(S.compareInput){ if(S.compareInput!==ST.input){ ST._pairs=null; ST._layout=null; ST.force=false; } ST.input=S.compareInput; }
     if(ST.input){ ST.dataset=ST.input.dataset||ST.dataset; }
+    else if(pageDataset()) ST.dataset=pageDataset();   // no region hand-off: the site-wide dataset
     if(ST.dataset!==prevDs){ ST.focal=null; ST._meta=null; ST.globalCache={}; ST.allRows=[]; ST._pairs=null; }
     const gAvail=globalAvailable();
     if(!ST.focal){
@@ -450,28 +498,40 @@ const SNPCompare = (function () {
       <h1>SNPCompare</h1>
       <p>Rank and map accessions by identity-by-state similarity to a focal accession — genome-wide and within a queried region.</p>
     </div></section>
+    ${!local && typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToCompare', 'Compare those lines within that region (This region and Both scopes, Matrix, PCoA).') : ''}
 
     <div class="card pad" style="margin-bottom:16px">
       <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
-        <div style="min-width:480px;flex:1 1 480px">
+        <div style="min-width:min(480px,100%);flex:1 1 480px">
           <div class="fl-lbl">Focal accession</div>
           <div style="display:flex;gap:8px">
             <input id="cmpFocal" list="cmpFocalList" value="${esc(ST.focal||'')}" placeholder="type a SNPVersity ID…"
               oninput="SNPCompare.syncFocal(this.value)"
               onkeydown="if(event.key==='Enter'){event.preventDefault();SNPCompare.runCurrent();}"
-              style="flex:1;min-width:340px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px">
+              style="flex:1;min-width:min(340px,100%);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px">
             <datalist id="cmpFocalList">${ids.slice(0,4000).map(i=>`<option value="${esc(i)}">`).join('')}</datalist>
           </div>
         </div>
+        ${!local?`<div><div class="fl-lbl">Dataset</div>
+          <select id="cmpDataset" onchange="SNPCompare.setDataset(this.value)" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px;max-width:320px">
+            ${Data.datasets().map(d=>`<option value="${esc(d.id)}" ${d.id===ds?'selected':''}>${esc(d.name+(d.sub?' · '+d.sub:''))}</option>`).join('')}</select></div>`:''}
         <div>
           <div class="fl-lbl">Scope</div>
-          ${scopeBtn('global','Genome-wide',gAvail,'Genome-wide matrix available for MaizeGDB 2026 only')}
+          ${scopeBtn('global','Genome-wide',gAvail,'No precomputed genome-wide matrix for this dataset')}
           ${scopeBtn('local','This region',local,'Send a result from SNPVersity to enable')}
-          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'Genome-wide matrix available for MaizeGDB 2026 only':'Send a result from SNPVersity to enable')}
+          ${scopeBtn('both','Both (Δ)',gAvail&&local, !gAvail?'No precomputed genome-wide matrix for this dataset':'Send a result from SNPVersity to enable')}
         </div>
+        ${gAvail && ((gProbe()||{}).sites||[]).indexOf('snp')>=0 ? `<div><div class="fl-lbl">Genome-wide sites</div>
+          <select id="cmpGSites" onchange="SNPCompare.setGSites(this.value)" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px">
+            <option value="all" ${ST.gsites!=='snp'?'selected':''}>All variants</option>
+            <option value="snp" ${ST.gsites==='snp'?'selected':''}>SNPs only</option></select></div>` : ''}
         ${region?`<div><div class="fl-lbl">Region</div><div class="c-mono" style="color:var(--blue-600);font-size:13px;padding:8px 0">${region}</div></div>`:''}
+        ${region && regionHasQc()?`<div id="cmpSites"><div class="fl-lbl" data-tt="Region scope: usable sites leave out flagged sites (het only, het excess) and sites with no carrier in this release. The genome-wide matrices use all sites.">Region sites</div>
+          <button class="qbtn ${siteMode()==='usable'?'solid':''}" onclick="SNPCompare.setSites('usable')">Usable only</button>
+          <button class="qbtn ${siteMode()==='all'?'solid':''}" onclick="SNPCompare.setSites('all')">All sites</button></div>`:''}
       </div>
-      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">Genome-wide precomputed IBS is available for <b>MaizeGDB 2026</b> only. For <b>${esc(dsName)}</b>, use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`:''}
+      ${!gAvail?`<div class="mtx-note" style="margin-top:12px">No precomputed genome-wide IBS matrix is installed for <b>${esc(dsName)}</b> (expected in <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>). Use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`
+        :(Data.familyOf(ds)!=='mgdb2026'?`<div class="mtx-note" id="cmpGNote" style="margin-top:12px">Genome-wide: precomputed IBS over the whole release (${((gProbe()||{}).n||0).toLocaleString()} lines${ST.gsites==='snp'?', SNPs only':', all variant sites'}), <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>.</div>`:'')}
 
       ${accListHTML()}
 
@@ -560,8 +620,8 @@ const SNPCompare = (function () {
       </div>`;
       return;
     }
-    const P = hasLocal()? allPairs(ST.input) : null;
-    const total = P? P.total : (ST.input? ST.input.rows.length : 0);
+    const P = hasLocal()? allPairs(regionInput()) : null;
+    const total = P? P.total : (ST.input? regionInput().rows.length : 0);
     const thr = minSites(total);
     const needScale = ST.view==='matrix'||ST.view==='spread';
     const needMask  = ST.view!=='table';
@@ -600,7 +660,7 @@ const SNPCompare = (function () {
             <option value="focal" ${ST.mdsLabels==='focal'?'selected':''}>Focal only</option>
             <option value="none" ${ST.mdsLabels==='none'?'selected':''}>None</option>
           </select></div>`:''}
-        ${needScale?`<div style="flex:1 1 320px;min-width:300px">
+        ${needScale?`<div style="flex:1 1 320px;min-width:min(300px,100%)">
           <div class="fl-lbl">Color domain — drag the handles</div>
           <div id="cmpLegend"></div></div>`:''}
         <div style="margin-left:auto;align-self:flex-end">
@@ -711,7 +771,8 @@ const SNPCompare = (function () {
     } else {
       c.push({k:'gsim',t:'Similarity'},{k:'gmiss',t:'Missing%'});
     }
-    c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'});
+    c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'},
+           {k:'grin',t:'PI number',tt:'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'});
     return c;
   }
   const fmtSim=v=>v==null?'—':v.toFixed(4);
@@ -734,7 +795,7 @@ const SNPCompare = (function () {
       if(c.k==='rank') return `<th>#</th>`;
       const active = (c.k===sortKey) || (c.k==='gsim'&&ST.sortKey==='sim'&&ST.mode!=='local') || (c.k==='lsim'&&ST.sortKey==='sim'&&ST.mode==='local');
       const arrow = active ? (ST.sortDir<0?' ▾':' ▴') : '';
-      return `<th onclick="SNPCompare.sortBy('${c.k}')" style="cursor:pointer;white-space:nowrap">${esc(c.t)}${arrow}</th>`;
+      return `<th onclick="SNPCompare.sortBy('${c.k}')" style="cursor:pointer;white-space:nowrap"${c.tt?` data-tt="${esc(c.tt)}"`:''}>${esc(c.t)}${arrow}</th>`;
     }).join('');
     const body=rows.map((r,i)=>{
       const focal=r.id===ST.focal;
@@ -744,20 +805,22 @@ const SNPCompare = (function () {
       return `<tr class="${focal?'cmp-focal':''}">${tds}</tr>`;
     }).join('');
     wrap.innerHTML=`<table class="cmp-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-    counter(`Showing <b>${rows.length.toLocaleString()}</b> of <b>${ST.allRows.length.toLocaleString()}</b> accessions for “${esc(ST.focal||'')}”.`);
+    counter(`Showing <b>${rows.length.toLocaleString()}</b> of <b>${ST.allRows.length.toLocaleString()}</b> accessions for “${esc(ST.focal||'')}”.${ST.mode!=='global'?sitesUsedText():''}`);
     banner();
   }
   function counter(html){ const c=document.getElementById('cmpCount'); if(c) c.innerHTML=html; }
   function banner(){
     const ban=document.getElementById('cmpBanner'); if(!ban) return;
-    ban.innerHTML = (ST.gdemo && ST.mode!=='local')
-      ? `<div class="mtx-note">Genome-wide values shown here are <b>demonstration data</b>. Connect <span class="c-mono">ibsCompare.php</span> and set <span class="c-mono">useDemoGlobal=false</span> in snpcompare.js to load your precomputed IBS scores.</div>` : '';
+    ban.innerHTML = ((ST.gdemo && ST.mode!=='local')
+      ? `<div class="mtx-note">Genome-wide values shown here are <b>demonstration data</b>. Connect <span class="c-mono">ibsCompare.php</span> and set <span class="c-mono">useDemoGlobal=false</span> in snpcompare.js to load your precomputed IBS scores.</div>` : '')
+      + ((ST.mode==='both' && regionHasQc() && siteMode()!=='all')
+      ? `<div class="mtx-note" id="cmpGwAllSites">Genome-wide values include all sites.</div>` : '');
   }
 
   /* ---------------- matrix ---------------- */
   function renderMatrix(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
     const L=layout(P), order=L.order, k=order.length;
     if(!k){ wrap.innerHTML=notice('Every accession was removed by the missing-data filter. Raise the threshold.'); return; }
@@ -879,14 +942,14 @@ const SNPCompare = (function () {
     });
 
     const dropped=P.n-k;
-    counter(`<b>${k}</b> accessions × <b>${P.total.toLocaleString()}</b> sites${dropped?` · <b>${dropped}</b> hidden by the missing-data filter`:''} · region ${esc(ST.input.chr)}:${(+ST.input.start).toLocaleString()}–${(+ST.input.end).toLocaleString()}`);
+    counter(`<b>${k}</b> accessions × <b>${P.total.toLocaleString()}</b> sites${dropped?` · <b>${dropped}</b> hidden by the missing-data filter`:''} · region ${esc(ST.input.chr)}:${(+ST.input.start).toLocaleString()}–${(+ST.input.end).toLocaleString()}${sitesUsedText()}`);
     banner();
   }
 
   /* ---------------- PCoA map ---------------- */
   function renderMDS(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<3){ wrap.innerHTML=notice('PCoA needs at least three accessions in the region result.'); return; }
     const L=layout(P), res=pcoa(P,L.order);
     if(!res){ wrap.innerHTML=notice('Not enough measurable pairs to place the accessions.'); return; }
@@ -935,7 +998,7 @@ const SNPCompare = (function () {
       <div class="mtx-note" style="margin-top:10px">Classical multidimensional scaling of the distance matrix (1 − similarity).
       Distances between unmeasurable pairs are imputed with the panel mean, so a poorly covered accession drifts toward the centre
       rather than to an extreme — points are faded in proportion to their mean missing data. Click a point to make it focal.${declutNote}</div>`;
-    counter(`<b>${res.pts.length}</b> accessions placed · masking below <b>${thr.toLocaleString()}</b> co-called sites.`);
+    counter(`<b>${res.pts.length}</b> accessions placed · masking below <b>${thr.toLocaleString()}</b> co-called sites.${sitesUsedText()}`);
     banner();
   }
 
@@ -1028,14 +1091,14 @@ const SNPCompare = (function () {
     becomes the full width of the panel. ${unmeas?`<b>${unmeas}</b> accession${unmeas>1?'s are':' is'} not shown — too few co-called sites to estimate.`:''}
     Hover for values, click a point to make it focal.</div>`;
     drawLegend(sc);
-    counter(`<b>${items.length}</b> accessions plotted for “${esc(ST.focal||'')}”.`);
+    counter(`<b>${items.length}</b> accessions plotted for “${esc(ST.focal||'')}”.${ST.mode!=='global'?sitesUsedText():''}`);
     banner();
   }
 
   /* ---------------- diagnostics ---------------- */
   function renderDiag(){
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
-    const P=allPairs(ST.input);
+    const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
     const thr=minSites(P.total);
     const pts=[]; const fi=P.ids.indexOf(ST.focal);
@@ -1083,7 +1146,7 @@ const SNPCompare = (function () {
       if(wrap) wrap.innerHTML=notice(`Focal accession “${esc(ST.focal)}” isn’t in the region result. Pick one of the accessions you queried, or switch scope to Genome-wide.`); return;
     }
     if(ST.mode!=='global' && ST.input){
-      const A=ST.input.accs.length, V=(ST.input.rows&&ST.input.rows.length)||0;
+      const A=ST.input.accs.length, V=regionInput().rows.length;   // the sites actually used
       if(ibsWork(V,A) > IBS_COST.cmpWorkBlock || V*A > IBS_COST.cmpMemBlock){
         if(wrap) wrap.innerHTML=notice('Selected data too large for SNPCompare - choose a smaller region, a lower-density SNP set, or fewer accessions, then re-run in SNPVersity.'); return;
       }
@@ -1139,6 +1202,9 @@ const SNPCompare = (function () {
   /* clicking inside a rendered plot refocuses AND re-runs that view */
   function pick(id){ ST.focal=id; ST._layout=null;
     const el=document.getElementById('cmpFocal'); if(el) el.value=id; refreshAccList(); recompute(); }
+  /* region sites are an option like scope: switching does not run — it returns to idle */
+  function setSites(v){ ST.sites=v; ST._layout=null; ST.ran=false;
+    document.getElementById('page').innerHTML=shell(); showIdle(); }
   /* scope is an option: switching it does not run — it returns to idle */
   function setMode(m){
     if((m==='local'||m==='both') && !ST.input) return;
@@ -1165,7 +1231,7 @@ const SNPCompare = (function () {
     if(ST.ran) paint(); else showIdle();
   }
   function sortBy(k){ if(k==='rank'||!ST.ran)return;
-    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio')?1:-1; }
+    if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio'||k==='grin')?1:-1; }
     renderTable(); }
   function toTree(){ if(!ST.input)return; S.treeInput=ST.input; go('snptree'); }
   function toMatrix(){ if(!ST.input)return; S.matrixInput=ST.input; go('snpmatrix'); }
@@ -1241,7 +1307,7 @@ const SNPCompare = (function () {
   }
   /* long-format matrix export: one row per pair, with the mask flag kept explicit */
   function exportMatrixCSV(){
-    const P=allPairs(ST.input); if(!P) return;
+    const P=allPairs(regionInput()); if(!P) return;
     const thr=minSites(P.total);
     const out=['a_id,b_id,a_name,b_name,similarity,distance,co_called_sites,total_sites,missing_pct,measurable'];
     for(let a=0;a<P.n;a++) for(let b=a+1;b<P.n;b++){
@@ -1295,7 +1361,7 @@ const SNPCompare = (function () {
 
   if(typeof SNPTools!=='undefined') SNPTools.register('snpcompare', { render });
 
-  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setView,
+  return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setSites, regionInput, setView, setGSites, setDataset, globalAvailable,
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
            clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage, forceRun,
            // testing / debugging

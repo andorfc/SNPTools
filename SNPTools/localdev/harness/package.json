@@ -1,0 +1,14 @@
+{
+  "name": "snptools-localdev-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Headless (jsdom) end-to-end checks of the SNPTools maize port (GRIN-linked 2026) against the local PHP backend",
+  "scripts": {
+    "test": "node run_scenarios.js ../.. ../out && python3 check_snptrait.py ../out/results.json ../.. && python3 check_snpgeo_counts.py ../out/results.json ../fixtures/zmgrin2026_v1.4_chr9_testregions.vcf.gz ../.. && python3 check_gwas_handoff.py ../out/results.json ../.. && python3 check_annotation_columns.py ../out/results.json ../.. && python3 check_global_compare.py ../out/results.json ../.. && python3 check_ibs_files.py ../.. zmgrin2026 && python3 check_gene_consequences.py ../out/results.json ../.. && python3 check_review_fixes.py ../out/results.json ../.. && python3 check_site_qc.py ../out/results.json ../.. && python3 check_site_qc_ui.py ../out/results.json ../.. && python3 check_snpcurate.py ../out/results.json ../.. && python3 check_ui_changes.py ../out/results.json ../.."
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "d3": "^5.16.0",
+    "jsdom": "^24.1.3"
+  }
+}

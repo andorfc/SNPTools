@@ -2,3 +2,9 @@ SNPTools/GWAS_EXPLORER_CHANGELOG.md
 SNPTools/GWAS_EXPLORER_HANDOFF.md
 SNPTools/gwas_explorer.html
 SNPTools/gwas_explorer_template.html
+# local instance (SNPTools/localdev/start.sh)
+SNPTools/localdev/server.pid
+SNPTools/localdev/server.port
+SNPTools/localdev/server.log
+SNPTools/localdev/out/
+SNPTools/localdev/node_modules/

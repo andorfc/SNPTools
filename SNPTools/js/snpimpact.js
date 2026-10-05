@@ -12,6 +12,8 @@
     rows: [], input: null, _sig: null,
     sortKey: 'priority', sortDir: 1,        // 1 = TOP first
     fCons: 'all', fImpact: 'all', fScore: 'all', fDomain: 'all',
+    fQc: (typeof Data !== 'undefined' && Data.SITE_QC_DEFAULTS) ? Data.SITE_QC_DEFAULTS.impact : 'usable',
+    hasQc: false,          // the region's rows carry a Site QC class (store with a sidecar)
     openId: null,
     shortlist: new Set(),
     force: false,          // "Rank anyway" past the variant-count guard
@@ -72,6 +74,12 @@
     if (r.sub) return r.sub;
     if (r.aaRef && r.aaAlt && r.resi!=null) return `${r.aaRef}${r.resi}${r.aaAlt}`;
     return '';
+  }
+  /* MQ is left out for a set that never records it (Data.annotationFields 'hidden'). The r²
+     beside it is MAXR2, the highest LD r² with a nearby variant, not an imputation r². */
+  function mqShown(ds){
+    const f=(typeof Data!=='undefined' && Data.annotationFields) ? (Data.annotationFields(ds).find(x=>x.key==='mq')||{}) : {};
+    return f.status!=='hidden';
   }
   function canPanEffect(r){ return !!(r && r.gene && r.gene!=='—'); }
   /* internal view switch — highlights the substitution when missense,
@@ -164,15 +172,22 @@
      touch the filters or sort — expanding a detail row, starring a variant —
      don't re-scan every variant. Keyed on the region + all filter/sort state. */
   let _fCache = null;
+  /* Site QC hides flagged and no-carrier variants by default; what it hides among the rows
+     the other filters keep is counted for the note above the table. */
+  function qcHidden(){ filtered(); return _fCache.hidden; }
   function filtered(){
-    const key = [IMP._sig, IMP.fCons, IMP.fImpact, IMP.fScore, IMP.fDomain, IMP.sortKey, IMP.sortDir].join('|');
+    const key = [IMP._sig, IMP.fCons, IMP.fImpact, IMP.fScore, IMP.fDomain, IMP.fQc, IMP.sortKey, IMP.sortDir].join('|');
     if (_fCache && _fCache.key === key) return _fCache.rows;
+    const hidden = {flagged:0, nocarrier:0, caution:0};
     let r = IMP.rows.filter(v =>
       (IMP.fCons==='all'   || v.consClass===IMP.fCons) &&
       (IMP.fImpact==='all' || v.priority===IMP.fImpact) &&
-      (IMP.fScore==='all'  || (v.combined!=null && v.combined<=-4)) &&
+      (IMP.fScore==='all'  || v.curated || (v.combined!=null && v.combined<=-4)) &&
       (IMP.fDomain==='all' || (IMP.fDomain==='dom' ? v.domain!=='—' : v.domain==='—'))
-    );
+    ).filter(v => {
+      if (v.curated || Data.qcKeep(v.qc, IMP.fQc)) return true;   // a curated allele is never hidden by Site QC
+      hidden[Data.qcGroup(v.qc)]++; return false;
+    });
     const k = IMP.sortKey, dir = IMP.sortDir;
     r.sort((a,b)=>{
       if (k==='priority'){
@@ -187,7 +202,7 @@
       if (na&&nb) return 0; if (na) return 1; if (nb) return -1;
       return dir*(av-bv);
     });
-    _fCache = { key, rows: r };
+    _fCache = { key, rows: r, hidden };
     return r;
   }
 
@@ -232,8 +247,17 @@
     if (IMP._sig !== sig){
       IMP.rows = Data.rankImpact(input.rows);
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
+      IMP.hasQc = Data.hasSiteQc(IMP.rows);
     }
-    IMP.sec = Data.hasSecondaryScores(input.dataset);    // show PlantCAD2/ESM2 only for MaizeGDB 2026
+    // SNPCurate: a curated allele carries its mark and stays through the Site QC and score filters
+    const curN = (window.SNP_CURATE && window.SNP_CURATE.entries) ? window.SNP_CURATE.entries.length : 0;
+    if (IMP._curN !== curN || IMP._curSig !== sig){
+      IMP.rows.forEach(v => { v.curated = Data.curatedAt ? Data.curatedAt(input.chr, v.pos, v.ref, v.alt) : null; });
+      IMP._curN = curN; IMP._curSig = sig; _fCache = null;
+    }
+    // PlantCAD2 / Evo2 / ESM2 / ESM3 / ESM-C columns when the dataset carries them (empty where a
+    // store has no score yet: Evo2 and ESM-C come with the rebuilt stores)
+    IMP.sec = Data.hasSecondaryScores(input.dataset);
     Data.ensureGeneDomains();                             // warm up detail track (non-blocking)
     Data.ensureGeneModels(input.chr);                     // warm up gene-model view for this chromosome
 
@@ -263,6 +287,7 @@
         ${sel('Priority','fImpact',[['all','All priorities'],['TOP','TOP'],['HIGH','HIGH'],['MODERATE','MODERATE'],['LOW','LOW']])}
         ${sel('AI score','fScore',[['all','All scores'],['high','AI high-priority (≤ −4)']])}
         ${sel('Domain effect','fDomain',[['all','All'],['dom','In a Pfam domain'],['nodom','No domain hit']])}
+        ${IMP.hasQc?sel('Site QC','fQc',Data.SITE_QC_CHOICES):''}
         <div class="right">
           <button class="btn" onclick="IMPACT.exportCSV()">${ICONS.download||''} Export CSV</button>
           <button class="btn" onclick="IMPACT.sendCompare()">
@@ -272,11 +297,12 @@
         </div>
       </div>
 
+      ${IMP.hasQc?qcNoteHTML():''}
       <div class="tbl-wrap" style="max-height:none">
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${th('Priority','priority')}<th></th>
+            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -289,8 +315,19 @@
     if (typeof attachTT==='function') attachTT();
   }
 
+  /* "<n> flagged and <m> no-carrier variants hidden. Show all." */
+  function qcNoteHTML(){
+    const h = qcHidden();
+    if (!h.flagged && !h.nocarrier && !h.caution) return '';
+    const parts = [`${h.flagged.toLocaleString()} flagged`, `${h.nocarrier.toLocaleString()} no-carrier`]
+      .concat(h.caution ? [`${h.caution.toLocaleString()} het-elevated`] : []);
+    const list = parts.length > 2 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length-1] : parts.join(' and ');
+    return `<div class="qc-note" id="impQcNote">${list} variants hidden. <a href="#" onclick="IMPACT.setFilter('fQc','all');return false;">Show all.</a></div>`;
+  }
+
   function emptyState(){
-    return `<div class="empty-state"><div class="ei">${ICONS.star||''}</div>
+    return `${typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToImpact', 'Rank the variants of that region by predicted impact.') : ''}
+      <div class="empty-state"><div class="ei">${ICONS.star||''}</div>
       <h3>Send a region from SNPVersity</h3>
       <p>SNPImpact ranks the variants in a queried region by predicted impact — independent of
       which accessions you picked. Run a query in SNPVersity, then use
@@ -310,17 +347,20 @@
     'Consequence':'Specific predicted molecular consequence of the change.',
     'Domain':'Pfam domain containing the affected amino acid, when present.',
     'PlantCAD1':'PlantCAD DNA language-model score estimating sequence disruption.',
-    'PlantCAD2':'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    'PlantCAD2':'Second-generation PlantCAD DNA score.',
     'ESM':'ESM protein language-model score for the amino-acid substitution.',
-    'ESM2':'ESM2 protein language-model score (MaizeGDB 2026).',
-    'ESM3':'ESM3 protein language-model score (MaizeGDB 2026).',
+    'ESM2':'ESM2 protein language-model score.',
+    'ESM3':'ESM3 protein language-model score.',
+    'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
+    'ESM-C':'ESM-C protein language-model score for the amino-acid substitution.',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
+    'Site QC':'Class of the site from its heterozygous and homozygous carriers among all lines of the release. Flagged (het only, het excess) and no-carrier variants are hidden by default.',
   };
   function th(label, key, cls){
     const active = IMP.sortKey===key;
     const arrow = active ? (IMP.sortDir>0?' ▲':' ▼') : ' ⇅';
     const tt = COL_TT[label] ? ` data-tt="${COL_TT[label]}"` : '';
-    return `<th class="sortable ${cls||''} ${active?'on':''}"${tt} onclick="IMPACT.sort('${key}')">${label}<span class="arr">${arrow}</span></th>`;
+    return `<th class="sortable ${cls||''} ${active?'on':''}"${tt} onclick="IMPACT.sort('${key}')">${scoreHeadHTML(label)}<span class="arr">${arrow}</span></th>`;
   }
 
   function rowHTML(r){
@@ -339,13 +379,16 @@
     const vTrunc = vDisp !== String(r.variant==null?'':r.variant);
     return `<tr class="imp-row ${opened?'open':''}" onclick="IMPACT.open('${r.id}')">
       <td class="gene-link" style="padding-left:11px">${r.gene}</td>
-      <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}</td>
+      <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}${r.curated?curateBadge(r.curated):''}</td>
       <td>${consPill(r)}${peJump}${foldJump}</td>
       <td>${domTag(r.domain)}</td>
       <td class="num">${scoreCell(r.plantcad)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2)}</td>`:''}
+      ${IMP.sec?`<td class="num">${scoreCell(r.evo2)}</td>`:''}
       <td class="num">${scoreCell(r.esm)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.esm2)}</td><td class="num">${scoreCell(r.esm3)}</td>`:''}
+      ${IMP.sec?`<td class="num">${scoreCell(r.esmc)}</td>`:''}
+      ${IMP.hasQc?`<td>${siteQcPill(r.qc, r.nHet, r.nHom)}</td>`:''}
       <td>${prioPill(r.priority)}</td>
       <td style="text-align:center">
         <button class="star-btn ${star?'on':''}" title="Add to shortlist"
@@ -523,13 +566,15 @@
           <div class="ai-pill ${r.combined!=null&&r.combined<=-4?'hi':''}">AI score: ${r.combined==null?'n/a':r.combined<=-7?'high impact':r.combined<=-4?'elevated':'low impact'}</div>
           ${scoreBar('PlantCAD1', r.plantcad)}
           ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2):''}
+          ${IMP.sec?scoreBar('Evo2', r.evo2):''}
           ${scoreBar('ESM', r.esm)}
           ${IMP.sec?scoreBar('ESM2', r.esm2)+scoreBar('ESM3', r.esm3):''}
+          ${IMP.sec?scoreBar('ESM-C', r.esmc):''}
           <div class="pctl">
             <div class="pctl-l">Region impact percentile</div>
             <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':r.percentile+'th'}</span></div>
           </div>
-          <div class="muted" style="font-size:11px;margin-top:6px">MAF ${fmtMaf(r.maf)} · imputation r² ${r.r2==null?'—':(+r.r2).toFixed(2)} · MQ ${r.mq==null?'—':r.mq}</div>
+          <div class="muted" style="font-size:11px;margin-top:6px">MAF ${fmtMaf(r.maf)} · max LD r² ${r.r2==null?'—':(+r.r2).toFixed(2)}${mqShown(IMP.input&&IMP.input.dataset)?` · MQ ${r.mq==null?'—':r.mq}`:''}</div>
         </div>
       </div>
 
@@ -582,8 +627,10 @@
     exportCSV(){
       const cols=['gene','variant','consequence','domain','plantcad']
         .concat(IMP.sec?['plantcad2']:[])
+        .concat(IMP.sec?['evo2']:[])
         .concat(['esm'])
         .concat(IMP.sec?['esm2','esm3']:[])
+        .concat(IMP.sec?['esmc']:[])
         .concat(['combined','priority','percentile','impactLevel','maf','pos','ref','alt']);
       const rows=filtered();
       const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';

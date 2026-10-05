@@ -24,13 +24,14 @@ const ICONS = {
   download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M9 9v11" stroke="currentColor" stroke-width="1.6"/></svg>',
   effect:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 4v16M13 4v16M3 9h18M3 14h18" stroke="currentColor" stroke-width="1.2" opacity=".6"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 4l6 4 6-4 6 4v14l-6-4-6 4-6-4V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v11M6 8v10M18 8v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></svg>',
   gwas:'<svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2" opacity=".55"/><circle cx="6" cy="16" r="1.3" fill="currentColor"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="12" cy="6" r="1.6" fill="currentColor"/><circle cx="15" cy="14" r="1.3" fill="currentColor"/><circle cx="18" cy="10" r="1.3" fill="currentColor"/></svg>',
 };
 
 /* ================= TOOL REGISTRY ================= */
 const GROUPS = [
   {label:'Visualization & Search', tools:['snpversity','snpgwas','snptrait']},
-  {label:'Explore & Analyze', tools:['snpimpact','snpfunction', 'snpfold']},
+  {label:'Explore & Analyze', tools:['snpimpact','snpfunction','snpcurate', 'snpfold', 'snpgeo']},
   {label:'Compare & Relate', tools:['snpcompare','snptree']},
   {label:'External plugin', tools:['paneffect']},
   //{label:'Impute & Predict', tools:['snpimpute','snpfold']},
@@ -45,9 +46,13 @@ const TOOLS = {
     tag:'Explore variation across lines and populations',
     desc:'Explore extensive variant datasets across maize accessions. Enter a genomic interval, choose accessions, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
-    tag:'Connect variation to phenotype and trait data',
-    desc:'Connect genomic variation to phenotype and trait records from the National Germplasm collection. Search, sort, and filter accessions by trait values and metadata, then move selected sets straight into other SNPTools.',
-    feats:[['search','Search & filter','Filter 20,000+ accessions by trait, phenotype, and metadata.'],['leaf','Trait records','Disease resistance, yield, composition, and evaluation data.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+    tag:'Select lines by passport and trait metadata',
+    desc:'Browse the lines of a dataset with their GRIN passport and evaluation metadata — panel, subpopulation, country and state of origin, improvement status, kernel type, and binned trait values. Filter with facets and search, batch-select, export, and send the selection straight to SNPVersity.',
+    feats:[['search','Search & filter','Facet the 933 GRIN-linked lines of the 2026 release (v1.4) by panel, origin, and trait class.'],['leaf','GRIN records','Passport data and evaluation summaries from the U.S. National Plant Germplasm System.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
+  snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
+    tag:'Map where each allele is found',
+    desc:'Map the geographic distribution of variants: for a gene or a region handed off from SNPVersity, colour countries (and U.S. states, Canadian provinces, Mexican states) by carrier fraction, reference/alternative composition, or alternative-allele frequency over the lines with known origin.',
+    feats:[['search','Gene or region','Search a B73 v5 gene model or receive a SNPVersity region.'],['dna','Diploid-aware','Carrier fraction and allele frequency from 0/0, 0/1, 1/1 calls.'],['table','Per-region tables','Per-country and per-state counts with the carrier lines listed.']]},
   snpimpact:{name:'SNPImpact', icon:'star', color:'#7c3aed', cat:'Explore & Analyze',
     tag:'Prioritize candidate variants using AI',
     desc:'Rank variants using AI-based allele scores together with functional annotations. Combine PlantCAD and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
@@ -56,6 +61,10 @@ const TOOLS = {
     tag:'Give variants biological and genomic context',
     desc:'Add biological context by integrating gene models, regulatory features, conservation, and nearby genomic evidence — interpreting variants within their local genomic region.',
     feats:[['func','Gene & domain view','Place variants on gene models and protein domains.'],['dna','Conservation layers','Overlay conservation and functional evidence tracks.'],['search','Local context','Read variants against nearby genomic features.']]},
+  snpcurate:{name:'SNPCurate', icon:'check', color:'#a16207', cat:'Explore & Analyze',
+    tag:'Published alleles and what this release shows of them',
+    desc:'A registry of published maize alleles: validated causal changes, published markers and tagging sites, each with its carriers, Site QC class, scores and trait means in this release, or the reason the release cannot show it.',
+    feats:[['check','Curated alleles','Gold, outline and grey marks for what the release can show.'],['dna','Carriers','Hand the carriers to SNPVersity or the allele to SNPGeo.'],['func','Benchmark','The published alleles the paper benchmarks against.']]},
   snpcompare:{name:'SNPCompare', icon:'compare', color:'#0e7490', cat:'Compare & Relate',
     tag:'Compare accessions, loci, and haplotypes',
     desc:'Support side-by-side comparison of selected accessions, loci, or haplotypes to reveal shared and distinguishing variants.',
@@ -94,6 +103,13 @@ const TOOLS = {
 /* ================= SHARED HELPERS ================= */
 function rnd(a,b){return a+Math.random()*(b-a)}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
+/* n items drawn uniformly at random, without replacement (a partial Fisher-Yates shuffle).
+   arr.sort(()=>Math.random()-.5) is not a uniform shuffle: it leans toward the input order. */
+function randomSample(arr, n){
+  const a=arr.slice(), k=Math.max(0, Math.min(n, a.length));
+  for(let i=0;i<k;i++){ const j=i+Math.floor(Math.random()*(a.length-i)); const t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a.slice(0, k);
+}
 
 /* ---- MaizeGDB gene model links — shared across tools ---- */
 const MAIZEGDB_GENE_BASE = 'https://www.maizegdb.org/gene_center/gene/';
@@ -108,11 +124,12 @@ function isSingleGeneModel(g){ return !!g && g!=='—' && !String(g).includes('.
    should live inside that tool\u2019s own file (see IMP in snpimpact.js). */
 const S = {
   tool:'snpversity',
-  dataset:'mgdb2026_hq',
+  dataset:'zmgrin2026_imp',        // initial release: the GRIN-linked 2026 set (was mgdb2026_hq)
   chr:'chr10', start:9788000, end:9826500, perPage:100,
   selected:new Set(),
   results:null, page:1,
   fImpact:'all', fEffect:'all', fMaf:0,
+  fQc:null,                        // Site QC filter; null = Data.SITE_QC_DEFAULTS.versity (data.js loads later)
 };
 
 /* ================= TOOL REGISTRY ================= */
@@ -126,7 +143,7 @@ function renderNav(){
       <div class="gl">${g.label}</div>
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
-        const _bl={snpgwas:'new',snpversity:'updated',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
+        const _bl={snpgwas:'new',snpversity:'updated',snptrait:'new',snpgeo:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpcurate:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
         const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">
@@ -145,6 +162,7 @@ function go(id){
   document.getElementById('sendBtn').style.display = id==='snpversity'?'inline-flex':'none';
   renderNav();
   window.scrollTo(0,0);
+  hideToast();
   const page=document.getElementById('page');
   page.className='page fade';
   const tool=SNPTools.registry[id];
@@ -157,12 +175,13 @@ function go(id){
       +'<h3 style="font-family:var(--disp);color:#b42318;margin:0 0 8px">'+(TOOLS[id]?TOOLS[id].name:id)+' hit an error</h3>'
       +'<pre style="white-space:pre-wrap;background:#fff;border:1px solid #f0cfca;border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;color:#8a2a20">'+String(err&&err.stack||err)+'</pre></div>';
   }
+  refreshSelChip();
 }
 
 /* ================= TOOL PLACEHOLDER PAGES ================= */
 function renderToolPage(id){
   const t=TOOLS[id]; const p=document.getElementById('page'); p.className='page fade';
-  const feats=t.feats||[['star','In development','This module is part of the SNPTools roadmap.'],['compare','Connected','It will share selections with the rest of the suite.'],['dna','Same data','Built on the unified variant database.']];
+  const feats=t.feats||[['star','In development','This module is part of the SNPMaize roadmap.'],['compare','Connected','It will share selections with the rest of the suite.'],['dna','Same data','Built on the unified variant database.']];
   p.innerHTML=`
     <div class="tool-hero">
       <div class="ti" style="background:${t.color}">${ICONS[t.icon]}</div>
@@ -177,7 +196,7 @@ function renderToolPage(id){
       ${feats.map(f=>`<div class="feat"><div class="fi">${ICONS[f[0]]}</div><h4>${f[1]}</h4><p>${f[2]}</p></div>`).join('')}
     </div>
     <div class="mock-strip">
-      <div class="ms-h">Part of the integrated SNPTools platform</div>
+      <div class="ms-h">Part of the integrated SNPMaize platform</div>
       <p style="margin:0;color:var(--muted);font-size:13px">Selections flow between tools — pick accessions in <a href="#" onclick="go('snpversity');return false">SNPVersity</a>, then send them here for ${t.tag.toLowerCase()}. Built on the same unified variant database, annotations, and B73 v5 coordinates.</p>
     </div>`;
 }
@@ -212,17 +231,76 @@ function cmpSeconds(v, a){ return Math.round(1.2e-9 * v * a * a); }   // SNPComp
 
 
 /* ================= TOOLTIPS ================= */
+/* One set of listeners on the document serves every [data-tt] element, present or added
+   later. attachTT() used to add three listeners to each element on every call, and pages that
+   keep their DOM between visits (SNPFunction, SNPFold) called it on each one, so an element
+   could carry dozens of copies. It is kept, as a no-op, for the tools that still call it.
+   The innermost [data-tt] under the pointer wins, and an element re-rendered away from under
+   the pointer takes its tooltip with it. */
 const tt=document.getElementById('tt');
-function attachTT(){
-  document.querySelectorAll('[data-tt]').forEach(el=>{
-    el.addEventListener('mouseenter',e=>{tt.innerHTML=el.dataset.tt;tt.classList.add('show');});
-    el.addEventListener('mousemove',e=>{tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY+14)+'px';});
-    el.addEventListener('mouseleave',()=>tt.classList.remove('show'));
-  });
-}
+let ttEl=null;
+function ttHide(){ if(ttEl){ ttEl=null; tt.classList.remove('show'); } }
+document.addEventListener('mouseover',e=>{
+  const el=(e.target && e.target.closest) ? e.target.closest('[data-tt]') : null;
+  if(el===ttEl) return;
+  if(!el){ ttHide(); return; }
+  ttEl=el; tt.innerHTML=el.dataset.tt; tt.classList.add('show');
+});
+document.addEventListener('mousemove',e=>{
+  if(!ttEl) return;
+  if(!ttEl.isConnected){ ttHide(); return; }
+  tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY+14)+'px';
+});
+document.addEventListener('mouseout',e=>{ if(!e.relatedTarget) ttHide(); });   // left the window
+function attachTT(){}
 
 
 /* ================= MENUS / RAIL ================= */
+/* ================= SELECTION CHIP =================
+   The top bar shows SNPVersity's selection (S.selected) in every tool and opens the line
+   selector (SNPTrait as a drawer, TraitDrawer in snptrait.js) on a draft of it. In SNPVersity
+   it is step 3's "Browse & filter lines…"; elsewhere Apply sets the selection SNPVersity will
+   query next and a toast offers Undo and a way back to SNPVersity. */
+function refreshSelChip(bump){
+  const b=document.getElementById('selChip'); if(!b) return;
+  const n=(S.selected&&S.selected.size)||0, many=n===1?'accession':'accessions';
+  const d=(typeof Data!=='undefined'&&Data.datasets)?Data.datasets().find(x=>x.id===S.dataset):null;
+  document.getElementById('selChipN').textContent=n.toLocaleString();
+  document.getElementById('selChipLbl').textContent=many;
+  b.title=`${n.toLocaleString()} ${many} selected for SNPVersity${d?' ('+d.name+')':''}. Click to browse, filter and edit the selection.`;
+  b.setAttribute('aria-label',`Selection: ${n.toLocaleString()} ${many}. Browse, filter and edit`);
+  if(bump){ b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+}
+function openSelectionDrawer(){
+  if(S.tool==='snpversity' && typeof openLineSelector==='function'){ openLineSelector(); return; }
+  if(typeof TraitDrawer==='undefined'){ go('snpversity'); return; }
+  const before=[...S.selected];
+  TraitDrawer.open({dataset:S.dataset, selected:before, title:'Edit the SNPVersity selection', onApply:ids=>{
+    const was=new Set(before), now=new Set(ids);
+    if(now.size===was.size && ids.every(id=>was.has(id))){ toast('No change to the selection.'); return; }
+    let add=0, rem=0;
+    now.forEach(id=>{ if(!was.has(id)) add++; }); was.forEach(id=>{ if(!now.has(id)) rem++; });
+    S.selected=now; refreshSelChip(true);
+    toast(`Selection is now <b>${now.size.toLocaleString()}</b> accession${now.size===1?'':'s'} (${[add?'+'+add:'',rem?'−'+rem:''].filter(Boolean).join(' · ')}). SNPVersity uses it for its next query.`,
+      [{label:'Undo', run:()=>{ S.selected=new Set(before); refreshSelChip(true); toast(`Selection restored to <b>${before.length.toLocaleString()}</b> accessions.`); }},
+       {label:'Open SNPVersity', run:()=>go('snpversity')}]);
+  }});
+}
+/* a short note at the bottom of the screen; actions = [{label, run}] */
+function toast(html, actions){
+  let el=document.getElementById('snpToast');
+  if(!el){ el=document.createElement('div'); el.id='snpToast'; el.className='snp-toast';
+    el.setAttribute('role','status'); el.setAttribute('aria-live','polite'); document.body.appendChild(el); }
+  clearTimeout(toast._t);
+  el.innerHTML=`<span>${html}</span>`+(actions||[]).map((a,i)=>`<button type="button" class="act" data-i="${i}">${a.label}</button>`).join('')+
+    `<button type="button" class="snp-toast-x" aria-label="Dismiss">×</button>`;
+  el.querySelectorAll('button.act').forEach(b=>{ b.onclick=()=>{ hideToast(); actions[+b.dataset.i].run(); }; });
+  el.querySelector('.snp-toast-x').onclick=hideToast;
+  el.classList.add('show');
+  toast._t=setTimeout(hideToast, 12000);
+}
+function hideToast(){ const el=document.getElementById('snpToast'); if(el) el.classList.remove('show'); clearTimeout(toast._t); }
+
 function toggleMenu(){document.getElementById('sendMenu').classList.toggle('open');}
 function closeMenu(){document.getElementById('sendMenu').classList.remove('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.send-wrap'))closeMenu();});

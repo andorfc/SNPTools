@@ -1,0 +1,934 @@
+sample_id	base_id	rep	reps	vcf_name	genotype_id	grin_accession	grin_dbid	accession_name	dataset_class	match_tier	pop_NAM	pop_Ames282	pop_WiDiv	primary_panel	nam_founder	id_provisional
+ZmG_11430	ZmG_11430	1	1	11430	ZmG:11430	PI 601558	1185636	11430	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_1538	ZmG_1538	1	1	1538	ZmG:1538	PI 601658	1187424	1538	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_2369	ZmG_2369	1	1	2369	ZmG:2369	PI 601559	1185637	2369	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_29MIBZ2	ZmG_29MIBZ2	1	1	29MIBZ2	ZmG:29MIBZ2	PI 548830	1443766	29MIBZ2	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_2FACC	ZmG_2FACC	1	1	2FACC	ZmG:2FACC	PI 601808	1190167	2FACC	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_2FADB	ZmG_2FADB	1	1	2FADB	ZmG:2FADB	PI 564751	1459722	2FADB	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_2MA22	ZmG_2MA22	1	1	2MA22	ZmG:2MA22	PI 601560	1185638	2MA22	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_2MCDB	ZmG_2MCDB	1	1	2MCDB	ZmG:2MCDB	PI 565088	1460059	2MCDB	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_INDIANA3316	ZmG_INDIANA3316	1	1	33-16	ZmG:INDIANA3316	PI 146375	1879516	Indiana 33-16	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_3811_PI693390	ZmG_3811_PI693390	1	1	38-11	ZmG:3811_PI693390	PI 693390	1904931	38-11 Goodman-Buckler	B_panel_member_not_in_selection	medium_reviewed	False	True	False	Ames282		False
+ZmG_3IJI1	ZmG_3IJI1	1	1	3IJI1	ZmG:3IJI1	PI 564753	1459724	3IJI1	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ILLINOIS4226	ZmG_ILLINOIS4226	1	1	4226	ZmG:ILLINOIS4226	PI 151512	1888614	Illinois 4226	B_panel_member_not_in_selection	medium_reviewed	False	True	True	Ames282		False
+ZmG_4554	ZmG_4554	1	1	4554_INBRED	ZmG:4554	PI 415081	1313111	4554. INBRED	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_4578	ZmG_4578	1	1	4578_INBRED	ZmG:4578	PI 415086	1313116	4578 INBRED	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_4722	ZmG_4722	1	1	4722	ZmG:4722	PI 587130	1084091	4722	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_4F234BX4	ZmG_4F234BX4	1	1	4F-234_BX_4	ZmG:4F234BX4	PI 198892	1168580	4F-234 BX 4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_4F306108	ZmG_4F306108	1	1	4F-306_108	ZmG:4F306108	PI 198897	1168585	4F-306 108	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_4F35BK	ZmG_4F35BK	1	1	4F-35_BK	ZmG:4F35BK	PI 198888	1168576	4F-35 BK	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_4N506	ZmG_4N506	1	1	4N506	ZmG:4N506	PI 601745	1189137	4N506	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_52220	ZmG_52220	1	1	52220	ZmG:52220	Ames 2336	1019743	52220	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_6F629	ZmG_6F629	1	1	6F629	ZmG:6F629	PI 546483	1441419	6F629	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_6M502	ZmG_6M502	1	1	6M502	ZmG:6M502	PI 601561	1185639	6M502	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_6M502A	ZmG_6M502A	1	1	6M502A	ZmG:6M502A	PI 546484	1441420	6M502A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_764	ZmG_764	1	1	764	ZmG:764	PI 601374	1173959	764	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_779	ZmG_779	1	1	779	ZmG:779	PI 601376	1173961	779	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_78010	ZmG_78010	1	1	78010	ZmG:78010	PI 601211	1167901	78010	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_78551S	ZmG_78551S	1	1	78551S	ZmG:78551S	PI 601562	1185640	78551S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_787	ZmG_787	1	1	787	ZmG:787	PI 601490	1178773	787	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_790	ZmG_790	1	1	790	ZmG:790	PI 601491	1178776	790	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_792	ZmG_792	1	1	792	ZmG:792	PI 685984	1188094	792	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_793	ZmG_793	1	1	793	ZmG:793	PI 601492	1178777	793	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_802	ZmG_802	1	1	80-2	ZmG:802	PI 369437	1276865	80-2	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_87916W	ZmG_87916W	1	1	87916W	ZmG:87916W	PI 601563	1185641	87916W	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_904	ZmG_904	1	1	904	ZmG:904	PI 560317	1455289	904	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_911	ZmG_911	1	1	911	ZmG:911	PI 557556	1452528	911	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_912	ZmG_912	1	1	912	ZmG:912	PI 557557	1452529	912	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_91IFC2	ZmG_91IFC2	1	1	91IFC2	ZmG:91IFC2	PI 564750	1459721	91IFC2	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A	ZmG_A	1	1	A	ZmG:A	NSL 30861	1100997	A	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_A12	ZmG_A12	1	1	A12	ZmG:A12	NSL 42873	1105397	A12	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A15	ZmG_A15	1	1	A15	ZmG:A15	Ames 23389	1534845	A15	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A155	ZmG_A155	1	1	A155	ZmG:A155	Ames 23396	1534905	A155	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A171	ZmG_A171	1	1	A171	ZmG:A171	NSL 42878	1105402	A171	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A188	ZmG_A188	1	1	A188	ZmG:A188	PI 693339	1489206	A188	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A208	ZmG_A208	1	1	A208	ZmG:A208	Ames 23402	1534932	A208	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A214N	ZmG_A214N	1	1	A214NGoodman-Buckler	ZmG:A214N	PI 693391	1904932	A214N Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_A239	ZmG_A239	1	1	A239	ZmG:A239	PI 693342	1535027	A239	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A258	ZmG_A258	1	1	A258	ZmG:A258	NSL 81596	1118602	A258	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A272	ZmG_A272	1	1	A272	ZmG:A272	Ames 27063	1645457	A272	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A305	ZmG_A305	1	1	A305	ZmG:A305	Ames 23417	1535041	A305	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A321	ZmG_A321	1	1	A321	ZmG:A321	Ames 23421	1535046	A321	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A322	ZmG_A322	1	1	A322	ZmG:A322	Ames 23422	1535047	A322	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A334	ZmG_A334	1	1	A334	ZmG:A334	Ames 23423	1535048	A334	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A340	ZmG_A340	1	1	A340	ZmG:A340	Ames 23424	1535049	A340	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A344	ZmG_A344	1	1	A344	ZmG:A344	Ames 23425	1535081	A344	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A374	ZmG_A374	1	1	A374	ZmG:A374	Ames 23427	1535110	A374	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_Ames23428	ZmG_C_Ames23428	1	1	A375	ZmG:C_Ames23428	Ames 23428		A375	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_A385	ZmG_A385	1	1	A385	ZmG:A385	PI 693879	1535134	A385	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A3G331313	ZmG_A3G331313	1	1	A3G-3-3-1-313	ZmG:A3G331313	PI 692202	1874318	A3G-3-3-1-313	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A401	ZmG_A401	1	1	A401	ZmG:A401	Ames 23430	1535135	A401	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A41513	ZmG_A41513	1	1	A415-1-3_INBRED	ZmG:A41513	PI 221773	1179498	A415-1-3 INBRED	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_A427	ZmG_A427	1	1	A427	ZmG:A427	Ames 23435	1535213	A427	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A4415	ZmG_A4415	1	1	A441-5	ZmG:A4415	PI 693351	1645458	A441-5	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_A508	ZmG_A508	1	1	A508	ZmG:A508	Ames 23446	1535317	A508	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A548	ZmG_A548	1	1	A548	ZmG:A548	Ames 23449	1535328	A548	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A554	ZmG_A554	1	1	A554	ZmG:A554	PI 587138	1082747	A554	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A556	ZmG_A556	1	1	A556	ZmG:A556	PI 693343	1535336	A556	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A572	ZmG_A572	1	1	A572	ZmG:A572	Ames 23451	1535342	A572	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A6	ZmG_A6	1	1	A6	ZmG:A6	PI 693350	1645456	A6	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_A619	ZmG_A619	1	1	A619	ZmG:A619	PI 587139	1082749	A619	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A627	ZmG_A627	1	1	A627	ZmG:A627	Ames 23463	1535373	A627	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A632	ZmG_A632	1	1	A632	ZmG:A632	PI 587140	1082752	A632	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A634	ZmG_A634	1	1	A634	ZmG:A634	PI 693328	1082753	A634	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A635	ZmG_A635	1	1	A635	ZmG:A635	PI 693329	1082757	A635	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A641	ZmG_A641	1	1	A641	ZmG:A641	PI 693884	1923531	A641 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A648	ZmG_A648	1	1	A648	ZmG:A648	NSL 81597	1118603	A648	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A649	ZmG_A649	1	1	A649	ZmG:A649	Ames 23482	1535393	A649	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A651	ZmG_A651	1	1	A651	ZmG:A651	Ames 23484	1535412	A651	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A654	ZmG_A654	1	1	A654	ZmG:A654	PI 587141	1082762	A654	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A659	ZmG_A659	1	1	A659	ZmG:A659	PI 693402	1118605	A659	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A661	ZmG_A661	1	1	A661	ZmG:A661	PI 607521	1071540	A661	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_A662	ZmG_A662	1	1	A662	ZmG:A662	PI 607522	1071541	A662	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A663	ZmG_A663	1	1	A663	ZmG:A663	PI 607523	1071552	A663	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A672	ZmG_A672	1	1	A672	ZmG:A672	Ames 23496	1535424	A672	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A673	ZmG_A673	1	1	A673	ZmG:A673	Ames 23497	1535434	A673	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A674	ZmG_A674	1	1	A674	ZmG:A674	Ames 23498	1535443	A674	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A679	ZmG_A679	1	1	A679	ZmG:A679	PI 587142	1086015	A679	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A680	ZmG_A680	1	1	A680	ZmG:A680	PI 693344	1535466	A680	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A682	ZmG_A682	1	1	A682	ZmG:A682	PI 587143	1086016	A682	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_A71	ZmG_A71	1	1	A71	ZmG:A71	NSL 42875	1105399	A71	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A73	ZmG_A73	1	1	A73	ZmG:A73	Ames 22439	1489083	A73	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A797NW	ZmG_A797NW	1	1	A797NW	ZmG:A797NW	PI 406131	1306027	A797NW	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_A96	ZmG_A96	1	1	A96	ZmG:A96	Ames 23393	1534896	A96	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_AH83	ZmG_AH83	1	1	AH83	ZmG:AH83	PI 692203	1874319	AH83	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_AM0776	ZmG_AM0776	1	1	AM0776	ZmG:AM0776	PI 583356	1478327	AM0776	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_AQA3	ZmG_AQA3	1	1	AQA3	ZmG:AQA3	PI 564749	1459720	AQA3	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_AR228	ZmG_AR228	1	1	AR228	ZmG:AR228	PI 561522	1456494	AR228	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI491691CYMT	ZmG_C_PI491691CYMT	1	1	ARZM01097	ZmG:C_PI491691CYMT	PI 491691 CYMT		ARZM01097	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_C_PI492181CYMT	ZmG_C_PI492181CYMT	1	1	ARZM07086	ZmG:C_PI492181CYMT	PI 492181 CYMT		ARZM07086	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_5707	ZmG_5707	1	1	AS5707	ZmG:5707	PI 601269	1169860	5707	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_6103	ZmG_6103	1	1	AS6103	ZmG:6103	PI 601159	1162377	6103	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_AB28A	ZmG_AB28A	1	1	Ab28A	ZmG:AB28A	PI 686037	1082219	Ab28A	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_AUSTRCF306238	ZmG_AUSTRCF306238	1	1	AusTRCF_306238	ZmG:AUSTRCF306238	PI 702849	1686900	AusTRCF 306238	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B18INBRFRSUPERGOLD	ZmG_B18INBRFRSUPERGOLD	1	1	B-18_INBR.FR.SUPERGOLD	ZmG:B18INBRFRSUPERGOLD	PI 340855	1254157	B-18 INBR.FR.SUPERGOLD	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B28	ZmG_B28	1	1	B-28	ZmG:B28	PI 340860	1254162	B-28	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B10	ZmG_B10	1	1	B10	ZmG:B10	PI 693401	1112434	B10	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI584529	ZmG_C_PI584529	1	1	B100	ZmG:C_PI584529	PI 584529		B100	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_B101	ZmG_B101	1	1	B101	ZmG:B101	PI 564852	1459823	B101	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B103	ZmG_B103	1	1	B103	ZmG:B103	PI 594046	1519248	B103	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B104	ZmG_B104	1	1	B104	ZmG:B104	PI 594047	1519249	B104	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B105	ZmG_B105	1	1	B105	ZmG:B105	PI 594048	1519250	B105	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B106	ZmG_B106	1	1	B106	ZmG:B106	PI 594049	1519251	B106	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B107	ZmG_B107	1	1	B107	ZmG:B107	PI 597925	1542722	B107	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B108	ZmG_B108	1	1	B108	ZmG:B108	PI 597926	1542723	B108	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B109	ZmG_B109	1	1	B109	ZmG:B109	PI 597927	1542724	B109	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B111	ZmG_B111	1	1	B111	ZmG:B111	PI 607382	1568911	B111	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B114	ZmG_B114	1	1	B114	ZmG:B114	PI 607384	1568914	B114	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B115	ZmG_B115	1	1	B115	ZmG:B115	PI 615190	1607547	B115	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B119	ZmG_B119	1	1	B119	ZmG:B119	PI 634213	1650018	B119	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B120	ZmG_B120	1	1	B120	ZmG:B120	PI 634214	1650019	B120	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B121	ZmG_B121	1	1	B121	ZmG:B121	PI 634215	1650020	B121	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B14	ZmG_B14	1	1	B14	ZmG:B14	NSL 65866	1112435	B14	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B14A	ZmG_B14A	1	1	B14A	ZmG:B14A	PI 550461	1445397	B14A	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B164	ZmG_B164	1	1	B164	ZmG:B164	PI 693353	1645459	B164	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_INDIANAB2	ZmG_INDIANAB2	1	1	B2	ZmG:INDIANAB2	PI 151515	1888617	Indiana B 2	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_B37	ZmG_B37	1	1	B37	ZmG:B37	PI 550467	1445403	B37	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B42	ZmG_B42	1	1	B42	ZmG:B42	PI 603939	1003211	B42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B46	ZmG_B46	1	1	B46	ZmG:B46	PI 550469	1445405	B46	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B52	ZmG_B52	1	1	B52	ZmG:B52	PI 550454	1445390	B52	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_B54	ZmG_B54	1	1	B54	ZmG:B54	PI 550470	1445406	B54	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B57	ZmG_B57	1	1	B57	ZmG:B57	PI 550472	1445408	B57	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B64	ZmG_B64	1	1	B64	ZmG:B64	PI 550440	1445376	B64	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B65	ZmG_B65	1	1	B65	ZmG:B65	PI 550463	1445399	B65	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B66	ZmG_B66	1	1	B66	ZmG:B66	PI 550464	1445400	B66	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B68	ZmG_B68	1	1	B68	ZmG:B68	PI 550465	1445401	B68	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI550456	ZmG_C_PI550456	1	1	B69	ZmG:C_PI550456	PI 550456		B69	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_B7	ZmG_B7	1	1	B7	ZmG:B7	NSL 65863	1112432	B7	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_B73	ZmG_B73	1	1	B73	ZmG:B73	PI 550473	1445409	B73	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	B73	False
+ZmG_B75	ZmG_B75	1	1	B75	ZmG:B75	PI 608774	1082037	B75	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B76	ZmG_B76	1	1	B76	ZmG:B76	PI 550483	1445419	B76	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B77	ZmG_B77	1	1	B77	ZmG:B77	PI 608765	1082038	B77	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B79	ZmG_B79	1	1	B79	ZmG:B79	PI 608766	1082039	B79	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B8	ZmG_B8	1	1	B8	ZmG:B8	NSL 65864	1112433	B8	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B84	ZmG_B84	1	1	B84	ZmG:B84	PI 608767	1082045	B84	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_B85	ZmG_B85	1	1	B85	ZmG:B85	PI 608777	1082040	B85	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B87	ZmG_B87	1	1	B87	ZmG:B87	PI 608768	1082043	B87	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B88	ZmG_B88	1	1	B88	ZmG:B88	PI 550556	1445492	B88	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B90	ZmG_B90	1	1	B90	ZmG:B90	PI 527699	1422635	B90	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B91	ZmG_B91	1	1	B91	ZmG:B91	PI 527700	1422636	B91	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI561565	ZmG_C_PI561565	1	1	B95	ZmG:C_PI561565	PI 561565		B95	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_B96	ZmG_B96	1	1	B96	ZmG:B96	PI 270297	1203367	B96	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_B97	ZmG_B97	1	1	B97	ZmG:B97	PI 564682	1459653	B97	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	B97	False
+ZmG_B98	ZmG_B98	1	1	B98	ZmG:B98	PI 564683	1459654	B98	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_B99	ZmG_B99	1	1	B99	ZmG:B99	PI 584528	1482992	B99	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_BCC03	ZmG_BCC03	1	1	BCC03	ZmG:BCC03	PI 544065	1439001	BCC03	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI586762	ZmG_C_PI586762	1	1	BRVI104	ZmG:C_PI586762	PI 586762		BRVI104	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_BEI10	ZmG_BEI10	1	1	Bei_10_=_North_10	ZmG:BEI10	Ames 2332	1019710	Bei 10	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C102	ZmG_C102	1	1	C102	ZmG:C102	NSL 22983	1088471	C102	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C103	ZmG_C103	1	1	C103	ZmG:C103	PI 693327	1082701	C103	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C123	ZmG_C123	1	1	C123	ZmG:C123	PI 693330	1082765	C123	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C15	ZmG_C15	1	1	C15	ZmG:C15	Ames 22016	1087454	C15	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C42	ZmG_C42	1	1	C42	ZmG:C42	Ames 23507	1535498	C42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C49	ZmG_C49	1	1	C49A	ZmG:C49	PI 693354	1645460	C49	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_C68	ZmG_C68	1	1	C68	ZmG:C68	Ames 22023	1087471	C68	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CA4	ZmG_CA4	1	1	CA-4	ZmG:CA4	PI 340836	1254141	CA-4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CG10	ZmG_CG10	1	1	CG10	ZmG:CG10	Ames 24585	1559061	CG10	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CH157	ZmG_CH157	1	1	CH157	ZmG:CH157	Ames 22441	1489141	CH157	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CH70130	ZmG_CH70130	1	1	CH701-30	ZmG:CH70130	PI 693356	1645583	CH701-30	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CH71110	ZmG_CH71110	1	1	CH711-10	ZmG:CH71110	Ames 27018	1645387	CH711-10	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CH7534	ZmG_CH7534	1	1	CH753-4	ZmG:CH7534	Ames 27021	1645390	CH753-4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CH9	ZmG_CH9	1	1	CH9	ZmG:CH9	PI 693355	1645461	CH9	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CI31A	ZmG_CI31A	1	1	CI31A	ZmG:CI31A	PI 693338	1086562	CI 31A	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CI66	ZmG_CI66	1	1	CI66	ZmG:CI66	PI 587148	1084191	CI 66	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CI90C	ZmG_CI90C	1	1	CI90C	ZmG:CI90C	PI 693389	1904930	CI 90C Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CI1872	ZmG_CI1872	1	1	CI_187-2	ZmG:CI1872	PI 146372	1879513	C.I. 187-2	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CI21E	ZmG_CI21E	1	1	CI_21E	ZmG:CI21E	PI 693395	1000801	CI 21E	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CI28A	ZmG_CI28A	1	1	CI_28A	ZmG:CI28A	PI 693392	1904933	CI 28A Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CI3A	ZmG_CI3A	1	1	CI_3A	ZmG:CI3A	PI 693347	1606091	C.I. 3a	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CI40H	ZmG_CI40H	1	1	CI_40H	ZmG:CI40H	PI 694078	1606103	C.I. 40h	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CI540	ZmG_CI540	1	1	CI_540	ZmG:CI540	Ames 26028	1597271	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+151090"">Duplicate of PI 151090</a>"	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_CI64	ZmG_CI64	1	1	CI_64	ZmG:CI64	PI 693331	1082766	CI 64	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CI91B	ZmG_CI91B	1	1	CI_91B	ZmG:CI91B	PI 693386	1712935	CI 91B Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CL17	ZmG_CL17	1	1	CL17	ZmG:CL17	Ames 27024	1645393	CL17	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CL27	ZmG_CL27	1	1	CL27	ZmG:CL27	Ames 27029	1645398	CL27	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CM105	ZmG_CM105	1	1	CM105	ZmG:CM105	PI 587124	1082767	CM105	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CM37	ZmG_CM37	1	1	CM37	ZmG:CM37	Ames 20190	1084398	CM37	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CM48	ZmG_CM48	1	1	CM48	ZmG:CM48	Ames 22747	1517102	CM48	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CM7	ZmG_CM7	1	1	CM7	ZmG:CM7	Ames 27070	1645462	CM7	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CM99	ZmG_CM99	1	1	CM99	ZmG:CM99	Ames 27031	1645400	CM99	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CML10	ZmG_CML10	1	1	CML10	ZmG:CML10	PI 690575	1645464	CML 10	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML11	ZmG_CML11	1	1	CML11	ZmG:CML11	PI 690576	1646690	CML 11	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML14	ZmG_CML14	1	1	CML14	ZmG:CML14	PI 690577	1645465	CML 14	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML157	ZmG_CML157	1	1	CML157Q	ZmG:CML157	PI 690589	1645474	CML 157	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML158	ZmG_CML158	1	1	CML158Q	ZmG:CML158	PI 690590	1645577	CML 158	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML238	ZmG_CML238	1	1	CML238	ZmG:CML238	PI 690596	1645478	CML 238	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML258	ZmG_CML258	1	1	CML258	ZmG:CML258	PI 690597	1645479	CML 258	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML261	ZmG_CML261	1	1	CML261	ZmG:CML261	PI 690598	1645585	CML 261	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML281	ZmG_CML281	1	1	CML281	ZmG:CML281	PI 690600	1645480	CML 281	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML311	ZmG_CML311	1	1	CML311	ZmG:CML311	PI 690607	1645481	CML 311	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML314	ZmG_CML314	1	1	CML314	ZmG:CML314	PI 690608	1645482	CML 314	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML321	ZmG_CML321	1	1	CML321	ZmG:CML321	PI 690609	1645483	CML 321	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML328	ZmG_CML328	1	1	CML328	ZmG:CML328	PI 690613	1645578	CML 328	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML331	ZmG_CML331	1	1	CML331	ZmG:CML331	PI 690614	1645486	CML 331	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML332	ZmG_CML332	1	1	CML332	ZmG:CML332	PI 690615	1645487	CML 332	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML333	ZmG_CML333	1	1	CML333	ZmG:CML333	PI 690322	1645586	CML 333	A_panel_in_our_5to30x_selection	high	True	True	False	NAM	CML333	False
+ZmG_CML341	ZmG_CML341	1	1	CML341	ZmG:CML341	PI 690618	1645488	CML 341	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML38	ZmG_CML38	1	1	CML38	ZmG:CML38	PI 595534	1525914	CML 38	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML45	ZmG_CML45	1	1	CML45	ZmG:CML45	PI 690579	1645467	CML 45	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML5	ZmG_CML5	1	1	CML5	ZmG:CML5	PI 690574	1645463	CML 5	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_CML61	ZmG_CML61	1	1	CML61	ZmG:CML61	PI 690581	1645469	CML 61	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML69	ZmG_CML69	1	1	CML69	ZmG:CML69	PI 690318	1699966	CML 69	A_panel_in_our_5to30x_selection	high	True	True	False	NAM	CML69	False
+ZmG_CML77	ZmG_CML77	1	1	CML77	ZmG:CML77	PI 690582	1699967	CML 77	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML92	ZmG_CML92	1	1	CML92	ZmG:CML92	PI 690585	1645584	CML 92	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CML108	ZmG_CML108	1	1	CML_108	ZmG:CML108	PI 690586	1645472	CML 108	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CML154	ZmG_CML154	1	1	CML_154Q	ZmG:CML154	PI 690588	1645473	CML 154	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CML218	ZmG_CML218	1	1	CML_218	ZmG:CML218	PI 690594	1645475	CML 218	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CML220	ZmG_CML220	1	1	CML_220	ZmG:CML220	PI 690595	1645476	CML 220	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CML228	ZmG_CML228	1	1	CML_228	ZmG:CML228	PI 690320	1645477	CML 228	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	CML228	False
+ZmG_CML247	ZmG_CML247	1	1	CML_247	ZmG:CML247	PI 595541	1525934	CML 247	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	CML247	False
+ZmG_CML254	ZmG_CML254	1	1	CML_254	ZmG:CML254	PI 595542	1525935	CML 254	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CML264	ZmG_CML264	1	1	CML_264	ZmG:CML264	PI 595544	1525937	CML 264	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CML277	ZmG_CML277	1	1	CML_277	ZmG:CML277	PI 595550	1525948	CML 277	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	CML277	False
+ZmG_CML287	ZmG_CML287	1	1	CML_287	ZmG:CML287	PI 595565	1525993	CML 287	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CML322	ZmG_CML322	1	1	CML_322	ZmG:CML322	PI 690321	1645484	CML 322	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	CML322	False
+ZmG_CML323	ZmG_CML323	1	1	CML_323	ZmG:CML323	PI 690610	1645485	CML 323	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CML395	ZmG_CML395	1	1	CML_395	ZmG:CML395	PI 690627	1752921	CML 395	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CML52	ZmG_CML52	1	1	CML_52	ZmG:CML52	PI 595561	1525986	CML 52	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	CML52	False
+ZmG_CML91	ZmG_CML91	1	1	CML_91	ZmG:CML91	PI 690584	1645470	CML 91	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CMV3	ZmG_CMV3	1	1	CMV3	ZmG:CMV3	PI 693349	1645407	CMV3	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CO106	ZmG_CO106	1	1	CO106	ZmG:CO106	PI 693357	1645491	CO106	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CO109	ZmG_CO109	1	1	CO109	ZmG:CO109	PI 587125	1082769	CO109	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_CO117	ZmG_CO117	1	1	CO117	ZmG:CO117	Ames 27039	1645408	CO117	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO125	ZmG_CO125	1	1	CO125	ZmG:CO125	PI 693358	1645492	CO125	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_CO158	ZmG_CO158	1	1	CO158	ZmG:CO158	Ames 27042	1645411	CO158	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO192	ZmG_CO192	1	1	CO192	ZmG:CO192	Ames 27043	1645412	CO192	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO216	ZmG_CO216	1	1	CO216	ZmG:CO216	Ames 27044	1645413	CO216	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO236	ZmG_CO236	1	1	CO236	ZmG:CO236	Ames 27046	1645415	CO236	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO237	ZmG_CO237	1	1	CO237	ZmG:CO237	Ames 27047	1645416	CO237	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO245	ZmG_CO245	1	1	CO245	ZmG:CO245	Ames 27048	1645417	CO245	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO255	ZmG_CO255	1	1	CO255	ZmG:CO255	PI 693359	1645493	CO255	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_CO256	ZmG_CO256	1	1	CO256	ZmG:CO256	Ames 27051	1645420	CO256	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO257	ZmG_CO257	1	1	CO257	ZmG:CO257	Ames 27052	1645421	CO257	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CO258	ZmG_CO258	1	1	CO258	ZmG:CO258	Ames 27053	1645422	CO258	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CQ702RC	ZmG_CQ702RC	1	1	CQ702RC	ZmG:CQ702RC	PI 566938	1461909	CQ702RC	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CQ806	ZmG_CQ806	1	1	CQ806	ZmG:CQ806	PI 566939	1461910	CQ806	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CR14	ZmG_CR14	1	1	CR14	ZmG:CR14	PI 601683	1187926	CR14	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CR1HT	ZmG_CR1HT	1	1	CR1HT	ZmG:CR1HT	PI 601080	1161235	CR1HT	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CR22	ZmG_CR22	1	1	CR_22_INBRED	ZmG:CR22	PI 267165	1201225	CR 22 INBRED	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CS405	ZmG_CS405	1	1	CS405	ZmG:CS405	PI 559916	1454888	CS405	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CS608	ZmG_CS608	1	1	CS608	ZmG:CS608	PI 560316	1455288	CS608	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_CSJ3	ZmG_CSJ3	1	1	CSJ3	ZmG:CSJ3	Ames 27057	1645426	CSJ3	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI706303	ZmG_C_PI706303	1	1	CUBA54	ZmG:C_PI706303	PI 706303		CUBA54	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_CHITAN120	ZmG_CHITAN120	1	1	Chi-tan_120	ZmG:CHITAN120	PI 427111	1322182	Chi-tan 120	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_CI7	ZmG_CI7	1	1	Ci7Goodman-Buckler	ZmG:CI7	PI 693388	1713409	CI 7 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_D940Y	ZmG_D940Y	1	1	D940Y	ZmG:D940Y	PI 693360	1645494	D940Y	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_DE1	ZmG_DE1	1	1	DE1	ZmG:DE1	PI 606329	1568864	DE1	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_DE2	ZmG_DE2	1	1	DE2	ZmG:DE2	PI 606330	1568865	DE2	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_DE3	ZmG_DE3	1	1	DE3	ZmG:DE3	Ames 27109	1645495	Duplicate of PI 638551	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_DE4	ZmG_DE4	1	1	DE4	ZmG:DE4	PI 638552	1671773	DE4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_DE811	ZmG_DE811	1	1	DE811	ZmG:DE811	PI 550558	1445494	DE811	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_DJ7	ZmG_DJ7	1	1	DJ7	ZmG:DJ7	PI 601191	1165734	DJ7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_3IBZ2	ZmG_3IBZ2	1	1	DK3IBZ2	ZmG:3IBZ2	PI 554616	1449588	3IBZ2	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_3IIH6	ZmG_3IIH6	1	1	DK3IIH6	ZmG:3IIH6	PI 564754	1459725	3IIH6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_4676A	ZmG_4676A	1	1	DK4676A	ZmG:4676A	PI 601300	1169989	4676A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_6F545	ZmG_6F545	1	1	DK6F545	ZmG:6F545	PI 583755	1478726	6F545	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_78002A	ZmG_78002A	1	1	DK78002A	ZmG:78002A	PI 601301	1169991	78002A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_78004	ZmG_78004	1	1	DK78004	ZmG:78004	PI 601210	1167900	78004	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_78371A	ZmG_78371A	1	1	DK78371A	ZmG:78371A	PI 601438	1177597	78371A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_83IBI3	ZmG_83IBI3	1	1	DK83IBI3	ZmG:83IBI3	PI 555651	1450623	83IBI3	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_84BRQ4	ZmG_84BRQ4	1	1	DK84BRQ4	ZmG:84BRQ4	PI 583756	1478727	84BRQ4	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_8F196	ZmG_8F196	1	1	DK8F196	ZmG:8F196	PI 583766	1478737	8F196	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_8M116	ZmG_8M116	1	1	DK8M116	ZmG:8M116	PI 583767	1478738	8M116	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_8M129	ZmG_8M129	1	1	DK8M129	ZmG:8M129	PI 565087	1460058	8M129	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_F274	ZmG_F274	1	1	DKF274	ZmG:F274	PI 583760	1478731	F274	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_FBHJ	ZmG_FBHJ	1	1	DKFBHJ	ZmG:FBHJ	PI 601439	1177598	FBHJ	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_HBA1	ZmG_HBA1	1	1	DKHBA1	ZmG:HBA1	PI 601172	1165598	HBA1	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IB014	ZmG_IB014	1	1	DKIB014	ZmG:IB014	PI 601208	1167898	IB014	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IB02	ZmG_IB02	1	1	DKIB02	ZmG:IB02	PI 601457	1177899	IB02	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MBNA	ZmG_MBNA	1	1	DKMBNA	ZmG:MBNA	PI 601209	1167899	MBNA	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MBUB	ZmG_MBUB	1	1	DKMBUB	ZmG:MBUB	PI 548839	1443775	MBUB	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MBZA	ZmG_MBZA	1	1	DKMBZA	ZmG:MBZA	PI 583762	1478733	MBZA	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MM402A	ZmG_MM402A	1	1	DKMM402A	ZmG:MM402A	PI 554615	1449587	MM402A	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PB80	ZmG_PB80	1	1	DKPB80	ZmG:PB80	PI 601441	1177601	PB80	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WDAD1	ZmG_WDAD1	1	1	DKWDAD1	ZmG:WDAD1	PI 583763	1478734	WDAD1	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_E2558W	ZmG_E2558W	1	1	E2558W	ZmG:E2558W	PI 693361	1645579	E2558W	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_E8501	ZmG_E8501	1	1	E8501	ZmG:E8501	PI 601724	1188095	E8501	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_EAST028	ZmG_EAST028	1	1	EAST_028	ZmG:EAST028	PI 707958	1019694	East 028	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_EP1	ZmG_EP1	1	1	EP1	ZmG:EP1	PI 693362	1645496	EP1	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_ENGLICHIH	ZmG_ENGLICHIH	1	1	Eng-Li_Chih	ZmG:ENGLICHIH	PI 427109	1322181	Eng-li Chih	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_F115	ZmG_F115	1	1	F115	ZmG:F115	PI 257513	1196844	F115	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_F118	ZmG_F118	1	1	F118	ZmG:F118	PI 555462	1450434	F118	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_F2	ZmG_F2	1	1	F2	ZmG:F2	PI 257506	1196837	F2	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_F2834T	ZmG_F2834T	1	1	F2834T	ZmG:F2834T	PI 693363	1645587	F2834T	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI257516	ZmG_C_PI257516	1	1	F39	ZmG:C_PI257516	PI 257516		F39	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_F42	ZmG_F42	1	1	F42	ZmG:F42	PI 601026	1157465	F42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_F44	ZmG_F44	1	1	F44	ZmG:F44	PI 707965	1905884	F44 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_F6	ZmG_F6	1	1	F6	ZmG:F6	PI 693393	1919958	F6 Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_F7	ZmG_F7	1	1	F7	ZmG:F7	PI 257507	1196838	F7	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_FBLA	ZmG_FBLA	1	1	FBLA	ZmG:FBLA	PI 546482	1441418	FBLA	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_FBLL	ZmG_FBLL	1	1	FBLL	ZmG:FBLL	PI 546481	1441417	FBLL	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_FC46	ZmG_FC46	1	1	FC46	ZmG:FC46	PI 257517	1196848	FC46	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_FR19	ZmG_FR19	1	1	FR19	ZmG:FR19	PI 600772	1130201	FR19	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_FE	ZmG_FE	1	1	Fe	ZmG:FE	PI 692201	1874317	Fe	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_T122	ZmG_T122	1	1	G22_T122	ZmG:T122	PI 340821	1254126	T122	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_T5A	ZmG_T5A	1	1	G3_T5a	ZmG:T5A	PI 340818	1254123	T5a	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_GA209	ZmG_GA209	1	1	GA209	ZmG:GA209	PI 693323	1052068	GA209	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_C_PI700945	ZmG_C_PI700945	1	1	GA219	ZmG:C_PI700945	PI 700945		GA219	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_GE129	ZmG_GE129	1	1	GE129	ZmG:GE129	Ames 10256	1052101	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+700950"">Duplicate of PI 700950</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_GE54	ZmG_GE54	1	1	GE54	ZmG:GE54	Ames 10254	1052093	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+700948"">Duplicate of PI 700948</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_GT112	ZmG_GT112	1	1	GT112	ZmG:GT112	PI 693364	1645497	GT112	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_H105W	ZmG_H105W	1	1	H105W	ZmG:H105W	PI 587127	1084242	H105W	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_H110	ZmG_H110	1	1	H110	ZmG:H110	PI 550526	1445462	H110	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H113	ZmG_H113	1	1	H113	ZmG:H113	PI 698990	1633485	H113	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H114	ZmG_H114	1	1	H114	ZmG:H114	PI 698991	1517106	H114	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H121	ZmG_H121	1	1	H121	ZmG:H121	PI 698993	1633486	H121	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H122W	ZmG_H122W	1	1	H122w	ZmG:H122W	PI 698994	1633487	H122w	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H124W	ZmG_H124W	1	1	H124w	ZmG:H124W	PI 698996	1633488	H124w	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_H14	ZmG_H14	1	1	H14	ZmG:H14	PI 698954	1633456	H14	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H42	ZmG_H42	1	1	H42	ZmG:H42	PI 698967	1633466	H42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H49	ZmG_H49	1	1	H49	ZmG:H49	PI 693348	1633469	H49	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_H5	ZmG_H5	1	1	H5	ZmG:H5	PI 698952	1633454	H5	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_H52	ZmG_H52	1	1	H52	ZmG:H52	PI 698972	1633472	H52	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H71	ZmG_H71	1	1	H71	ZmG:H71	PI 698975	1633475	H71	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H84	ZmG_H84	1	1	H84	ZmG:H84	PI 587128	1073894	H84	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_H91	ZmG_H91	1	1	H91	ZmG:H91	PI 693365	1645498	H91	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_H95	ZmG_H95	1	1	H95	ZmG:H95	PI 693333	1082771	H95	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_H96	ZmG_H96	1	1	H96	ZmG:H96	PI 698981	1633479	H96	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_H99	ZmG_H99	1	1	H99	ZmG:H99	PI 587129	1073895	H99	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_HB8229	ZmG_HB8229	1	1	HB8229	ZmG:HB8229	PI 601564	1185642	HB8229	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_HP301	ZmG_HP301	1	1	HP301	ZmG:HP301	PI 587131	1084096	HP301	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	HP301	False
+ZmG_HI26	ZmG_HI26	1	1	Hi26	ZmG:HI26	PI 593008	1511833	Hi26	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_HI27	ZmG_HI27	1	1	Hi27Goodman-Buckler	ZmG:HI27	PI 693384	1714125	Hi27 Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_HI28	ZmG_HI28	1	1	Hi28	ZmG:HI28	PI 593010	1511836	Hi28	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI405707	ZmG_C_PI405707	1	1	Hua94	ZmG:C_PI405707	PI 405707		HUA94	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_HUANYAO	ZmG_HUANYAO	1	1	Huanyao	ZmG:HUANYAO	Ames 2337	1019745	Huanyao	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_HUOBAI	ZmG_HUOBAI	1	1	Huobai	ZmG:HUOBAI	Ames 2339	1019763	Huobai	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_I137TN	ZmG_I137TN	1	1	I137TN	ZmG:I137TN	PI 693366	1645500	I137TN	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_I159	ZmG_I159	1	1	I159	ZmG:I159	Ames 24589	1559778	I159	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_I29	ZmG_I29	1	1	I29	ZmG:I29	PI 686057	1645499	I29	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_IA2132	ZmG_IA2132	1	1	IA2132	ZmG:IA2132	PI 693385	1712934	IA2132 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_IBB14	ZmG_IBB14	1	1	IBB14	ZmG:IBB14	PI 601565	1185643	IBB14	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IBB15	ZmG_IBB15	1	1	IBB15	ZmG:IBB15	PI 601458	1177900	IBB15	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IBC2	ZmG_IBC2	1	1	IBC2	ZmG:IBC2	PI 601459	1177901	IBC2	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI193	ZmG_ICI193	1	1	ICI_193	ZmG:ICI193	PI 559380	1454352	ICI 193	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI441	ZmG_ICI441	1	1	ICI_441	ZmG:ICI441	PI 559381	1454353	ICI 441	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI581	ZmG_ICI581	1	1	ICI_581	ZmG:ICI581	PI 564697	1459668	ICI 581	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI740	ZmG_ICI740	1	1	ICI_740	ZmG:ICI740	PI 559382	1454354	ICI 740	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI893	ZmG_ICI893	1	1	ICI_893	ZmG:ICI893	PI 559383	1454355	ICI 893	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ICI986	ZmG_ICI986	1	1	ICI_986	ZmG:ICI986	PI 559384	1454356	ICI 986	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IDS28	ZmG_IDS28	1	1	IDS28	ZmG:IDS28	PI 686059	1558421	IDS28	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_IDS69	ZmG_IDS69	1	1	IDS69	ZmG:IDS69	PI 686062	1558422	IDS69	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_IDS91	ZmG_IDS91	1	1	IDS91	ZmG:IDS91	PI 686063	1558423	IDS91	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_ILLINOISHY	ZmG_ILLINOISHY	1	1	ILLHy	ZmG:ILLINOISHY	PI 151507	1888609	Illinois Hy	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_100	ZmG_100	1	1	INBRED_100	ZmG:100	PI 186197	1160629	INBRED 100	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_109	ZmG_109	1	1	INBRED_109	ZmG:109	PI 186196	1160628	INBRED 109	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_141	ZmG_141	1	1	INBRED_141	ZmG:141	PI 186199	1160631	INBRED 141	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_2687	ZmG_2687	1	1	INBRED_2-687	ZmG:2687	PI 186215	1160642	INBRED 2-687	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_305	ZmG_305	1	1	INBRED_305	ZmG:305	PI 186226	1160653	INBRED 305	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_309	ZmG_309	1	1	INBRED_309	ZmG:309	PI 186227	1160654	INBRED 309	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_321	ZmG_321	1	1	INBRED_321	ZmG:321	PI 186229	1160656	INBRED 321	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_INB101LFYLFYA632XM16S5	ZmG_INB101LFYLFYA632XM16S5	1	1	INB_101LFY/LFY_(A632_X_M16_S5)	ZmG:INB101LFYLFYA632XM16S5	NSL 174429	1151390	INB 101LFY/LFY (A632 X M16 S5)	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_IOWAI205	ZmG_IOWAI205	1	1	I_205	ZmG:IOWAI205	PI 151523	1888625	Iowa I 205	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_IA453	ZmG_IA453	1	1	Ia453	ZmG:IA453	Ames 22030	1087487	Ia453	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IA5125	ZmG_IA5125	1	1	Ia5125	ZmG:IA5125	PI 587135	1084259	Ia5125	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_IA5125B	ZmG_IA5125B	1	1	Ia5125B	ZmG:IA5125B	Ames 27117	1645501	Ia5125B	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IL14H	ZmG_IL14H	1	1	Il14H	ZmG:IL14H	PI 358523	1267716	Il14H	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	IL14H	False
+ZmG_IL778D	ZmG_IL778D	1	1	Il778d	ZmG:IL778D	PI 706561	1654478	IL 778d	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_IL101T	ZmG_IL101T	1	1	Il_101T	ZmG:IL101T	PI 693367	1645503	IL101T	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_J47	ZmG_J47	1	1	J47	ZmG:J47	NSL 22984	1088472	J47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_J8606	ZmG_J8606	1	1	J8606	ZmG:J8606	PI 601725	1188096	J8606	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K148	ZmG_K148	1	1	K148	ZmG:K148	PI 693369	1645588	K148	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_K150	ZmG_K150	1	1	K150	ZmG:K150	PI 706567	1088094	K150	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K155	ZmG_K155	1	1	K155	ZmG:K155	PI 706570	1088098	K155	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K201	ZmG_K201	1	1	K201	ZmG:K201	PI 706569	1088096	K201	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K4	ZmG_K4	1	1	K4	ZmG:K4	PI 154380	1891757	K 4	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_K41	ZmG_K41	1	1	K41	ZmG:K41	NSL 22635	1088099	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+154379"">Duplicate of PI 154379</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K47	ZmG_K47	1	1	K47	ZmG:K47	PI 706566	1088092	K47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K55	ZmG_K55	1	1	K55	ZmG:K55	PI 154384	1891761	K 55	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_K64	ZmG_K64	1	1	K64	ZmG:K64	PI 154387	1891764	K64	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_KO679Y	ZmG_KO679Y	1	1	KO679Y	ZmG:KO679Y	PI 591017	1493982	KO679Y	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_KUNG70	ZmG_KUNG70	1	1	KUNG-70	ZmG:KUNG70	PI 391662	1294106	KUNG-70	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_KI11	ZmG_KI11	1	1	Ki11	ZmG:KI11	PI 690325	1645506	Ki11	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	KI11	False
+ZmG_KI14	ZmG_KI14	1	1	Ki14	ZmG:KI14	PI 693382	1646691	Ki14	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_KI9	ZmG_KI9	1	1	Ki2021	ZmG:KI9	PI 706558	1645511	Ki9	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_KI21	ZmG_KI21	1	1	Ki21	ZmG:KI21	PI 706557	1645507	Ki21	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_KI3	ZmG_KI3	1	1	Ki3	ZmG:KI3	PI 690324	1645580	Ki3	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	KI3	False
+ZmG_KI43	ZmG_KI43	1	1	Ki43	ZmG:KI43	PI 693370	1645508	Ki43	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_KI44	ZmG_KI44	1	1	Ki44	ZmG:KI44	PI 693383	1646692	Ki44	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_KY21	ZmG_KY21	1	1	Ky21	ZmG:KY21	PI 690326	1645512	Ky21	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	KY21	False
+ZmG_KY226	ZmG_KY226	1	1	Ky226	ZmG:KY226	PI 693371	1645513	Ky226	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_KY228	ZmG_KY228	1	1	Ky228	ZmG:KY228	PI 587136	1084234	Ky228	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_L222	ZmG_L222	1	1	L222	ZmG:L222	PI 584325	1481090	L222	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L317	ZmG_L317	1	1	L317	ZmG:L317	PI 146377	1879518	L317	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_LA578	ZmG_LA578	1	1	L578	ZmG:LA578	PI 154377	1891754	La 578	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_LH1	ZmG_LH1	1	1	LH1	ZmG:LH1	PI 644101	1127095	LH1	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH119	ZmG_LH119	1	1	LH119	ZmG:LH119	PI 600954	1156006	LH119	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH123HT	ZmG_LH123HT	1	1	LH123HT	ZmG:LH123HT	PI 601079	1161234	LH123HT	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH127	ZmG_LH127	1	1	LH127	ZmG:LH127	PI 538007	1432943	LH127	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH128	ZmG_LH128	1	1	LH128	ZmG:LH128	PI 547086	1442022	LH128	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH132	ZmG_LH132	1	1	LH132	ZmG:LH132	PI 601004	1157405	LH132	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH143MAINTAINER	ZmG_LH143MAINTAINER	1	1	LH143_(Maintainer)	ZmG:LH143MAINTAINER	PI 685986	1654634	LH143 (Maintainer)	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH145	ZmG_LH145	1	1	LH145	ZmG:LH145	PI 600959	1156011	LH145	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH146HT	ZmG_LH146HT	1	1	LH146Ht	ZmG:LH146HT	PI 601402	1174399	LH146Ht	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH149	ZmG_LH149	1	1	LH149	ZmG:LH149	PI 601493	1178783	LH149	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH150	ZmG_LH150	1	1	LH150	ZmG:LH150	PI 601230	1167983	LH150	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH156	ZmG_LH156	1	1	LH156	ZmG:LH156	PI 601403	1174400	LH156	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH159	ZmG_LH159	1	1	LH159	ZmG:LH159	PI 562377	1457349	LH159	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH160	ZmG_LH160	1	1	LH160	ZmG:LH160	PI 539920	1434856	LH160	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH162	ZmG_LH162	1	1	LH162	ZmG:LH162	PI 539921	1434857	LH162	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH163	ZmG_LH163	1	1	LH163	ZmG:LH163	PI 538008	1432944	LH163	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH164	ZmG_LH164	1	1	LH164	ZmG:LH164	PI 555659	1450631	LH164	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH165	ZmG_LH165	1	1	LH165	ZmG:LH165	PI 562378	1457350	LH165	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH166	ZmG_LH166	1	1	LH166	ZmG:LH166	PI 564539	1459510	LH166	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH167	ZmG_LH167	1	1	LH167	ZmG:LH167	PI 564543	1459514	LH167	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI576169	ZmG_C_PI576169	1	1	LH168	ZmG:C_PI576169	PI 576169		LH168	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_LH169HT	ZmG_LH169HT	1	1	LH169Ht	ZmG:LH169HT	PI 576170	1471141	LH169Ht	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH172	ZmG_LH172	1	1	LH172	ZmG:LH172	PI 562379	1457351	LH172	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH175	ZmG_LH175	1	1	LH175	ZmG:LH175	PI 583872	1479324	LH175	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH181	ZmG_LH181	1	1	LH181	ZmG:LH181	PI 547087	1442023	LH181	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH183	ZmG_LH183	1	1	LH183	ZmG:LH183	PI 564755	1459726	LH183	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH184	ZmG_LH184	1	1	LH184	ZmG:LH184	PI 564542	1459513	LH184	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH185	ZmG_LH185	1	1	LH185	ZmG:LH185	PI 576171	1471142	LH185	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH186	ZmG_LH186	1	1	LH186	ZmG:LH186	PI 576172	1471143	LH186	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH188	ZmG_LH188	1	1	LH188	ZmG:LH188	PI 585224	1483748	LH188	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH189	ZmG_LH189	1	1	LH189Ht	ZmG:LH189	PI 585225	1483749	LH189	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH190	ZmG_LH190	1	1	LH190	ZmG:LH190	PI 539922	1434858	LH190	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH191	ZmG_LH191	1	1	LH191	ZmG:LH191	PI 539925	1434861	LH191	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH192	ZmG_LH192	1	1	LH192	ZmG:LH192	PI 539926	1434862	LH192	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH193	ZmG_LH193	1	1	LH193	ZmG:LH193	PI 539927	1434863	LH193	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH194	ZmG_LH194	1	1	LH194	ZmG:LH194	PI 539923	1434859	LH194	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH195	ZmG_LH195	1	1	LH195	ZmG:LH195	PI 537097	1432033	LH195	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH196	ZmG_LH196	1	1	LH196	ZmG:LH196	PI 538009	1432945	LH196	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH197	ZmG_LH197	1	1	LH197	ZmG:LH197	PI 557562	1452534	LH197	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH198	ZmG_LH198	1	1	LH198	ZmG:LH198	PI 557563	1452535	LH198	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH199	ZmG_LH199	1	1	LH199	ZmG:LH199	PI 557566	1452538	LH199	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH200	ZmG_LH200	1	1	LH200	ZmG:LH200	PI 564541	1459512	LH200	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH202	ZmG_LH202	1	1	LH202	ZmG:LH202	PI 539924	1434860	LH202	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH204	ZmG_LH204	1	1	LH204	ZmG:LH204	PI 537098	1432034	LH204	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH205	ZmG_LH205	1	1	LH205	ZmG:LH205	PI 537099	1432035	LH205	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH206	ZmG_LH206	1	1	LH206	ZmG:LH206	PI 538010	1432946	LH206	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH208	ZmG_LH208	1	1	LH208	ZmG:LH208	PI 547088	1442024	LH208	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH209	ZmG_LH209	1	1	LH209	ZmG:LH209	PI 554612	1449584	LH209	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH210	ZmG_LH210	1	1	LH210	ZmG:LH210	PI 537100	1432036	LH210	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH211	ZmG_LH211	1	1	LH211	ZmG:LH211	PI 537101	1432037	LH211	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH212HT	ZmG_LH212HT	1	1	LH212Ht	ZmG:LH212HT	PI 547089	1442025	LH212Ht	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH213	ZmG_LH213	1	1	LH213	ZmG:LH213	PI 547090	1442026	LH213	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH214	ZmG_LH214	1	1	LH214	ZmG:LH214	PI 555660	1450632	LH214	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH215	ZmG_LH215	1	1	LH215	ZmG:LH215	PI 552815	1447787	LH215	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH216	ZmG_LH216	1	1	LH216	ZmG:LH216	PI 557569	1452541	LH216	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH217	ZmG_LH217	1	1	LH217	ZmG:LH217	PI 564540	1459511	LH217	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH218	ZmG_LH218	1	1	LH218	ZmG:LH218	PI 574390	1469361	LH218	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH220HT	ZmG_LH220HT	1	1	LH220Ht	ZmG:LH220HT	PI 538011	1432947	LH220Ht	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH222	ZmG_LH222	1	1	LH222	ZmG:LH222	PI 559375	1454347	LH222	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH223	ZmG_LH223	1	1	LH223	ZmG:LH223	PI 562380	1457352	LH223	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH224	ZmG_LH224	1	1	LH224	ZmG:LH224	PI 562381	1457353	LH224	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH225	ZmG_LH225	1	1	LH225	ZmG:LH225	PI 574391	1469362	LH225	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH227	ZmG_LH227	1	1	LH227	ZmG:LH227	PI 593038	1511977	LH227	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH231	ZmG_LH231	1	1	LH231	ZmG:LH231	PI 585226	1483750	LH231	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH250	ZmG_LH250	1	1	LH250	ZmG:LH250	PI 583874	1479326	LH250	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH252	ZmG_LH252	1	1	LH252	ZmG:LH252	PI 585227	1483751	LH252	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH260	ZmG_LH260	1	1	LH260	ZmG:LH260	PI 585228	1483752	LH260	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH284	ZmG_LH284	1	1	LH284	ZmG:LH284	PI 602590	1553861	LH284	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH295	ZmG_LH295	1	1	LH295	ZmG:LH295	PI 618592	1613196	LH295	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH299	ZmG_LH299	1	1	LH299	ZmG:LH299	PI 642029	1692532	LH299	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH38	ZmG_LH38	1	1	LH38	ZmG:LH38	PI 600791	1131311	LH38	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH39	ZmG_LH39	1	1	LH39	ZmG:LH39	PI 600944	1152908	LH39	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH51	ZmG_LH51	1	1	LH51	ZmG:LH51	PI 600955	1156007	LH51	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH52	ZmG_LH52	1	1	LH52	ZmG:LH52	PI 601360	1173148	LH52	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH54	ZmG_LH54	1	1	LH54	ZmG:LH54	PI 601316	1170375	LH54	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH57	ZmG_LH57	1	1	LH57	ZmG:LH57	PI 601317	1170376	LH57	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH59	ZmG_LH59	1	1	LH59	ZmG:LH59	PI 601466	1177910	LH59	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH60	ZmG_LH60	1	1	LH60	ZmG:LH60	PI 601404	1174401	LH60	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH61	ZmG_LH61	1	1	LH61	ZmG:LH61	PI 601416	1176272	LH61	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH65	ZmG_LH65	1	1	LH65	ZmG:LH65	PI 601494	1178784	LH65	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH74	ZmG_LH74	1	1	LH74	ZmG:LH74	PI 600957	1156009	LH74	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH82	ZmG_LH82	1	1	LH82	ZmG:LH82	PI 601170	1165596	LH82	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_LH85	ZmG_LH85	1	1	LH85	ZmG:LH85	PI 601405	1174402	LH85	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LH93	ZmG_LH93	1	1	LH93	ZmG:LH93	PI 601171	1165597	LH93	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LIBC4	ZmG_LIBC4	1	1	LIBC_4	ZmG:LIBC4	PI 555650	1450622	LIBC 4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LP1NRHT	ZmG_LP1NRHT	1	1	LP1_NR_Ht	ZmG:LP1NRHT	PI 600729	1128855	LP1 NR HT	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LP5	ZmG_LP5	1	1	LP5	ZmG:LP5	PI 601378	1173963	LP5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L127	ZmG_L127	1	1	L_127	ZmG:L127	PI 601726	1188097	L 127	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L135	ZmG_L135	1	1	L_135	ZmG:L135	PI 601727	1188098	L 135	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L139	ZmG_L139	1	1	L_139	ZmG:L139	PI 601728	1188099	L 139	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L155	ZmG_L155	1	1	L_155	ZmG:L155	PI 550695	1445631	L 155	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_L289	ZmG_L289	1	1	L_289	ZmG:L289	NSL 65872	1112441	L 289	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_LP215D	ZmG_LP215D	1	1	Lp215D	ZmG:LP215D	PI 547107	1442043	Lp215D	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_M14	ZmG_M14	1	1	M14	ZmG:M14	PI 693398	1101016	M14	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_M162W	ZmG_M162W	1	1	M162W	ZmG:M162W	PI 690328	1645515	M162W	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	M162W	False
+ZmG_M37W	ZmG_M37W	1	1	M37W	ZmG:M37W	PI 690327	1645514	M37W	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	M37W	False
+ZmG_MBPM	ZmG_MBPM	1	1	MBPM	ZmG:MBPM	PI 601440	1177599	MBPM	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MBST	ZmG_MBST	1	1	MBST	ZmG:MBST	PI 601566	1185644	MBST	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MBWZ	ZmG_MBWZ	1	1	MBWZ	ZmG:MBWZ	PI 564748	1459719	MBWZ	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MEF156552	ZmG_MEF156552	1	1	MEF156-55-2	ZmG:MEF156552	Ames 27135	1645581	MEF156-55-2	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_ML606	ZmG_ML606	1	1	ML606	ZmG:ML606	PI 583774	1478745	ML606	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MM501D	ZmG_MM501D	1	1	MM501D	ZmG:MM501D	PI 564752	1459723	MM501D	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MO18W	ZmG_MO18W	1	1	MO18W	ZmG:MO18W	PI 550441	1445377	Mo18W	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	MO18W	False
+ZmG_MQ305	ZmG_MQ305	1	1	MQ305	ZmG:MQ305	PI 559917	1454889	MQ305	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS106	ZmG_MS106	1	1	MS106	ZmG:MS106	Ames 24727	1557022	MS106	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS116	ZmG_MS116	1	1	MS116	ZmG:MS116	Ames 24729	1557023	MS116	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS12	ZmG_MS12	1	1	MS12	ZmG:MS12	Ames 24706	1557005	MS12	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS132	ZmG_MS132	1	1	MS132	ZmG:MS132	Ames 24730	1557051	MS132	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS1334	ZmG_MS1334	1	1	MS1334	ZmG:MS1334	PI 693345	1557043	MS1334	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MS142	ZmG_MS142	1	1	MS142	ZmG:MS142	Ames 24733	1557026	MS142	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS153	ZmG_MS153	1	1	MS153	ZmG:MS153	PI 702799	2098636	MS153 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MS200	ZmG_MS200	1	1	MS200	ZmG:MS200	Ames 24737	1557030	MS200	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS211	ZmG_MS211	1	1	MS211	ZmG:MS211	Ames 24742	1557033	MS211	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS221	ZmG_MS221	1	1	MS221	ZmG:MS221	Ames 24746	1557037	MS221	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS222	ZmG_MS222	1	1	MS222	ZmG:MS222	Ames 24747	1557038	MS222	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS223	ZmG_MS223	1	1	MS223	ZmG:MS223	Ames 24748	1557039	MS223	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS224	ZmG_MS224	1	1	MS224	ZmG:MS224	Ames 24749	1557040	MS224	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS225	ZmG_MS225	1	1	MS225	ZmG:MS225	Ames 24750	1557041	MS225	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS226	ZmG_MS226	1	1	MS226	ZmG:MS226	Ames 24751	1557042	MS226	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS24A	ZmG_MS24A	1	1	MS24A	ZmG:MS24A	Ames 24708	1557049	MS24A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS67	ZmG_MS67	1	1	MS67	ZmG:MS67	Ames 24710	1557008	MS67	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MS71	ZmG_MS71	1	1	MS71	ZmG:MS71	PI 587137	1082773	Ms71	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	MS71	False
+ZmG_MS72	ZmG_MS72	1	1	MS72	ZmG:MS72	Ames 24713	1557011	MS72	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MO13	ZmG_MO13	1	1	Mo13	ZmG:MO13	PI 558529	1453501	Mo13	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO15W	ZmG_MO15W	1	1	Mo15W	ZmG:MO15W	PI 558518	1453490	Mo15W	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO16W	ZmG_MO16W	1	1	Mo16W	ZmG:MO16W	PI 558531	1453503	Mo16W	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO17	ZmG_MO17	1	1	Mo17	ZmG:MO17	PI 558532	1453504	Mo17	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO1W	ZmG_MO1W	1	1	Mo1W	ZmG:MO1W	PI 558520	1453492	Mo1W	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO23W	ZmG_MO23W	1	1	Mo23W	ZmG:MO23W	Ames 20116	1084194	Mo23W	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO24W	ZmG_MO24W	1	1	Mo24W	ZmG:MO24W	PI 587144	1084195	Mo24W	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO28W	ZmG_MO28W	1	1	Mo28W	ZmG:MO28W	Ames 28928	1715929	Mo28W	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO3	ZmG_MO3	1	1	Mo3	ZmG:MO3	PI 558522	1453494	Mo3	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO20W	ZmG_MO20W	1	1	Mo30W	ZmG:MO20W	Ames 28930	1715931	Mo20W	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO39	ZmG_MO39	1	1	Mo39	ZmG:MO39	Ames 28937	1715938	Mo39	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MO44	ZmG_MO44	1	1	Mo44	ZmG:MO44	Ames 35266	2098637	Mo44	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO45	ZmG_MO45	1	1	Mo45	ZmG:MO45	PI 583350	1478321	Mo45	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO46	ZmG_MO46	1	1	Mo46	ZmG:MO46	PI 583351	1478322	Mo46	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO47	ZmG_MO47	1	1	Mo47	ZmG:MO47	PI 583352	1478323	Mo47	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MO5	ZmG_MO5	1	1	Mo5	ZmG:MO5	PI 558523	1453495	Mo5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_MO7	ZmG_MO7	1	1	Mo7	ZmG:MO7	PI 558516	1453488	Mo7	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_MISSOURIG	ZmG_MISSOURIG	1	1	MoG	ZmG:MISSOURIG	PI 151535	1888641	Missouri G	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_MP339	ZmG_MP339	1	1	Mp339	ZmG:MP339	PI 543916	1438852	Mp339	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_MT42	ZmG_MT42	1	1	Mt42	ZmG:MT42	PI 693337	1084249	Mt42	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_N192	ZmG_N192	1	1	N192	ZmG:N192	PI 550566	1445502	N192	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_N193	ZmG_N193	1	1	N193	ZmG:N193	PI 550567	1445503	N193	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N197	ZmG_N197	1	1	N197	ZmG:N197	Ames 22755	1517110	N197	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N199	ZmG_N199	1	1	N199	ZmG:N199	PI 568158	1463129	N199	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N200	ZmG_N200	1	1	N200	ZmG:N200	PI 568159	1463130	N200	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N201	ZmG_N201	1	1	N201	ZmG:N201	PI 568160	1463131	N201	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N209	ZmG_N209	1	1	N209	ZmG:N209	PI 595366	1525754	N209	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N211	ZmG_N211	1	1	N211	ZmG:N211	PI 596354	1536649	N211	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N215	ZmG_N215	1	1	N215	ZmG:N215	PI 595367	1525757	N215	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N216	ZmG_N216	1	1	N216	ZmG:N216	PI 596355	1536650	N216	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N217	ZmG_N217	1	1	N217	ZmG:N217	PI 596356	1536651	N217	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N218	ZmG_N218	1	1	N218	ZmG:N218	PI 596357	1536652	N218	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N28	ZmG_N28	1	1	N28	ZmG:N28	Ames 19321	1082774	N28	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N28HT	ZmG_N28HT	1	1	N28Ht	ZmG:N28HT	PI 693373	1645518	N28Ht	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_N501	ZmG_N501	1	1	N501	ZmG:N501	PI 594050	1519252	N501	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N523	ZmG_N523	1	1	N523	ZmG:N523	PI 594071	1519299	N523	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N527	ZmG_N527	1	1	N527	ZmG:N527	PI 604606	1562986	N527	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N534	ZmG_N534	1	1	N534	ZmG:N534	PI 594080	1519404	N534	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N538	ZmG_N538	1	1	N538	ZmG:N538	PI 594084	1519408	N538	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N540	ZmG_N540	1	1	N540	ZmG:N540	PI 594086	1519410	N540	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N542	ZmG_N542	1	1	N542	ZmG:N542	PI 594088	1519412	N542	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N545	ZmG_N545	1	1	N545	ZmG:N545	PI 594091	1519415	N545	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_N6	ZmG_N6	1	1	N6	ZmG:N6	PI 693372	1645517	N6	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_N7A	ZmG_N7A	1	1	N7A	ZmG:N7A	PI 693387	1713408	N7A Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC13	ZmG_NC13	1	1	NC13	ZmG:NC13	PI 690361	1061295	NC13	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NC222	ZmG_NC222	1	1	NC222	ZmG:NC222	PI 690368	1061308	NC222	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC230	ZmG_NC230	1	1	NC230	ZmG:NC230	PI 690370	1061314	NC230	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC232	ZmG_NC232	1	1	NC232	ZmG:NC232	PI 690371	1061315	NC232	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC236	ZmG_NC236	1	1	NC236	ZmG:NC236	PI 690373	1061324	NC236	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC238	ZmG_NC238	1	1	NC238	ZmG:NC238	PI 690374	1061331	NC238	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC250	ZmG_NC250	1	1	NC250	ZmG:NC250	PI 550555	1445491	NC250	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC258	ZmG_NC258	1	1	NC258	ZmG:NC258	PI 531084	1426020	NC258	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC260	ZmG_NC260	1	1	NC260	ZmG:NC260	PI 690381	1645520	NC260	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC262	ZmG_NC262	1	1	NC262	ZmG:NC262	PI 531085	1426021	NC262	A_panel_in_our_5to30x_selection	high_reviewed	False	True	True	Ames282		False
+ZmG_NC264	ZmG_NC264	1	1	NC264	ZmG:NC264	PI 520774	1415710	NC264	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC290A	ZmG_NC290A	1	1	NC290A	ZmG:NC290A	PI 690390	1645521	NC290A	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC294	ZmG_NC294	1	1	NC294	ZmG:NC294	PI 690392	1645590	NC294	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC296	ZmG_NC296	1	1	NC296	ZmG:NC296	PI 690393	1645523	NC296	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC296A	ZmG_NC296A	1	1	NC296A	ZmG:NC296A	PI 690394	1645575	NC296A	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC298	ZmG_NC298	1	1	NC298	ZmG:NC298	PI 690395	1646693	NC298	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC300	ZmG_NC300	1	1	NC300	ZmG:NC300	PI 690396	1645524	NC300	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC302	ZmG_NC302	1	1	NC302	ZmG:NC302	PI 690397	1645525	NC302	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC304	ZmG_NC304	1	1	NC304	ZmG:NC304	PI 690398	1645526	NC304	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC306	ZmG_NC306	1	1	NC306	ZmG:NC306	PI 690399	1645582	NC306	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC310	ZmG_NC310	1	1	NC310	ZmG:NC310	PI 690401	1645528	NC310	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC314	ZmG_NC314	1	1	NC314	ZmG:NC314	PI 690403	1645530	NC314	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC318	ZmG_NC318	1	1	NC318	ZmG:NC318	PI 690405	1645532	NC318	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC320	ZmG_NC320	1	1	NC320	ZmG:NC320	PI 690406	1645533	NC320	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC324	ZmG_NC324	1	1	NC324	ZmG:NC324	PI 690408	1645535	NC324	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC326	ZmG_NC326	1	1	NC326	ZmG:NC326	PI 690409	1645536	NC326	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC328	ZmG_NC328	1	1	NC328	ZmG:NC328	PI 690410	1645537	NC328	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC33	ZmG_NC33	1	1	NC33	ZmG:NC33	PI 690362	1645519	NC33	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC336	ZmG_NC336	1	1	NC336	ZmG:NC336	PI 690414	1645541	NC336	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC338	ZmG_NC338	1	1	NC338	ZmG:NC338	PI 690415	1645542	NC338	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC340	ZmG_NC340	1	1	NC340	ZmG:NC340	PI 690416	1645543	NC340	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC342	ZmG_NC342	1	1	NC342	ZmG:NC342	PI 690417	1645544	NC342	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC344	ZmG_NC344	1	1	NC344	ZmG:NC344	PI 690418	1645545	NC344	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC346	ZmG_NC346	1	1	NC346	ZmG:NC346	PI 690419	1645546	NC346	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC348	ZmG_NC348	1	1	NC348	ZmG:NC348	PI 690420	1645547	NC348	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC350	ZmG_NC350	1	1	NC350	ZmG:NC350	PI 690329	1645548	NC350	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	NC350	False
+ZmG_NC352	ZmG_NC352	1	1	NC352	ZmG:NC352	PI 690421	1645549	NC352	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_NC354	ZmG_NC354	1	1	NC354	ZmG:NC354	PI 690422	1645550	NC354	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC356	ZmG_NC356	1	1	NC356	ZmG:NC356	PI 690423	1645551	NC356	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_NC358	ZmG_NC358	1	1	NC358	ZmG:NC358	PI 690330	1645552	NC358	B_panel_member_not_in_selection	high	True	True	True	NAM	NC358	False
+ZmG_NC360	ZmG_NC360	1	1	NC360	ZmG:NC360	PI 690424	1645553	NC360	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC362	ZmG_NC362	1	1	NC362	ZmG:NC362	PI 690425	1645554	NC362	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC364	ZmG_NC364	1	1	NC364	ZmG:NC364	PI 690426	1645555	NC364	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_NC366	ZmG_NC366	1	1	NC366	ZmG:NC366	PI 690427	1645556	NC366	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_NC368	ZmG_NC368	1	1	NC368	ZmG:NC368	PI 690428	1645557	NC368	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_ND1	ZmG_ND1	1	1	ND1	ZmG:ND1	NSL 32723	1103555	ND1	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND167	ZmG_ND167	1	1	ND167	ZmG:ND167	NSL 32726	1103562	ND167	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND230	ZmG_ND230	1	1	ND230	ZmG:ND230	PI 700795	1103566	ND230	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND245	ZmG_ND245	1	1	ND245	ZmG:ND245	PI 550489	1445425	ND245	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND246	ZmG_ND246	1	1	ND246	ZmG:ND246	PI 550490	1445426	ND246	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_ND247	ZmG_ND247	1	1	ND247	ZmG:ND247	PI 550503	1445439	ND247	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND249	ZmG_ND249	1	1	ND249	ZmG:ND249	PI 550530	1445466	ND249	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND251	ZmG_ND251	1	1	ND251	ZmG:ND251	PI 550532	1445468	ND251	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI700792	ZmG_C_PI700792	1	1	ND255	ZmG:C_PI700792	PI 700792		ND255	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_ND259	ZmG_ND259	1	1	ND259	ZmG:ND259	PI 550571	1445507	ND259	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND260	ZmG_ND260	1	1	ND260	ZmG:ND260	PI 550573	1445509	ND260	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NO1413	ZmG_NO1413	1	1	ND262	ZmG:NO1413	PI 52250	1651576	No. 1413	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND265	ZmG_ND265	1	1	ND265	ZmG:ND265	PI 546494	1441430	ND265	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND283	ZmG_ND283	1	1	ND283	ZmG:ND283	NSL 32738	1103586	ND283	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ND287	ZmG_ND287	1	1	ND287	ZmG:ND287	PI 602956	1554862	ND287	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI700790	ZmG_C_PI700790	1	1	ND30	ZmG:C_PI700790	PI 700790		ND30	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_740	ZmG_740	1	1	NK740	ZmG:740	PI 601489	1178772	740	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_794	ZmG_794	1	1	NK794	ZmG:794	PI 601377	1173962	794	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_807	ZmG_807	1	1	NK807	ZmG:807	PI 601430	1176839	807	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_907	ZmG_907	1	1	NK907	ZmG:907	PI 577812	1472783	907	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_H8431	ZmG_H8431	1	1	NKH8431	ZmG:H8431	PI 601610	1186557	H8431	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NP901	ZmG_NP901	1	1	NKNP901	ZmG:NP901	PI 578216	1473187	NP901	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_NL001	ZmG_NL001	1	1	NL001	ZmG:NL001	PI 546485	1441421	NL001	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NO380	ZmG_NO380	1	1	NO._380	ZmG:NO380	PI 303924	1228198	NO. 380	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_NORTH7	ZmG_NORTH7	1	1	NORTH_7	ZmG:NORTH7	Ames 2328	1019678	North 7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NP87	ZmG_NP87	1	1	NP87	ZmG:NP87	PI 542716	1437652	NP87	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NP899	ZmG_NP899	1	1	NP899	ZmG:NP899	PI 578215	1473186	NP899	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NQ402	ZmG_NQ402	1	1	NQ402	ZmG:NQ402	PI 566940	1461911	NQ402	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NQ508	ZmG_NQ508	1	1	NQ508	ZmG:NQ508	PI 559918	1454890	NQ508	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NS501	ZmG_NS501	1	1	NS501	ZmG:NS501	PI 601583	1185875	NS501	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NS701	ZmG_NS701	1	1	NS701	ZmG:NS701	PI 601417	1176273	NS701	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NY6371	ZmG_NY6371	1	1	NY6371	ZmG:NY6371	PI 610494	1580189	NY6371	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NY159NEVEHYAAR	ZmG_NY159NEVEHYAAR	1	1	NY_159_(Neveh_Yaar)	ZmG:NY159NEVEHYAAR	PI 200182	1169083	NY 159 (Neveh Yaar)	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_NY166NEVEHYAAR	ZmG_NY166NEVEHYAAR	1	1	NY_166_(Neveh_Yaar)	ZmG:NY166NEVEHYAAR	PI 200184	1169085	NY 166 (Neveh Yaar)	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI490921	ZmG_C_PI490921	1	1	Nay15	ZmG:C_PI490921	PI 490921		NAY15	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_NY821	ZmG_NY821	1	1	Ny821	ZmG:NY821	PI 674722	1926204	Ny821	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OC19	ZmG_OC19	1	1	OC19	ZmG:OC19	PI 596506	1084084	OC19	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OQ101	ZmG_OQ101	1	1	OQ101	ZmG:OQ101	PI 559919	1454891	OQ101	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OQ403	ZmG_OQ403	1	1	OQ403	ZmG:OQ403	PI 559920	1454892	OQ403	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OQ601	ZmG_OQ601	1	1	OQ601	ZmG:OQ601	PI 583773	1478744	OQ601	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OQ603	ZmG_OQ603	1	1	OQ603	ZmG:OQ603	PI 601584	1185876	OQ603	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OS602	ZmG_OS602	1	1	OS602	ZmG:OS602	PI 559921	1454893	OS602	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OH3167B	ZmG_OH3167B	1	1	Oh3167B	ZmG:OH3167B	PI 692198	1874312	Oh 3167B	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_OH33	ZmG_OH33	1	1	Oh33	ZmG:OH33	NSL 28965	1097359	Oh33	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OH40B	ZmG_OH40B	1	1	Oh40B	ZmG:OH40B	PI 693397	1097362	Oh40B	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_OH43	ZmG_OH43	1	1	Oh43	ZmG:OH43	PI 690332	1082709	Oh43	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	OH43	False
+ZmG_OH43E	ZmG_OH43E	1	1	Oh43E	ZmG:OH43E	PI 693374	1645560	Oh43E	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_OH603	ZmG_OH603	1	1	Oh603	ZmG:OH603	PI 573098	1468069	Oh603	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_OH7	ZmG_OH7	1	1	Oh7	ZmG:OH7	PI 587146	1084229	Oh7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_OH7B	ZmG_OH7B	1	1	Oh7B	ZmG:OH7B	PI 690331	1082776	Oh7B	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	OH7B	False
+ZmG_IOWAOS420	ZmG_IOWAOS420	1	1	Os420	ZmG:IOWAOS420	PI 151530	1888632	Iowa Os 420	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_OS426	ZmG_OS426	1	1	Os426	ZmG:OS426	Ames 22756	1517121	Duplicate of PI 151531	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_P39	ZmG_P39	1	1	P39	ZmG:P39	PI 690333	1699968	P39 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	P39	False
+ZmG_PH207	ZmG_PH207	1	1	PH207	ZmG:PH207	PI 601005	1157406	PH207	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PH5HK	ZmG_PH5HK	1	1	PH5HK	ZmG:PH5HK	PI 628348	1631252	PH5HK	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHAA0	ZmG_PHAA0	1	1	PHAA0	ZmG:PHAA0	PI 578031	1473002	PHAA0	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHAW6	ZmG_PHAW6	1	1	PHAW6	ZmG:PHAW6	PI 565100	1460071	PHAW6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHB09	ZmG_PHB09	1	1	PHB09	ZmG:PHB09	PI 601007	1157408	PHB09	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHB47	ZmG_PHB47	1	1	PHB47	ZmG:PHB47	PI 601009	1157410	PHB47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHBA6	ZmG_PHBA6	1	1	PHBA6	ZmG:PHBA6	PI 559935	1454907	PHBA6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHBB3	ZmG_PHBB3	1	1	PHBB3	ZmG:PHBB3	PI 578029	1473000	PHBB3	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHBW8	ZmG_PHBW8	1	1	PHBW8	ZmG:PHBW8	PI 559936	1454908	PHBW8	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHDD6	ZmG_PHDD6	1	1	PHDD6	ZmG:PHDD6	PI 559937	1454909	PHDD6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHEG9	ZmG_PHEG9	1	1	PHEG9	ZmG:PHEG9	PI 578030	1473001	PHEG9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHEM7	ZmG_PHEM7	1	1	PHEM7	ZmG:PHEM7	PI 578032	1473003	PHEM7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHEM9	ZmG_PHEM9	1	1	PHEM9	ZmG:PHEM9	PI 565101	1460072	PHEM9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHEW7	ZmG_PHEW7	1	1	PHEW7	ZmG:PHEW7	PI 565102	1460073	PHEW7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHFA5	ZmG_PHFA5	1	1	PHFA5	ZmG:PHFA5	PI 565103	1460074	PHFA5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG29	ZmG_PHG29	1	1	PHG29	ZmG:PHG29	PI 601270	1169865	PHG29	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG35	ZmG_PHG35	1	1	PHG35	ZmG:PHG35	PI 601008	1157409	PHG35	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG39	ZmG_PHG39	1	1	PHG39	ZmG:PHG39	PI 600981	1156603	PHG39	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG47	ZmG_PHG47	1	1	PHG47	ZmG:PHG47	PI 601318	1170379	PHG47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG50	ZmG_PHG50	1	1	PHG50	ZmG:PHG50	PI 601006	1157407	PHG50	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG71	ZmG_PHG71	1	1	PHG71	ZmG:PHG71	PI 601150	1162354	PHG71	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG72	ZmG_PHG72	1	1	PHG72	ZmG:PHG72	PI 601319	1170380	PHG72	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG80	ZmG_PHG80	1	1	PHG80	ZmG:PHG80	PI 601037	1157676	PHG80	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG83	ZmG_PHG83	1	1	PHG83	ZmG:PHG83	PI 601229	1167980	PHG83	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHG84	ZmG_PHG84	1	1	PHG84	ZmG:PHG84	PI 601320	1170381	PHG84	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHG86	ZmG_PHG86	1	1	PHG86	ZmG:PHG86	PI 601442	1177602	PHG86	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHGG7	ZmG_PHGG7	1	1	PHGG7	ZmG:PHGG7	PI 559938	1454910	PHGG7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHGV6	ZmG_PHGV6	1	1	PHGV6	ZmG:PHGV6	PI 559939	1454911	PHGV6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHGW7	ZmG_PHGW7	1	1	PHGW7	ZmG:PHGW7	PI 559940	1454912	PHGW7	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHH93	ZmG_PHH93	1	1	PHH93	ZmG:PHH93	PI 601567	1185645	PHH93	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHHB4	ZmG_PHHB4	1	1	PHHB4	ZmG:PHHB4	PI 578033	1473004	PHHB4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHHB9	ZmG_PHHB9	1	1	PHHB9	ZmG:PHHB9	PI 565104	1460075	PHHB9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHHH9	ZmG_PHHH9	1	1	PHHH9	ZmG:PHHH9	PI 565105	1460076	PHHH9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHHV4	ZmG_PHHV4	1	1	PHHV4	ZmG:PHHV4	PI 559941	1454913	PHHV4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ31	ZmG_PHJ31	1	1	PHJ31	ZmG:PHJ31	PI 601773	1189902	PHJ31	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ33	ZmG_PHJ33	1	1	PHJ33	ZmG:PHJ33	PI 601774	1189903	PHJ33	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ40	ZmG_PHJ40	1	1	PHJ40	ZmG:PHJ40	PI 601321	1170382	PHJ40	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ65	ZmG_PHJ65	1	1	PHJ65	ZmG:PHJ65	PI 543840	1438776	PHJ65	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ70	ZmG_PHJ70	1	1	PHJ70	ZmG:PHJ70	PI 601775	1189905	PHJ70	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ75	ZmG_PHJ75	1	1	PHJ75	ZmG:PHJ75	PI 601776	1189906	PHJ75	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ89	ZmG_PHJ89	1	1	PHJ89	ZmG:PHJ89	PI 548798	1443734	PHJ89	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJ90	ZmG_PHJ90	1	1	PHJ90	ZmG:PHJ90	PI 548799	1443735	PHJ90	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHJR5	ZmG_PHJR5	1	1	PHJR5	ZmG:PHJR5	PI 565106	1460077	PHJR5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK05	ZmG_PHK05	1	1	PHK05	ZmG:PHK05	PI 601467	1177911	PHK05	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK29	ZmG_PHK29	1	1	PHK29	ZmG:PHK29	PI 601468	1177912	PHK29	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK35	ZmG_PHK35	1	1	PHK35	ZmG:PHK35	PI 601777	1189908	PHK35	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK42	ZmG_PHK42	1	1	PHK42	ZmG:PHK42	PI 601495	1178786	PHK42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK46	ZmG_PHK46	1	1	PHK46	ZmG:PHK46	PI 543841	1438777	PHK46	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK56	ZmG_PHK56	1	1	PHK56	ZmG:PHK56	PI 543842	1438778	PHK56	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK74	ZmG_PHK74	1	1	PHK74	ZmG:PHK74	PI 559942	1454914	PHK74	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK76	ZmG_PHK76	1	1	PHK76	ZmG:PHK76	PI 601496	1178787	PHK76	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHK93	ZmG_PHK93	1	1	PHK93	ZmG:PHK93	PI 548800	1443736	PHK93	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHKE6	ZmG_PHKE6	1	1	PHKE6	ZmG:PHKE6	PI 565107	1460078	PHKE6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHKM5	ZmG_PHKM5	1	1	PHKM5	ZmG:PHKM5	PI 578037	1473008	PHKM5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHM10	ZmG_PHM10	1	1	PHM10	ZmG:PHM10	PI 601778	1189909	PHM10	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHM57	ZmG_PHM57	1	1	PHM57	ZmG:PHM57	PI 601779	1189910	PHM57	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHM81	ZmG_PHM81	1	1	PHM81	ZmG:PHM81	PI 548801	1443737	PHM81	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHMK0	ZmG_PHMK0	1	1	PHMK0	ZmG:PHMK0	PI 565108	1460079	PHMK0	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN11	ZmG_PHN11	1	1	PHN11	ZmG:PHN11	PI 601497	1178790	PHN11	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN18	ZmG_PHN18	1	1	PHN18	ZmG:PHN18	PI 559943	1454915	PHN18	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN29	ZmG_PHN29	1	1	PHN29	ZmG:PHN29	PI 601780	1189911	PHN29	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN34	ZmG_PHN34	1	1	PHN34	ZmG:PHN34	PI 543843	1438779	PHN34	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN41	ZmG_PHN41	1	1	PHN41	ZmG:PHN41	PI 565109	1460080	PHN41	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN46	ZmG_PHN46	1	1	PHN46	ZmG:PHN46	PI 543844	1438780	PHN46	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN47	ZmG_PHN47	1	1	PHN47	ZmG:PHN47	PI 601569	1185647	PHN47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN66	ZmG_PHN66	1	1	PHN66	ZmG:PHN66	PI 548802	1443738	PHN66	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHN73	ZmG_PHN73	1	1	PHN73	ZmG:PHN73	PI 601782	1189913	PHN73	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHN82	ZmG_PHN82	1	1	PHN82	ZmG:PHN82	PI 601783	1189914	PHN82	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHP02	ZmG_PHP02	1	1	PHP02	ZmG:PHP02	PI 601570	1185648	PHP02	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHP38	ZmG_PHP38	1	1	PHP38	ZmG:PHP38	PI 543845	1438781	PHP38	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHP55	ZmG_PHP55	1	1	PHP55	ZmG:PHP55	PI 601784	1189915	PHP55	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHP60	ZmG_PHP60	1	1	PHP60	ZmG:PHP60	PI 601785	1189916	PHP60	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHP76	ZmG_PHP76	1	1	PHP76	ZmG:PHP76	PI 543846	1438782	PHP76	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHP85	ZmG_PHP85	1	1	PHP85	ZmG:PHP85	PI 559944	1454916	PHP85	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHPR5	ZmG_PHPR5	1	1	PHPR5	ZmG:PHPR5	PI 559945	1454917	PHPR5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR03	ZmG_PHR03	1	1	PHR03	ZmG:PHR03	PI 548803	1443739	PHR03	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHR25	ZmG_PHR25	1	1	PHR25	ZmG:PHR25	PI 601469	1177913	PHR25	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR30	ZmG_PHR30	1	1	PHR30	ZmG:PHR30	PI 559946	1454918	PHR30	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR31	ZmG_PHR31	1	1	PHR31	ZmG:PHR31	PI 559947	1454919	PHR31	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR32	ZmG_PHR32	1	1	PHR32	ZmG:PHR32	PI 601571	1185649	PHR32	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHR36	ZmG_PHR36	1	1	PHR36	ZmG:PHR36	PI 601361	1173151	PHR36	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR47	ZmG_PHR47	1	1	PHR47	ZmG:PHR47	PI 601572	1185650	PHR47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR55	ZmG_PHR55	1	1	PHR55	ZmG:PHR55	PI 548804	1443740	PHR55	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR58	ZmG_PHR58	1	1	PHR58	ZmG:PHR58	PI 548805	1443741	PHR58	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR61	ZmG_PHR61	1	1	PHR61	ZmG:PHR61	PI 548806	1443742	PHR61	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR62	ZmG_PHR62	1	1	PHR62	ZmG:PHR62	PI 601786	1189917	PHR62	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHR63	ZmG_PHR63	1	1	PHR63	ZmG:PHR63	PI 601787	1189918	PHR63	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHRE1	ZmG_PHRE1	1	1	PHRE1	ZmG:PHRE1	PI 565110	1460081	PHRE1	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT10	ZmG_PHT10	1	1	PHT10	ZmG:PHT10	PI 601573	1185651	PHT10	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT11	ZmG_PHT11	1	1	PHT11	ZmG:PHT11	PI 548807	1443743	PHT11	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT22	ZmG_PHT22	1	1	PHT22	ZmG:PHT22	PI 601788	1189919	PHT22	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT47	ZmG_PHT47	1	1	PHT47	ZmG:PHT47	PI 559948	1454920	PHT47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT55	ZmG_PHT55	1	1	PHT55	ZmG:PHT55	PI 601498	1178791	PHT55	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT60	ZmG_PHT60	1	1	PHT60	ZmG:PHT60	PI 601574	1185652	PHT60	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PHT73	ZmG_PHT73	1	1	PHT73	ZmG:PHT73	PI 559950	1454922	PHT73	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHT77	ZmG_PHT77	1	1	PHT77	ZmG:PHT77	PI 601499	1178792	PHT77	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHTD5	ZmG_PHTD5	1	1	PHTD5	ZmG:PHTD5	PI 578035	1473006	PHTD5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHTE4	ZmG_PHTE4	1	1	PHTE4	ZmG:PHTE4	PI 578034	1473005	PHTE4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHTM9	ZmG_PHTM9	1	1	PHTM9	ZmG:PHTM9	PI 559951	1454923	PHTM9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV07	ZmG_PHV07	1	1	PHV07	ZmG:PHV07	PI 543847	1438783	PHV07	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV37	ZmG_PHV37	1	1	PHV37	ZmG:PHV37	PI 601789	1189920	PHV37	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV53	ZmG_PHV53	1	1	PHV53	ZmG:PHV53	PI 559952	1454924	PHV53	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV57	ZmG_PHV57	1	1	PHV57	ZmG:PHV57	PI 565111	1460082	PHV57	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV63	ZmG_PHV63	1	1	PHV63	ZmG:PHV63	PI 601500	1178795	PHV63	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHV78	ZmG_PHV78	1	1	PHV78	ZmG:PHV78	PI 601470	1177914	PHV78	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHVA9	ZmG_PHVA9	1	1	PHVA9	ZmG:PHVA9	PI 559953	1454925	PHVA9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHVJ4	ZmG_PHVJ4	1	1	PHVJ4	ZmG:PHVJ4	PI 565099	1460070	PHVJ4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW03	ZmG_PHW03	1	1	PHW03	ZmG:PHW03	PI 601790	1189921	PHW03	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW06	ZmG_PHW06	1	1	PHW06	ZmG:PHW06	PI 543848	1438784	PHW06	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW17	ZmG_PHW17	1	1	PHW17	ZmG:PHW17	PI 601362	1173152	PHW17	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW20	ZmG_PHW20	1	1	PHW20	ZmG:PHW20	PI 601791	1189922	PHW20	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW30	ZmG_PHW30	1	1	PHW30	ZmG:PHW30	PI 548808	1443744	PHW30	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW43	ZmG_PHW43	1	1	PHW43	ZmG:PHW43	PI 601792	1189923	PHW43	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW51	ZmG_PHW51	1	1	PHW51	ZmG:PHW51	PI 543849	1438785	PHW51	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW52	ZmG_PHW52	1	1	PHW52	ZmG:PHW52	PI 601575	1185653	PHW52	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW53	ZmG_PHW53	1	1	PHW53	ZmG:PHW53	PI 565112	1460083	PHW53	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW65	ZmG_PHW65	1	1	PHW65	ZmG:PHW65	PI 601501	1178796	PHW65	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW79	ZmG_PHW79	1	1	PHW79	ZmG:PHW79	PI 601576	1185654	PHW79	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW80	ZmG_PHW80	1	1	PHW80	ZmG:PHW80	PI 565113	1460084	PHW80	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHW86	ZmG_PHW86	1	1	PHW86	ZmG:PHW86	PI 543850	1438786	PHW86	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHWG5	ZmG_PHWG5	1	1	PHWG5	ZmG:PHWG5	PI 559954	1454926	PHWG5	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHWRZ	ZmG_PHWRZ	1	1	PHWRZ	ZmG:PHWRZ	PI 658504	1827392	PHWRZ	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PHZ51	ZmG_PHZ51	1	1	PHZ51	ZmG:PHZ51	PI 601322	1170383	PHZ51	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI343951	ZmG_C_PI343951	1	1	PLS14	ZmG:C_PI343951	PI 343951		PLS14	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_PA392	ZmG_PA392	1	1	Pa392	ZmG:PA392	PI 517968	1412904	Pa392	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PA405	ZmG_PA405	1	1	Pa405	ZmG:PA405	Ames 22757	1517111	Pa405	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_PA468	ZmG_PA468	1	1	Pa468	ZmG:PA468	PI 517971	1412907	Pa468	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PA762	ZmG_PA762	1	1	Pa762	ZmG:PA762	Ames 27184	1645561	Pa762	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_PA778	ZmG_PA778	1	1	Pa778	ZmG:PA778	PI 560081	1455053	Pa778	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PA875	ZmG_PA875	1	1	Pa875	ZmG:PA875	PI 693375	1645562	Pa875	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_PA880	ZmG_PA880	1	1	Pa880	ZmG:PA880	PI 517974	1412910	Pa880	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_PA891	ZmG_PA891	1	1	Pa891	ZmG:PA891	PI 531083	1426019	Pa891	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_PA91	ZmG_PA91	1	1	Pa91	ZmG:PA91	PI 587147	1082778	Pa91	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_Q381	ZmG_Q381	1	1	Q381	ZmG:Q381	PI 601190	1165733	Q381	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R101	ZmG_R101	1	1	R101	ZmG:R101	PI 693875	1101052	R101	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R113	ZmG_R113	1	1	R113	ZmG:R113	NSL 30883	1101067	R113	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R134	ZmG_R134	1	1	R134	ZmG:R134	NSL 30884	1101070	R134	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R168	ZmG_R168	1	1	R168	ZmG:R168	PI 693334	1082779	R168	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_R177	ZmG_R177	1	1	R177	ZmG:R177	PI 693399	1101103	R177	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_R181B	ZmG_R181B	1	1	R181B	ZmG:R181B	NSL 30896	1101109	R181B	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R197	ZmG_R197	1	1	R197	ZmG:R197	NSL 30902	1101127	R197	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R225	ZmG_R225	1	1	R225	ZmG:R225	PI 531509	1426445	R225	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R226	ZmG_R226	1	1	R226	ZmG:R226	PI 531510	1426446	R226	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R227	ZmG_R227	1	1	R227	ZmG:R227	PI 531511	1426447	R227	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R229	ZmG_R229	1	1	R229	ZmG:R229	PI 592734	1509812	R229	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_R30	ZmG_R30	1	1	R30	ZmG:R30	NSL 30868	1101020	R30	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_ILLINOISR4	ZmG_ILLINOISR4	1	1	R4	ZmG:ILLINOISR4	PI 151093	1888190	Illinois R 4	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_R53	ZmG_R53	1	1	R53	ZmG:R53	NSL 30869	1101023	R53	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R71	ZmG_R71	1	1	R71	ZmG:R71	NSL 30872	1101032	R71	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_R78	ZmG_R78	1	1	R78	ZmG:R78	NSL 30876	1101045	R78	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_RS710	ZmG_RS710	1	1	RS_710	ZmG:RS710	PI 539930	1434866	RS 710	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI535902	ZmG_C_PI535902	1	1	S25	ZmG:C_PI535902	PI 535902		S25	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_S8324	ZmG_S8324	1	1	S8324	ZmG:S8324	PI 601611	1186558	S8324	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_S8326	ZmG_S8326	1	1	S8326	ZmG:S8326	PI 601612	1186559	S8326	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SA24	ZmG_SA24	1	1	SA24	ZmG:SA24	PI 686065	1645565	SA24	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_SC213R	ZmG_SC213R	1	1	SC213R	ZmG:SC213R	NSL 53083	1108626	SC213R	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_SC357	ZmG_SC357	1	1	SC357	ZmG:SC357	PI 693400	1108637	SC357	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_SC55	ZmG_SC55	1	1	SC55	ZmG:SC55	PI 693376	1645566	SC55	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_C_PI484036	ZmG_C_PI484036	1	1	SCRO1	ZmG:C_PI484036	PI 484036		SCRO1	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_SD101	ZmG_SD101	1	1	SD101	ZmG:SD101	PI 533658	1428594	SD101	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SD102	ZmG_SD102	1	1	SD102	ZmG:SD102	PI 533659	1428595	SD102	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SD107	ZmG_SD107	1	1	SD107	ZmG:SD107	PI 538243	1433179	SD107	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SD15	ZmG_SD15	1	1	SD15	ZmG:SD15	NSL 34374	1104060	SD15	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SD40	ZmG_SD40	1	1	SD40	ZmG:SD40	PI 606768	1071153	SD40	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_SD42	ZmG_SD42	1	1	SD42	ZmG:SD42	PI 508277	1403213	SD42	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SD44	ZmG_SD44	1	1	SD44	ZmG:SD44	PI 524969	1419905	SD44	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_SG30A	ZmG_SG30A	1	1	SG_30A	ZmG:SG30A	PI 686067	1117150	SG 30A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_S56	ZmG_S56	1	1	S_56	ZmG:S56	PI 535906	1430842	S 56	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SEAGULLSEVENTEEN	ZmG_SEAGULLSEVENTEEN	1	1	Seagull_Seventeen	ZmG:SEAGULLSEVENTEEN	PI 600751	1129750	Seagull Seventeen	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_SG1533	ZmG_SG1533	1	1	Sg_1533	ZmG:SG1533	PI 587132	1084097	Sg 1533	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_SG18	ZmG_SG18	1	1	Sg_18	ZmG:SG18	PI 686066	1117149	SG 18	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_T141	ZmG_T141	1	1	T141	ZmG:T141	PI 340827	1254132	T141	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_T146	ZmG_T146	1	1	T146	ZmG:T146	PI 340829	1254134	T146	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_T232	ZmG_T232	1	1	T232	ZmG:T232	PI 550522	1445458	T232	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_T234	ZmG_T234	1	1	T234	ZmG:T234	PI 693377	1645567	T234	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_T242	ZmG_T242	1	1	T242	ZmG:T242	PI 340830	1254135	T242	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_T8	ZmG_T8	1	1	T8	ZmG:T8	PI 550518	1445454	T8	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_T9	ZmG_T9	1	1	T9	ZmG:T9	PI 340819	1254124	T9	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_Ames28404	ZmG_C_Ames28404	1	1	TIL10	ZmG:C_Ames28404	Ames 28404		TIL10	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28405	ZmG_C_Ames28405	1	1	TIL11	ZmG:C_Ames28405	Ames 28405		TIL11	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28406	ZmG_C_Ames28406	1	1	TIL14	ZmG:C_Ames28406	Ames 28406		TIL14	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28407	ZmG_C_Ames28407	1	1	TIL15	ZmG:C_Ames28407	Ames 28407		TIL15	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28408	ZmG_C_Ames28408	1	1	TIL16	ZmG:C_Ames28408	Ames 28408		TIL16	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28409	ZmG_C_Ames28409	1	1	TIL17	ZmG:C_Ames28409	Ames 28409		TIL17	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_C_Ames28398	ZmG_C_Ames28398	1	1	TIL25	ZmG:C_Ames28398	Ames 28398		TIL25	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_TZUCHIAOHSIWU105	ZmG_TZUCHIAOHSIWU105	1	1	TZU-CHIAO-HSI-WU_105	ZmG:TZUCHIAOHSIWU105	PI 391678	1294122	TZU-CHIAO-HSI-WU 105	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_TR	ZmG_TR	1	1	Tr	ZmG:TR	Ames 26022	1597265	Tr	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_TX303	ZmG_TX303	1	1	Tx303	ZmG:TX303	PI 690334	1082780	Tx303	A_panel_in_our_5to30x_selection	high	True	True	True	NAM	TX303	False
+ZmG_TX601	ZmG_TX601	1	1	Tx601	ZmG:TX601	PI 693341	1517122	Tx601	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_TZI10	ZmG_TZI10	1	1	Tzi10	ZmG:TZI10	PI 506248	1401184	Tzi 10	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_TZI11	ZmG_TZI11	1	1	Tzi11	ZmG:TZI11	PI 540745	1435681	Tzi 11	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_TZI16	ZmG_TZI16	1	1	Tzi16	ZmG:TZI16	PI 540747	1435683	Tzi 16	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_TZI18	ZmG_TZI18	1	1	Tzi18	ZmG:TZI18	PI 506253	1401189	Tzi 18	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_TZI25	ZmG_TZI25	1	1	Tzi25	ZmG:TZI25	PI 506255	1401191	Tzi 25	A_panel_in_our_5to30x_selection	high	False	True	False	Ames282		False
+ZmG_TZI8	ZmG_TZI8	1	1	Tzi8	ZmG:TZI8	PI 506246	1401182	Tzi 8	A_panel_in_our_5to30x_selection	high	True	True	False	NAM	TZI8	False
+ZmG_TZI9	ZmG_TZI9	1	1	Tzi9	ZmG:TZI9	PI 506247	1401183	Tzi 9	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
+ZmG_U267Y	ZmG_U267Y	1	1	U267Y	ZmG:U267Y	PI 693378	1645568	U267Y	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_U123	ZmG_U123	1	1	U_123	ZmG:U123	PI 369446	1276874	U 123	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_VA102	ZmG_VA102	1	1	Va102	ZmG:VA102	PI 587151	1084231	Va102	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VA14	ZmG_VA14	1	1	Va14	ZmG:VA14	PI 693379	1645569	Va14	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_VA17	ZmG_VA17	1	1	Va17	ZmG:VA17	PI 693325	1082222	Va17	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VA22	ZmG_VA22	1	1	Va22	ZmG:VA22	PI 693335	1082783	Va22	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_VA26	ZmG_VA26	1	1	Va26	ZmG:VA26	PI 587149	1082784	Va26	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VA35	ZmG_VA35	1	1	Va35	ZmG:VA35	PI 587150	1084340	Va35	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VA38	ZmG_VA38	1	1	Va38	ZmG:VA38	Ames 19011	1082239	Va38	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_VA52	ZmG_VA52	1	1	Va52	ZmG:VA52	Ames 19014	1082246	Va52	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_VA59	ZmG_VA59	1	1	Va59	ZmG:VA59	PI 693326	1082250	Va59	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VA85	ZmG_VA85	1	1	Va85	ZmG:VA85	PI 693380	1645570	Va85	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_VA99	ZmG_VA99	1	1	Va99	ZmG:VA99	PI 693346	1571892	Va99	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_VAW6	ZmG_VAW6	1	1	VaW6	ZmG:VAW6	PI 693324	1082220	VaW6	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI587153	ZmG_C_PI587153	1	1	W117	ZmG:C_PI587153	PI 587153		W117	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_W117HT	ZmG_W117HT	1	1	W117HT	ZmG:W117HT	PI 693322	1043541	W117HT	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_W153R	ZmG_W153R	1	1	W153R	ZmG:W153R	PI 587154	1084221	W153R	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_W182B	ZmG_W182B	1	1	W182B	ZmG:W182B	PI 693336	1082786	W182B Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
+ZmG_W182BN	ZmG_W182BN	1	1	W182BN	ZmG:W182BN	PI 587155	1084223	W182BN	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W182E	ZmG_W182E	1	1	W182E	ZmG:W182E	NSL 30074	1099040	W182E	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W22	ZmG_W22	1	1	W22	ZmG:W22	PI 693394	1939961	W22 Goodman-Buckler	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_W23	ZmG_W23	1	1	W23	ZmG:W23	NSL 30060	1098998	W23	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W24	ZmG_W24	1	1	W24	ZmG:W24	NSL 30064	1099010	W24	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W32	ZmG_W32	1	1	W32	ZmG:W32	NSL 30071	1099034	W32	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W37A	ZmG_W37A	1	1	W37A	ZmG:W37A	NSL 30073	1099039	W37A	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W552	ZmG_W552	1	1	W552	ZmG:W552	PI 520770	1415706	W552	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W601S	ZmG_W601S	1	1	W601S	ZmG:W601S	Ames 30553	1843115	W601S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W602S	ZmG_W602S	1	1	W602S	ZmG:W602S	Ames 30554	1843116	W602S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W603S	ZmG_W603S	1	1	W603S	ZmG:W603S	Ames 30555	1843117	W603S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W604S	ZmG_W604S	1	1	W604S	ZmG:W604S	Ames 30556	1843118	W604S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W605S	ZmG_W605S	1	1	W605S	ZmG:W605S	Ames 30557	1843119	W605S	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W64A	ZmG_W64A	1	1	W64A	ZmG:W64A	PI 587152	1082714	W64A	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_W703	ZmG_W703	1	1	W703	ZmG:W703	NSL 30056	1098986	W703	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W802G	ZmG_W802G	1	1	W802G	ZmG:W802G	Ames 30559	1843120	W802G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W803G	ZmG_W803G	1	1	W803G	ZmG:W803G	Ames 30560	1843121	W803G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W809G	ZmG_W809G	1	1	W809G	ZmG:W809G	Ames 30566	1843126	W809G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W810G	ZmG_W810G	1	1	W810G	ZmG:W810G	Ames 30567	1843127	W810G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W811G	ZmG_W811G	1	1	W811G	ZmG:W811G	Ames 30568	1843128	W811G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W812G	ZmG_W812G	1	1	W812G	ZmG:W812G	Ames 30569	1843129	W812G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W813G	ZmG_W813G	1	1	W813G	ZmG:W813G	Ames 30570	1843130	W813G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W814G	ZmG_W814G	1	1	W814G	ZmG:W814G	Ames 30571	1843131	W814G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W815G	ZmG_W815G	1	1	W815G	ZmG:W815G	Ames 30572	1843132	W815G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W816G	ZmG_W816G	1	1	W816G	ZmG:W816G	Ames 30573	1843133	W816G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W817G	ZmG_W817G	1	1	W817G	ZmG:W817G	Ames 30574	1843134	W817G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W818G	ZmG_W818G	1	1	W818G	ZmG:W818G	Ames 30575	1843135	W818G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W821G	ZmG_W821G	1	1	W821G	ZmG:W821G	Ames 30578	1843217	W821G	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W8304	ZmG_W8304	1	1	W8304	ZmG:W8304	PI 601502	1178797	W8304	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W8555	ZmG_W8555	1	1	W8555	ZmG:W8555	PI 601729	1188100	W8555	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_W9	ZmG_W9	1	1	W9	ZmG:W9	NSL 30065	1099016	W9	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_WIL500	ZmG_WIL500	1	1	WIL500	ZmG:WIL500	PI 601689	1187943	WIL500	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WIL900	ZmG_WIL900	1	1	WIL900	ZmG:WIL900	PI 601684	1187927	WIL900	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WIL901	ZmG_WIL901	1	1	WIL901	ZmG:WIL901	PI 601685	1187928	WIL901	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WIL903	ZmG_WIL903	1	1	WIL903	ZmG:WIL903	PI 601686	1187929	WIL903	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_Ames28183	ZmG_C_Ames28183	1	1	WJ	ZmG:C_Ames28183	Ames 28183		WJ	C_other_GRIN_accession	medium_reviewed	False	False	False	Other GRIN		False
+ZmG_WR3	ZmG_WR3	1	1	WR3	ZmG:WR3	NSL 30066	1099017	WR3	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WUTANTZAO	ZmG_WUTANTZAO	1	1	WU-TAN-TZAO	ZmG:WUTANTZAO	PI 391680	1294124	WU-TAN-TZAO	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WXB6	ZmG_WXB6	1	1	WXB6	ZmG:WXB6	Ames 26745	1633295	WXB6	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_WF9	ZmG_WF9	1	1	Wf9	ZmG:WF9	PI 146374	1879515	Wf9	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI442884	ZmG_C_PI442884	1	1	Wu105	ZmG:C_PI442884	PI 442884		WU105	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_YANG	ZmG_YANG	1	1	YANG	ZmG:YANG	PI 391672	1294116	YANG	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_YECHIHUNG	ZmG_YECHIHUNG	1	1	YE-CHI-HUNG	ZmG:YECHIHUNG	PI 391682	1294126	YE-CHI-HUNG	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_YELLOW34	ZmG_YELLOW34	1	1	YELLOW_3-4	ZmG:YELLOW34	Ames 2331	1019696	Yellow 3-4	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_YE4	ZmG_YE4	1	1	YE_4	ZmG:YE4	Ames 2335	1019728	Ye 4	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_YING55	ZmG_YING55	1	1	YING-55	ZmG:YING55	PI 391665	1294109	YING-55	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_YONG28	ZmG_YONG28	1	1	YONG28	ZmG:YONG28	Ames 2333	1019711	Yong 28	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_YU796NS	ZmG_YU796NS	1	1	YU796NS	ZmG:YU796NS	Ames 27196	1645573	Yu796_NS	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
+ZmG_C_PI391666	ZmG_C_PI391666	1	1	Ying64	ZmG:C_PI391666	PI 391666		YING64	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_ZS01250	ZmG_ZS01250	1	1	ZS01250	ZmG:ZS01250	PI 595616	1529185	ZS01250	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ZS1791	ZmG_ZS1791	1	1	ZS1791	ZmG:ZS1791	PI 591619	1497396	ZS1791	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ZS365	ZmG_ZS365	1	1	ZS365	ZmG:ZS365	PI 574393	1469364	ZS365	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_ZS635	ZmG_ZS635	1	1	ZS635	ZmG:ZS635	PI 574394	1469365	ZS635	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_C_PI452256	ZmG_C_PI452256	1	1	Zi330	ZmG:C_PI452256	PI 452256		ZI330	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
+ZmG_CML312	ZmG_CML312	1	1	ZmG_CML312	ZmG:CML312	Ames 34378	1976077	CML 312	E_called_separately	t0_primary	False	False	True	WiDiv		False
+ZmG_CML451	ZmG_CML451	1	1	ZmG_CML451	ZmG:CML451	Ames 34386	1976085	CML 451	E_called_separately	t0_primary	False	False	True	WiDiv		False
+ZmG_R109B	ZmG_R109B	1	1	ZmG_R109B	ZmG:R109B	NSL 30881	1101061	R109B	E_called_separately	t0_primary	False	True	False	Ames282		False
+ZmG_PHT69	ZmG_PHT69	1	1	ZmG_PHT69	ZmG:PHT69	PI 559949	1454921	PHT69	E_called_separately	t0_primary	False	False	True	WiDiv		False
+ZmG_CML144	ZmG_CML144	1	1	ZmG_CML144	ZmG:CML144	PI 690587	1918521	CML 144	E_called_separately	t0_primary	False	False	True	WiDiv		False
+ZmG_CM174	ZmG_CM174	1	1	ZmG_CM174	ZmG:CM174	PI 693332	1082768	CM174	E_called_separately	t0_primary	False	True	False	Ames282		False
+ZmG_CML103	ZmG_CML103	1	1	ZmG_CML103	ZmG:CML103	PI 690319	1645471	CML 103	E_called_separately	t0_primary	True	True	False	NAM	CML103	False
