@@ -2,7 +2,7 @@
  "format": "snptools-siteqc-summary-1",
  "family": "zmgrin2026",
  "release": "zmgrin2026 v1.4",
- "built": "2026-10-03",
+ "built": "2026-10-05",
  "rule": "First match wins. NO_CARRIER: NHET+NHOM = 0; HET_ONLY: NHOM = 0; HET_EXCESS: NHET > NHOM; HET_ELEVATED: 4*NHET >= NHET+NHOM; PASS: everything else. Usable = PASS or HET_ELEVATED; flagged = HET_ONLY or HET_EXCESS.",
  "codes": [
   "NO_CARRIER",
@@ -142,61 +142,61 @@
  "stores": {
   "chr1": {
    "store": "zmgrin2026_chr1_impute.h5",
-   "store_bytes": 2558995184,
+   "store_bytes": 2844251469,
    "sidecar": "zmgrin2026_chr1_impute.siteqc.h5",
    "sidecar_bytes": 26072837
   },
   "chr2": {
    "store": "zmgrin2026_chr2_impute.h5",
-   "store_bytes": 2003300023,
+   "store_bytes": 2224720959,
    "sidecar": "zmgrin2026_chr2_impute.siteqc.h5",
    "sidecar_bytes": 20357750
   },
   "chr3": {
    "store": "zmgrin2026_chr3_impute.h5",
-   "store_bytes": 1977489097,
+   "store_bytes": 2199981062,
    "sidecar": "zmgrin2026_chr3_impute.siteqc.h5",
    "sidecar_bytes": 20184305
   },
   "chr4": {
    "store": "zmgrin2026_chr4_impute.h5",
-   "store_bytes": 2164706998,
+   "store_bytes": 2415571859,
    "sidecar": "zmgrin2026_chr4_impute.siteqc.h5",
    "sidecar_bytes": 22105952
   },
   "chr5": {
    "store": "zmgrin2026_chr5_impute.h5",
-   "store_bytes": 1803775580,
+   "store_bytes": 2007630539,
    "sidecar": "zmgrin2026_chr5_impute.siteqc.h5",
    "sidecar_bytes": 18384759
   },
   "chr6": {
    "store": "zmgrin2026_chr6_impute.h5",
-   "store_bytes": 1378182299,
+   "store_bytes": 1533469525,
    "sidecar": "zmgrin2026_chr6_impute.siteqc.h5",
    "sidecar_bytes": 14147568
   },
   "chr7": {
    "store": "zmgrin2026_chr7_impute.h5",
-   "store_bytes": 1488043266,
+   "store_bytes": 1655296430,
    "sidecar": "zmgrin2026_chr7_impute.siteqc.h5",
    "sidecar_bytes": 15121668
   },
   "chr8": {
    "store": "zmgrin2026_chr8_impute.h5",
-   "store_bytes": 1482480470,
+   "store_bytes": 1648443283,
    "sidecar": "zmgrin2026_chr8_impute.siteqc.h5",
    "sidecar_bytes": 15194016
   },
   "chr9": {
    "store": "zmgrin2026_chr9_impute.h5",
-   "store_bytes": 1375489435,
+   "store_bytes": 1529072993,
    "sidecar": "zmgrin2026_chr9_impute.siteqc.h5",
    "sidecar_bytes": 13985476
   },
   "chr10": {
    "store": "zmgrin2026_chr10_impute.h5",
-   "store_bytes": 1283374781,
+   "store_bytes": 1429747295,
    "sidecar": "zmgrin2026_chr10_impute.siteqc.h5",
    "sidecar_bytes": 13215268
   }

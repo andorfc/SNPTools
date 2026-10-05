@@ -30,7 +30,7 @@ schnable2023 and MaizeGDB 2026 stores carry):
                                  SNPVersity displays).
 
   plantcad1_score, plantcad2_score, evo2_score   optional (--dna-scores): the grz2023 Atlas
-                                 PlantCAD1/PlantCAD2 (all SNPs) and Evo2 (genic +/-1 kb subset)
+                                 PlantCAD1/PlantCAD2 and Evo2 (all SNPs since release v1.4.2)
                                  tables, joined on CHROM/POS/REF/ALT; indels get none.
   ESMC_score                     llr_esmc from the same missense table, 1 decimal.
 
@@ -78,7 +78,7 @@ HEADER = [
 DNA_HEADER = [
     '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
     '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
-    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), genic +/-1 kb SNP subset only (--dna-scores), rounded to 1 decimal (--pc-decimals)">',
+    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), all SNPs (genic tiers and intergenic; release v1.4.2) (--dna-scores), rounded to 1 decimal (--pc-decimals)">',
 ]
 MAXR2_HEADER = '##INFO=<ID=MAXR2,Number=1,Type=Float,Description="Highest pairwise LD r2 (PLINK 1.9 --r2) with any variant 400-5,000 bp away, from the 933 release v1.4 genotypes, no MAF/missingness filtering (--maxr2)">'
 

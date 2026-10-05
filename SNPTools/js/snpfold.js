@@ -1683,7 +1683,7 @@
     esm:'ESM protein language-model score for the substitution.',
     esm2:'ESM2 protein language-model score.',
     esm3:'ESM3 protein language-model score.',
-    evo2:'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene.',
+    evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
     esmc:'ESM-C protein language-model score for the substitution.',
     disorder:'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).',
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',

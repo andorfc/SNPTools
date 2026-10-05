@@ -24,14 +24,20 @@ Versions used here: PHP 8.5.9 (CLI built-in server), Python 3.12 + h5py + numpy,
 
 ## 2. Variant stores
 
-**All ten chromosomes (2026-10-02).** `hdf5/version3/zmgrin2026_chr{1..10}_impute.h5` are the full
-release v1.4 builds: 46,054,265 sites x 933 samples in all (chr1 6,706,560; chr2 5,179,690; chr3
+**All ten chromosomes (release v1.4.2 builds, installed 2026-10-04).**
+`hdf5/version3/zmgrin2026_chr{1..10}_impute.h5` are the full builds of the v1.4.2 annotation update
+(the lines, sites and genotypes of release v1.4, unchanged): 46,054,265 sites x 933 samples in all
+(chr1 6,706,560; chr2 5,179,690; chr3
 5,192,152; chr4 5,793,751; chr5 4,774,127; chr6 3,625,217; chr7 3,893,628; chr8 3,886,650; chr9
-3,589,160; chr10 3,413,330), 1.3-2.6 GB each, with INFO for SnpEff fields, MAF, MAXR2,
-PlantCAD1/PlantCAD2 and Evo2 rounded to 0.1, ESM1/2/3 and ESM-C on every chromosome. Every region
-works. chr2 is the Ceres build copied on 2026-09-30 from
-`/90daydata/maizegdb/carson/grz2023/snptools_build/chr2/` (md5 9b8a52df8d08df7a875f3c84f4bf7d3b, as in
-its `logs/MD5SUMS.txt`). The earlier test stores are kept beside them as
+3,589,160; chr10 3,413,330), 1.4-2.8 GB each, with INFO for SnpEff fields, MAF, MAXR2,
+PlantCAD1/PlantCAD2 and Evo2 rounded to 0.1 (every SNP: 43,296,332 sites), ESM1/2/3 and ESM-C, and
+the site-QC fields NHET, NHOM and SITEQC on every row, on every chromosome. Every region
+works. They are the Ceres builds of
+`/90daydata/maizegdb/carson/grz2023/snptools_build_v1.4.2/chr<N>/` (each md5 as in its
+`logs/MD5SUMS.txt`; chr2 cca26c2cc96bfc90e0c4ecf05d21deb0). They replaced the release v1.4 builds
+installed by 2026-10-02, in which Evo2 covered the SNPs within 1 kb of a gene and INFO had no
+site-QC fields (chr2: `grz2023/snptools_build/chr2/`, md5 9b8a52df8d08df7a875f3c84f4bf7d3b). The
+earlier test stores are kept beside them as
 `zmgrin2026_<chr>_impute.testregions.h5` (chr2's as `.demo.h5`); the app does not read them.
 
 **Without the full stores**, `make local-store PYTHON_PATH=$PYTHON_PATH` builds small test stores
@@ -58,6 +64,10 @@ all 933 lines, whatever lines were selected) and `SITEQC`; the pages do not show
 server with `SNPTOOLS_SITEQC=0 make start` to build VCFs without them, exactly as before. Cost,
 measured on this Mac for all 933 lines: a gene (su1, 208 sites) 0.45 s either way, chr10:96-97 Mb
 0.81 -> 0.82 s, peak footprint 0.33 GB; a whole chromosome for five lines 13.8 -> 15.3 s.
+The v1.4.2 stores carry the three fields in their own INFO: `h5_to_vcf.py` writes those rows as
+stored, the sidecar adds nothing to them (`make curate` and the summary still read it), and
+`SNPTOOLS_SITEQC=0` takes the stored fields out of every row and their three `##INFO` lines out of
+the header (all of chr10 for five lines: 15.9 s as stored, 17.4 s with the switch).
 
 **Genome-wide IBS for SNPCompare / SNPTree (GRIN-linked set).** Copy the Ceres matrices to
 `distance/zmgrin2026/` (similarity.csv, missing_pct.csv, similarity_snp.csv, missing_pct_snp.csv,
@@ -159,9 +169,10 @@ are left out for this set (patch 0030; status 'hidden' in `Data.annotationFields
 Grzybowski et al. 2023 call set records no per-site MQ or coverage. Filled: Gene model, Effect, SNPEff
 Impact (SnpEff 5.2a fields of the MaizeGDB Schnable scored VCFs), MAF (from the 933 release
 genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_store_score`).
-Evo2 (INFO `evo2_score`: SNPs within 1 kb of a gene) and ESM-C (`ESMC_score`: missense) are
+Evo2 (INFO `evo2_score`: every SNP in the v1.4.2 stores; the SNPs within 1 kb of a gene before
+them) and ESM-C (`ESMC_score`: missense) are
 columns after PlantCAD2 and ESM3 (patch 0033), filled on every chromosome (chr2 GWAS window:
-120 and 10 of 249 sites). SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
+158 and 10 of 249 sites; Evo2 on 120 before v1.4.2). SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
 them beside PlantCAD and ESM (patches 0036-0037), empty where the store has no score
 (Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
 Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
@@ -170,8 +181,8 @@ chromosome (46,930 of chr2's 5,179,690 sites fall in one). On the fixture sites 
 with the protein-coordinate domains (`domains.by_gene.json`) on 232 of 237 coding sites; the other 5
 lie 1-4 residues from a domain edge (residue numbering of another isoform, or the edge codon).
 maxR² (highest PLINK 1.9 r² with any variant 400-5,000 bp away, from the 933 release genotypes, no
-filtering; blank = no partner variant in range or monomorphic), PlantCAD1/PlantCAD2 (SNPs; indels
-read N/A) and Evo2 are filled on every chromosome (chr2 GWAS window: maxR² on 233 of 249 sites);
+filtering; blank = no partner variant in range or monomorphic), PlantCAD1/PlantCAD2 and Evo2 (SNPs;
+indels read N/A) are filled on every chromosome (chr2 GWAS window: maxR² on 233 of 249 sites);
 PlantCAD and Evo2 are rounded to 0.1 like the ESM scores. Since patch 0040 no column of this set is
 'pending' (`Data.annotationFields`); the pending mechanism stays for a set whose scores arrive
 chromosome by chromosome (a dashed header and a note above the table).
@@ -191,7 +202,8 @@ chromosome by chromosome (a dashed header and a note above the table).
    `window.SNPTOOLS_MAIZEGDB_BASE` before `js/snpfunction-ontology.js` loads to read another
    MaizeGDB host. Offline, or if MaizeGDB fails, the card says so and the old GO/KEGG lists from
    `data/function/annotations/` are shown instead.
-8. **Site QC** (needs the sidecars, `make site-qc`): in SNPVersity query su1, `Zm00001eb174590`
+8. **Site QC** (from the fields in the v1.4.2 stores' own INFO; a store without them needs its
+   sidecar, `make site-qc`): in SNPVersity query su1, `Zm00001eb174590`
    (chr4:43,430,007-43,438,753), with the NAM lines. The *Site QC* column follows MAF; the line under
    the filters reads "14 flagged, 104 with no carrier in this release, of 208 sites", and the *Site
    QC* filter leaves 90 rows (hide flagged and no-carrier) or 84 (passing only). *Send to SNPImpact*:

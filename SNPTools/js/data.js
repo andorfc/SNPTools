@@ -98,7 +98,7 @@ const Data = (function () {
       esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
       esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
       esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
-      evo2: {status:'ok', note:'Evo2 7B log-likelihood ratio (256-bp left context), SNPs within 1 kb of a gene only, rounded to 0.1.'},
+      evo2: {status:'ok', note:'Evo2 7B log-likelihood ratio (256-bp left context), every SNP, rounded to 0.1.'},
       esmc: {status:'ok', note:'ESM C 600M log-likelihood ratio, missense variants only.'},
       maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
       qc:   {status:'auto', note:'Heterozygous and homozygous carriers among all 933 lines (tools/build_site_qc.py sidecars).'},
@@ -181,7 +181,7 @@ const Data = (function () {
     return [
       {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE; 0.1 steps in the GRIN-linked 2026 set).'},
       {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score; 0.1 steps in the GRIN-linked 2026 set).'},
-      {key:'evo2', kind:'dna',     label:'Evo2',      tip:'Evo2 7B DNA language-model log-likelihood ratio (INFO evo2_score; SNPs within 1 kb of a gene; 0.1 steps).'},
+      {key:'evo2', kind:'dna',     label:'Evo2',      tip:'Evo2 7B DNA language-model log-likelihood ratio (INFO evo2_score; every SNP; 0.1 steps).'},
       {key:'esm1', kind:'protein', label:'ESM1',      tip:'ESM1b protein language-model score (INFO ESM1_score, or AA_SCORE).'},
       {key:'esm2', kind:'protein', label:'ESM2',      tip:'ESM2 protein language-model score (INFO ESM2_score).'},
       {key:'esm3', kind:'protein', label:'ESM3',      tip:'ESM3 protein language-model score (INFO ESM3_score).'},
@@ -389,8 +389,9 @@ const Data = (function () {
   }
 
   /* ---- Site QC ----
-     A store with a site-QC sidecar gives every variant NHET and NHOM, its heterozygous and
-     homozygous-alternate carriers among ALL the release's lines, and SITEQC (h5_to_vcf.py). The
+     A store that carries them in its INFO (release v1.4.2) or has a site-QC sidecar gives every
+     variant NHET and NHOM, its heterozygous and homozygous-alternate carriers among ALL the
+     release's lines, and SITEQC (h5_to_vcf.py). The
      class comes from the two counts by one rule, first match wins; the same rule is
      site_qc_codes in tools/build_site_qc.py and h5_to_vcf.py and site_qc in
      tools/annotate_release_info.py. Usable = PASS or HET_ELEVATED (or no class at all);
@@ -572,7 +573,7 @@ const Data = (function () {
         // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
         pc1:    numOrNull(II.plantcad1_score != null ? II.plantcad1_score : II.DNA_SCORE),
         pc2:    numOrNull(II.plantcad2_score),
-        evo2:   numOrNull(II.evo2_score != null ? II.evo2_score : II.EVO2_score),   // genic +/-1 kb SNPs only
+        evo2:   numOrNull(II.evo2_score != null ? II.evo2_score : II.EVO2_score),   // every SNP (release v1.4.2)
         esm1:   numOrNull(II.ESM1_score != null ? II.ESM1_score : II.AA_SCORE),
         esm2:   numOrNull(II.ESM2_score),
         esm3:   numOrNull(II.ESM3_score),

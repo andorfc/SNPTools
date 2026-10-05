@@ -1110,7 +1110,7 @@ const ANNOT_TT={
   qc:'Site QC — the class of the site from its heterozygous and homozygous carriers among all lines of the release. Pass: fewer than a quarter of carriers heterozygous. Het elevated: a quarter or more. Het excess: more heterozygous than homozygous carriers. Het only: no homozygous carrier. No carrier: no line carries the allele. Hover a cell for its counts.',
   pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
   pc2:'Second-generation PlantCAD DNA score.',
-  evo2:'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene; more negative is more disruptive.',
+  evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP; more negative is more disruptive.',
   esm1:'ESM protein language-model score for the amino-acid change.',
   esm2:'ESM2 protein language-model score.',
   esm3:'ESM3 protein language-model score.',

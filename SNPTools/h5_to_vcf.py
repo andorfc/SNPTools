@@ -25,8 +25,11 @@ heterozygous and homozygous-alternate carriers among ALL the release's samples
 (not the requested ones) and the class derived from them. The sidecar is used
 only while its site count and recorded store size match the store; otherwise a
 "Note:" line says so and the VCF is written without the three fields.
-SNPTOOLS_SITEQC=0 turns the merge off. Rows whose stored INFO already has
-SITEQC= (stores built from release VCFs annotated with the counts) are left alone.
+Rows whose stored INFO already has SITEQC= (stores built from release VCFs
+annotated with the counts, as the release v1.4.2 stores are) are left alone.
+SNPTOOLS_SITEQC=0 writes the VCF without the three fields, whatever their
+source: the merge is off, the fields a store carries itself are taken out of
+its rows, and the header has no ##INFO line for them.
 
 Memory is bounded by a block of rows, not by the request: the fixed columns
 and the genotypes are read one block at a time (blocks aligned to the
@@ -44,6 +47,7 @@ the message on.
 import gzip
 import h5py
 import os
+import re
 import sys
 import json
 import datetime
@@ -151,6 +155,8 @@ fixed_dsets = {c: hdf5_file[c] for c in FIXED_COLS}
 # ---------------------------------------------------------------------------
 SITEQC_NAMES = ['NO_CARRIER', 'HET_ONLY', 'HET_EXCESS', 'HET_ELEVATED', 'PASS']
 SITEQC_BYTES = np.array([n.encode() for n in SITEQC_NAMES])
+# SNPTOOLS_SITEQC=0: the VCF is written without NHET, NHOM and SITEQC, whatever their source
+SITEQC_OFF = (os.environ.get('SNPTOOLS_SITEQC') or '').strip() == '0'
 
 
 def site_qc_codes(het, hom):            # numpy integer arrays -> int8 codes 0..4
@@ -169,7 +175,7 @@ def site_qc_codes(het, hom):            # numpy integer arrays -> int8 codes 0..
 def open_site_qc():
     """(NHET, NHOM) datasets of the store's sidecar, or None: merge off, no sidecar, or one that
     no longer matches the store (each but the first says so on a Note: line)."""
-    if (os.environ.get('SNPTOOLS_SITEQC') or '').strip() == '0':
+    if SITEQC_OFF:
         return None
     path = (hdf5_file_path[:-3] if hdf5_file_path.endswith('.h5') else hdf5_file_path) + '.siteqc.h5'
     name = os.path.basename(path)
@@ -199,7 +205,7 @@ def stored_site_qc():
     return (b'SITEQC=' in v) if isinstance(v, bytes) else ('SITEQC=' in str(v))
 
 
-QC_HEADER = qc_dsets is not None or stored_site_qc()
+QC_HEADER = not SITEQC_OFF and (qc_dsets is not None or stored_site_qc())
 
 
 # The suffix text per count, built once: two lookups and two adds per chunk instead of
@@ -220,6 +226,35 @@ def with_site_qc(info, het, hom):
     native = np.char.find(info, b'SITEQC=') >= 0
     if native.any():
         out[native] = info[native]
+    return out
+
+
+# SNPTOOLS_SITEQC=0 on a store that carries the three fields itself: they are taken out of each
+# INFO, every other key and every row without them stays as stored, and an INFO that held nothing
+# else becomes '.'. QC_RUN is the layout the builders write, the three after the other keys
+# (...;NHET=<n>;NHOM=<n>;SITEQC=<CLASS>); its literal start keeps the search fast.
+QC_ITEMS = (b'NHET=', b'NHOM=', b'SITEQC=')
+QC_RUN = re.compile(rb';NHET=[^;\n]*(?:;(?:NHET|NHOM|SITEQC)=[^;\n]*)*')
+
+
+def has_site_qc(text):
+    return b'NHET=' in text or b'NHOM=' in text or b'SITEQC=' in text
+
+
+def without_site_qc(info):
+    """INFO values without NHET, NHOM and SITEQC. The chunk is joined by newlines (an INFO holds
+    none) and the builders' layout is removed in one pass over the text; a row that keeps one of
+    the three after that (the fields first, alone or apart) is rewritten item by item."""
+    blob = b'\n'.join(info.tolist())
+    if not has_site_qc(blob):
+        return info
+    blob = QC_RUN.sub(b'', blob)
+    rows = blob.split(b'\n')
+    if has_site_qc(blob):
+        rows = [b';'.join(kv for kv in v.split(b';') if not kv.startswith(QC_ITEMS)) if has_site_qc(v) else v
+                for v in rows]
+    out = np.array(rows, dtype=info.dtype)
+    out[(out == b'') & (info != b'')] = b'.'
     return out
 
 # Rows per read block: whole store chunks (65,536 rows in the vcf_to_h5.py stores), as many
@@ -349,6 +384,8 @@ with _open(output_vcf_path, 'wb') as vcf_file:
             fc = {c: as_bytes_col(v[a:b]) for c, v in fixed_cols.items()}
             if qc_counts is not None:
                 fc['INFO'] = with_site_qc(fc['INFO'], qc_counts[0][a:b], qc_counts[1][a:b])
+            elif SITEQC_OFF:
+                fc['INFO'] = without_site_qc(fc['INFO'])
             line = fc['CHROM']
             for col in (fc['POS'], ID_COL[:m], fc['REF'], fc['ALT'], fc['QUAL'], FILTER_COL[:m],
                         fc['INFO'], FORMAT_COL[:m]):

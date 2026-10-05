@@ -137,9 +137,15 @@ Datasets are defined in `js/data.js` (`DATASETS`); `processForm.php` maps each i
 | `zmgrin2026_imp` | MaizeGDB GRIN-linked 2026 (release v1.4) | 933 | 46,054,265 | Grzybowski et al. (2023) sites, Beagle 5 imputation; 926 imputed lines + 7 lines called separately at the same sites (including NAM founder CML103); every line linked to its USDA GRIN accession |
 
 Per site the stores carry SnpEff 5.2a effects (TYPE, EFFECT, GENEMODEL, SUB), MAF and maxR² from
-the 933 genotypes, PlantCAD1 and PlantCAD2 (SNPs), Evo2 (SNPs within 1 kb of a gene) and ESM1b,
-ESM2, ESM3 and ESM-C (missense sites), on all ten chromosomes. Mapping quality and coverage are not
-recorded for this call set, so SNPVersity leaves those columns out (`Data.annotationFields`).
+the 933 genotypes, PlantCAD1, PlantCAD2 and Evo2 (every SNP: 43,296,332 sites), ESM1b, ESM2, ESM3
+and ESM-C (missense sites) and the site-QC fields NHET, NHOM and SITEQC (every site), on all ten
+chromosomes. Mapping quality and coverage are not recorded for this call set, so SNPVersity leaves
+those columns out (`Data.annotationFields`).
+
+The stores are the v1.4.2 annotation build of the release (2026-10-04): the lines, sites and
+genotypes of v1.4, unchanged, with Evo2 extended from the SNPs within 1 kb of a gene to every SNP
+and the three site-QC fields written into each row's INFO. The app and the VCFs it writes keep the
+label "release v1.4".
 
 **Site QC.** The lines are inbreds, yet 27.5% of non-reference calls are heterozygous, mostly at
 sites where heterozygous carriers outnumber homozygous ones (reads from another copy of the sequence
@@ -155,8 +161,10 @@ heterozygosity*), and SNPVersity and SNPFunction mark them "het".
 Flagged sites are kept in the data and in every download; each view's default
 (`Data.SITE_QC_DEFAULTS`) is: SNPVersity and SNPGeo show every site with its class; SNPImpact,
 SNPFunction and SNPFold hide flagged and no-carrier sites; SNPTree, SNPMatrix and SNPCompare (region
-scope) use usable sites. The counts come from the sidecars `tools/build_site_qc.py` writes; without
-them the views behave as before, except SNPFunction (and SNPFold, which reads SNPFunction's
+scope) use usable sites. The pages read the counts from each VCF's INFO: the v1.4.2 stores carry
+them, and for a store that does not `h5_to_vcf.py` adds them from the sidecars
+`tools/build_site_qc.py` writes. Without them (`SNPTOOLS_SITEQC=0`, or such a store without its
+sidecar) the views behave as before, except SNPFunction (and SNPFold, which reads SNPFunction's
 full-panel query), which counts carriers itself.
 
 The MaizeGDB 2026 (High Quality / High Coverage), MaizeGDB 2024, Schnable 2023 and NAM 2021 sets are
@@ -186,12 +194,15 @@ chunk-aligned blocks (peak memory about 0.3 GB for any interval), fills an id th
 `./.`, and writes gzip when the output name ends in `.gz`. Store files are named
 `hdf5/version3/<family>_<chr>_<tier>.h5` (`zmgrin2026_chr1_impute.h5`); each holds the datasets
 `CHROM, POS, REF, ALT, QUAL, INFO` and one int8 genotype column per sample (0 = 0/0, 1 = 0/1,
-2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`. When the store has a current site-QC
-sidecar (`<store>.siteqc.h5`, `tools/build_site_qc.py`), each row's INFO ends with `NHET`, `NHOM`
+2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`. Each row's INFO ends with `NHET`, `NHOM`
 (heterozygous and homozygous-alternate carriers among all 933 lines, whatever lines were asked for)
 and `SITEQC` (`NO_CARRIER`, `HET_ONLY`, `HET_EXCESS`, `HET_ELEVATED` or `PASS`, derived from the two
-counts). A missing or stale sidecar (site count or store size changed) leaves the three out and
-puts a `Note:` line in the extractor's output.
+counts). A store built from a release VCF that has the three (v1.4.2) carries them in its own rows,
+which are written as stored. To the rows of a store that does not, `h5_to_vcf.py` adds them from
+the store's current site-QC sidecar (`<store>.siteqc.h5`, `tools/build_site_qc.py`). A missing or
+stale sidecar (site count or store size changed) puts a `Note:` line in the extractor's output, and
+a store without the three in its own rows is then written without them. With `SNPTOOLS_SITEQC=0`
+every VCF is written without them, whatever their source.
 
 INFO keys the browser reads: `GENEMODEL`, `TYPE`, `EFFECT`, `SUB` (parallel comma lists, one entry
 per affected gene, most severe first), `MAF`, `MAXR2`, `plantcad1_score`, `plantcad2_score`,
@@ -206,8 +217,8 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 
 | Path | Used by | Content |
 | --- | --- | --- |
-| `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.3-2.6 GB per chromosome) |
-| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | h5_to_vcf.py | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
+| `hdf5/version3/zmgrin2026_<chr>_impute.h5` | processForm.php | the variant stores (1.4-2.8 GB per chromosome) |
+| `hdf5/version3/zmgrin2026_<chr>_impute.siteqc.h5` | build_snpcurate.py, build_site_qc.py `--summary`; h5_to_vcf.py for a store without the fields in its INFO | site-QC sidecar per store: heterozygous, homozygous-alternate and missing calls per site over all 933 lines (`NHET`, `NHOM`, `NMISS`; 13-26 MB each; not in git) |
 | `data/qc/zmgrin2026.siteqc.summary.json`, `zmgrin2026.lineqc.tsv` | reports, help text | site classes per chromosome and in total; per-line heterozygosity (generated) |
 | `data/curate/snpcurate.source.json` | build_snpcurate.py | SNPCurate's registry of published alleles, edited by hand |
 | `js/snpcurate.data.js` | SNPCurate (optional) | the registry with each site's carriers, class, scores, priority and trait means in this release (`window.SNP_CURATE`, generated) |
@@ -280,8 +291,10 @@ installed (it never replaces a store larger than 50 MB unless `FORCE=1`).
 2. Install the stores in `hdf5/version3/`, the matrices in `distance/zmgrin2026/` and the data files.
    Run `make site-qc` where the stores are (or copy their `.siteqc.h5` sidecars with them): it writes
    the sidecars (about 1.5 minutes with `JOBS=4`) and regenerates `data/qc/` and `js/zmgrin.lineqc.js`,
-   which are also in git. Without the sidecars the pages show no Site QC. After replacing a store, run
-   `make site-qc` and then `make curate` (`js/snpcurate.data.js`, also in git) again.
+   which are also in git. The v1.4.2 stores carry the site-QC fields themselves, so the pages show
+   Site QC with or without the sidecars; `make curate` and the summary need them, and so do the pages
+   for a store without the fields. After replacing a store, run `make site-qc` and then `make curate`
+   (`js/snpcurate.data.js`, also in git) again.
 3. Make `vcf/` writable by the web server (and `gff/`, if the gene index should rebuild itself).
 4. Set the environment variables below for the PHP process, and point SNPFunction at a MaizeGDB
    host that serves `/api/v1` if not the default.
@@ -316,7 +329,7 @@ Server side, environment variables of the PHP process (`SetEnv` in Apache, `ENV`
 | `SNPTOOLS_VCF_TTL_HOURS` | `24` | built VCFs are deleted after this long (checked at most every 10 minutes); `0` keeps them |
 | `SNPTOOLS_DEBUG` | unset | `1` adds the extractor's command line and output to `processForm.php` replies (local debugging only: they name server paths) |
 | `SNPTOOLS_DISTANCE_DIR` | `./distance/` | where `ibsCompare.php` looks for the matrices |
-| `SNPTOOLS_SITEQC` | unset | `0` stops `h5_to_vcf.py` adding `NHET`, `NHOM` and `SITEQC` from the site-QC sidecars |
+| `SNPTOOLS_SITEQC` | unset | `0` builds every VCF without `NHET`, `NHOM` and `SITEQC`: `h5_to_vcf.py` adds none from the site-QC sidecars and takes out those a store carries itself, so the pages show no Site QC |
 
 ---
 

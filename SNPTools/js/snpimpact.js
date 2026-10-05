@@ -351,7 +351,7 @@
     'ESM':'ESM protein language-model score for the amino-acid substitution.',
     'ESM2':'ESM2 protein language-model score.',
     'ESM3':'ESM3 protein language-model score.',
-    'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for SNPs within 1 kb of a gene.',
+    'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
     'ESM-C':'ESM-C protein language-model score for the amino-acid substitution.',
     'Priority':'Candidate tier — TOP (strongest), then HIGH, MODERATE, LOW.',
     'Site QC':'Class of the site from its heterozygous and homozygous carriers among all lines of the release. Flagged (het only, het excess) and no-carrier variants are hidden by default.',

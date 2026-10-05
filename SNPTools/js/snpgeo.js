@@ -445,7 +445,7 @@ function geoRenderTable(){
   // snpfold.js somehow hasn't loaded.
   // PlantCAD1 | PlantCAD2 | Evo2 | ESM1 | ESM2 | ESM3 | ESM-C, every column always shown, as
   // PlantCAD is: empty ("—") where a store has no score yet (Evo2 and ESM-C come with the
-  // rebuilt stores; Evo2 covers SNPs within 1 kb of a gene, ESM-C missense sites)
+  // rebuilt stores; Evo2 covers every SNP, ESM-C missense sites)
   const models = (typeof Data.scoreModels === 'function') ? Data.scoreModels(GEO.dataset) : [];
   const pill = (v) => (window.ScorePill ? ScorePill.cell(v) : (v == null ? '—' : v));
   const sc = (v) => `<td class="num">${pill(v)}</td>`;

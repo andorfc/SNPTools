@@ -37,7 +37,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    reported as not available), then SNPVersity query and SNPGeo. The canvas is a no-op stub (nothing is drawn).
 
 7. SNPVersity annotation columns: the 14 columns (Gene model ... ESM-C, with Site QC after MAF when the
-   chr2 store has its site-QC sidecar) for the GRIN-linked set
+   result carries the site-QC fields: the chr2 store's own INFO since release v1.4.2, or its site-QC
+   sidecar) for the GRIN-linked set
    (chr2 GWAS window from the store; MaizeGDB 2026 HQ and HC, from `../fixtures/mgdb2026_*`, only
    when those sets are offered); MQ and COMP are absent for the GRIN-linked set ('hidden') and
    every row has as many cells as the header; the Domain column is expected filled wherever `data/domains/`
@@ -64,7 +65,9 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    per variant, the burden means, and SNPFold's values; the annotation-column check counts the
    Evo2 / ESM-C cells against the INFO.
 10. With a full chr2 store installed: the chr2 checks use its window
-   (`../fixtures/chr2_store/`), and gene / 1-Mb query timings are recorded in `results.json`.
+   (`../fixtures/chr2_store/`, cut from the release v1.4.2 VCF on Ceres, not from the store: Evo2 on
+   the window's 158 SNPs, the site-QC fields on all 249 sites), and gene / 1-Mb query timings are
+   recorded in `results.json`.
    With full stores for the other chromosomes, `check_gene_consequences.py` reads each fixture
    window (and each tested gene's whole interval) from the store through `store_windows.py`, which
    first confirms the store matches the release fixture there: same sites and REF/ALT, same
@@ -91,15 +94,24 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    windows when only the test stores are built), each once as is and once with `SNPTOOLS_SITEQC=0` for
    the PHP process. The checker recomputes NHET / NHOM from each row's 933 genotypes and SITEQC from the
    rule; the five-line INFO must equal the all-lines INFO (panel-wide counts); the `SNPTOOLS_SITEQC=0`
-   VCF must equal the normal one minus the three fields and their ##INFO lines. In a temporary root
-   that symlinks the store: no sidecar and a sidecar with a wrong `store_bytes` each give a `Note:` line
-   and the `SNPTOOLS_SITEQC=0` VCF, a valid copy gives the normal one. The Python copies of the rule
+   VCF must equal the normal one minus the three fields and their ##INFO lines, whether the store
+   carries the fields itself (the release v1.4.2 stores do) or they come from its sidecar. In a
+   temporary root that symlinks the store: no sidecar and a sidecar with a wrong `store_bytes` each
+   give a `Note:` line, a valid copy gives the normal VCF; without a usable sidecar a store that
+   carries the fields (read from the store itself) still writes the normal VCF, one that does not
+   writes the `SNPTOOLS_SITEQC=0` one; the switch beside the stale sidecar gives the VCF without the
+   fields. The merge itself is kept under test, whatever stores are installed, by a store built in a
+   temporary root from the chr9 fixture, whose INFO has none of the three: a `Note:` and the fixture's
+   INFO without a sidecar, the three fields equal to the fixture's 933 genotypes with one, and the VCF
+   without them again with `SNPTOOLS_SITEQC=0` or a wrong `store_bytes`. The Python copies of the rule
    (`build_site_qc.py`, `h5_to_vcf.py`, `annotate_release_info.py`) must agree on every (het, hom) pair
    from 0 to 60. `annotate_release_info.py` is run on every fixture VCF with the inputs in
    `../fixtures/annotation/`: its counts must equal the fixture's genotypes and the sidecar at the same
    sites, every INFO key of the fixture keeps its value (`ESMC_score`, which the fixtures predate, is
    added), and a store built from its chr9 output gets no second set of the three keys from
-   `h5_to_vcf.py`, with or without a sidecar.
+   `h5_to_vcf.py`, with or without a sidecar, and none of them with `SNPTOOLS_SITEQC=0`. A store of 13
+   written-out INFO layouts (the three fields last, first, alone, apart, in another order; keys with
+   similar names; none) must come back with exactly the expected INFO under the switch.
 13. Site QC in the pages, `check_site_qc_ui.py` (needs the full chr2/chr4/chr6/chr8/chr10 stores;
    skipped otherwise). SNPVersity on eight gene intervals (y1, su1, ZmWAK, Bx13, DGAT1-2, Htn1, tga1,
    crtRB1) with the 26 NAM lines: each row's class, the rows under the three filter choices, the

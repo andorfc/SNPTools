@@ -1,25 +1,40 @@
 #!/usr/bin/env python3
 """check_site_qc.py <results.json> <site_root> -- the site QC counts every VCF carries.
 
-h5_to_vcf.py appends NHET, NHOM and SITEQC to each row's INFO from the store's sidecar
-(<store>.siteqc.h5, tools/build_site_qc.py). Recomputed here, independently:
+Every row's INFO ends with NHET, NHOM and SITEQC: a store built from a release VCF that has
+them (release v1.4.2) carries them itself, and for a store that does not h5_to_vcf.py appends
+them from the store's sidecar (<store>.siteqc.h5, tools/build_site_qc.py). Recomputed here,
+independently:
 1. The page's queries (run_scenarios.js, Data.queryVariants -> processForm.php) built VCFs.
 2. In the all-lines VCFs every row's NHET / NHOM equal the heterozygous / homozygous-alternate
    cells of its 933 genotypes, and SITEQC follows the rule (written again below).
 3. The five-line VCF carries the same INFO as the all-lines VCF of the same interval: the
    counts are panel-wide, not selection-wide.
 4. With SNPTOOLS_SITEQC=0 the VCF equals the normal one minus the three fields and their three
-   ##INFO lines.
+   ##INFO lines, whether the fields came from the store's own INFO or from the sidecar.
 5. In a temporary root that symlinks the store: with no sidecar, or one whose store_bytes is
-   wrong, a Note: line says so and the VCF equals the SNPTOOLS_SITEQC=0 one; a valid copy of the
-   sidecar gives the normal VCF.
+   wrong, a Note: line says so, and a valid copy of the sidecar gives the normal VCF. Without a
+   usable sidecar a store that carries the fields (read from the store itself) still writes the
+   normal VCF, its rows as stored; one that does not writes the SNPTOOLS_SITEQC=0 one.
+   SNPTOOLS_SITEQC=0 beside the stale sidecar gives the VCF without the fields and no Note.
+5b. The merge itself, on a store without the three fields whatever stores are installed: one
+   built in a temporary root from the chr9 release fixture. No sidecar: a Note, every INFO as in
+   the fixture. Sidecar built: NHET / NHOM / SITEQC on every row equal the fixture's 933
+   genotypes, the rest unchanged. SNPTOOLS_SITEQC=0, and a sidecar with a wrong store_bytes
+   (with its Note): the VCF without them again.
 6. The Python implementations of the rule (build_site_qc.py, h5_to_vcf.py, annotate_release_info.py)
    agree with the rule on every (het, hom) pair from 0 to 60.
 7. tools/annotate_release_info.py, run on each fixture VCF with the inputs in
    fixtures/annotation/, writes NHET / NHOM / SITEQC equal to the fixture's own genotype counts and
    to the sidecar values at the same sites, and leaves every other INFO key of the fixture as it was
-   (ESMC_score, which the fixtures predate, is the one other key it adds).
-Standard library only; h5py work (sidecar values, the stale copy) runs under PYTHON_PATH."""
+   (ESMC_score, which the fixtures predate, is the one other key it adds). A store built from its
+   chr9 output carries the three keys: h5_to_vcf.py writes its rows as stored, with a sidecar and
+   without one, and with SNPTOOLS_SITEQC=0 every row without the three, its other keys untouched.
+8. SNPTOOLS_SITEQC=0 takes the three fields out wherever they stand in a stored INFO (last, first,
+   alone, apart, in another order) and leaves keys with similar names and rows without them as
+   stored: a store of written-out layouts, each with the INFO expected.
+Standard library only; h5py work (sidecar values, the stale copy, a store's own INFO) runs under
+PYTHON_PATH."""
 import glob, gzip, json, os, re, shutil, subprocess, sys, tempfile
 
 res, root = sys.argv[1:3]
@@ -27,6 +42,7 @@ root = os.path.abspath(root)
 R = json.load(open(res))
 Q = R['siteqc']
 HERE = os.path.dirname(os.path.abspath(__file__))
+FX = os.path.join(root, 'localdev', 'fixtures')
 PY = os.environ.get('PYTHON_PATH') or 'python3'
 PHP = os.environ.get('PHP_BIN') or 'php'
 NAMES = ['NO_CARRIER', 'HET_ONLY', 'HET_EXCESS', 'HET_ELEVATED', 'PASS']
@@ -145,42 +161,123 @@ def php(rt, post, env=None):
         return {'raw': out.stdout[:300], 'stderr': out.stderr[:300]}
 
 
+def temp_root():
+    """A site root of its own: the two scripts, hdf5/version3/ and vcf/. Returns it and its store folder."""
+    tmp = tempfile.mkdtemp(prefix='snpt_siteqc_')
+    for f in ('processForm.php', 'h5_to_vcf.py'):
+        shutil.copy(os.path.join(root, f), tmp)
+    hd = os.path.join(tmp, 'hdf5', 'version3'); os.makedirs(hd); os.makedirs(os.path.join(tmp, 'vcf'))
+    return tmp, hd
+
+
+def request(tmp, post, env=None):
+    """One processForm.php request in a temporary root: (its VCF or None, the extractor's Note: lines, the reply)."""
+    j = php(tmp, post, env)
+    p = os.path.join(tmp, j.get('outFile', '')[2:]) if j.get('outFile') else ''
+    if j.get('status') != 'success' or not os.path.isfile(p):
+        return None, [], j
+    return read_vcf(p), [l for l in (j.get('output') or '').splitlines() if l.startswith('Note:')], j
+
+
+def run(tmp, post, label, want, note, env=None):
+    """The request's VCF equals `want` (the file date apart) and a Note: line holds `note`, or there is none."""
+    got, noted, j = request(tmp, post, env)
+    if got is None:
+        check(False, f"{label}: no VCF ({j})"); return
+    ok = (no_date(got[0]), got[1], got[2]) == (no_date(want[0]), want[1], want[2])
+    check(ok and (any(note in l for l in noted) if note else not noted),
+          f"{label}: VCF {'equals' if ok else 'DIFFERS from'} the expected one; {noted[0][:110] if noted else 'no Note: line'}")
+
+
+def wrong_store_bytes(side):
+    bump = subprocess.run([PY, '-c', 'import h5py,sys\nf=h5py.File(sys.argv[1],"r+")\nf.attrs["store_bytes"]=int(f.attrs["store_bytes"])+1\nf.close()', side],
+                          capture_output=True, text=True)
+    check(bump.returncode == 0, f"sidecar copy given a wrong store_bytes {bump.stderr[:200]}")
+
+
+# how many stored rows of an interval carry SITEQC in the store's own INFO (read from the store, not a VCF)
+stored_snippet = r'''
+import h5py, sys
+import numpy as np
+f = h5py.File(sys.argv[1], 'r'); pos = f['POS'][:].astype(np.int64)
+a, b = int(np.searchsorted(pos, int(sys.argv[2]), 'left')), int(np.searchsorted(pos, int(sys.argv[3]), 'right'))
+print(sum(b'SITEQC=' in (v if isinstance(v, bytes) else str(v).encode()) for v in f['INFO'][a:b]), b - a)
+'''
+
 q5 = Q['queries'].get('five')
 if q5 and 'five' in V and 'five_off' in V:
     store = f"zmgrin2026_{q5['chr']}_impute"
     real_store = os.path.join(root, 'hdf5', 'version3', store + '.h5')
     real_side = os.path.join(root, 'hdf5', 'version3', store + '.siteqc.h5')
-    tmp = tempfile.mkdtemp(prefix='snpt_siteqc_')
+    sn = subprocess.run([PY, '-c', stored_snippet, real_store, str(q5['start']), str(q5['end'])], capture_output=True, text=True)
     try:
-        for f in ('processForm.php', 'h5_to_vcf.py'):
-            shutil.copy(os.path.join(root, f), tmp)
-        hd = os.path.join(tmp, 'hdf5', 'version3'); os.makedirs(hd); os.makedirs(os.path.join(tmp, 'vcf'))
+        n_qc, n_rows = [int(x) for x in sn.stdout.split()]
+    except ValueError:
+        n_qc = n_rows = -1
+    native = n_qc == n_rows > 0
+    check(n_rows == len(V['five'][2]) and n_qc in (0, n_rows),
+          f"{store}: {n_qc} of {n_rows} stored rows of the interval carry SITEQC "
+          f"({'the store carries the three fields itself' if native else 'the fields come from the sidecar'}) {sn.stderr[-200:]}")
+    # without a usable sidecar: a store that carries the fields writes its rows as stored (the normal
+    # VCF), one that does not writes the VCF of SNPTOOLS_SITEQC=0
+    bare, kind = (V['five'], ' (fields in the store: rows as stored)') if native else (V['five_off'], '')
+    tmp, hd = temp_root()
+    try:
         os.symlink(real_store, os.path.join(hd, store + '.h5'))
         side = os.path.join(hd, store + '.siteqc.h5')
         post = {'chr': q5['chr'], 'start': str(q5['start']), 'end': str(q5['end']), 'dataSet': 'zmgrin2026_imp',
                 'genotypes': json.dumps(V['five'][1][9:]), 'outName': ''}
-
-        def run(label, want, note):
-            j = php(tmp, post)
-            p = os.path.join(tmp, j.get('outFile', '')[2:]) if j.get('outFile') else ''
-            if j.get('status') != 'success' or not os.path.isfile(p):
-                check(False, f"{label}: no VCF ({j})"); return
-            m, h, r = read_vcf(p)
-            out = j.get('output') or ''
-            noted = [l for l in out.splitlines() if l.startswith('Note:')]
-            ok = (no_date(m), h, r) == (no_date(want[0]), want[1], want[2])
-            check(ok and (any(note in l for l in noted) if note else not noted),
-                  f"{label}: VCF {'equals' if ok else 'DIFFERS from'} the expected one; {noted[0][:110] if noted else 'no Note: line'}")
-
-        run('no sidecar', V['five_off'], 'no site QC sidecar')
+        run(tmp, post, 'no sidecar' + kind, bare, 'no site QC sidecar')
         shutil.copy(real_side, side)
-        run('valid sidecar copy', V['five'], None)
-        bump = subprocess.run([PY, '-c', 'import h5py,sys\nf=h5py.File(sys.argv[1],"r+")\nf.attrs["store_bytes"]=int(f.attrs["store_bytes"])+1\nf.close()', side],
-                              capture_output=True, text=True)
-        check(bump.returncode == 0, f"sidecar copy given a wrong store_bytes {bump.stderr[:200]}")
-        run('sidecar with a wrong store_bytes', V['five_off'], 'does not match its store')
+        run(tmp, post, 'valid sidecar copy', V['five'], None)
+        wrong_store_bytes(side)
+        run(tmp, post, 'sidecar with a wrong store_bytes' + kind, bare, 'does not match its store')
+        run(tmp, post, 'SNPTOOLS_SITEQC=0 beside the stale sidecar', V['five_off'], None, {'SNPTOOLS_SITEQC': '0'})
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+# ---------------- 5b: the merge, on a store without the three fields ----------------
+# The release v1.4.2 stores carry NHET / NHOM / SITEQC in their own INFO, so the sidecar adds nothing
+# to their rows. A store built here from the chr9 release fixture, whose INFO has none of the three,
+# keeps the merge and the three sidecar states under test whatever stores are installed.
+fx9 = os.path.join(FX, 'zmgrin2026_v1.4_chr9_testregions.vcf.gz')
+m9, h9, r9 = read_vcf(fx9)
+tmp, hd = temp_root()
+try:
+    st = os.path.join(hd, 'zmgrin2026_chr9_impute.h5')
+    b9 = subprocess.run([PY, os.path.join(root, 'tools', 'vcf_to_h5.py'), fx9, st], capture_output=True, text=True)
+    check(b9.returncode == 0 and os.path.isfile(st) and not any(k + '=' in r[7] for r in r9 for k in QC_IDS),
+          f"plain store: built from the chr9 release fixture, whose INFO has none of the three fields ({len(r9)} sites) {b9.stderr[-200:]}")
+    post = {'chr': 'chr9', 'start': r9[0][1], 'end': r9[-1][1], 'dataSet': 'zmgrin2026_imp', 'genotypes': json.dumps(h9[9:14]), 'outName': ''}
+    bare, noted, j = request(tmp, post)
+    if bare is None:
+        check(False, f"plain store, no sidecar: no VCF ({j})")
+    else:
+        site = lambda rows: [(r[1], r[3], r[4], r[7]) for r in rows]
+        check(site(bare[2]) == site(r9) and not any(k in info_ids(bare[0]) for k in QC_IDS) and any('no site QC sidecar' in l for l in noted),
+              f"plain store, no sidecar: every INFO as in the fixture, no ##INFO line for the three ({len(bare[2])} rows); "
+              f"{noted[0][:110] if noted else 'no Note: line'}")
+        s9 = subprocess.run([PY, os.path.join(root, 'tools', 'build_site_qc.py'), st], capture_output=True, text=True)
+        merged, noted, j = request(tmp, post)
+        if s9.returncode or merged is None:
+            check(False, f"plain store, sidecar built: no VCF ({s9.stderr[-200:]} {j})")
+        else:
+            bad9 = []
+            for r, f in zip(merged[2], r9):
+                d = [dose(c) for c in f[9:]]
+                het, hom = d.count(1), d.count(2)
+                mm = SUFFIX.search(r[7])
+                if not mm or (int(mm.group(1)), int(mm.group(2)), mm.group(3)) != (het, hom, rule(het, hom)):
+                    bad9.append(r[1])
+            check(len(merged[2]) == len(r9) and not bad9 and all(info_ids(merged[0]).count(k) == 1 for k in QC_IDS) and not noted
+                  and strip_qc(*merged) == (no_date(bare[0]), bare[1], bare[2]),
+                  f"plain store, sidecar built: NHET / NHOM / SITEQC merged on all {len(merged[2])} rows equal the fixture's 933 genotypes, "
+                  f"the rest as without it; no Note: line {bad9[:3]}")
+            run(tmp, post, 'plain store, SNPTOOLS_SITEQC=0', bare, None, {'SNPTOOLS_SITEQC': '0'})
+            wrong_store_bytes(st[:-3] + '.siteqc.h5')
+            run(tmp, post, 'plain store, sidecar with a wrong store_bytes', bare, 'does not match its store')
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
 
 # ---------------- 6: the rule, in every Python copy ----------------
 snippet = r'''
@@ -212,7 +309,6 @@ except (ValueError, KeyError) as e:
     check(False, f"rule implementations could not be loaded: {e} {p6.stderr[-300:]}")
 
 # ---------------- 7: annotate_release_info.py on the fixtures ----------------
-FX = os.path.join(root, 'localdev', 'fixtures')
 AN = os.path.join(FX, 'annotation')
 side_snippet = r'''
 import h5py, json, sys
@@ -290,6 +386,63 @@ try:
             check(same and all(info_ids(m2).count(k) == 1 for k in QC_IDS) and h2[9:] == h1[9:],
                   f"store with the keys in its INFO, {'with' if with_side else 'without'} a sidecar: rows as stored, "
                   f"one NHET/NHOM/SITEQC each, one ##INFO line each ({len(r2)} rows)")
+            # the switch on such a store: the three taken out of every row, nothing else changed
+            oz = os.path.join(tmp, f'native{int(with_side)}_off.vcf')
+            z = subprocess.run([PY, os.path.join(root, 'h5_to_vcf.py'), st, oz, lo, hi, ids], capture_output=True, text=True, cwd=tmp,
+                               env=dict(os.environ, SNPTOOLS_SITEQC='0'))
+            if z.returncode or not os.path.isfile(oz):
+                check(False, f"store with the keys in its INFO, SNPTOOLS_SITEQC=0: {z.stdout[-200:]} {z.stderr[-200:]}"); break
+            m3, h3, r3 = read_vcf(oz)
+            check(strip_qc(m2, h2, r2) == (no_date(m3), h3, r3) and not any(k in info_ids(m3) for k in QC_IDS)
+                  and not [l for l in z.stdout.splitlines() if l.startswith('Note:')],
+                  f"store with the keys in its INFO, {'with' if with_side else 'without'} a sidecar, SNPTOOLS_SITEQC=0: the output "
+                  f"minus the three fields and ##INFO lines, no Note: line ({len(r3)} rows)")
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+# ---------------- 8: SNPTOOLS_SITEQC=0 wherever the three fields stand in a stored INFO ----------------
+LAYOUTS = [  # (INFO as stored, INFO written with SNPTOOLS_SITEQC=0)
+    ('TYPE=x;MAF=0.0011;NHET=2;NHOM=13;SITEQC=PASS', 'TYPE=x;MAF=0.0011'),        # the builders' layout: the three last
+    ('NHET=0;NHOM=0;SITEQC=NO_CARRIER', '.'),                                      # nothing else in the INFO
+    ('NHET=2;NHOM=1;SITEQC=HET_EXCESS;TYPE=x', 'TYPE=x'),                          # first
+    ('TYPE=x;NHET=1;NHOM=2;SITEQC=HET_ONLY;MAF=0.0011', 'TYPE=x;MAF=0.0011'),      # in the middle
+    ('A=1;NHET=2;B=x,y;NHOM=3;FLAG;SITEQC=PASS;D=5', 'A=1;B=x,y;FLAG;D=5'),       # apart
+    ('A=1;SITEQC=PASS;NHOM=3;NHET=0', 'A=1'),                                      # another order
+    ('SITEQC=HET_ELEVATED;A=1;NHET=1', 'A=1'),
+    ('NHOM=5', '.'),                                                               # one of them alone
+    ('XNHET=9;NHETX=1;SITEQCS=no', 'XNHET=9;NHETX=1;SITEQCS=no'),                  # other keys with similar names
+    ('XNHET=9;NHET=1;NHOM=2;SITEQC=HET_ONLY', 'XNHET=9'),
+    ('TYPE=x;NHET;MAF=0.5', 'TYPE=x;NHET;MAF=0.5'),                                # a flag of that name is not the field
+    ('TYPE=x;MAF=0.5', 'TYPE=x;MAF=0.5'),                                          # none of the three
+    ('.', '.'),
+]
+tmp = tempfile.mkdtemp(prefix='snpt_layout_')
+try:
+    src = os.path.join(tmp, 'layouts.vcf')
+    with open(src, 'w') as fh:
+        fh.write('##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tS1\tS2\n')
+        for i, (stored, _) in enumerate(LAYOUTS):
+            fh.write(f'chrT\t{100 + i}\t.\tA\tG\t.\t.\t{stored}\tGT\t0/0\t1/1\n')
+    st = os.path.join(tmp, 'zmgrin2026_chrT_impute.h5')
+    b8 = subprocess.run([PY, os.path.join(root, 'tools', 'vcf_to_h5.py'), src, st], capture_output=True, text=True)
+    ids = os.path.join(tmp, 'ids.json'); json.dump(['S1', 'S2'], open(ids, 'w'))
+    outs = {}
+    for name, env in (('as stored', {}), ('SNPTOOLS_SITEQC=0', {'SNPTOOLS_SITEQC': '0'})):
+        ov = os.path.join(tmp, f'layouts{len(outs)}.vcf')
+        p8 = subprocess.run([PY, os.path.join(root, 'h5_to_vcf.py'), os.path.basename(st), ov, '1', '1000', ids], capture_output=True, text=True, cwd=tmp,
+                            env=dict(os.environ, **env))
+        outs[name] = read_vcf(ov) if p8.returncode == 0 and os.path.isfile(ov) else None
+    if b8.returncode or None in outs.values():
+        check(False, f"layout store: {b8.stderr[-200:]} {p8.stdout[-200:]} {p8.stderr[-200:]}")
+    else:
+        a8, z8 = outs['as stored'], outs['SNPTOOLS_SITEQC=0']
+        check([r[7] for r in a8[2]] == [s for s, _ in LAYOUTS] and all(info_ids(a8[0]).count(k) == 1 for k in QC_IDS),
+              f"layout store, no switch: all {len(a8[2])} INFO values as stored")
+        wrong = [(s, r[7], w) for (s, w), r in zip(LAYOUTS, z8[2]) if r[7] != w]
+        check(len(z8[2]) == len(LAYOUTS) and not wrong and not any(k in info_ids(z8[0]) for k in QC_IDS)
+              and [r[:7] + r[8:] for r in z8[2]] == [r[:7] + r[8:] for r in a8[2]],
+              f"layout store, SNPTOOLS_SITEQC=0: the three fields taken out of {len(LAYOUTS)} written-out layouts (last, first, alone, apart, "
+              f"another order), similar key names and rows without them as stored {wrong[:2]}")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

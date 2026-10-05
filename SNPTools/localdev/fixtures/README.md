@@ -27,14 +27,24 @@ builds add those with `--maxr2` and `--dna-scores` (PlantCAD1/2 and Evo2 rounded
         --esm annotation/grz2023_missense_esm_testregions.tsv.gz --out /tmp/a.vcf.gz && mv /tmp/a.vcf.gz $f
     done
 
-`chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz`: the GWAS window cut with
-bcftools 1.20 from the full annotated chr2 release VCF on Ceres
-(`grz2023/snptools_build/chr2/zmgrin2026_v1.4_chr2_933.annotated.vcf.gz`), used by the checks when
-the full chr2 store is installed. Same 249 sites and genotypes as the demo fixture; its INFO
-adds plantcad1/plantcad2 (158 SNPs), evo2 (120) and ESMC_score (10), and writes MAF 0 as "0".
-Refreshed 2026-09-30 from the rebuilt chr2 build (store md5 9b8a52df8d08df7a875f3c84f4bf7d3b):
-PlantCAD1/2 and Evo2 rounded to 0.1 (whole numbers written without ".0", e.g. -1), MAXR2 on 233
-of the 249 sites; same sites and genotypes as before.
+`chr2_store/zmgrin2026_v1.4.2_chr2_4491424_4499434.annotated.vcf.gz`: the GWAS window of the
+annotated chr2 release VCF, used by the checks when the full chr2 store is installed. Cut on Ceres
+on 2026-10-05 with bcftools 1.20 (`bcftools view -r chr2:4491424-4499434 -Oz`) from the release
+v1.4.2 file
+`/90daydata/maizegdb/carson/grz2023/release_v1.4.2/annotated_933/zmgrin2026_v1.4.2_chr2_933.annotated.vcf.gz`
+(md5 6b83f45f72661a57c6c7f9796e497a94, as in the build's `logs/MD5SUMS.txt`): the release VCF, not
+the store, so the checks compare what the app shows with an independent source. Same 249 sites and
+genotypes as the demo fixture (the 7 companion lines stand in another column order). Its INFO adds
+plantcad1/plantcad2 and evo2 (the window's 158 SNPs), ESMC_score (10), MAXR2 (233) and NHET, NHOM
+and SITEQC (all 249); its header carries the release's 933 `##SAMPLE` lines. bcftools writes whole
+numbers without decimals (MAF 0, a score of -1) where the store, built from the annotator's own
+output, reads 0.0000 and -1.0: the same values (41 MAF, 44 score and 2 MAXR2 values of the window
+differ in text only).
+It replaces `zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz`, cut on 2026-09-30 from the
+release v1.4 build (`grz2023/snptools_build/chr2/zmgrin2026_v1.4_chr2_933.annotated.vcf.gz`, store
+md5 9b8a52df8d08df7a875f3c84f4bf7d3b), in which evo2 covered the 120 SNPs within 1 kb of a gene
+and INFO had no site-QC fields; every key of that file has the same value in this one, and the 38
+sites that gained evo2 are upstream (25) and downstream (13) gene variants.
 
 `annotation/schnable_scored_testregions.sites.vcf.gz`: columns 1-8 of Atlas
 `/90daydata/maizegdb/carson/grz2023_scoring/protein/vcf/chr<N>_schnable_scored.vcf.gz` in the
@@ -59,5 +69,6 @@ the MaizeGDB 2026 sets without a local store.
 Gene intervals are from `gff/genes_data.serialized` (what lookupGeneModel.php returns).
 With only the test stores built from these files (`make local-store`), queries outside these
 windows return "No variants" and chromosomes 3, 4 and 6 have no store. Since 2026-10-02 the full
-stores of all ten chromosomes are installed locally; the checks then read each window from the
+stores of all ten chromosomes are installed locally (since 2026-10-04 the release v1.4.2 builds);
+the checks then read each window from the
 store (`harness/store_windows.py`), after confirming it matches these fixtures site by site.

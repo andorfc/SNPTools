@@ -36,8 +36,11 @@ missing calls over all the store's samples). Attributes: `format` = `snptools-si
 renamed. A sidecar is valid while its `n_sites`, `store_bytes` and `POS` match its store;
 `--check` (`make site-qc-check`) verifies that and exits 1 on any mismatch. `h5_to_vcf.py` uses a
 sidecar while its `n_sites` and `store_bytes` match (positions are not re-read per request) and
-appends `NHET`, `NHOM` and `SITEQC` to every row's INFO; otherwise it prints a `Note:` line and
-writes the VCF without them. `SNPTOOLS_SITEQC=0` turns the merge off.
+appends `NHET`, `NHOM` and `SITEQC` to every row's INFO that does not have them already (the release
+v1.4.2 stores carry them in their own rows, see `annotate_release_info.py` below); otherwise it
+prints a `Note:` line and writes the rows as stored. `SNPTOOLS_SITEQC=0` writes every VCF without
+the three, whatever their source: nothing is merged, the fields a store carries itself are taken out
+of its rows, and the header has no `##INFO` line for them.
 
 Only counts are stored; the class is derived by one rule (first match wins), written once per
 language: `site_qc_codes` here and in `h5_to_vcf.py`, `site_qc` in `annotate_release_info.py`:
@@ -82,15 +85,22 @@ ESM-2 650M = esm2_store_score) to a release VCF before `vcf_to_h5.py`. Streams b
 (one chromosome per run); run it per chromosome on the full release to annotate the 46M-site
 store. MQ/CVC/CVP are deliberately not written (not available for the Grzybowski et al. 2023 call
 set; see the docstring). `--dna-scores <tsv>` (chr,pos,ref,alt,plantcad1_score,plantcad2_score,
-evo2_score; position-sorted) adds the Atlas PlantCAD1/PlantCAD2 (all SNPs) and Evo2 (genic +/-1 kb
-SNPs) scores, rounded to 1 decimal like ESM (`--pc-decimals`, default 1; full precision stays in
+evo2_score; position-sorted) adds the Atlas PlantCAD1/PlantCAD2 and Evo2 scores (all SNPs; until
+release v1.4.2 the Evo2 table held the genic +/-1 kb SNPs only), rounded to 1 decimal like ESM
+(`--pc-decimals`, default 1; full precision stays in
 the score tables). ESMC_score (llr_esmc) is written with the other ESM scores. `--maxr2 <tsv>`
 (chr,pos,ref,alt,MAXR2; position-sorted) adds MAXR2: the highest PLINK 1.9 --r2 of the site with
 any variant 400-5,000 bp away, from the 933 release genotypes with no MAF/missingness/r2 filtering,
 written with up to 6 decimals (1.0, 0.509182) like the MaizeGDB 2026 stores. NHET, NHOM and SITEQC
 (site QC, the rule of `build_site_qc.py`) are counted from the file's own genotypes and written last;
 a store built from such a VCF carries them itself, and `h5_to_vcf.py` then adds nothing to its rows. The rebuilt
-full-chromosome stores on Ceres use both options. The MAXR2 table comes from `maxr2_chr.sh <chr>`
+full-chromosome stores on Ceres use both options. The installed stores are the release v1.4.2 builds
+(2026-10-04, `grz2023/snptools_build_v1.4.2/chr<N>/` on Ceres; the annotated VCFs are in
+`grz2023/release_v1.4.2/annotated_933/`): an annotation-only update of v1.4 with the same lines,
+sites and genotypes, in which 43,296,332 SNPs carry PlantCAD1, PlantCAD2 and Evo2 and all
+46,054,265 sites carry NHET, NHOM and SITEQC. Each store was built from the annotator's own output,
+so its INFO reads `MAF=0.0000` or a score of `-1.0` where the bgzipped release VCF, rewritten by
+bcftools, reads `0` and `-1`: the same values. The MAXR2 table comes from `maxr2_chr.sh <chr>`
 (Ceres: bcftools + PLINK 1.9 --r2 on the 933-sample merge, max over partners 400-5,000 bp away);
 `check_r2.py` recomputes 300 random pairs from the PLINK .bed as an independent check.
 

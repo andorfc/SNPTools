@@ -5,9 +5,11 @@
     zmgrin2026_imp (and mgdb2026_hq / mgdb2026_hc, when those sets are offered): a field a set
     lacks stays as an empty column ('na'), except one the call set never records, which is
     left out ('hidden': MQ and COMP for zmgrin2026_imp); every row has as many cells as the
-    header. Site QC ('auto') is shown, filled on every row, exactly when the queried store has
-    its site-QC sidecar (h5_to_vcf.py then adds NHET/NHOM/SITEQC); the classes themselves are
-    checked by check_site_qc_ui.py.
+    header. Site QC ('auto') is shown exactly when the result carries NHET/NHOM/SITEQC: on the
+    rows whose INFO has them in the release itself (v1.4.2: the window cut from the release VCF
+    gives the count), and on every row when the queried store has its site-QC sidecar
+    (h5_to_vcf.py then adds them where a row has none); the classes themselves are checked by
+    check_site_qc_ui.py.
 (b) Per set and column, the number of filled cells equals what the INFO predicts
     (zmgrin2026_imp: fixtures/zmgrin2026_v1.4_chr2_testregions.vcf.gz; MaizeGDB 2026:
     fixtures/mgdb2026_{hq,hc}_chr2_4491424_4499434.sites.vcf.gz), and columns a set lacks
@@ -26,7 +28,8 @@ FX = f'{root}/localdev/fixtures'
 LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR²', 'MAF', 'Site QC',
           'PlantCAD1', 'PlantCAD2', 'Evo2', 'ESM1', 'ESM2', 'ESM3', 'ESM-C']
 KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'qc', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
-# the chr2 store's site-QC sidecar: with it every row of the result carries a class
+# the chr2 store's site-QC sidecar: with it every row of the result carries a class (without it,
+# the rows whose INFO has SITEQC in the release itself)
 SIDECAR = os.path.exists(f'{root}/hdf5/version3/zmgrin2026_chr2_impute.siteqc.h5')
 bad = 0
 
@@ -73,7 +76,7 @@ def expected(path, status):
         f['impact'] += 1                                  # pill always shown (MODIFIER default)
         f['mq'] += present(I.get('MQ')); f['comp'] += present(I.get('CVP')); f['r2'] += present(I.get('MAXR2'))
         f['maf'] += present(I.get('MAF'))
-        f['qc'] += SIDECAR                                # a class on every row (pass shown faintly)
+        f['qc'] += present(I.get('SITEQC')) or SIDECAR    # a class on the row (pass shown faintly)
         f['pc1'] += present(I.get('plantcad1_score')) or present(I.get('DNA_SCORE'))
         f['pc2'] += present(I.get('plantcad2_score'))
         f['evo2'] += present(I.get('evo2_score'))
@@ -87,9 +90,9 @@ def expected(path, status):
 
 
 # chr2 query source: the demo store (fixture) or a full chr2 store (its window cut from the
-# annotated chr2 release VCF on Ceres), whichever run_scenarios.js found installed
+# annotated chr2 release VCF on Ceres, release v1.4.2), whichever run_scenarios.js found installed
 FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
-SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
+SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4.2_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
                           else f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
         # MaizeGDB 2026, when offered again (run_scenarios.js renders them under the same switch):
         # 'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',
@@ -104,11 +107,13 @@ for ds, path in SETS.items():
     hdr = a['headers']
     # a 'hidden' column (MQ and COMP for the GRIN-linked call set) is left out of the table
     hidden = {x['key'] for x in a.get('fields', []) if x['status'] == 'hidden'}
-    # an 'auto' column (Site QC) is shown only when the result carries its values
+    # an 'auto' column (Site QC) is shown only when the result carries its values: the sidecar
+    # gives them to every row, the release's own INFO to the rows that have SITEQC there
     auto = {x['key'] for x in a.get('fields', []) if x['status'] == 'auto'}
     if ds == 'zmgrin2026_imp' and auto != {'qc'}:
         bad += 1; print('auto columns', ds, sorted(auto))
-    shown = [k for k in KEYS if k not in hidden and (k not in auto or SIDECAR)]
+    with_qc = SIDECAR or any(present(info(t[7]).get('SITEQC')) for t in records(path))
+    shown = [k for k in KEYS if k not in hidden and (k not in auto or with_qc)]
     if hdr[:4] != ['CHR', 'POS', 'REF', 'ALT'] or hdr[4:] != [LABELS[KEYS.index(k)] for k in shown]:
         bad += 1; print('columns differ', ds, hdr)
     if a.get('cellsPerRow') != a.get('headerCells'):
