@@ -85,10 +85,13 @@ ESM-2 650M = esm2_store_score) to a release VCF before `vcf_to_h5.py`. Streams b
 (one chromosome per run); run it per chromosome on the full release to annotate the 46M-site
 store. MQ/CVC/CVP are deliberately not written (not available for the Grzybowski et al. 2023 call
 set; see the docstring). `--dna-scores <tsv>` (chr,pos,ref,alt,plantcad1_score,plantcad2_score,
-evo2_score; position-sorted) adds the Atlas PlantCAD1/PlantCAD2 and Evo2 scores (all SNPs; until
-release v1.4.2 the Evo2 table held the genic +/-1 kb SNPs only), rounded to 1 decimal like ESM
-(`--pc-decimals`, default 1; full precision stays in
-the score tables). ESMC_score (llr_esmc) is written with the other ESM scores. `--maxr2 <tsv>`
+plantcad2_onepass_score,evo2_score; position-sorted) adds the Atlas PlantCAD1, PlantCAD2 (masked,
+512 bp), PlantCAD2 one-pass and Evo2 scores (all SNPs; until release v1.4.2 the Evo2 table held the
+genic +/-1 kb SNPs only), rounded to 1 decimal like ESM (`--pc-decimals`, default 1; full precision
+stays in the score tables). The one-pass score (release v1.4.3) is ln P(alt)/P(ref) at the unmasked
+base with 8,192-bp windows; it is not on the scale of plantcad2_score (its median is about -3.4
+against -0.7). Any of the four score columns may be present: only those are written and declared,
+so a v1.4.2 table without the one-pass column still works. ESMC_score (llr_esmc) is written with the other ESM scores. `--maxr2 <tsv>`
 (chr,pos,ref,alt,MAXR2; position-sorted) adds MAXR2: the highest PLINK 1.9 --r2 of the site with
 any variant 400-5,000 bp away, from the 933 release genotypes with no MAF/missingness/r2 filtering,
 written with up to 6 decimals (1.0, 0.509182) like the MaizeGDB 2026 stores. NHET, NHOM and SITEQC

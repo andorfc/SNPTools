@@ -29,9 +29,13 @@ schnable2023 and MaizeGDB 2026 stores carry):
                                  first missense consequence of the TYPE list (the gene/SUB
                                  SNPVersity displays).
 
-  plantcad1_score, plantcad2_score, evo2_score   optional (--dna-scores): the grz2023 Atlas
-                                 PlantCAD1/PlantCAD2 and Evo2 (all SNPs since release v1.4.2)
-                                 tables, joined on CHROM/POS/REF/ALT; indels get none.
+  plantcad1_score,               optional (--dna-scores): the grz2023 Atlas score tables, joined
+  plantcad2_score,               on CHROM/POS/REF/ALT; indels get none. PlantCAD1; PlantCAD2
+  plantcad2_onepass_score,       (masked, 512 bp); PlantCAD2 one-pass (release v1.4.3: ln P(alt)/
+  evo2_score                     P(ref) at the unmasked base, 8,192-bp windows, not on the scale of
+                                 plantcad2_score); Evo2 (all SNPs since release v1.4.2). A table
+                                 may carry any of the four columns: only those present are written
+                                 and declared, so a v1.4.2 table (no one-pass column) still works.
   ESMC_score                     llr_esmc from the same missense table, 1 decimal.
 
   MAXR2                          optional (--maxr2): highest pairwise LD r2 (PLINK 1.9 --r2) of the
@@ -54,7 +58,7 @@ table (~416k rows).
 import argparse, gzip, sys, collections
 
 KEEP_FROM_SNPEFF = ('TYPE', 'EFFECT', 'GENEMODEL', 'SUB')
-DNA_KEYS = ('plantcad1_score', 'plantcad2_score', 'evo2_score')
+DNA_KEYS = ('plantcad1_score', 'plantcad2_score', 'plantcad2_onepass_score', 'evo2_score')
 SITEQC_KEYS = ('NHET', 'NHOM', 'SITEQC')
 ADDED = KEEP_FROM_SNPEFF + ('MAF', 'ESM1_score', 'ESM2_score', 'ESM3_score', 'ESMC_score') + DNA_KEYS + ('MAXR2',) + SITEQC_KEYS
 HEADER = [
@@ -78,8 +82,10 @@ HEADER = [
 DNA_HEADER = [
     '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
     '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
+    '##INFO=<ID=plantcad2_onepass_score,Number=1,Type=Float,Description="PlantCAD2 one-pass long-context score: ln P(alt)/P(ref) at the unmasked base, 8,192-bp windows at 4,096-bp stride, each base scored by the window centred nearest it (>=2,048 bp context each side), fp32; release v1.4.3 (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only. Not on the scale of plantcad2_score (masked, 512 bp)">',
     '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), all SNPs (genic tiers and intergenic; release v1.4.2) (--dna-scores), rounded to 1 decimal (--pc-decimals)">',
 ]
+assert [h[11:].split(',', 1)[0] for h in DNA_HEADER] == list(DNA_KEYS)   # one line per key, same order
 MAXR2_HEADER = '##INFO=<ID=MAXR2,Number=1,Type=Float,Description="Highest pairwise LD r2 (PLINK 1.9 --r2) with any variant 400-5,000 bp away, from the 933 release v1.4 genotypes, no MAF/missingness filtering (--maxr2)">'
 
 
@@ -120,8 +126,8 @@ def snpeff_stream(path):
 
 
 def dna_stream(path, keys_wanted=DNA_KEYS, opt='--dna-scores'):
-    """yield (chrom, pos, ref, alt, {plantcad1_score, plantcad2_score, evo2_score}) from a
-    position-sorted TSV with header chr,pos,ref,alt,<any of DNA_KEYS>; empty/nan values skipped."""
+    """yield (chrom, pos, ref, alt, {any of DNA_KEYS}) from a position-sorted TSV with header
+    chr,pos,ref,alt,<any of DNA_KEYS>; empty/nan values skipped."""
     with opener(path) as fh:
         hdr = fh.readline().rstrip('\n').split('\t')
         ix = {c: i for i, c in enumerate(hdr)}
@@ -135,6 +141,13 @@ def dna_stream(path, keys_wanted=DNA_KEYS, opt='--dna-scores'):
             t = line.rstrip('\n').split('\t')
             yield t[ix['chr']], int(t[ix['pos']]), t[ix['ref']], t[ix['alt']], \
                 {k: t[ix[k]] for k in keys if t[ix[k]] not in ('', 'nan', 'NA', '.')}
+
+
+def dna_columns(path):
+    """the DNA_KEYS a --dna-scores table carries, from its header line: only these are declared"""
+    with opener(path) as fh:
+        hdr = fh.readline().rstrip('\n').split('\t')
+    return [k for k in DNA_KEYS if k in hdr]
 
 
 class SortedJoin:
@@ -247,14 +260,15 @@ def main():
     ap.add_argument('--snpeff', required=True, help='Schnable scored VCF (or its sites-only copy), same sites')
     ap.add_argument('--esm', required=True, help='grz2023_missense_esm.tsv(.gz)')
     ap.add_argument('--out', required=True)
-    ap.add_argument('--pc-decimals', type=int, default=1, help='decimals for plantcad1/2_score and evo2_score (default 1; full precision stays in the score tables)')
-    ap.add_argument('--dna-scores', help='position-sorted TSV chr,pos,ref,alt,plantcad1_score,plantcad2_score,evo2_score (optional)')
+    ap.add_argument('--pc-decimals', type=int, default=1, help='decimals for plantcad1/2_score, plantcad2_onepass_score and evo2_score (default 1; full precision stays in the score tables)')
+    ap.add_argument('--dna-scores', help='position-sorted TSV chr,pos,ref,alt,plantcad1_score,plantcad2_score,plantcad2_onepass_score,evo2_score (optional; any of the four score columns)')
     ap.add_argument('--maxr2', help='position-sorted TSV chr,pos,ref,alt,MAXR2 (optional; maxr2_chr.sh output)')
     a = ap.parse_args()
     esm = load_esm(a.esm)
     stats = collections.Counter()
     se = snpeff_stream(a.snpeff)
     dj = SortedJoin(dna_stream(a.dna_scores)) if a.dna_scores else None
+    dna_cols = dna_columns(a.dna_scores) if a.dna_scores else []
     mj = SortedJoin(dna_stream(a.maxr2, ('MAXR2',), '--maxr2')) if a.maxr2 else None
     cur = next(se, None)
     posbuf_key, posbuf = None, {}
@@ -269,7 +283,7 @@ def main():
             if line.startswith('#CHROM'):
                 out.write('\n'.join(HEADER) + '\n')
                 if dj is not None:
-                    out.write('\n'.join(DNA_HEADER) + '\n')
+                    out.write('\n'.join(h for k, h in zip(DNA_KEYS, DNA_HEADER) if k in dna_cols) + '\n')
                 if mj is not None:
                     out.write(MAXR2_HEADER + '\n')
                 out.write('##annotate_release_info=TYPE/EFFECT/GENEMODEL/SUB from ' + a.snpeff.split('/')[-1] +
