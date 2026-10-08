@@ -1109,13 +1109,13 @@ const ANNOT_TT={
   maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
   qc:'Site QC — the class of the site from its heterozygous and homozygous carriers among all lines of the release. Pass: fewer than a quarter of carriers heterozygous. Het elevated: a quarter or more. Het excess: more heterozygous than homozygous carriers. Het only: no homozygous carrier. No carrier: no line carries the allele. Hover a cell for its counts.',
   pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
-  pc2:'Second-generation PlantCAD DNA score.',
+  pc2op:'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
   evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP; more negative is more disruptive.',
   esm1:'ESM protein language-model score for the amino-acid change.',
   esm2:'ESM2 protein language-model score.',
   esm3:'ESM3 protein language-model score.',
   esmc:'ESM-C protein language-model score for the amino-acid change (missense sites).'};
-const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,evo2:1,esm1:1,esm2:1,esm3:1,esmc:1};
+const ANNOT_NUM={mq:1,comp:1,r2:1,maf:1,pc1:1,pc2:1,pc2op:1,evo2:1,esm1:1,esm2:1,esm3:1,esmc:1};
 let _annotCache={ds:null, res:null, val:null};
 function annotFields(){
   // once per dataset + result: rowHTML asks for every row, and a 'pending' column scans the rows
@@ -1185,7 +1185,7 @@ function rowHTML(r){
   const cur=Data.curatedAt ? Data.curatedAt(chr, r.pos, r.ref, r.alt) : null;   // SNPCurate
   const off=k=>F[k] && F[k].status!=='ok';           // column not available / pending for this set
   const blank=k=>`<td class="num annot-off" data-tt="${escAttr(F[k].note)}"></td>`;
-  const sc=(v,k)=>off(k)?blank(k):`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(v)}">${v===null?'N/A':v}</td>`;
+  const sc=(v,k)=>off(k)?blank(k):`<td class="score ${v===null?'na':''}" style="${v===null?'':'background:'+gColor(scoreColorValue(k,v))}">${v===null?'N/A':v}</td>`;
   // one cell per annotation column, in the header's order (a hidden column has neither)
   const cell={
     gene:  ()=>`<td>${geneCell(r.gene)}${moreGenes(r)}</td>`,
@@ -1197,7 +1197,7 @@ function rowHTML(r){
     r2:    ()=>off('r2')?blank('r2'):`<td class="num">${r.r2==null?'<span style="color:var(--faint)">NA</span>':(+r.r2).toFixed(2)}</td>`,
     maf:   ()=>off('maf')?blank('maf'):`<td class="num">${r.maf==null?'<span style="color:var(--faint)">—</span>':r.maf}</td>`,
     qc:    ()=>`<td class="qc-cell">${siteQcPill(r.qc, r.nHet, r.nHom)}</td>`,
-    pc1:()=>sc(r.pc1,'pc1'), pc2:()=>sc(r.pc2,'pc2'), evo2:()=>sc(r.evo2,'evo2'),
+    pc1:()=>sc(r.pc1,'pc1'), pc2op:()=>sc(r.pc2op,'pc2op'), evo2:()=>sc(r.evo2,'evo2'),
     esm1:()=>sc(r.esm1,'esm1'), esm2:()=>sc(r.esm2,'esm2'), esm3:()=>sc(r.esm3,'esm3'), esmc:()=>sc(r.esmc,'esmc'),
   };
   /* a curated allele's row: its site and annotation cells (not the score or genotype cells) on light

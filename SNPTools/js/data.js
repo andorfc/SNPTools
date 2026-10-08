@@ -73,7 +73,7 @@ const Data = (function () {
     {key:'mq',     label:'MQ'},           {key:'comp',   label:'COMP'},
     {key:'r2',     label:'maxR²'},        {key:'maf',    label:'MAF'},
     {key:'qc',     label:'Site QC', status:'auto'},
-    {key:'pc1',    label:'PlantCAD1'},    {key:'pc2',    label:'PlantCAD2'},
+    {key:'pc1',    label:'PlantCAD1'},    {key:'pc2op',  label:'PlantCAD2'},   // the one-pass score (release v1.4.3); the 512-bp pc2 stays in the VCF
     {key:'evo2',   label:'Evo2'},
     {key:'esm1',   label:'ESM1'},         {key:'esm2',   label:'ESM2'},
     {key:'esm3',   label:'ESM3'},         {key:'esmc',   label:'ESM-C'},
@@ -81,11 +81,13 @@ const Data = (function () {
   const ZMGRIN_NA_QC = 'Not available for the Grzybowski et al. 2023 call set (source VCFs carry no per-site MQ/coverage).';
   const FIELD_STATUS = {
     mgdb2026_hq: {
+      pc2op: {status:'na', note:'Not in the MaizeGDB 2026 INFO (its PlantCAD2, GeneCAD tiled log2, is a third method, comparable to neither PlantCAD2 score of the GRIN-linked set).'},
       evo2: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
       esmc: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
     },
     mgdb2026_hc: {
       r2: {status:'na', note:'maxR² is computed only for the High Quality set (its LD filter); the High Coverage set has no MAXR2.'},
+      pc2op: {status:'na', note:'Not in the MaizeGDB 2026 INFO (its PlantCAD2, GeneCAD tiled log2, is a third method, comparable to neither PlantCAD2 score of the GRIN-linked set).'},
       evo2: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
       esmc: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
     },
@@ -94,7 +96,7 @@ const Data = (function () {
       comp: {status:'hidden', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
       r2:   {status:'ok', note:'From the 933 release genotypes: highest PLINK 1.9 r² with any variant 400-5,000 bp away, no MAF/missingness/r² filtering. Blank = no partner variant within 400-5,000 bp, or monomorphic.'},
       pc1:  {status:'ok', note:'PlantCAD1 scores for SNPs (indels have none), rounded to 0.1.'},
-      pc2:  {status:'ok', note:'PlantCAD2 scores for SNPs (indels have none), rounded to 0.1.'},
+      pc2op:{status:'ok', note:'PlantCAD2 one-pass scores for SNPs (indels have none), rounded to 0.1 (release v1.4.3).'},
       esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
       esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
       esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
@@ -169,7 +171,7 @@ const Data = (function () {
   function hasSecondaryScores(datasetId){ return ['mgdb2026','zmgrin2026'].indexOf(familyOf(datasetId)) >= 0; }
 
   /* Language-model score columns for a dataset, in display order. `key` indexes
-     the row object parseVcf() builds (pc1/pc2 = DNA, esm1..esm3/esmc = protein).
+     the row object parseVcf() builds (pc1/pc2op = DNA, esm1..esm3/esmc = protein).
      Used by SNPGeo's variant table; any tool can render row[model.key]. Families
      without second-generation scores get the single DNA/protein pair their
      INFO carries (DNA_SCORE -> pc1, AA_SCORE -> esm1). */
@@ -180,7 +182,7 @@ const Data = (function () {
     ];
     return [
       {key:'pc1',  kind:'dna',     label:'PlantCAD1', tip:'PlantCAD1 DNA language-model score (INFO plantcad1_score, or DNA_SCORE; 0.1 steps in the GRIN-linked 2026 set).'},
-      {key:'pc2',  kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 DNA language-model score (INFO plantcad2_score; 0.1 steps in the GRIN-linked 2026 set).'},
+      {key:'pc2op',kind:'dna',     label:'PlantCAD2', tip:'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive. 0.1 steps.'},
       {key:'evo2', kind:'dna',     label:'Evo2',      tip:'Evo2 7B DNA language-model log-likelihood ratio (INFO evo2_score; every SNP; 0.1 steps).'},
       {key:'esm1', kind:'protein', label:'ESM1',      tip:'ESM1b protein language-model score (INFO ESM1_score, or AA_SCORE).'},
       {key:'esm2', kind:'protein', label:'ESM2',      tip:'ESM2 protein language-model score (INFO ESM2_score).'},
@@ -389,7 +391,7 @@ const Data = (function () {
   }
 
   /* ---- Site QC ----
-     A store that carries them in its INFO (release v1.4.2) or has a site-QC sidecar gives every
+     A store that carries them in its INFO (release v1.4.2 on; the installed stores are v1.4.3) or has a site-QC sidecar gives every
      variant NHET and NHOM, its heterozygous and homozygous-alternate carriers among ALL the
      release's lines, and SITEQC (h5_to_vcf.py). The
      class comes from the two counts by one rule, first match wins; the same rule is
@@ -572,8 +574,11 @@ const Data = (function () {
         // 2026 uses plantcad1/2 + ESM1/2/3; older projects (2024/Schnable/NAM)
         // use a single DNA_SCORE (PlantCaduceus) and AA_SCORE (ESM1b) -> map to col 1.
         pc1:    numOrNull(II.plantcad1_score != null ? II.plantcad1_score : II.DNA_SCORE),
-        pc2:    numOrNull(II.plantcad2_score),
-        evo2:   numOrNull(II.evo2_score != null ? II.evo2_score : II.EVO2_score),   // every SNP (release v1.4.2)
+        pc2:    numOrNull(II.plantcad2_score),            // masked, 512 bp: in the VCF and the exports
+        // one-pass, long-context (unmasked, 8,192-bp windows; release v1.4.3): the score the PlantCAD2
+        // columns show. Not on the scale of pc2 (median about -3.4 against -0.7). Null where absent.
+        pc2op:  numOrNull(II.plantcad2_onepass_score),
+        evo2:   numOrNull(II.evo2_score != null ? II.evo2_score : II.EVO2_score),   // every SNP (since release v1.4.2)
         esm1:   numOrNull(II.ESM1_score != null ? II.ESM1_score : II.AA_SCORE),
         esm2:   numOrNull(II.ESM2_score),
         esm3:   numOrNull(II.ESM3_score),
@@ -928,6 +933,7 @@ const Data = (function () {
         impact: r.impact || null, maf: (r.maf != null ? r.maf : null),
         plantcad: pc, esm: esm,
         plantcad2: (r.pc2 != null ? r.pc2 : null), esm2: (r.esm2 != null ? r.esm2 : null),
+        plantcad2op: (r.pc2op != null ? r.pc2op : null),
         esm3: (r.esm3 != null ? r.esm3 : null),
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
         combined, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
@@ -993,8 +999,8 @@ const Data = (function () {
         resi: p ? p.resi : null, aaRef: p ? p.ref : null, aaAlt: p ? p.alt : null,
         domain: r.domain || '\u2014', impactLevel: r.impact || null,
         plantcad: pc, esm: esm, combined,
-        plantcad2: (r.pc2 != null ? r.pc2 : null),
-        pc1: r.pc1, pc2: r.pc2, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
+        plantcad2: (r.pc2 != null ? r.pc2 : null), plantcad2op: (r.pc2op != null ? r.pc2op : null),
+        pc1: r.pc1, pc2: r.pc2, pc2op: r.pc2op, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
         maf: r.maf, r2: r.r2, mq: r.mq, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
         priority: impactPriority(cls, combined, r.impact), percentile: null,
@@ -1059,6 +1065,7 @@ const Data = (function () {
       const cls = impactClass(r.effect);
       const pc = r.pc1 != null ? r.pc1 : null, esm = r.esm1 != null ? r.esm1 : null;
       const pc2 = r.pc2 != null ? r.pc2 : null, esm2 = r.esm2 != null ? r.esm2 : null;
+      const pc2op = r.pc2op != null ? r.pc2op : null;
       const esm3 = r.esm3 != null ? r.esm3 : null;
       const evo2 = r.evo2 != null ? r.evo2 : null, esmc = r.esmc != null ? r.esmc : null;
       const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2) : (pc != null ? pc : (esm != null ? esm : null));
@@ -1074,7 +1081,7 @@ const Data = (function () {
       const qc = siteQc(het, hom);
       if (r.qc != null && r.qc !== qc) qcDiffer.push(r.pos);
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
-        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, esm2, esm3, evo2, esmc, combined,
+        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, plantcad2op:pc2op, esm2, esm3, evo2, esmc, combined,
         priority: impactPriority(cls, combined, r.impact),
         het, hom, af, carriersHom:homIds, carriersHet:hetIds, qc, nHet:het, nHom:hom,
         nRef: called - het - hom, carriersMiss: missIds};       // reference lines: Data.referenceLines(v)
@@ -1138,6 +1145,7 @@ const Data = (function () {
                 domainDisrupting, meanPlantcad:_avg(used.map(v=>v.plantcad).filter(x=>x!=null)),
                 meanEsm:_avg(used.map(v=>v.esm).filter(x=>x!=null)),
                 meanPlantcad2:_avg(used.map(v=>v.plantcad2).filter(x=>x!=null)),
+                meanPlantcad2op:_avg(used.map(v=>v.plantcad2op).filter(x=>x!=null)),
                 meanEsm2:_avg(used.map(v=>v.esm2).filter(x=>x!=null)),
                 meanEsm3:_avg(used.map(v=>v.esm3).filter(x=>x!=null)),
                 meanEvo2:_avg(used.map(v=>v.evo2).filter(x=>x!=null)),
@@ -1226,6 +1234,27 @@ function sampleHetMark(acc){
    lines (Plant / CAD1), so those columns are no wider than the other score columns (Evo2, ESM1...),
    whose width the numbers set. Text headers (CSV, tooltips) keep the one-word name. */
 function scoreHeadHTML(label){ return String(label).replace(/^PlantCAD(\d?)$/, 'Plant<br>CAD$1'); }
+
+/* Global helper: the value a score cell is coloured by. Every tool colours scores on one fixed
+   linear range, set for the 512-bp PlantCAD2 and PlantCAD1 scale. The PlantCAD2 one-pass score
+   (release v1.4.3, 8,192-bp windows) runs lower (median -3.4 against -0.7; 1st percentile -8.9
+   against -6.3), so on that range it would read as more damaging everywhere. It is coloured like
+   the 512-bp score at the same percentile instead: piecewise-linear between the two scores'
+   0.5, 1, 2, 5, 10, 25, 50, 75, 90, 95, 98, 99 and 99.5th percentiles, taken over every tenth site of
+   the ten v1.4.3 stores (4,329,880 SNPs carrying both), slope 1 beyond them. The number shown stays
+   the score itself. Any other key: the value unchanged. */
+var PC2OP_COLOR_Q = [[-9.4,-6.8],[-8.9,-6.3],[-8.4,-5.7],[-7.5,-4.7],[-6.5,-3.7],[-5.0,-2.3],[-3.4,-0.7],
+                     [-1.7,0.5],[0.1,1.7],[1.3,2.7],[2.7,4.0],[3.5,4.9],[4.1,5.6]];
+function scoreColorValue(key, v){
+  if (v == null || !isFinite(v) || (key !== 'pc2op' && key !== 'plantcad2op')) return v;
+  var q = PC2OP_COLOR_Q, n = q.length;
+  if (v <= q[0][0]) return v + (q[0][1] - q[0][0]);
+  if (v >= q[n - 1][0]) return v + (q[n - 1][1] - q[n - 1][0]);
+  for (var i = 1; i < n; i++){
+    if (v <= q[i][0]){ var a = q[i - 1], b = q[i]; return a[1] + (v - a[0]) * (b[1] - a[1]) / (b[0] - a[0]); }
+  }
+  return v;
+}
 
 /* Global helpers: the SNPCurate mark of a curated allele (window.SNP_CURATE, js/snpcurate.data.js)
    as a small link that opens its record. Each mark has its own glyph, so color is not the only

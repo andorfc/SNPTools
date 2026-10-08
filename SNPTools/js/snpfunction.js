@@ -70,9 +70,9 @@
     const luminance = 0.2126*linear[0] + 0.7152*linear[1] + 0.0722*linear[2];
     return luminance > 0.179 ? '#111827' : '#ffffff';
   }
-  function scoreCell(v){
+  function scoreCell(v, key){
     if (v==null) return '<span style="color:var(--faint)">—</span>';
-    const bg = scoreColor(v);
+    const bg = scoreColor(scoreColorValue(key, v));       // the one-pass PlantCAD2 has its own scale (data.js)
     const fg = contrastTextColor(bg);
     return `<span class="imp-score" style="background:${bg};color:${fg} !important;text-shadow:none">${v>0?'+':''}${v.toFixed(1)}</span>`;
   }
@@ -441,7 +441,7 @@
         ${stat('Candidate KO lines', d.koLines, 'accessions homozygous for a loss-of-function allele at a usable site',
           d.koLinesFlagged ? `<div class="fn-statn" id="fnKoFlagged">${d.koLinesFlagged.toLocaleString()} more lines only in flagged calls</div>` : '')}
         ${stat('Mean PlantCAD1', b.meanPlantcad==null?'—':b.meanPlantcad, 'average PlantCAD1 DNA language-model score')}
-        ${sec?stat('Mean PlantCAD2', b.meanPlantcad2==null?'—':b.meanPlantcad2, 'average PlantCAD2 DNA language-model score'):''}
+        ${sec?stat('Mean PlantCAD2', b.meanPlantcad2op==null?'—':b.meanPlantcad2op, 'average PlantCAD2 one-pass DNA language-model score (8,192-bp windows; not on the scale of the 512-bp PlantCAD2)'):''}
         ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
         ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 protein language-model score'):''}
         ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 protein language-model score'):''}
@@ -485,7 +485,7 @@
         <td>${consPill(v)}${peJump(v)}${foldJump(v)}</td>
         <td>${domTag(v.domain)}</td>
         <td class="num">${scoreCell(v.plantcad)}</td>
-        ${sec?`<td class="num">${scoreCell(v.plantcad2)}</td>`:''}
+        ${sec?`<td class="num">${scoreCell(v.plantcad2op,'pc2op')}</td>`:''}
         ${sec?`<td class="num">${scoreCell(v.evo2)}</td>`:''}
         <td class="num">${scoreCell(v.esm)}</td>
         ${sec?`<td class="num">${scoreCell(v.esm2)}</td><td class="num">${scoreCell(v.esm3)}</td>`:''}
@@ -504,7 +504,7 @@
   }
   function alleleTable(list, sec, d){
     return `<div class="tbl-wrap" style="max-height:none"><table class="vcf imp">
-        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">${scoreHeadHTML('PlantCAD1')}</th>${sec?`<th class="num" data-tt="Second-generation PlantCAD DNA score.">${scoreHeadHTML('PlantCAD2')}</th>`:''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), every SNP.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPMaize evidence tier for the allele.">Priority</th><th data-tt="Site QC: the class of the site from its heterozygous and homozygous carriers across the panel.">Site QC</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
+        <thead><tr><th style="padding-left:11px" data-tt="The REF to ALT change for this damaging-allele row.">Allele</th><th data-tt="Predicted molecular effect of the allele.">Consequence</th><th data-tt="Pfam domain overlapping the affected residue.">Domain</th><th class="num" data-tt="PlantCAD DNA language-model score for the allele.">${scoreHeadHTML('PlantCAD1')}</th>${sec?`<th class="num" data-tt="PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.">${scoreHeadHTML('PlantCAD2')}</th>`:''}${sec?'<th class="num" data-tt="Evo2 DNA language-model score (log-likelihood ratio), every SNP.">Evo2</th>':''}<th class="num" data-tt="ESM protein language-model score for the amino-acid change.">ESM</th>${sec?'<th class="num" data-tt="ESM2 protein language-model score.">ESM2</th><th class="num" data-tt="ESM3 protein language-model score.">ESM3</th>':''}${sec?'<th class="num" data-tt="ESM-C protein language-model score for the amino-acid change.">ESM-C</th>':''}<th data-tt="Integrated SNPMaize evidence tier for the allele.">Priority</th><th data-tt="Site QC: the class of the site from its heterozygous and homozygous carriers across the panel.">Site QC</th><th class="num" data-tt="Heterozygous carriers — accessions carrying one copy of the allele.">Het</th><th class="num" data-tt="Homozygous carriers — accessions carrying two copies (alternate homozygous).">Hom</th><th class="num" data-tt="Alternate-allele frequency across the analyzed panel.">AF</th><th></th></tr></thead>
         <tbody>${alleleRows(list, sec, d)}</tbody>
       </table></div>`;
   }
@@ -934,7 +934,7 @@
       const d=FN.data; if(!d||!d.damaging) return;
       const sec=Data.hasSecondaryScores(d.dataset);
       const cols=['variant','consequence','domain','plantcad']
-        .concat(sec?['plantcad2']:[])
+        .concat(sec?['plantcad2','plantcad2_onepass']:[])
         .concat(sec?['evo2']:[])
         .concat(['esm'])
         .concat(sec?['esm2','esm3']:[])
@@ -942,7 +942,7 @@
         .concat(['combined','priority','site_qc','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
         const base=[v.variant,v.consequence,v.domain,v.plantcad];
-        if(sec) base.push(v.plantcad2);
+        if(sec) base.push(v.plantcad2, v.plantcad2op);
         if(sec) base.push(v.evo2);
         base.push(v.esm);
         if(sec) base.push(v.esm2, v.esm3);

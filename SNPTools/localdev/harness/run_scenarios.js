@@ -648,7 +648,7 @@ async function until(site, expr, ms = 8000){
   }
 
   /* ---------- site QC counts in every VCF (NHET, NHOM, SITEQC: the store's own INFO in the release
-     v1.4.2 stores, else the .siteqc.h5 sidecar) ----------
+     v1.4.2 and later stores, else the .siteqc.h5 sidecar) ----------
      The page's own query path (Data.queryVariants -> processForm.php -> h5_to_vcf.py) for three
      intervals, once as is and once with SNPTOOLS_SITEQC=0 for the PHP process. With the full stores:
      y1 for five lines and for all 933, su1 and chr10:96.08-96.28 Mb for all 933; with only the test

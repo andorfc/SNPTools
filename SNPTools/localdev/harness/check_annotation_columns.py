@@ -6,7 +6,7 @@
     lacks stays as an empty column ('na'), except one the call set never records, which is
     left out ('hidden': MQ and COMP for zmgrin2026_imp); every row has as many cells as the
     header. Site QC ('auto') is shown exactly when the result carries NHET/NHOM/SITEQC: on the
-    rows whose INFO has them in the release itself (v1.4.2: the window cut from the release VCF
+    rows whose INFO has them in the release itself (v1.4.2 on: the window cut from the release VCF
     gives the count), and on every row when the queried store has its site-QC sidecar
     (h5_to_vcf.py then adds them where a row has none); the classes themselves are checked by
     check_site_qc_ui.py.
@@ -19,7 +19,10 @@
 (c) zmgrin2026_imp INFO: MAF recomputed from the fixture genotypes; ESM1/2/3 equal the
     rounded llr_esm1b / llr_esm2 / llr_esm3 of fixtures/annotation/grz2023_missense_esm_testregions.tsv.gz
     (llr_esm2 = the store ESM-2 layer, i.e. esm2_store_score); TYPE/EFFECT/GENEMODEL/SUB equal
-    the Schnable scored VCF rows. Standard library only."""
+    the Schnable scored VCF rows.
+(d) The PlantCAD2 column shows the one-pass score (INFO plantcad2_onepass_score, release v1.4.3), not
+    plantcad2_score (512 bp): its filled cells are the rows with that key, and in the window cut from
+    the release VCF every SNP has it and no indel does. Standard library only."""
 import csv, gzip, io, json, os, sys
 
 res, root = sys.argv[1:3]
@@ -27,7 +30,7 @@ A = json.load(open(res))['annot']
 FX = f'{root}/localdev/fixtures'
 LABELS = ['Gene model', 'Effect', 'SNPEff Impact', 'Domain', 'MQ', 'COMP', 'maxR²', 'MAF', 'Site QC',
           'PlantCAD1', 'PlantCAD2', 'Evo2', 'ESM1', 'ESM2', 'ESM3', 'ESM-C']
-KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'qc', 'pc1', 'pc2', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
+KEYS = ['gene', 'effect', 'impact', 'domain', 'mq', 'comp', 'r2', 'maf', 'qc', 'pc1', 'pc2op', 'evo2', 'esm1', 'esm2', 'esm3', 'esmc']
 # the chr2 store's site-QC sidecar: with it every row of the result carries a class (without it,
 # the rows whose INFO has SITEQC in the release itself)
 SIDECAR = os.path.exists(f'{root}/hdf5/grin2026/zmgrin2026_chr2_impute.siteqc.h5')
@@ -78,7 +81,7 @@ def expected(path, status):
         f['maf'] += present(I.get('MAF'))
         f['qc'] += present(I.get('SITEQC')) or SIDECAR    # a class on the row (pass shown faintly)
         f['pc1'] += present(I.get('plantcad1_score')) or present(I.get('DNA_SCORE'))
-        f['pc2'] += present(I.get('plantcad2_score'))
+        f['pc2op'] += present(I.get('plantcad2_onepass_score'))   # one-pass, not plantcad2_score
         f['evo2'] += present(I.get('evo2_score'))
         f['esmc'] += present(I.get('ESMC_score'))
         f['esm1'] += present(I.get('ESM1_score')) or present(I.get('AA_SCORE'))
@@ -90,7 +93,7 @@ def expected(path, status):
 
 
 # chr2 query source: the demo store (fixture) or a full chr2 store (its window cut from the
-# annotated chr2 release VCF on Ceres, release v1.4.2), whichever run_scenarios.js found installed
+# annotated chr2 release VCF on Ceres, release v1.4.3), whichever run_scenarios.js found installed
 FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
 SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4.3_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
                           else f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
@@ -128,7 +131,7 @@ for ds, path in SETS.items():
         if a['filled'][k] != f[k]:
             bad += 1; print('filled', ds, k, a['filled'][k], 'expected', f[k])
     # numeric precision as rendered never exceeds the INFO's (PlantCAD1/2 and Evo2: 0.1 in the rebuilt stores)
-    for k, info_key in (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('evo2', 'evo2_score'), ('esmc', 'ESMC_score'), ('r2', 'MAXR2')):
+    for k, info_key in (('pc1', 'plantcad1_score'), ('pc2op', 'plantcad2_onepass_score'), ('evo2', 'evo2_score'), ('esmc', 'ESMC_score'), ('r2', 'MAXR2')):
         dec = max([len(t.split('.')[1]) if '.' in t else 0 for t in (info(x[7]).get(info_key) for x in records(path)) if t not in (None, '', '.')] or [0])
         if a.get('decimals', {}).get(k, 0) > dec:
             bad += 1; print('precision', ds, k, a['decimals'][k], '>', dec)
@@ -136,6 +139,17 @@ for ds, path in SETS.items():
             PREC[k] = {'info_max_decimals': dec, 'rendered_max_decimals': a.get('decimals', {}).get(k), 'rendered_examples': a.get('sample', {}).get(k)}
     if any(v != 'ok' for v in status.values()) != bool(a['note']):
         bad += 1; print('availability note', ds, repr(a['note'][:80]))
+    if ds == 'zmgrin2026_imp' and FULL_CHR2:
+        # (d) the release window: the one-pass score on every SNP, on no indel
+        ns = ni = s_with = i_with = 0
+        for t in records(path):
+            w = present(info(t[7]).get('plantcad2_onepass_score'))
+            if len(t[3]) == 1 and len(t[4]) == 1: ns += 1; s_with += w
+            else: ni += 1; i_with += w
+        if not (ns and s_with == ns and i_with == 0 and a['filled']['pc2op'] == ns):
+            bad += 1; print('PlantCAD2 one-pass', ds, f'SNPs {s_with}/{ns}, indels {i_with}/{ni}, cells {a["filled"]["pc2op"]}')
+        else:
+            print(f'PlantCAD2 column = plantcad2_onepass_score: {s_with} of {ns} SNPs, {i_with} of {ni} indels, {a["filled"]["pc2op"]} cells')
     summary[ds] = {k: ('hidden' if k in hidden else 'absent' if k not in status else status[k] if status[k] != 'ok' else f"{a['filled'][k]}/{n}") for k in KEYS}
 
 # (c) the GRIN-linked INFO against its sources, all 3,495 fixture sites

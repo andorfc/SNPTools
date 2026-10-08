@@ -55,9 +55,9 @@
     return luminance > 0.179 ? '#111827' : '#ffffff';
   }
   function scorePct(v){ const lo=-12, hi=6; return Math.max(0,Math.min(100,((v-lo)/(hi-lo))*100)); }
-  function scoreCell(v){
+  function scoreCell(v, key){
     if (v==null) return '<span style="color:var(--faint)">—</span>';
-    const bg = scoreColor(v);
+    const bg = scoreColor(scoreColorValue(key, v));       // the one-pass PlantCAD2 has its own scale (data.js)
     const fg = contrastTextColor(bg);
     return `<span class="imp-score" style="background:${bg};color:${fg} !important;text-shadow:none">${v>0?'+':''}${v.toFixed(1)}</span>`;
   }
@@ -302,7 +302,7 @@
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
+            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2op','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -347,7 +347,7 @@
     'Consequence':'Specific predicted molecular consequence of the change.',
     'Domain':'Pfam domain containing the affected amino acid, when present.',
     'PlantCAD1':'PlantCAD DNA language-model score estimating sequence disruption.',
-    'PlantCAD2':'Second-generation PlantCAD DNA score.',
+    'PlantCAD2':'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
     'ESM':'ESM protein language-model score for the amino-acid substitution.',
     'ESM2':'ESM2 protein language-model score.',
     'ESM3':'ESM3 protein language-model score.',
@@ -383,7 +383,7 @@
       <td>${consPill(r)}${peJump}${foldJump}</td>
       <td>${domTag(r.domain)}</td>
       <td class="num">${scoreCell(r.plantcad)}</td>
-      ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2)}</td>`:''}
+      ${IMP.sec?`<td class="num">${scoreCell(r.plantcad2op,'pc2op')}</td>`:''}
       ${IMP.sec?`<td class="num">${scoreCell(r.evo2)}</td>`:''}
       <td class="num">${scoreCell(r.esm)}</td>
       ${IMP.sec?`<td class="num">${scoreCell(r.esm2)}</td><td class="num">${scoreCell(r.esm3)}</td>`:''}
@@ -565,7 +565,7 @@
           <div class="id-step-h"><span class="num-dot">3</span> AI score summary</div>
           <div class="ai-pill ${r.combined!=null&&r.combined<=-4?'hi':''}">AI score: ${r.combined==null?'n/a':r.combined<=-7?'high impact':r.combined<=-4?'elevated':'low impact'}</div>
           ${scoreBar('PlantCAD1', r.plantcad)}
-          ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2):''}
+          ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2op, 'pc2op'):''}
           ${IMP.sec?scoreBar('Evo2', r.evo2):''}
           ${scoreBar('ESM', r.esm)}
           ${IMP.sec?scoreBar('ESM2', r.esm2)+scoreBar('ESM3', r.esm3):''}
@@ -584,11 +584,11 @@
       </div>
     </div>`;
   }
-  function scoreBar(label, v){
+  function scoreBar(label, v, key){
     if (v==null) return `<div class="sbar"><div class="sbar-h"><span>${label} score</span><b class="mono">—</b></div><div class="sbar-track" style="background:linear-gradient(90deg,#e5484d 0%,#f5b545 50%,#2f9e44 100%)"></div></div>`;
     return `<div class="sbar">
       <div class="sbar-h"><span>${label} score</span><b class="mono">${v>0?'+':''}${v.toFixed(1)}</b></div>
-      <div class="sbar-track" style="background:linear-gradient(90deg,#e5484d 0%,#f5b545 50%,#2f9e44 100%)"><span class="sbar-mark" style="left:${scorePct(v)}%"></span></div>
+      <div class="sbar-track" style="background:linear-gradient(90deg,#e5484d 0%,#f5b545 50%,#2f9e44 100%)"><span class="sbar-mark" style="left:${scorePct(scoreColorValue(key, v))}%"></span></div>
     </div>`;
   }
 
@@ -626,7 +626,7 @@
     sendCompare(){ if(IMP.input){ S.compareInput=IMP.input; } go('snpcompare'); },
     exportCSV(){
       const cols=['gene','variant','consequence','domain','plantcad']
-        .concat(IMP.sec?['plantcad2']:[])
+        .concat(IMP.sec?['plantcad2','plantcad2op']:[])
         .concat(IMP.sec?['evo2']:[])
         .concat(['esm'])
         .concat(IMP.sec?['esm2','esm3']:[])
@@ -635,7 +635,8 @@
       const rows=filtered();
       const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';
         if(typeof v==='string' && /[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"'; return v; }).join(',');
-      const csv=[cols.join(',')].concat(rows.map(line)).join('\n');
+      const head={plantcad2op:'plantcad2_onepass'};         // plantcad2 = the 512-bp score, as before
+      const csv=[cols.map(c=>head[c]||c).join(',')].concat(rows.map(line)).join('\n');
       const blob=new Blob([csv],{type:'text/csv'}), u=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=u; a.download=`snpimpact_${(IMP.input.chr||'region')}_${IMP.input.start}_${IMP.input.end}.csv`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500);

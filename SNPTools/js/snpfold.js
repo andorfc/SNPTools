@@ -169,10 +169,10 @@
     const luminance = 0.2126*linear[0] + 0.7152*linear[1] + 0.0722*linear[2];
     return luminance > 0.179 ? '#111827' : '#ffffff';
   }
-  function scoreCell(v){
+  function scoreCell(v, key){
     const n = finiteNumber(v);
     if (n == null) return '<span style="color:var(--faint)">—</span>';
-    const bg = scoreColor(n);
+    const bg = scoreColor(scoreColorValue(key, n));       // the one-pass PlantCAD2 has its own scale (data.js)
     const fg = contrastTextColor(bg);
     return `<span class="imp-score" style="background:${bg};color:${fg} !important;text-shadow:none">${n>0?'+':''}${n.toFixed(1)}</span>`;
   }
@@ -185,6 +185,7 @@
   const SCORE_KEYS = {
     plantcad:  ['plantcad', 'plantcad1', 'plantcad_1', 'PLANTCAD', 'PLANTCAD1'],
     plantcad2: ['plantcad2', 'plantcad_2', 'PLANTCAD2'],
+    plantcad2op: ['plantcad2op', 'plantcad2_onepass', 'pc2op'],
     esm:       ['esm', 'esm1', 'esm_1', 'ESM', 'ESM1'],
     esm2:      ['esm2', 'esm_2', 'ESM2'],
     esm3:      ['esm3', 'esm_3', 'ESM3'],
@@ -202,6 +203,7 @@
   function hasSecondaryVariantScores(variants){
     return (variants || []).some(v =>
       modelScore(v, 'plantcad2') != null ||
+      modelScore(v, 'plantcad2op') != null ||
       modelScore(v, 'esm2') != null ||
       modelScore(v, 'esm3') != null
     );
@@ -209,7 +211,7 @@
   function aiScoreSummary(v){
     const scores = [
       ['PlantCAD', modelScore(v, 'plantcad')],
-      ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
+      ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2op')]] : []),
       ...(FD.sec ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
       ...(FD.sec ? [
@@ -513,6 +515,7 @@
       pos:v.pos, refNt:v.refNt != null ? v.refNt : v.ref, altNt:v.altNt != null ? v.altNt : v.alt,
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
+      plantcad2op:v.plantcad2op != null ? v.plantcad2op : (v.pc2op != null ? v.pc2op : null),
       esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
       evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
@@ -1603,8 +1606,12 @@
       get:v => { const c = ctxFor(v); return c.inModel ? c.ssLabel : null; } },
     { key:'plantcad',    label:'PlantCAD',    type:'num', num:true,
       get:v => modelScore(v, 'plantcad') },
-    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
+    // PlantCAD2: the table shows the one-pass score; the CSV/TSV keeps "PlantCAD2" = the 512-bp score,
+    // as before, and adds "PlantCAD2 one-pass"
+    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true, exportOnly:true,
       get:v => modelScore(v, 'plantcad2') },
+    { key:'plantcad2op', label:'PlantCAD2',   type:'num', num:true, sec:true, exportLabel:'PlantCAD2 one-pass',
+      get:v => modelScore(v, 'plantcad2op') },
     { key:'evo2',        label:'Evo2',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'evo2') },
     { key:'esm',         label:'ESM1',        type:'num', num:true,
@@ -1635,7 +1642,8 @@
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.qc || FD.hasQc)); }
+  function foldExportCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.qc || FD.hasQc)); }
+  function foldVisibleCols(){ return foldExportCols().filter(c => !c.exportOnly); }
   /* Site QC: with "Usable alleles only" (the default) the track, the table and the 3D view show
      only variants at usable sites (PASS, HET_ELEVATED); flagged and no-carrier ones are hidden. */
   function shownVariants(){
@@ -1680,6 +1688,7 @@
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
     plantcad:'PlantCAD DNA language-model score for the change.',
     plantcad2:'Second-generation PlantCAD DNA score.',
+    plantcad2op:'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
     esm:'ESM protein language-model score for the substitution.',
     esm2:'ESM2 protein language-model score.',
     esm3:'ESM3 protein language-model score.',
@@ -1720,7 +1729,7 @@
       <td class="num">${c.plddt==null?'<span style="color:var(--faint)">—</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span>`}</td>
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
-      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2op'), 'pc2op')}</td>`:''}
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
       <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
@@ -2143,8 +2152,8 @@
       const rows = sortedVariants();
       if (!rows.length){ alert('No variant table to export.'); return; }
       const delim = format === 'tsv' ? '\t' : ',';
-      const cols = foldVisibleCols();
-      const header = [...cols.map(c => c.label), 'Carriers (hom)', 'Carriers (het)'];
+      const cols = foldExportCols();
+      const header = [...cols.map(c => c.exportLabel || c.label), 'Carriers (hom)', 'Carriers (het)'];
       const lines = [header.map(h => csvEscape(h, delim)).join(delim)];
       rows.forEach(v => {
         const cr = carrierOf(v);

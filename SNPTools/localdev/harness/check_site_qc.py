@@ -2,7 +2,7 @@
 """check_site_qc.py <results.json> <site_root> -- the site QC counts every VCF carries.
 
 Every row's INFO ends with NHET, NHOM and SITEQC: a store built from a release VCF that has
-them (release v1.4.2) carries them itself, and for a store that does not h5_to_vcf.py appends
+them (release v1.4.2 on) carries them itself, and for a store that does not h5_to_vcf.py appends
 them from the store's sidecar (<store>.siteqc.h5, tools/build_site_qc.py). Recomputed here,
 independently:
 1. The page's queries (run_scenarios.js, Data.queryVariants -> processForm.php) built VCFs.
@@ -10,6 +10,9 @@ independently:
    cells of its 933 genotypes, and SITEQC follows the rule (written again below).
 3. The five-line VCF carries the same INFO as the all-lines VCF of the same interval: the
    counts are panel-wide, not selection-wide.
+1b. Every INFO key a page VCF's rows use is declared in its header (the stores keep no header, so
+   h5_to_vcf.py declares them), and where the stores carry plantcad2_onepass_score (release v1.4.3;
+   required with the full stores) it is declared, on every SNP row and on no indel.
 4. With SNPTOOLS_SITEQC=0 the VCF equals the normal one minus the three fields and their three
    ##INFO lines, whether the fields came from the store's own INFO or from the sidecar.
 5. In a temporary root that symlinks the store: with no sidecar, or one whose store_bytes is
@@ -117,6 +120,22 @@ for name, q in sorted(Q['queries'].items()):
     if ok:
         V[name] = read_vcf(vpath(q['vcf']))
 check(not Q.get('consoleErrors'), f"no script errors ({(Q.get('consoleErrors') or [])[:2]})")
+
+# ---------------- 1b: declared INFO keys; the PlantCAD2 one-pass score ----------------
+FULL = all((R.get('store') or {}).get(c, 0) > 100000 for c in ('chr4', 'chr6', 'chr10'))
+OP = re.compile(r'(?:^|;)plantcad2_onepass_score=-?[0-9]')
+for name, (meta, head, rows) in sorted(V.items()):
+    ids = set(info_ids(meta))
+    used = {kv.split('=', 1)[0] for r in rows if r[7] != '.' for kv in r[7].split(';')}
+    check(used <= ids, f"{name}: every INFO key of its {len(rows)} rows is declared {sorted(used - ids)}")
+    ns = ni = s_with = i_with = 0
+    for r in rows:
+        w = OP.search(r[7]) is not None
+        if len(r[3]) == 1 and len(r[4]) == 1: ns += 1; s_with += w
+        else: ni += 1; i_with += w
+    if FULL or s_with or i_with:
+        check('plantcad2_onepass_score' in ids and s_with == ns and i_with == 0,
+              f"{name}: plantcad2_onepass_score declared, on {s_with} of {ns} SNP rows and {i_with} of {ni} indel rows")
 
 classes = {}
 for name in ('five_all', 'gene_all', 'region_all'):
