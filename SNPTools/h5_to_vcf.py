@@ -299,7 +299,18 @@ FORMAT_COL = np.full(ROW_CHUNK, b'GT', dtype='S2')
 # Header
 # ---------------------------------------------------------------------------
 def common_info_header():
-    return ["##fileformat=VCFv4.2", "##fileDate=" + current_date]
+    return ["##fileformat=VCFv4.2", "##fileDate=" + current_date] + contig_line()
+
+
+def contig_line():
+    """##contig for the store's chromosome (ID only: the store has no length), so bcftools does not
+    warn that the contig is undefined; a store holds one chromosome."""
+    try:
+        c = hdf5_file['CHROM'][lower_index]
+        c = c.decode() if isinstance(c, bytes) else str(c)
+    except Exception:
+        return []
+    return ['##contig=<ID=' + c + '>'] if c and all(ch.isalnum() or ch in '_.-' for ch in c) else []
 
 
 SITEQC_INFO_DEFS = [   # the same three lines as tools/annotate_release_info.py
@@ -311,7 +322,22 @@ SITEQC_INFO_DEFS = [   # the same three lines as tools/annotate_release_info.py
 ]
 
 
-def info_defs():
+ZMGRIN_SCORE_INFO_DEFS = [   # the release's own lines for its score keys, as tools/annotate_release_info.py writes them
+    '##INFO=<ID=ESM1_score,Number=1,Type=Float,Description="ESM-1b 650M WT-marginal LLR (grz2023_missense_esm llr_esm1b), 1 decimal; missense only">',
+    '##INFO=<ID=ESM2_score,Number=1,Type=Float,Description="ESM-2 650M WT-marginal LLR from the Full_ESM_stack store (esm2_store_score; not the published esm2_score), 1 decimal; missense only">',
+    '##INFO=<ID=ESM3_score,Number=1,Type=Float,Description="ESM3-open sequence-track WT-marginal LLR (grz2023_missense_esm llr_esm3), 1 decimal; missense only">',
+    '##INFO=<ID=ESMC_score,Number=1,Type=Float,Description="ESM C 600M WT-marginal LLR (grz2023_missense_esm llr_esmc), 1 decimal; missense only">',
+    '##INFO=<ID=plantcad1_score,Number=1,Type=Float,Description="PlantCAD1 (PlantCaduceus) zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
+    '##INFO=<ID=plantcad2_score,Number=1,Type=Float,Description="PlantCAD2 zero-shot score, grz2023 Atlas re-score (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only">',
+    '##INFO=<ID=plantcad2_onepass_score,Number=1,Type=Float,Description="PlantCAD2 one-pass long-context score: ln P(alt)/P(ref) at the unmasked base, 8,192-bp windows at 4,096-bp stride, each base scored by the window centred nearest it (>=2,048 bp context each side), fp32; release v1.4.3 (--dna-scores), rounded to 1 decimal (--pc-decimals); SNPs only. Not on the scale of plantcad2_score (masked, 512 bp)">',
+    '##INFO=<ID=evo2_score,Number=1,Type=Float,Description="Evo2 7B log-likelihood ratio (256-bp left context), all SNPs (genic tiers and intergenic; release v1.4.2) (--dna-scores), rounded to 1 decimal (--pc-decimals)">',
+]
+
+
+def info_defs(extra=()):
+    """The ##INFO / ##FORMAT lines and the #CHROM line. `extra`: a family's own score keys; the
+    stores keep no VCF header, so a key nobody declares here reaches the download undeclared
+    (bcftools: 'INFO ... is not defined in the header')."""
     return [
         '##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS mapping quality">',
         '##INFO=<ID=CVC,Number=1,Type=Integer,Description="The number of accessions that have genotype data for a particular variant">',
@@ -322,7 +348,7 @@ def info_defs():
         '##INFO=<ID=SUB,Number=.,Type=String,Description="The amino acid substitution for missense and non-synonymous variants">',
         '##INFO=<ID=MAXR2,Number=1,Type=Float,Description="The maximum R2 for a given loci">',
         '##INFO=<ID=MAF,Number=1,Type=Float,Description="Minor Allele Frequency">',
-    ] + (SITEQC_INFO_DEFS if QC_HEADER else []) + [
+    ] + (SITEQC_INFO_DEFS if QC_HEADER else []) + list(extra) + [
         '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
         "#" + "\t".join(["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT"] + genome_list),
     ]
@@ -353,7 +379,7 @@ def header_text():
         lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.4; Grzybowski et al. 2023 sites, Beagle-imputed + direct-call companion lines)")
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
         lines.append("##doi=https://doi.org/10.1111/tpj.16123")
-        lines += info_defs()
+        lines += info_defs(ZMGRIN_SCORE_INFO_DEFS)
     if not lines:
         # Unknown family: still emit a minimal header. Without the #CHROM line the
         # browser's parseVcf() cannot map sample columns and reads every call as missing.
