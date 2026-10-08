@@ -22,7 +22,9 @@
   };
   const MARK_NAME = {gold:'Gold', outline:'Outline', grey:'Grey'};
   const MARK_ORDER = {gold:0, outline:1, grey:2};
-  const SCORE_LABEL = [['pc1','PlantCAD1'],['pc2','PlantCAD2'],['evo2','Evo2'],['esm1','ESM1'],['esm2','ESM2'],['esm3','ESM3'],['esmc','ESM-C']];
+  // PlantCAD2: the one-pass score (release v1.4.3, 8,192-bp windows), as in the other tools; the data file keeps
+  // the 512-bp pc2 too
+  const SCORE_LABEL = [['pc1','PlantCAD1'],['pc2op','PlantCAD2'],['evo2','Evo2'],['esm1','ESM1'],['esm2','ESM2'],['esm3','ESM3'],['esmc','ESM-C']];
   const KIND = {causal:'Causal change', published_marker:'Published marker', tag:'Tagging site'};
   const EVIDENCE = {validated:'Validated', associated:'Associated', tag:'Tag'};
 

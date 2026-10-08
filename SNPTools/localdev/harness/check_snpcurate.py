@@ -27,7 +27,8 @@ K = json.load(open(res)).get('curate')
 PY = os.environ.get('PYTHON_PATH') or 'python3'
 SEV = {'HIGH': 3, 'MODERATE': 2, 'LOW': 1, 'MODIFIER': 0}
 QC_LABEL = {'PASS': 'pass', 'HET_ELEVATED': 'Het elevated', 'HET_EXCESS': 'Het excess', 'HET_ONLY': 'Het only', 'NO_CARRIER': 'No carrier'}
-SCORES = [('pc1', 'plantcad1_score', 'PlantCAD1'), ('pc2', 'plantcad2_score', 'PlantCAD2'), ('evo2', 'evo2_score', 'Evo2'),
+SCORES = [('pc1', 'plantcad1_score', 'PlantCAD1'), ('pc2', 'plantcad2_score', 'PlantCAD2 (512 bp)'),
+          ('pc2op', 'plantcad2_onepass_score', 'PlantCAD2'), ('evo2', 'evo2_score', 'Evo2'),
           ('esm1', 'ESM1_score', 'ESM1'), ('esm2', 'ESM2_score', 'ESM2'), ('esm3', 'ESM3_score', 'ESM3'), ('esmc', 'ESMC_score', 'ESM-C')]
 STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
           'unreliable': 'Unreliable calls', 'not_annotated': 'Gene not annotated'}
@@ -263,7 +264,8 @@ for e in src['entries']:
     exp_qc = f"Site QC{QC_LABEL[x['qc']]} {x['nHet']:,} het · {x['nHom']:,} hom · {x['nMiss']:,} missing"
     exp_pr = f"Priority{x['priority']} combined {'—' if x['combined'] is None else ('+' if x['combined'] > 0 else '') + format(x['combined'], '.2f')}"
     exp_af = f"Allele frequency{x['af'] * 100:.1f}% among called lines · MAF {('—' if x['maf'] is None else format(x['maf'], 'g'))}"
-    scores = [[lab, sc1(x['scores'][k])] + ([f"rank {x['rank'][k][0]} of {x['rank'][k][1]}"] if x.get('rank') and x['rank'].get(k) else []) for k, _, lab in SCORES]
+    # the record shows PlantCAD2 = the one-pass score (the 512-bp pc2 is in the data file, checked above)
+    scores = [[lab, sc1(x['scores'][k])] + ([f"rank {x['rank'][k][0]} of {x['rank'][k][1]}"] if x.get('rank') and x['rank'].get(k) else []) for k, _, lab in SCORES if k != 'pc2']
     subs = [f"{n}{h:,} of {t:,}{pct(h, t)}" for n, h, t in x['subpop'] if h]
     ctys = [f"{n}{c:,} of {t:,}{pct(c, t)}" for n, c, t in x['country']]
     trait_ok = True

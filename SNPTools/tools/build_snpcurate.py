@@ -15,8 +15,9 @@ For an entry with status "site" it finds exactly one site with that chr, pos, re
 stops) and computes: heterozygous / homozygous-alternate / missing calls over all lines, the Site QC
 class, the alternate-allele frequency among called lines, MAF and MAXR2; the consequence and
 substitution for site_gene if given, else for gene (that gene's most severe SnpEff entry, as the app
-reads it: Data.rowForGene), with the seven scores (ESM scores only on the entry they were computed
-for) and the priority as Data.impactPriority computes it (combined = mean of PlantCAD1 and ESM1 when
+reads it: Data.rowForGene), with the eight scores (PlantCAD2 twice: the masked 512-bp plantcad2_score
+and the one-pass plantcad2_onepass_score of release v1.4.3; ESM scores only on the entry they were
+computed for) and the priority as Data.impactPriority computes it (combined = mean of PlantCAD1 and ESM1 when
 both exist); the homozygous and heterozygous carriers, homozygous carriers per subpopulation and
 carriers per country with each group's total; the trait by genotype when grin_descriptor is set
 (numeric: mean and n of the line means for homozygous-reference and homozygous-alternate lines; coded:
@@ -36,7 +37,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FIXED = ('CHROM', 'POS', 'REF', 'ALT', 'QUAL', 'INFO')
 SEVERITY = {'HIGH': 3, 'MODERATE': 2, 'LOW': 1, 'MODIFIER': 0}
-SCORES = (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('evo2', 'evo2_score'),
+SCORES = (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('pc2op', 'plantcad2_onepass_score'), ('evo2', 'evo2_score'),
           ('esm1', 'ESM1_score'), ('esm2', 'ESM2_score'), ('esm3', 'ESM3_score'), ('esmc', 'ESMC_score'))
 ESM_KEYS = ('esm1', 'esm2', 'esm3', 'esmc')
 MARKS = {'gold': 'Validated causal change, genotyped in this release.',
@@ -300,7 +301,7 @@ def write_js(root, src, entries):
 
 
 def write_table(path, entries):
-    cols = ['id', 'gene', 'symbol', 'change', 'reference', 'status', 'consequence', 'ESM2', 'PlantCAD2', 'priority',
+    cols = ['id', 'gene', 'symbol', 'change', 'reference', 'status', 'consequence', 'ESM2', 'PlantCAD2', 'PlantCAD2 one-pass', 'priority',
             'het/hom', 'site_qc', 'mark', 'literature_match']
     fmt = lambda v: '' if v is None else (f'{v:.1f}' if isinstance(v, float) else str(v))
     rows = []
@@ -308,7 +309,7 @@ def write_table(path, entries):
         s = e.get('site') or {}
         rows.append([e['id'], e['gene'], e['symbol'], e['label'], '; '.join(r['cite'] for r in e.get('refs', [])),
                      e['status'], s.get('consequence') or e.get('variant_type') or '', fmt((s.get('scores') or {}).get('esm2')),
-                     fmt((s.get('scores') or {}).get('pc2')), s.get('priority') or '',
+                     fmt((s.get('scores') or {}).get('pc2')), fmt((s.get('scores') or {}).get('pc2op')), s.get('priority') or '',
                      f"{s['nHet']}/{s['nHom']}" if s else '', s.get('qc') or '', e['mark'], e.get('note') or ''])
     os.makedirs(os.path.dirname(os.path.abspath(path)) or '.', exist_ok=True)
     with open(path, 'w', encoding='utf-8') as fh:
