@@ -24,19 +24,29 @@ Versions used here: PHP 8.5.9 (CLI built-in server), Python 3.12 + h5py + numpy,
 
 ## 2. Variant stores
 
-**All ten chromosomes (release v1.4.2 builds, installed 2026-10-04).**
-`hdf5/grin2026/zmgrin2026_chr{1..10}_impute.h5` are the full builds of the v1.4.2 annotation update
-(the lines, sites and genotypes of release v1.4, unchanged): 46,054,265 sites x 933 samples in all
+**All ten chromosomes (release v1.4.3 builds, installed 2026-10-07).**
+`hdf5/grin2026/zmgrin2026_chr{1..10}_impute.h5` are the full builds of the v1.4.3 annotation update
+(the lines, sites and genotypes of release v1.4, unchanged, and every INFO field of v1.4.2
+byte-identical): 46,054,265 sites x 933 samples in all
 (chr1 6,706,560; chr2 5,179,690; chr3
 5,192,152; chr4 5,793,751; chr5 4,774,127; chr6 3,625,217; chr7 3,893,628; chr8 3,886,650; chr9
-3,589,160; chr10 3,413,330), 1.4-2.8 GB each, with INFO for SnpEff fields, MAF, MAXR2,
-PlantCAD1/PlantCAD2 and Evo2 rounded to 0.1 (every SNP: 43,296,332 sites), ESM1/2/3 and ESM-C, and
+3,589,160; chr10 3,413,330), 1.5-3.0 GB each, with INFO for SnpEff fields, MAF, MAXR2,
+PlantCAD1, PlantCAD2 (masked, 512 bp), the PlantCAD2 one-pass score (`plantcad2_onepass_score`, new in
+v1.4.3: the unmasked base scored with 8,192-bp windows; the score the PlantCAD2 columns show) and Evo2,
+rounded to 0.1 (every SNP: 43,296,332 sites), ESM1/2/3 and ESM-C, and
 the site-QC fields NHET, NHOM and SITEQC on every row, on every chromosome. Every region
 works. They are the Ceres builds of
-`/90daydata/maizegdb/carson/grz2023/snptools_build_v1.4.2/chr<N>/` (each md5 as in its
-`logs/MD5SUMS.txt`; chr2 cca26c2cc96bfc90e0c4ecf05d21deb0). They replaced the release v1.4 builds
-installed by 2026-10-02, in which Evo2 covered the SNPs within 1 kb of a gene and INFO had no
-site-QC fields (chr2: `grz2023/snptools_build/chr2/`, md5 9b8a52df8d08df7a875f3c84f4bf7d3b). The
+`/90daydata/maizegdb/carson/grz2023/snptools_build_v1.4.3/chr<N>/`, each md5 as in its
+`logs/MD5SUMS.txt`: chr1 df3c30eaac930c0bce1c3eacb155c6cd, chr2 5481fc9a3850dd8403ad309e9cc1e1a8, chr3
+15dbe4e3734cb1b40b8004e10dcc1ec9, chr4 93cbf90c9d5725257e2f1ffe143792a4, chr5 2f3464c2a67d89d7b3926484c9d20440,
+chr6 b540d08fedd48a36b54e9b0982b349e7, chr7 8ed472bdba5e11cf1922d54e78356526, chr8
+9d6ba7d60cf12944f7b0ff7c595f4fc0, chr9 b4b4eace708c62910ffc7b65e33df3c1, chr10 670086e9233afc9d23ff334ddef3917a.
+Their sizes changed, so the site-QC sidecars were rebuilt (`tools/build_site_qc.py --jobs 1`;
+`make site-qc-check` 10 of 10, class totals as in v1.4.2). They replaced the release v1.4.2 builds
+installed 2026-10-04 (no one-pass score; chr2 md5 cca26c2cc96bfc90e0c4ecf05d21deb0), which had
+replaced the release v1.4 builds installed by 2026-10-02, in which Evo2 covered the SNPs within 1 kb
+of a gene and INFO had no site-QC fields (chr2: `grz2023/snptools_build/chr2/`, md5
+9b8a52df8d08df7a875f3c84f4bf7d3b). The
 earlier test stores are kept beside them as
 `zmgrin2026_<chr>_impute.testregions.h5` (chr2's as `.demo.h5`); the app does not read them.
 
@@ -64,7 +74,7 @@ all 933 lines, whatever lines were selected) and `SITEQC`; the pages do not show
 server with `SNPTOOLS_SITEQC=0 make start` to build VCFs without them, exactly as before. Cost,
 measured on this Mac for all 933 lines: a gene (su1, 208 sites) 0.45 s either way, chr10:96-97 Mb
 0.81 -> 0.82 s, peak footprint 0.33 GB; a whole chromosome for five lines 13.8 -> 15.3 s.
-The v1.4.2 stores carry the three fields in their own INFO: `h5_to_vcf.py` writes those rows as
+The v1.4.2 and v1.4.3 stores carry the three fields in their own INFO: `h5_to_vcf.py` writes those rows as
 stored, the sidecar adds nothing to them (`make curate` and the summary still read it), and
 `SNPTOOLS_SITEQC=0` takes the stored fields out of every row and their three `##INFO` lines out of
 the header (all of chr10 for five lines: 15.9 s as stored, 17.4 s with the switch).
@@ -172,7 +182,9 @@ genotypes), ESM1/ESM2/ESM3 (missense sites only; ESM2 = store ESM-2 650M, `esm2_
 Evo2 (INFO `evo2_score`: every SNP in the v1.4.2 stores; the SNPs within 1 kb of a gene before
 them) and ESM-C (`ESMC_score`: missense) are
 columns after PlantCAD2 and ESM3 (patch 0033), filled on every chromosome (chr2 GWAS window:
-158 and 10 of 249 sites; Evo2 on 120 before v1.4.2). SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
+158 and 10 of 249 sites; Evo2 on 120 before v1.4.2). The PlantCAD2 column shows the one-pass score
+(`plantcad2_onepass_score`, release v1.4.3; patch 0064) in every tool, coloured like the 512-bp score
+at the same percentile; the 512-bp `plantcad2_score` stays in the VCF and the CSV/TSV exports. SNPImpact, SNPFunction (catalog, burden means, CSV), SNPFold and SNPGeo always show
 them beside PlantCAD and ESM (patches 0036-0037), empty where the store has no score
 (Zm00001eb067740: Evo2 on 92 sites, ESM-C on 10).
 Domain is the Pfam block covering the site in `data/domains/by_chr/<chr>.json` (canonical proteins'
@@ -202,7 +214,7 @@ chromosome by chromosome (a dashed header and a note above the table).
    `window.SNPTOOLS_MAIZEGDB_BASE` before `js/snpfunction-ontology.js` loads to read another
    MaizeGDB host. Offline, or if MaizeGDB fails, the card says so and the old GO/KEGG lists from
    `data/function/annotations/` are shown instead.
-8. **Site QC** (from the fields in the v1.4.2 stores' own INFO; a store without them needs its
+8. **Site QC** (from the fields in the v1.4.2 and later stores' own INFO; a store without them needs its
    sidecar, `make site-qc`): in SNPVersity query su1, `Zm00001eb174590`
    (chr4:43,430,007-43,438,753), with the NAM lines. The *Site QC* column follows MAF; the line under
    the filters reads "14 flagged, 104 with no carrier in this release, of 208 sites", and the *Site

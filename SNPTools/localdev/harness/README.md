@@ -45,7 +45,9 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    covers the site (it assumed the files absent and failed whenever they were installed);
    `check_annotation_columns.py` recomputes the filled-cell counts from the INFO, checks that
    unavailable/pending columns stay in the table empty, and checks the GRIN-linked INFO against
-   its sources (SnpEff fields, MAF from the genotypes, ESM1/2/3 from the missense ESM table).
+   its sources (SnpEff fields, MAF from the genotypes, ESM1/2/3 from the missense ESM table). The
+   PlantCAD2 column is the one-pass score (`plantcad2_onepass_score`, release v1.4.3): its cells
+   are counted against that key, and in the full-store window every SNP has it and no indel does.
 
 8. SNPCompare genome-wide scope per dataset family, with synthetic matrices written by
    `make_synthetic_distance.py` to a temp dir (`SNPTOOLS_DISTANCE_DIR`): zmgrin2026 (933 ids, all +
@@ -65,8 +67,8 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    per variant, the burden means, and SNPFold's values; the annotation-column check counts the
    Evo2 / ESM-C cells against the INFO.
 10. With a full chr2 store installed: the chr2 checks use its window
-   (`../fixtures/chr2_store/`, cut from the release v1.4.2 VCF on Ceres, not from the store: Evo2 on
-   the window's 158 SNPs, the site-QC fields on all 249 sites), and gene / 1-Mb query timings are
+   (`../fixtures/chr2_store/`, cut from the release v1.4.3 VCF on Ceres, not from the store: Evo2 and
+   the PlantCAD2 one-pass score on the window's 158 SNPs, the site-QC fields on all 249 sites), and gene / 1-Mb query timings are
    recorded in `results.json`.
    With full stores for the other chromosomes, `check_gene_consequences.py` reads each fixture
    window (and each tested gene's whole interval) from the store through `store_windows.py`, which
@@ -95,7 +97,10 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    the PHP process. The checker recomputes NHET / NHOM from each row's 933 genotypes and SITEQC from the
    rule; the five-line INFO must equal the all-lines INFO (panel-wide counts); the `SNPTOOLS_SITEQC=0`
    VCF must equal the normal one minus the three fields and their ##INFO lines, whether the store
-   carries the fields itself (the release v1.4.2 stores do) or they come from its sidecar. In a
+   carries the fields itself (the release v1.4.2 and later stores do) or they come from its sidecar.
+   Every INFO key the rows of each of these VCFs use must be declared in its header (`h5_to_vcf.py`
+   declares the release's score keys), and where the stores carry `plantcad2_onepass_score` (always,
+   with the full stores) it must be declared, on every SNP row and on no indel. In a
    temporary root that symlinks the store: no sidecar and a sidecar with a wrong `store_bytes` each
    give a `Note:` line, a valid copy gives the normal VCF; without a usable sidecar a store that
    carries the fields (read from the store itself) still writes the normal VCF, one that does not

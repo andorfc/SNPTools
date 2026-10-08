@@ -137,15 +137,20 @@ Datasets are defined in `js/data.js` (`DATASETS`); `processForm.php` maps each i
 | `zmgrin2026_imp` | MaizeGDB GRIN-linked 2026 (release v1.4) | 933 | 46,054,265 | Grzybowski et al. (2023) sites, Beagle 5 imputation; 926 imputed lines + 7 lines called separately at the same sites (including NAM founder CML103); every line linked to its USDA GRIN accession |
 
 Per site the stores carry SnpEff 5.2a effects (TYPE, EFFECT, GENEMODEL, SUB), MAF and maxR² from
-the 933 genotypes, PlantCAD1, PlantCAD2 and Evo2 (every SNP: 43,296,332 sites), ESM1b, ESM2, ESM3
+the 933 genotypes, PlantCAD1, two PlantCAD2 scores and Evo2 (every SNP: 43,296,332 sites), ESM1b, ESM2, ESM3
 and ESM-C (missense sites) and the site-QC fields NHET, NHOM and SITEQC (every site), on all ten
 chromosomes. Mapping quality and coverage are not recorded for this call set, so SNPVersity leaves
 those columns out (`Data.annotationFields`).
 
-The stores are the v1.4.2 annotation build of the release (2026-10-04): the lines, sites and
+The stores are the v1.4.3 annotation build of the release (2026-10-07): the lines, sites and
 genotypes of v1.4, unchanged, with Evo2 extended from the SNPs within 1 kb of a gene to every SNP
-and the three site-QC fields written into each row's INFO. The app and the VCFs it writes keep the
-label "release v1.4".
+and the three site-QC fields written into each row's INFO (v1.4.2), and a second PlantCAD2 score
+(v1.4.3). The PlantCAD2 columns show that one-pass score (`plantcad2_onepass_score`: the unmasked base
+scored with 8,192-bp windows), coloured like the masked 512-bp score at the same percentile; the
+512-bp `plantcad2_score` stays in the VCF and the CSV exports. The two are on different scales
+(medians about -3.4 and -0.7, r about 0.81), and MaizeGDB 2026's PlantCAD2 (GeneCAD tiled, log2) is
+a third method. No PlantCAD2 score enters the priority, which uses PlantCAD1 and ESM1. The app and
+the VCFs it writes keep the label "release v1.4".
 
 **Site QC.** The lines are inbreds, yet 27.5% of non-reference calls are heterozygous, mostly at
 sites where heterozygous carriers outnumber homozygous ones (reads from another copy of the sequence
@@ -161,7 +166,7 @@ heterozygosity*), and SNPVersity and SNPFunction mark them "het".
 Flagged sites are kept in the data and in every download; each view's default
 (`Data.SITE_QC_DEFAULTS`) is: SNPVersity and SNPGeo show every site with its class; SNPImpact,
 SNPFunction and SNPFold hide flagged and no-carrier sites; SNPTree, SNPMatrix and SNPCompare (region
-scope) use usable sites. The pages read the counts from each VCF's INFO: the v1.4.2 stores carry
+scope) use usable sites. The pages read the counts from each VCF's INFO: the v1.4.2 and later stores carry
 them, and for a store that does not `h5_to_vcf.py` adds them from the sidecars
 `tools/build_site_qc.py` writes. Without them (`SNPTOOLS_SITEQC=0`, or such a store without its
 sidecar) the views behave as before, except SNPFunction (and SNPFold, which reads SNPFunction's
@@ -197,7 +202,7 @@ chunk-aligned blocks (peak memory about 0.3 GB for any interval), fills an id th
 2 = 1/1, 3 = missing), written by `tools/vcf_to_h5.py`. Each row's INFO ends with `NHET`, `NHOM`
 (heterozygous and homozygous-alternate carriers among all 933 lines, whatever lines were asked for)
 and `SITEQC` (`NO_CARRIER`, `HET_ONLY`, `HET_EXCESS`, `HET_ELEVATED` or `PASS`, derived from the two
-counts). A store built from a release VCF that has the three (v1.4.2) carries them in its own rows,
+counts). A store built from a release VCF that has the three (v1.4.2 on) carries them in its own rows,
 which are written as stored. To the rows of a store that does not, `h5_to_vcf.py` adds them from
 the store's current site-QC sidecar (`<store>.siteqc.h5`, `tools/build_site_qc.py`). A missing or
 stale sidecar (site count or store size changed) puts a `Note:` line in the extractor's output, and
@@ -206,7 +211,7 @@ every VCF is written without them, whatever their source.
 
 INFO keys the browser reads: `GENEMODEL`, `TYPE`, `EFFECT`, `SUB` (parallel comma lists, one entry
 per affected gene, most severe first), `MAF`, `MAXR2`, `plantcad1_score`, `plantcad2_score`,
-`evo2_score`, `ESM1_score`, `ESM2_score`, `ESM3_score`, `ESMC_score`, `NHET`, `NHOM`, `SITEQC`; and for
+`plantcad2_onepass_score`, `evo2_score`, `ESM1_score`, `ESM2_score`, `ESM3_score`, `ESMC_score`, `NHET`, `NHOM`, `SITEQC`; and for
 the earlier datasets `MQ`, `CVP`, `DNA_SCORE`, `AA_SCORE`.
 
 ---
@@ -291,7 +296,7 @@ installed (it never replaces a store larger than 50 MB unless `FORCE=1`).
 2. Install the stores in `hdf5/grin2026/`, the matrices in `distance/zmgrin2026/` and the data files.
    Run `make site-qc` where the stores are (or copy their `.siteqc.h5` sidecars with them): it writes
    the sidecars (about 1.5 minutes with `JOBS=4`) and regenerates `data/qc/` and `js/zmgrin.lineqc.js`,
-   which are also in git. The v1.4.2 stores carry the site-QC fields themselves, so the pages show
+   which are also in git. The v1.4.2 and later stores carry the site-QC fields themselves, so the pages show
    Site QC with or without the sidecars; `make curate` and the summary need them, and so do the pages
    for a store without the fields. After replacing a store, run `make site-qc` and then `make curate`
    (`js/snpcurate.data.js`, also in git) again.
@@ -353,7 +358,7 @@ make test PHP_BIN=/path/to/php PYTHON_PATH=/path/to/python
   113(6):1109-1121. https://doi.org/10.1111/tpj.16123 — imputed and linked to USDA GRIN accessions
   by MaizeGDB (release v1.4).
 - Passport, origin and trait data: USDA-ARS GRIN-Global.
-- Effects: SnpEff 5.2a. DNA language-model scores: PlantCAD1, PlantCAD2, Evo2 7B. Protein
+- Effects: SnpEff 5.2a. DNA language-model scores: PlantCAD1, PlantCAD2 (512 bp and one-pass), Evo2 7B. Protein
   language-model scores: ESM1b, ESM-2, ESM3, ESM C.
 - Protein structures: AlphaFold2, Boltz-2, ESMFold; secondary structure from DSSP; domains from
   Pfam / InterProScan; disorder from IUPred2A.

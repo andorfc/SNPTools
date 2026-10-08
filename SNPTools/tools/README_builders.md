@@ -37,7 +37,7 @@ renamed. A sidecar is valid while its `n_sites`, `store_bytes` and `POS` match i
 `--check` (`make site-qc-check`) verifies that and exits 1 on any mismatch. `h5_to_vcf.py` uses a
 sidecar while its `n_sites` and `store_bytes` match (positions are not re-read per request) and
 appends `NHET`, `NHOM` and `SITEQC` to every row's INFO that does not have them already (the release
-v1.4.2 stores carry them in their own rows, see `annotate_release_info.py` below); otherwise it
+v1.4.2 and later stores carry them in their own rows, see `annotate_release_info.py` below); otherwise it
 prints a `Note:` line and writes the rows as stored. `SNPTOOLS_SITEQC=0` writes every VCF without
 the three, whatever their source: nothing is merged, the fields a store carries itself are taken out
 of its rows, and the header has no `##INFO` line for them.
@@ -97,10 +97,12 @@ any variant 400-5,000 bp away, from the 933 release genotypes with no MAF/missin
 written with up to 6 decimals (1.0, 0.509182) like the MaizeGDB 2026 stores. NHET, NHOM and SITEQC
 (site QC, the rule of `build_site_qc.py`) are counted from the file's own genotypes and written last;
 a store built from such a VCF carries them itself, and `h5_to_vcf.py` then adds nothing to its rows. The rebuilt
-full-chromosome stores on Ceres use both options. The installed stores are the release v1.4.2 builds
-(2026-10-04, `grz2023/snptools_build_v1.4.2/chr<N>/` on Ceres; the annotated VCFs are in
-`grz2023/release_v1.4.2/annotated_933/`): an annotation-only update of v1.4 with the same lines,
-sites and genotypes, in which 43,296,332 SNPs carry PlantCAD1, PlantCAD2 and Evo2 and all
+full-chromosome stores on Ceres use both options. The installed stores are the release v1.4.3 builds
+(2026-10-07, `grz2023/snptools_build_v1.4.3/chr<N>/` on Ceres; the annotated VCFs are in
+`grz2023/release_v1.4.3/annotated_933/`): an annotation-only update of v1.4 with the same lines,
+sites and genotypes (v1.4.3 adds plantcad2_onepass_score to v1.4.2, every other field
+byte-identical), in which 43,296,332 SNPs carry PlantCAD1, PlantCAD2, the PlantCAD2 one-pass score
+and Evo2 and all
 46,054,265 sites carry NHET, NHOM and SITEQC. Each store was built from the annotator's own output,
 so its INFO reads `MAF=0.0000` or a score of `-1.0` where the bgzipped release VCF, rewritten by
 bcftools, reads `0` and `-1`: the same values. The MAXR2 table comes from `maxr2_chr.sh <chr>`
