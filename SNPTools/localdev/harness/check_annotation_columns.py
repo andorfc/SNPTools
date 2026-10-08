@@ -92,7 +92,7 @@ def expected(path, status):
 # chr2 query source: the demo store (fixture) or a full chr2 store (its window cut from the
 # annotated chr2 release VCF on Ceres, release v1.4.2), whichever run_scenarios.js found installed
 FULL_CHR2 = (json.load(open(res)).get('store') or {}).get('chr2', 0) > 100000
-SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4.2_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
+SETS = {'zmgrin2026_imp': f'{FX}/chr2_store/zmgrin2026_v1.4.3_chr2_4491424_4499434.annotated.vcf.gz' if FULL_CHR2
                           else f'{FX}/zmgrin2026_v1.4_chr2_testregions.vcf.gz',
         # MaizeGDB 2026, when offered again (run_scenarios.js renders them under the same switch):
         # 'mgdb2026_hq': f'{FX}/mgdb2026_hq_chr2_4491424_4499434.sites.vcf.gz',

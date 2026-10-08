@@ -75,7 +75,7 @@ STORE = json.load(open(res)).get('store') or {}
 FULL = {c for c, n in STORE.items() if isinstance(n, int) and n > 100000}
 FULL_CHR2 = 'chr2' in FULL
 SOURCES = [f for f in glob.glob(f'{FX}/zmgrin2026_v1.4_chr*_testregions.vcf.gz') if not (FULL_CHR2 and '_chr2_' in f)]
-if FULL_CHR2: SOURCES.append(f'{FX}/chr2_store/zmgrin2026_v1.4.2_chr2_4491424_4499434.annotated.vcf.gz')
+if FULL_CHR2: SOURCES.append(f'{FX}/chr2_store/zmgrin2026_v1.4.3_chr2_4491424_4499434.annotated.vcf.gz')
 store_notes = []
 for f in SOURCES:
     chrom = re.search(r'_(chr\d+)_', os.path.basename(f)).group(1)
