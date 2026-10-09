@@ -1909,6 +1909,7 @@
       status +
       '<div class="gwx-picker-export-row">' +
         '<button class="btn gwx-btn-sm" id="gwxOpenExportBtn" type="button">' + (typeof ICONS !== 'undefined' && ICONS.download ? ICONS.download : '') + ' Export results…</button>' +
+        '<button class="btn primary gwx-btn-sm" id="gwxOpenContributeBtn" type="button">Add your results to this tool!</button>' +
       '</div>' +
     '</div>' +
     exportDialogHTML();
@@ -2006,7 +2007,81 @@
       '<p>Browse Manhattan plots displaying results from curated GWAS publications across traits and populations. ' +
       'Pick a dataset below, then pan, zoom, and drag-select regions to inspect significant SNPs; ' +
       'export them as a CSV, or hand a region and/or population off to SNPVersity to keep exploring.</p>' +
-    '</div></div>';
+    '</div></div>' +
+    contributeDialogHTML();
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  CONTRIBUTE DIALOG — "Add your results to this tool!", opened from  *
+   *  the dataset picker card, beside "Export results…". Static text;    *
+   *  the dialog markup itself rides along with the general header.      *
+   * ------------------------------------------------------------------ */
+  const CONTRIBUTE_COLUMNS = [
+    ['Chr',  true,  'Chromosome number.'],
+    ['bp',   true,  'Marker position (base pairs) on chromosome. If these are <b>not</b> B73 v5 coordinates, please tell us which genome version they use.'],
+    ['p',    true,  'P value for the marker.'],
+    ['A1',   false, 'Effect allele — the allele the effect size (b) is estimated for.'],
+    ['A2',   false, 'Other allele at the marker.'],
+    ['Freq', false, 'Allele frequency of A1.'],
+    ['b',    false, 'Beta: allelic effect size of A1.'],
+    ['se',   false, 'Standard error of b.'],
+  ];
+
+  function contributeDialogHTML() {
+    const rows = CONTRIBUTE_COLUMNS.map(function (c) {
+      return '<tr><td><code>' + c[0] + '</code></td><td>' + (c[1] ? '<b>Required</b>' : 'Requested') + '</td><td>' + c[2] + '</td></tr>';
+    }).join('');
+    return '<div class="gwx-send-popup-backdrop" id="gwxContributeBackdrop"></div>' +
+      '<div class="gwx-send-popup gwx-contribute-popup" id="gwxContributePopup" role="dialog" aria-label="Add your results to this tool">' +
+        '<div class="gwx-send-popup-head">' +
+          '<h3>Add your GWAS results to this tool</h3>' +
+          '<button class="gwx-panel-close" id="gwxContributeCloseBtn" type="button" aria-label="Close">&times;</button>' +
+        '</div>' +
+        '<div class="gwx-send-popup-body gwx-contribute-body">' +
+          '<p>Do you have GWAS results that you would like to make publicly accessible? We are especially interested in studies ' +
+            'of multiple traits processed with a single pipeline in these panels:</p>' +
+          '<ul>' +
+            '<li>Wisconsin Diversity Panel (WiDiv)</li>' +
+            '<li>Nested Association Mapping (NAM) population</li>' +
+            '<li>Maize Association Panel (MAP; also known as the Maize 282 or Buckler–Goodman panel)</li>' +
+          '</ul>' +
+          '<h4>Requirements</h4>' +
+          '<ul>' +
+            '<li>Published in, or at least submitted to, a peer-reviewed journal</li>' +
+            '<li>GWAS conducted on BLUEs or BLUPs</li>' +
+            '<li>Genome-wide P values (preferred), or at least P values for every marker with P &lt; 0.001</li>' +
+            '<li>Marker coordinates and the genome version those coordinates refer to</li>' +
+          '</ul>' +
+          '<h4>Data Submission Formatting</h4>' +
+          '<p>A CSV or TSV file with the columns below. Only Chr, bp, and p are required, but we also ask for the alleles (A1, A2), ' +
+            'allele frequency (Freq), allelic effect size (b), and its standard error (se) if you have them.</p>' +
+          '<div class="gwx-contribute-table-wrap"><table class="gwx-contribute-table">' +
+            '<thead><tr><th>Column</th><th>Status</th><th>Description</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table></div>' +
+        '</div>' +
+        '<div class="gwx-send-popup-foot">' +
+          '<button class="btn" id="gwxContributeDoneBtn" type="button">Close</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function setContributeOpen(open) {
+    const popup = document.getElementById('gwxContributePopup');
+    const backdrop = document.getElementById('gwxContributeBackdrop');
+    if (!popup || !backdrop) return;
+    popup.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+  }
+
+  function wireContribute() {
+    const close = function () { setContributeOpen(false); };
+    const openBtn = document.getElementById('gwxOpenContributeBtn');
+    if (openBtn) openBtn.addEventListener('click', function () { setContributeOpen(true); });
+    ['gwxContributeCloseBtn', 'gwxContributeDoneBtn', 'gwxContributeBackdrop'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', close);
+    });
   }
 
   function introHTML() {
@@ -2233,7 +2308,18 @@
     '.gwx-picker-empty{margin-top:12px;font-size:12.5px;color:var(--muted)}' +
     '.gwx-picker-clear{appearance:none;border:none;background:transparent;color:var(--blue-600);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;margin-left:2px;text-decoration:underline}' +
     '.gwx-picker-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
-    '.gwx-picker-export-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}' +
+    '.gwx-picker-export-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px}' +
+    '.gwx-contribute-popup{width:min(640px,92vw)}' +
+    '.gwx-send-popup-body.gwx-contribute-body{display:block;min-height:0;font-size:13px;line-height:1.5;color:var(--ink)}' +
+    '.gwx-contribute-body p{margin:0 0 8px;max-width:none}' +
+    '.gwx-contribute-body h4{font-family:var(--disp);font-size:13px;font-weight:700;margin:14px 0 6px}' +
+    '.gwx-contribute-body ul,.gwx-contribute-body ol{margin:0 0 8px;padding-left:20px}' +
+    '.gwx-contribute-body li{margin:2px 0}' +
+    '.gwx-contribute-table-wrap{overflow-x:auto;flex-shrink:0}' +
+    '.gwx-contribute-table{border-collapse:collapse;width:100%;font-size:12.5px}' +
+    '.gwx-contribute-table th,.gwx-contribute-table td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--line)}' +
+    '.gwx-contribute-table th{color:var(--muted);font-weight:600}' +
+    '.gwx-contribute-table td:first-child{white-space:nowrap}' +
     '.gwx-export-scope{display:flex;flex-direction:column;gap:10px}' +
     '.gwx-export-scope em{font-style:normal;color:var(--faint)}' +
     '.gwx-export-progress{font-size:12.5px;color:var(--blue-600);font-weight:600}' +
@@ -2386,16 +2472,19 @@
     page.className = 'page fade';
     if (!MANIFEST) {
       if (manifestError) {
-        page.innerHTML = generalHeaderHTML() + manifestErrorHTML();
+        page.innerHTML = '<style>' + styleCSS() + '</style>' + generalHeaderHTML() + manifestErrorHTML();
+        wireContribute();
         const retry = document.getElementById('gwxManifestRetry');
         if (retry) retry.addEventListener('click', function () { manifestError = null; render(page); });
         return;
       }
-      page.innerHTML = generalHeaderHTML() + manifestLoadingHTML();
+      page.innerHTML = '<style>' + styleCSS() + '</style>' + generalHeaderHTML() + manifestLoadingHTML();
+      wireContribute();
       loadManifest().then(rerenderIfActive).catch(rerenderIfActive);
       return;
     }
     page.innerHTML = shellHTML();
+    wireContribute();
     wirePicker();
     if (activeEntry && DATA) {
       wireInteractions();
