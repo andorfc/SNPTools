@@ -2052,6 +2052,8 @@
             '<li>Genome-wide P values (preferred), or at least P values for every marker with P &lt; 0.001</li>' +
             '<li>Marker coordinates and the genome version those coordinates refer to</li>' +
           '</ul>' +
+          '<p class="gwx-contribute-submit">To inquire about submitting data, go to <a href="https://www.maizegdb.org" target="_blank" rel="noopener">MaizeGDB</a> ' +
+            'and click <b>Feedback</b> at the top right of the page to send us a message.</p>' +
           '<h4>Data Submission Formatting</h4>' +
           '<p>A CSV or TSV file with the columns below. Only Chr, bp, and p are required, but we also ask for the alleles (A1, A2), ' +
             'allele frequency (Freq), allelic effect size (b), and its standard error (se) if you have them.</p>' +
@@ -2315,6 +2317,8 @@
     '.gwx-contribute-body h4{font-family:var(--disp);font-size:13px;font-weight:700;margin:14px 0 6px}' +
     '.gwx-contribute-body ul,.gwx-contribute-body ol{margin:0 0 8px;padding-left:20px}' +
     '.gwx-contribute-body li{margin:2px 0}' +
+    '.gwx-contribute-body p.gwx-contribute-submit{margin:10px 0 0;background:var(--green-50);border:1px solid #bfe5cb;border-radius:var(--rad-sm);padding:9px 12px;color:var(--green-600);font-weight:600}' +
+    '.gwx-contribute-submit a{color:var(--green-600);text-decoration:underline}' +
     '.gwx-contribute-table-wrap{overflow-x:auto;flex-shrink:0}' +
     '.gwx-contribute-table{border-collapse:collapse;width:100%;font-size:12.5px}' +
     '.gwx-contribute-table th,.gwx-contribute-table td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--line)}' +
