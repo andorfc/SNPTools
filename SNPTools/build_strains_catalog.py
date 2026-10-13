@@ -27,7 +27,7 @@ POP_ORDER  = ["NA1", "NA2", "NA3", "Admixture", "Outgroups", "Unknown"]
 POP_NAMES  = {"NA1":"North American 1 (NA1)", "NA2":"North American 2 (NA2)",
               "NA3":"North American 3 (NA3)", "Admixture":"Admixture",
               "Outgroups":"Outgroups", "Unknown":"Unknown"}
-POP_COLORS = {"NA1":"#56B4E9","NA2":"#e0c200","NA3":"#009E73",
+POP_COLORS = {"NA1":"#F0E442","NA2":"#56B4E9","NA3":"#009E73",
               "Admixture":"#E69F00","Outgroups":"#CC79A7","Unknown":"#999999"}
 
 def parse_strains_js(path):
