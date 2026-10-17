@@ -722,7 +722,8 @@ const SNPHelp = (function () {
     if (typeof toggleRail==='function') toggleRail(false);
     const sb=document.getElementById('sendBtn'); if(sb) sb.style.display='none';
     if (typeof renderNav==='function') renderNav();
-    document.querySelectorAll('.mg-help').forEach(el=>el.classList.add('on'));
+    // the Help button only (the masthead's Contact us shares its .mg-help look); go() clears it
+    document.querySelectorAll('.mg-help').forEach(el=>el.classList.toggle('on', el.getAttribute('href')==='#help'));
     window.scrollTo(0,0);
     const sc=document.querySelector('.scroll'); if(sc) sc.scrollTop=0;
     render(document.getElementById('page'));

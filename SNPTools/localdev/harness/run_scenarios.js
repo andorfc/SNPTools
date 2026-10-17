@@ -1078,6 +1078,37 @@ async function until(site, expr, ms = 8000){
     s14.window.close();
   }
 
+  /* ---------- Contact us and GWAS Explorer's "Add your results" (check_feedback.py) ----------
+     The Jira collector script is external, so the Loader serves it empty: its triggerFunction is
+     called here with a stand-in for showCollectorDialog. */
+  { const s15 = await openSite(ROOT); const $f = s15.$eval; const F = R.feedback = {};
+    F.header = $f(`[...document.querySelectorAll('.mg-nav a.mg-help')].map(a=>({href:a.getAttribute('href'), cls:a.className,
+      aria:a.getAttribute('aria-label'), label:(a.querySelector('.mg-lbl')||{}).textContent||'', svg:!!a.querySelector('svg')}))`);
+    F.props = $f(`(()=>{ const p=(window.ATL_JQ_PAGE_PROPS||{})['883299e6']; return p ? {trigger:typeof p.triggerFunction, fields:p.fieldValues} : null; })()`);
+    // the trigger hooks every .feedback-form link, also ones drawn later
+    $f(`window.__shown=0; window.ATL_JQ_PAGE_PROPS['883299e6'].triggerFunction(()=>{ window.__shown++; })`);
+    F.headerClick = $f(`(()=>{ const ev=new MouseEvent('click',{bubbles:true,cancelable:true}); document.querySelector('.mg-nav a.feedback-form').dispatchEvent(ev);
+      return {shown:window.__shown, prevented:ev.defaultPrevented, hash:location.hash}; })()`);
+    // Help: only the Help button is marked, and leaving Help clears it
+    $f(`openHelp()`); await s15.wait(200);
+    F.helpOn = $f(`[...document.querySelectorAll('.mg-nav a.mg-help')].map(a=>a.classList.contains('on'))`);
+    $f(`go('snpversity')`); await s15.wait(100);
+    F.afterGo = $f(`[...document.querySelectorAll('.mg-nav a.mg-help')].map(a=>a.classList.contains('on'))`);
+    // GWAS Explorer: the dialog, its table, and its contact link
+    $f(`go('snpgwas')`); await until(s15, `!!document.getElementById('gwxOpenContributeBtn')`, 20000);
+    F.gwas = $f(`(()=>{ const o={btn:document.getElementById('gwxOpenContributeBtn').textContent, exportBtn:!!document.getElementById('gwxOpenExportBtn')};
+      const pop=()=>document.getElementById('gwxContributePopup').classList.contains('open');
+      o.closedAtFirst=!pop(); document.getElementById('gwxOpenContributeBtn').click(); o.opened=pop();
+      o.rows=[...document.querySelectorAll('.gwx-contribute-table tbody tr')].map(tr=>[...tr.children].slice(0,2).map(td=>td.textContent));
+      document.getElementById('gwxContributeDoneBtn').click(); o.doneCloses=!pop();
+      document.getElementById('gwxOpenContributeBtn').click(); const n0=window.__shown;
+      const ev=new MouseEvent('click',{bubbles:true,cancelable:true}); document.getElementById('gwxContributeContactLink').dispatchEvent(ev);
+      o.contact={closes:!pop(), shown:window.__shown-n0, prevented:ev.defaultPrevented, cls:document.getElementById('gwxContributeContactLink').className};
+      return o; })()`);
+    F.consoleErrors = s15.errors.filter(e => !/favicon/.test(e));
+    s15.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

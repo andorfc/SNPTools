@@ -172,10 +172,17 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    `data/qc/*.lineqc.tsv`; SNPCurate's set chooser and its "not in the High Quality set" mark (on an
    entry whose maxR² is lowered in the loaded copy). `check_gwas_handoff.py` expects both sets in GWAS
    Explorer's popup, the Imputed set first and selected.
+19. Contact us and GWAS Explorer's "Add your results to this tool!" (Laura Tibbs-Cortes, main PRs #4-#6),
+   `check_feedback.py`: both masthead buttons carry an icon (the labels are hidden at 640 px and below);
+   the Jira collector's config, its triggerFunction called with a stand-in dialog (the Loader serves
+   the external script empty), then Contact us opens it once without following `href="#"`; only Help &
+   FAQ is marked on the Help page and nothing stays marked after `go()`; the GWAS dialog opens and
+   closes, lists Chr, bp and p as Required and A1, A2, Freq, b and se as Requested, and its contact link
+   closes it and opens the collector.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py`, `check_ui_changes.py` and `check_hq_dataset.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py`, `check_ui_changes.py`, `check_hq_dataset.py` and `check_feedback.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

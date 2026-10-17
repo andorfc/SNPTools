@@ -158,6 +158,7 @@ function renderNav(){
 /* ================= ROUTER ================= */
 function go(id){
   S.tool=id; closeMenu(); toggleRail(false);
+  document.querySelectorAll('.mg-help.on').forEach(el=>el.classList.remove('on'));   // left the Help page (SNPHelp.open sets it)
   document.getElementById('crumbTool').innerHTML='<b>'+TOOLS[id].name+'</b>';
   document.getElementById('sendBtn').style.display = id==='snpversity'?'inline-flex':'none';
   renderNav();
