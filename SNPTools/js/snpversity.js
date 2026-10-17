@@ -1006,6 +1006,18 @@ function setMaf(el){
   v=Math.round(v*100)/100;              // snap to 0.01
   S.fMaf=v; S.page=1; renderTable();
 }
+/* Min. maxR²: hides the sites whose highest r² with a variant 400-5,000 bp away is below the value;
+   above 0 a site with no maxR² (no partner in that window, or monomorphic) is hidden too. */
+function setR2(el){
+  let v=parseFloat(el.value);
+  if(isNaN(v)) v=0;
+  v=Math.max(0, Math.min(1, v));        // r² runs 0..1
+  v=Math.round(v*100)/100;              // snap to 0.01
+  S.fR2=v; S.page=1; renderTable();
+}
+/* the filter shows (and applies) only when the queried set carries maxR² */
+function r2Filterable(){ return annotFields().some(f=>f.key==='r2' && f.status==='ok'); }
+function r2Keep(r, min){ return !(min>0) || (r.r2!=null && r.r2>=min); }
 /* Cache the O(rows) work (full-table filter + distinct-effects scan) so that
    paging — which doesn't change the filter — doesn't re-scan every variant on
    each click. Keyed on the result set + the four filter controls. The Site QC
@@ -1023,15 +1035,19 @@ function qcSummary(rows){
 }
 function tableView(rows){
   const fq=versityQc();
-  const key=S.results&&S.results.vcfUrl+'|'+S.fImpact+'|'+S.fEffect+'|'+S.fMaf+'|'+fq;
+  const r2On=r2Filterable(), r2Min=r2On ? (S.fR2||0) : 0;
+  const key=S.results&&S.results.vcfUrl+'|'+S.fImpact+'|'+S.fEffect+'|'+S.fMaf+'|'+fq+'|'+r2On+'|'+r2Min;
   if(_tblCache&&_tblCache.key===key) return _tblCache;
   const qc=qcSummary(rows);
   const fr=rows.filter(r=>
     (S.fImpact==='all'||r.impact===S.fImpact) &&
     (S.fEffect==='all'||r.effect===S.fEffect) &&
-    (r.maf>=S.fMaf) && Data.qcKeep(r.qc, fq));
+    (r.maf>=S.fMaf) && r2Keep(r, r2Min) && Data.qcKeep(r.qc, fq));
   const effects=['all',...new Set(rows.map(r=>r.effect))];
-  _tblCache={key,fr,effects,qc};
+  // sites the maxR² filter alone hides, and how many of them have no maxR² at all
+  let r2Low=0, r2None=0;
+  if(r2Min>0) for(const r of rows){ if(r.r2==null) r2None++; else if(r.r2<r2Min) r2Low++; }
+  _tblCache={key,fr,effects,qc,r2On,r2Min,r2Low,r2None};
   return _tblCache;
 }
 
@@ -1041,7 +1057,7 @@ function renderTable(){
   const maxIdLen=accs.length?Math.max(...accs.map(a=>String(a.id).length)):8;
   const hetMarks=accs.some(a=>a.sampleQC==='Heterozygous sample');     // room for the "het" marker
   const thH=Math.max(118, Math.min(300, Math.round(maxIdLen*6.4)+30+(hetMarks?28:0)));
-  const {fr,effects,qc}=tableView(rows);
+  const {fr,effects,qc,r2On,r2Min,r2Low,r2None}=tableView(rows);
   const perPage=S.perPage, pages=Math.max(1,Math.ceil(fr.length/perPage));
   if(S.page>pages)S.page=1;
   const slice=fr.slice((S.page-1)*perPage, S.page*perPage);
@@ -1062,11 +1078,17 @@ function renderTable(){
           title="Enter a value between 0.0 and 0.5" onchange="setMaf(this)"
           onkeydown="if(event.key==='Enter'){this.blur();}">
       </div>
+      ${r2On?`<div class="fld"><label data-tt="Hides the sites whose maxR² (the highest r² with any variant 400-5,000 bp away) is below this value. Above 0, a site with no maxR² (no partner variant in that window, or monomorphic) is hidden too. The High Quality set applies 0.2 only to sites with 10 or more carriers; this filter applies to every site. The downloaded VCF keeps every site.">Min. maxR² (0.0–1.0)</label>
+        <input id="versityR2" type="number" min="0" max="1" step="0.05" value="${(S.fR2||0).toFixed(2)}" inputmode="decimal"
+          title="Enter a value between 0.0 and 1.0" onchange="setR2(this)"
+          onkeydown="if(event.key==='Enter'){this.blur();}">
+      </div>`:''}
       ${qc.any?`<div class="fld"><label data-tt="Site QC classes each site by its heterozygous and homozygous carriers among all lines of the release. Flagged: het only or het excess. The downloaded VCF keeps every site.">Site QC</label>
         <select id="versityQc" onchange="S.fQc=this.value;S.page=1;renderTable()">
           ${Data.SITE_QC_CHOICES.map(([v,l])=>`<option value="${v}" ${v===versityQc()?'selected':''}>${l}</option>`).join('')}
         </select></div>`:''}
     </div>
+    ${r2Min>0?`<div class="qc-note" id="versityR2Note">Min. maxR² ${r2Min.toFixed(2)} hides ${(r2Low+r2None).toLocaleString()} of ${rows.length.toLocaleString()} sites: ${r2Low.toLocaleString()} below it, ${r2None.toLocaleString()} with no maxR². <a href="#" onclick="S.fR2=0;S.page=1;renderTable();return false;">Clear.</a></div>`:''}
     ${qc.any?`<div class="qc-note" id="versityQcNote">${qc.flagged.toLocaleString()} flagged, ${qc.nocarrier.toLocaleString()} with no carrier in this release, of ${rows.length.toLocaleString()} sites.</div>`:''}
     <div class="legend">
       <span style="font-weight:600;color:var(--ink)">Genotype</span>

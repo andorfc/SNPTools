@@ -128,7 +128,7 @@ const S = {
   chr:'chr10', start:9788000, end:9826500, perPage:100,
   selected:new Set(),
   results:null, page:1,
-  fImpact:'all', fEffect:'all', fMaf:0,
+  fImpact:'all', fEffect:'all', fMaf:0, fR2:0,
   fQc:null,                        // Site QC filter; null = Data.SITE_QC_DEFAULTS.versity (data.js loads later)
 };
 
