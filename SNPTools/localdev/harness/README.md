@@ -6,7 +6,8 @@ PHP script through the PHP CLI (`php_shim.php`), so `processForm.php -> h5_to_vc
 and `lookupGeneModel.php` run exactly as under `php -S`. No browser and no listening socket
 are needed. d3 v5 is served from `node_modules`.
 
-Scenarios (dataset `zmgrin2026_imp`, the only set offered in the initial release, local test store
+Scenarios (dataset `zmgrin2026_imp`, the first of the two sets offered in the initial release (scenario 18
+covers the High Quality set, `zmgrin2026_hq`), local test store
 from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, switched off):
 1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
    numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
@@ -160,10 +161,21 @@ from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, swi
    result, then the offer and the button in SNPTree, SNPImpact and SNPCompare; SNPCompare's PI number
    column against the catalogue for all 933 lines; SNPFunction's "Reference lines" sending exactly the
    panel minus the carriers and missing calls. Widths at 375 px are checked in a browser.
+18. The High Quality set, `check_hq_dataset.py` (needs a chr2 HQ store: the full one or the local test
+   windows of `../build_hq_test_store.sh`): the chr2 GWAS window on both sets with the 26 NAM lines, the
+   HQ VCF checked against the Imputed VCF filtered by the set's rule (records, genotypes, INFO by value)
+   and for its `##HQ_filter` / `##subset` lines; both sets listed with their labels; a selection kept
+   across the two sets and a hand-off into the other set keeping 'add'; SNPVersity's Min. maxR² filter
+   at 0.5 and 0.2 against the VCF's MAXR2 (sites without one hidden), its note, clamped input, with
+   Min. MAF, and left out for a set without maxR²; the set named in SNPImpact, SNPTree and SNPFunction;
+   the genome-wide notes of SNPTree and SNPCompare; each set's line QC against its
+   `data/qc/*.lineqc.tsv`; SNPCurate's set chooser and its "not in the High Quality set" mark (on an
+   entry whose maxR² is lowered in the loaded copy). `check_gwas_handoff.py` expects both sets in GWAS
+   Explorer's popup, the Imputed set first and selected.
 
 Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (the app's own
 `geoBuildExportSVG()` export, rasterised with resvg) and static HTML snapshots of each page.
-`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py` and `check_ui_changes.py` recompute the numbers independently from
+`check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py`, `check_ui_changes.py` and `check_hq_dataset.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
     cd SNPTools/localdev/harness

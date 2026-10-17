@@ -1004,6 +1004,80 @@ async function until(site, expr, ms = 8000){
     s13.window.close();
   }
 
+  /* ---------- the High Quality set (check_hq_dataset.py) ----------
+     zmgrin2026_hq beside zmgrin2026_imp: the chr2 GWAS window on both sets (the checker derives
+     the HQ rows from the Imputed VCF by the set's rule), labels in each tool, a selection kept
+     across the two sets, SNPVersity's Min. maxR² filter, per-set line QC, the genome-wide notes and
+     SNPCurate's "not in this set" path. Needs a chr2 HQ store (full or the local test windows). */
+  try {
+    R.hqStore = JSON.parse(require('child_process').execFileSync(process.env.PYTHON_PATH || 'python3', ['-c',
+      'import h5py,json,glob,os,sys\nr={}\nfor f in sorted(glob.glob(sys.argv[1]+"/hdf5/grin2026/zmgrin2026_chr*_HQ.h5")):\n  h=h5py.File(f,"r"); r[os.path.basename(f).split("_")[1]]=int(h["POS"].shape[0]); h.close()\nprint(json.dumps(r))', ROOT]).toString());
+  } catch (e) { R.hqStore = {error: String(e.message || e).slice(0, 200)}; }
+  if ((R.hqStore || {}).chr2 > 0){
+    const s14 = await openSite(ROOT); const $h = s14.$eval; const H = R.hq = {};
+    const LO = 4491424, HI = 4499434;
+    H.datasets = $h(`Data.datasets().map(d=>({id:d.id, family:d.family, label:Data.datasetLabel(d.id), sub:d.sub, lineQc:d.lineQc||null}))`);
+    H.cards = $h(`[...document.querySelectorAll('#dsGrid .ds')].map(e=>e.querySelector('.t').textContent+' | '+e.querySelector('.ref').textContent)`);
+    // a curated selection survives a switch to the other set of the family, and back
+    H.keep = $h(`(()=>{ const nam=Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id);
+      S.selected.clear(); nam.forEach(i=>S.selected.add(i)); S.selected.add('ZmG_Mo17'); S.selected.add('ZmG_PHG39');
+      const before=[...S.selected].sort(); selectDataset('zmgrin2026_hq'); const hq=[...S.selected].sort(), ds1=S.dataset;
+      selectDataset('zmgrin2026_imp'); const back=[...S.selected].sort();
+      return {before, hq, back, ds1, ds2:S.dataset}; })()`);
+    // a hand-off into the other set of the family keeps 'add'
+    H.handoff = $h(`(()=>{ S.pendingVersity={from:'harness', dataset:'zmgrin2026_hq', chr:'chr2', start:${LO}, end:${HI}, accessions:['ZmG_B73','ZmG_W22'], merge:'add'};
+      const n0=S.selected.size; const i=applyPendingRequest(); const html=inboundBanner(i);
+      return {n0, merge:i.merge, crossDataset:i.crossDataset, crossFamily:i.crossFamily, dataset:S.dataset, n:S.selected.size,
+              hint:(html.match(/Dataset changed[^<]*/)||[''])[0]}; })()`);
+    // the shared hand-off control: a set of the same family is not "a different dataset"
+    H.control = $h(`(()=>{ const h=Handoff.controlHTML({dataset:'zmgrin2026_imp'}); return {dataset:S.dataset, disabled:/ disabled/.test(h), reset:/reset either way/.test(h)}; })()`);
+    // the window on both sets, all 26 NAM lines
+    const nam = `Data.accessionsFor('zmgrin2026_imp').filter(a=>a.namFounder).map(a=>a.id)`;
+    H.query = {};
+    for (const ds of ['zmgrin2026_imp', 'zmgrin2026_hq']){
+      H.query[ds] = await $h(`(async()=>{ go('snpversity'); selectDataset('${ds}'); const r=await Data.queryVariants('${ds}','chr2',${LO},${HI},${nam});
+        r.q={dataset:'${ds}',chr:'chr2',lo:${LO},hi:${HI}}; S.results=r; S.page=1; S.fQc=null; S.fR2=0; S.fMaf=0; S.fImpact='all'; S.fEffect='all'; renderResults();
+        const out={vcf:r.vcfUrl, rows:r.rows.length, r2Field:!!document.getElementById('versityR2'), runbar:(document.querySelector('#runbar b')||{}).textContent||''};
+        const set=v=>{ const el=document.getElementById('versityR2'); el.value=v; el.dispatchEvent(new Event('change')); };
+        out.filter={};
+        for (const v of ['0.5','0.2','2','-1','abc']){ set(v); out.filter[v]={fR2:S.fR2, shown:tableView(S.results.rows).fr.length,
+          note:(document.getElementById('versityR2Note')||{}).textContent||'', input:document.getElementById('versityR2').value}; }
+        set('0.5'); const el=document.getElementById('versityMaf')||[...document.querySelectorAll('.filterbar input')].find(x=>x.id!=='versityR2');
+        el.value='0.1'; el.dispatchEvent(new Event('change')); out.filter.withMaf={shown:tableView(S.results.rows).fr.length};
+        S.fMaf=0; S.fR2=0; renderTable();
+        out.handoff=resultHandoff(); out.handoff={dataset:out.handoff.dataset, datasetName:out.handoff.datasetName};
+        return out; })()`);
+    }
+    // the filter is left out for a set without maxR²
+    H.noR2 = $h(`(()=>{ const f=Data.annotationFields; Data.annotationFields=ds=>f(ds).map(x=>x.key==='r2'?Object.assign({},x,{status:'na'}):x);
+      S.fR2=0.5; _annotCache={}; renderTable(); const r={field:!!document.getElementById('versityR2'), shown:tableView(S.results.rows).fr.length};
+      Data.annotationFields=f; S.fR2=0; _annotCache={}; renderTable(); return r; })()`);
+    // the tools name the set of what they show
+    $h(`S.impactInput=resultHandoff(); go('snpimpact')`); await s14.wait(300);
+    H.impact = $h(`document.getElementById('page').textContent.includes('MaizeGDB GRIN-linked 2026 · High Quality')`);
+    $h(`S.treeInput=resultHandoff(); go('snptree')`); await s14.wait(800);
+    H.tree = $h(`(()=>{ const t=document.getElementById('page').textContent; return {label:t.includes('MaizeGDB GRIN-linked 2026 · High Quality'),
+      gw:(document.getElementById('treeGW')||{}).textContent||''}; })()`);
+    $h(`S.compareInput=null; go('snpcompare')`); await s14.wait(600);
+    H.compare = $h(`(document.getElementById('cmpGNote')||{}).textContent||''`);
+    H.compareImp = $h(`(()=>{ SNPCompare.setDataset('zmgrin2026_imp'); return (document.getElementById('cmpGNote')||{}).textContent||''; })()`);
+    H.fn = await $h(`(async()=>{ const a=await Data.geneFunction('Zm00001eb067740','zmgrin2026_imp'), b=await Data.geneFunction('Zm00001eb067740','zmgrin2026_hq');
+      return {imp:{name:a.datasetName, n:a.nVariants}, hq:{name:b.datasetName, n:b.nVariants}}; })()`);
+    // per-set line QC
+    H.lineqc = $h(`(()=>{ const c=ds=>{ const m={}; Data.accessionsFor(ds).forEach(a=>{ m[a.id]=a.sampleQC; }); return m; }; return {imp:c('zmgrin2026_imp'), hq:c('zmgrin2026_hq')}; })()`);
+    // SNPCurate: the set chooser, and a site the HQ rule drops (an entry's maxR² lowered in memory)
+    H.curate = await $h(`(async()=>{ S.dataset='zmgrin2026_hq'; S.curateId=null; go('snpcurate');
+      const sel=document.getElementById('curDataset'); const o={select:sel?sel.value:null, options:sel?[...sel.options].map(x=>x.textContent):[],
+        outRows:document.querySelectorAll('.cur-out').length};
+      const e=window.SNP_CURATE.entries.find(x=>x.site && x.site.nHet+x.site.nHom>=10); const keep=e.site.maxr2; e.site.maxr2=0.05;
+      CURATE.open(e.id); o.id=e.id; o.carriers=e.site.nHet+e.site.nHom; o.note=(document.getElementById('curOut')||{}).textContent||'';
+      o.row=(document.querySelector('.cur-out')||{}).textContent||''; o.map=[...document.querySelectorAll('.cur-actions button')].map(b=>[b.textContent.trim(), b.disabled]);
+      CURATE.setDataset('zmgrin2026_imp'); o.imp={note:!!document.getElementById('curOut'), rows:document.querySelectorAll('.cur-out').length};
+      e.site.maxr2=keep; CURATE.close(); return o; })()`);
+    H.consoleErrors = s14.errors.filter(e => !/favicon/.test(e));
+    s14.window.close();
+  }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

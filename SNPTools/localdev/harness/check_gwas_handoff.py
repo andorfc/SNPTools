@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """check_gwas_handoff.py <results.json> <site_root> -- check the GWAS Explorer -> SNPVersity
 hand-off of run_scenarios.js against the catalogues, independently of the JS:
-(a) the default VCF set is the first one offered: the GRIN-linked set in the initial release,
-    which offers only that set (the MaizeGDB 2026 HQ/HC checks are kept below, commented out:
-    every run of B73 + the 25 NAM founders in the B73-reference and NAM projects);
+(a) the default VCF set is the first one offered: the GRIN-linked set's Imputed set in the initial
+    release, which offers that release's two sets, Imputed and High Quality, in that order, the first
+    selected (the MaizeGDB 2026 HQ/HC checks are kept below, commented out: every run of B73 + the
+    25 NAM founders in the B73-reference and NAM projects);
 (b) GRIN-linked set: the sample_ids whose manifest nam_founder is set; NAM lines with no such
     sample reported as not available (none since release v1.4, which adds ZmG_CML103).
 Standard library only."""
@@ -32,7 +33,8 @@ bad = 0
 # MaizeGDB 2026 HQ/HC, when offered (commented out with the sets in js/data.js):
 # if W['defaultSend']['dataset'] != 'mgdb2026_hq' or W['defaultSend']['ids'] != exp_ids: bad += 1; print('MaizeGDB 2026 ids differ')
 # for ds in ('mgdb2026_hq', 'mgdb2026_hc'): ... popup text 'N of 26' and 'Not available in this set: ...'
-if [o[0] for o in W['options']] != ['zmgrin2026_imp']: bad += 1; print('VCF sets offered', W['options'])
+if [o[0] for o in W['options']] != ['zmgrin2026_imp', 'zmgrin2026_hq'] or [o[2] for o in W['options']] != [True, False]:
+    bad += 1; print('VCF sets offered', W['options'])
 if W['defaultSend']['dataset'] != 'zmgrin2026_imp' or W['defaultSend']['ids'] != grin: bad += 1; print('default send differs', W['defaultSend']['dataset'])
 b73 = [i for i in W['defaultSend']['ids'] if i == 'ZmG_B73']
 if not b73: bad += 1; print('B73 not sent')

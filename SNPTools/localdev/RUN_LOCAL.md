@@ -50,6 +50,26 @@ of a gene and INFO had no site-QC fields (chr2: `grz2023/snptools_build/chr2/`, 
 earlier test stores are kept beside them as
 `zmgrin2026_<chr>_impute.testregions.h5` (chr2's as `.demo.h5`); the app does not read them.
 
+**High Quality set (`zmgrin2026_hq`).** Its stores are `hdf5/grin2026/zmgrin2026_chr{1..10}_HQ.h5`:
+the Ceres builds of `/90daydata/maizegdb/carson/grz2023/release_v1.4.3_HQ/hdf5/` (2026-10-17), 27,787,101
+sites in all (chr1 4,134,314; chr2 3,177,718; chr3 3,118,577; chr4 3,446,252; chr5 2,809,932; chr6
+2,201,885; chr7 2,344,946; chr8 2,291,274; chr9 2,173,856; chr10 2,088,347), 0.95-1.9 GB each, 12.9 GB
+for the ten; md5s in that folder's `logs/chr<N>/MD5SUMS.txt`. Their site-QC sidecars
+(`zmgrin2026_chr<N>_HQ.siteqc.h5`, 112.5 MB) are installed here; the stores themselves did not fit on
+this Mac. **Local test stores in their place** (2026-10-17): `make local-hq-store` (that is,
+`localdev/build_hq_test_store.sh`) cuts 500-kb windows around the example genes, the SNPVersity
+default window and the SNPCurate genes from the HQ release VCFs on Ceres (`bcftools view -r`, over
+ssh) and stores them with `tools/vcf_to_h5.py`: 162,764 sites, about 100 MB. Checked against the full
+Imputed stores over the same windows: the HQ rows are exactly the Imputed rows the rule keeps, with
+identical genotypes and INFO equal by value (bcftools writes `0` where the Imputed stores, built from
+the annotator's own output, read `0.0000`). Outside the windows an HQ query returns "No variants".
+The sidecars describe the full stores, so `h5_to_vcf.py` prints a "does not match its store" Note and
+reads NHET, NHOM and SITEQC from each row's INFO, which the HQ stores carry; with the full stores
+installed the Note goes away. The script never replaces a store larger than 50 MB, so the full
+stores can be copied over the test ones. `make site-qc-hq` rebuilds the HQ sidecars and
+`data/qc/zmgrin2026_HQ.*` + `js/zmgrinHQ.lineqc.js` from the full HQ stores (the installed files were
+built that way on Ceres with this `tools/build_site_qc.py`, md5 787fb0cc40ef400346f6fbc82436aad8).
+
 **Without the full stores**, `make local-store PYTHON_PATH=$PYTHON_PATH` builds small test stores
 from `localdev/fixtures/zmgrin2026_v1.4_chr*_testregions.vcf.gz` (3,495 sites x 933 samples in the
 windows of `fixtures/README.md`; ZmG_CML103 is the last column). It skips any store larger than

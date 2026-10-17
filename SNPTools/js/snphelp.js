@@ -154,6 +154,7 @@ const SNPHelp = (function () {
       ['MQ', 'Mapping quality: a phred-scaled measure of confidence that reads were aligned to the correct genomic location; higher is better.'],
       ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
       ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. For the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic). The table rounds it to two decimals.'],
+      ['Min. maxR²', 'The filter above the table: hides the sites whose maxR² is below the value (0 to 1; 0 shows every site). Above 0, a site with no maxR² is hidden too. A note under the filters counts the sites it hides; the downloaded VCF keeps every site. Shown for sets that carry maxR².'],
       ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
       ['Site QC', 'The class of the site from its heterozygous and homozygous carriers among all lines of the release; hover a cell for its counts. The filter above the table shows All sites (the default), Hide flagged and no-carrier, or Passing only.'],
       ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores, on every SNP of the GRIN-linked 2026 set (indels have none). More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. PlantCAD2 is the one-pass long-context score (8,192-bp windows, plantcad2_onepass_score); it is not on the scale of the 512-bp PlantCAD2 score, which is in the downloaded VCF as plantcad2_score. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores. Their headers break over two lines (Plant / CAD1) so the columns are as narrow as the other scores.'],
@@ -167,6 +168,7 @@ const SNPHelp = (function () {
       ['Dataset', 'A defined variant collection with its own accession panel, filters, included variant types, and score columns.'],
       ['Sites', 'Number of variant positions in the complete dataset, not necessarily the number returned by the current query.'],
       ['Imputed', 'Whether missing genotypes were statistically inferred in that dataset.'],
+      ['High Quality', 'The High Quality set of the GRIN-linked 2026 release: its records, unchanged, at the 27,787,101 sites with at least one carrier and, for sites with 10 or more carriers, maxR² of 0.2 or more. Sites with 1-9 carriers are kept whatever their maxR². Same 933 lines, so a selection carries over between the two sets.'],
     ]},
     { tool:'GWAS Explorer', color:'#cf8a12', items:[
       ['SNP', 'The variant’s identifier.'],
@@ -399,6 +401,8 @@ const SNPHelp = (function () {
 
   /* ---- what's new (the changes of October 2026) ---- */
   const NEWS = [
+    ['High Quality set', 'The GRIN-linked 2026 release is offered as two sets: Imputed (all 46,054,265 sites) and High Quality (27,787,101 sites: the sites with a carrier, less the common ones whose maxR² is below 0.2). Every tool works on either; they share their 933 lines, so a selection carries over when you switch. Genome-wide IBS in SNPCompare and SNPTree is precomputed on the Imputed set\u2019s sites.'],
+    ['Min. maxR²', 'SNPVersity\u2019s table has a Min. maxR² filter beside Min. MAF: it hides the sites whose maxR² is below the value, and those without one.'],
     ['SNPMaize', 'SNPTools is now SNPMaize: a SNP toolkit to explore variant diversity across maize germplasm.'],
     ['Site QC', 'Every site of the GRIN-linked 2026 release is classed from its heterozygous and homozygous carriers (Pass, Het elevated, Het excess, Het only, No carrier). SNPVersity and SNPGeo show the class on every site; SNPImpact, SNPFunction and SNPFold hide flagged and no-carrier sites by default; SNPTree, SNPMatrix and SNPCompare compute distances from usable sites, with a switch to all sites. Downloaded VCFs carry NHET, NHOM and SITEQC.'],
     ['Sample heterozygosity', 'Each line is classed Inbred, Elevated heterozygosity or Heterozygous sample from its share of heterozygous clean sites. SNPTrait filters by it and exports it; the 20 heterozygous samples are marked het in SNPVersity and SNPFunction.'],

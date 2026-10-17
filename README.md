@@ -134,7 +134,8 @@ Datasets are defined in `js/data.js` (`DATASETS`); `processForm.php` maps each i
 
 | Dataset id | Name | Lines | Sites | Notes |
 | --- | --- | --- | --- | --- |
-| `zmgrin2026_imp` | MaizeGDB GRIN-linked 2026 (release v1.4) | 933 | 46,054,265 | Grzybowski et al. (2023) sites, Beagle 5 imputation; 926 imputed lines + 7 lines called separately at the same sites (including NAM founder CML103); every line linked to its USDA GRIN accession |
+| `zmgrin2026_imp` | MaizeGDB GRIN-linked 2026 (release v1.4) · Imputed | 933 | 46,054,265 | Grzybowski et al. (2023) sites, Beagle 5 imputation; 926 imputed lines + 7 lines called separately at the same sites (including NAM founder CML103); every line linked to its USDA GRIN accession |
+| `zmgrin2026_hq` | MaizeGDB GRIN-linked 2026 (release v1.4.3) · High Quality | 933 | 27,787,101 | The Imputed set's records, unchanged, at the sites with at least one carrier (NHET+NHOM > 0) and, for sites with 10 or more carriers, MAXR2 ≥ 0.2 (a missing MAXR2 fails); 26,158,255 SNPs and 1,628,846 indels. Stores `zmgrin2026_<chr>_HQ.h5` |
 
 Per site the stores carry SnpEff 5.2a effects (TYPE, EFFECT, GENEMODEL, SUB), MAF and maxR² from
 the 933 genotypes, PlantCAD1, two PlantCAD2 scores and Evo2 (every SNP: 43,296,332 sites), ESM1b, ESM2, ESM3
@@ -171,6 +172,21 @@ them, and for a store that does not `h5_to_vcf.py` adds them from the sidecars
 `tools/build_site_qc.py` writes. Without them (`SNPTOOLS_SITEQC=0`, or such a store without its
 sidecar) the views behave as before, except SNPFunction (and SNPFold, which reads SNPFunction's
 full-panel query), which counts carriers itself.
+
+**The High Quality set.** Built on Ceres on 2026-10-17 (`release_v1.4.3_HQ/`, bcftools 1.20 then
+`tools/vcf_to_h5.py`): of 46,054,265 sites it drops 5,013,092 with no carrier and 13,254,072 with 10 or
+more carriers whose MAXR2 is below 0.2 or missing; sites with 1-9 carriers are kept whatever their
+MAXR2 (r² is capped by allele frequency). MAXR2 is the highest r² with any variant 400-5,000 bp away
+on either side. Both sets have the same 933 lines and one family (`zmgrin2026`), so the catalogue,
+traits, SNPTrait's facets and the genome-wide IBS files are shared, and a selection carries over when
+the set changes. Per set: the store, the annotation-column notes (`FIELD_STATUS`), the line QC
+(`js/zmgrinHQ.lineqc.js`, `data/qc/zmgrin2026_HQ.*`: 21 heterozygous samples over its 15,841,802
+clean sites, against 20 for Imputed; only ZmG_MS225 changes class) and the VCF header (`##HQ_filter`,
+`##subset=High_Quality`). The genome-wide matrices in `distance/zmgrin2026/` were computed on the
+Imputed set's sites, and SNPCompare and SNPTree say so on the High Quality set. SNPCurate's records are
+read from the Imputed stores; on the High Quality set a curated site the rule drops is marked (none of
+the 14 curated sites is). SNPVersity's **Min. maxR²** filter (beside Min. MAF, 0 to 1) hides the sites
+whose maxR² is below the value, and above 0 those without one, in either set.
 
 The MaizeGDB 2026 (High Quality / High Coverage), MaizeGDB 2024, Schnable 2023 and NAM 2021 sets are
 commented out of `DATASETS`; their backend handling (`processForm.php`, `ibsCompare.php`, the
