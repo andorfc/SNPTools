@@ -56,8 +56,18 @@ const Data = (function () {
     // + 7 lines called separately at the same sites (incl. NAM founder CML103). Sample ids = release
     // sample_id (ZmG_<genotype>); metadata in js/zmgrin.catalog.js.
     {id:'zmgrin2026_imp', family:'zmgrin2026', name:'MaizeGDB GRIN-linked 2026', sub:'Imputed (Grzybowski 2023 sites)',
-     ref:'B73 v5', acc:'933', sites:'46M',
+     short:'Imputed', ref:'B73 v5', acc:'933', sites:'46M',
      filters:['Grzybowski 2023 GATK filters','Beagle 5 imputation','GRIN-linked'], het:true, indel:true, impute:true},
+    // High Quality subset of the same release (v1.4.3): the same 933 lines, so selections, the
+    // catalogue, traits and the genome-wide IBS files are shared with the Imputed set (one family).
+    // Its records are the Imputed set's, unchanged, minus the sites `hq` drops: no carrier, or 10 or
+    // more carriers and MAXR2 below 0.2 or missing. Store: hdf5/grin2026/zmgrin2026_<chr>_HQ.h5.
+    // lineQc: its own line QC (js/zmgrinHQ.lineqc.js); ibsFrom: whose sites the genome-wide matrices
+    // in distance/zmgrin2026/ were computed on (no High Quality matrix is installed).
+    {id:'zmgrin2026_hq', family:'zmgrin2026', name:'MaizeGDB GRIN-linked 2026', sub:'High Quality (LD max R² ≥ 0.2)',
+     short:'High Quality', ref:'B73 v5', acc:'933', sites:'28M',
+     filters:['Imputed set','≥ 1 carrier','LD max R² ≥ 0.2 at sites with ≥ 10 carriers'], het:true, indel:true, impute:true,
+     hq:{minCarriers:10, minR2:0.2}, lineQc:'zmgrin2026_HQ', ibsFrom:'zmgrin2026_imp'},
   ];
 
   /* SNPVersity annotation columns, in table order. annotationFields(datasetId) says, per
@@ -79,6 +89,20 @@ const Data = (function () {
     {key:'esm3',   label:'ESM3'},         {key:'esmc',   label:'ESM-C'},
   ];
   const ZMGRIN_NA_QC = 'Not available for the Grzybowski et al. 2023 call set (source VCFs carry no per-site MQ/coverage).';
+  const ZMGRIN_FIELDS = {
+    mq:   {status:'hidden', note:ZMGRIN_NA_QC},
+    comp: {status:'hidden', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
+    r2:   {status:'ok', note:'From the 933 release genotypes: highest PLINK 1.9 r² with any variant 400-5,000 bp away, no MAF/missingness/r² filtering. Blank = no partner variant within 400-5,000 bp, or monomorphic.'},
+    pc1:  {status:'ok', note:'PlantCAD1 scores for SNPs (indels have none), rounded to 0.1.'},
+    pc2op:{status:'ok', note:'PlantCAD2 one-pass scores for SNPs (indels have none), rounded to 0.1 (release v1.4.3).'},
+    esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
+    esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
+    esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
+    evo2: {status:'ok', note:'Evo2 7B log-likelihood ratio (256-bp left context), every SNP, rounded to 0.1.'},
+    esmc: {status:'ok', note:'ESM C 600M log-likelihood ratio, missense variants only.'},
+    maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
+    qc:   {status:'auto', note:'Heterozygous and homozygous carriers among all 933 lines (tools/build_site_qc.py sidecars).'},
+  };
   const FIELD_STATUS = {
     mgdb2026_hq: {
       pc2op: {status:'na', note:'Not in the MaizeGDB 2026 INFO (its PlantCAD2, GeneCAD tiled log2, is a third method, comparable to neither PlantCAD2 score of the GRIN-linked set).'},
@@ -91,20 +115,10 @@ const Data = (function () {
       evo2: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
       esmc: {status:'na', note:'Not in the MaizeGDB 2026 INFO.'},
     },
-    zmgrin2026_imp: {
-      mq:   {status:'hidden', note:ZMGRIN_NA_QC},
-      comp: {status:'hidden', note:ZMGRIN_NA_QC + ' (COV/CVC/CVP)'},
-      r2:   {status:'ok', note:'From the 933 release genotypes: highest PLINK 1.9 r² with any variant 400-5,000 bp away, no MAF/missingness/r² filtering. Blank = no partner variant within 400-5,000 bp, or monomorphic.'},
-      pc1:  {status:'ok', note:'PlantCAD1 scores for SNPs (indels have none), rounded to 0.1.'},
-      pc2op:{status:'ok', note:'PlantCAD2 one-pass scores for SNPs (indels have none), rounded to 0.1 (release v1.4.3).'},
-      esm1: {status:'ok', note:'Missense variants only (ESM-1b 650M).'},
-      esm2: {status:'ok', note:'Missense variants only (ESM-2 650M, Full_ESM_stack store layer = esm2_store_score).'},
-      esm3: {status:'ok', note:'Missense variants only (ESM3 open).'},
-      evo2: {status:'ok', note:'Evo2 7B log-likelihood ratio (256-bp left context), every SNP, rounded to 0.1.'},
-      esmc: {status:'ok', note:'ESM C 600M log-likelihood ratio, missense variants only.'},
-      maf:  {status:'ok', note:'Computed from the release genotypes of the 933 lines.'},
-      qc:   {status:'auto', note:'Heterozygous and homozygous carriers among all 933 lines (tools/build_site_qc.py sidecars).'},
-    },
+    zmgrin2026_imp: ZMGRIN_FIELDS,
+    zmgrin2026_hq: Object.assign({}, ZMGRIN_FIELDS, {
+      r2: {status:'ok', note:ZMGRIN_FIELDS.r2.note + ' This set keeps a site with 10 or more carriers only when its maxR² is 0.2 or more; sites with 1-9 carriers are kept whatever their maxR².'},
+    }),
   };
   /* Precomputed genome-wide IBS files per dataset family (ibsCompare.php?probe=1).
      mgdb2026 keeps its fixed files in ./distance/ and is always offered, as before;
@@ -123,6 +137,14 @@ const Data = (function () {
   function globalDistanceKnown(family){
     if (family === 'mgdb2026') return {dataset:family, available:true, sites:['all'], trees:[], legacy:true};
     return _gdProbe[family] && _gdProbe[family]._v || null;
+  }
+  /* The genome-wide files are per family. For a set whose own matrices are not installed
+     (`ibsFrom`), the words that say whose sites they were computed on; '' otherwise. */
+  function gwSitesNote(datasetId){
+    const d = DATASETS.find(x => x.id === datasetId);
+    if (!d || !d.ibsFrom || d.ibsFrom === d.id) return '';
+    const from = DATASETS.find(x => x.id === d.ibsFrom) || {};
+    return `computed on the ${from.short || from.sub || d.ibsFrom} set's sites; none is installed for the ${d.short || d.sub} set`;
   }
   function annotationFields(datasetId){
     const over = FIELD_STATUS[datasetId] || {};
@@ -164,6 +186,39 @@ const Data = (function () {
   function familyOf(datasetId){
     const d = DATASETS.find(x => x.id === datasetId);
     return d ? d.family : DATASETS[0].family;
+  }
+  function datasetById(datasetId){ return DATASETS.find(x => x.id === datasetId) || null; }
+  /* The name a tool shows for a set: "MaizeGDB GRIN-linked 2026 · High Quality". Two sets of one
+     release share a name, so the short subtitle is added whenever the name alone is ambiguous. */
+  function datasetLabel(datasetId){
+    const d = datasetById(datasetId);
+    if (!d) return datasetId == null ? '' : String(datasetId);
+    const twin = DATASETS.some(x => x !== d && x.name === d.name);
+    return twin ? d.name + ' · ' + (d.short || d.sub) : d.name;
+  }
+  /* Sets of one family have the same samples, so a selection or a hand-off's accessions carry over
+     between them; across families they do not. */
+  function sameFamily(a, b){ return familyOf(a) === familyOf(b); }
+  /* Whether a site of the family is in this set, from its carriers and maxR² (the rule the set was
+     built with, d.hq): true, false, or null when the counts are unknown. Sets without a rule hold
+     every site of their store. */
+  function inSet(datasetId, nHet, nHom, r2){
+    const d = datasetById(datasetId);
+    if (!d || !d.hq) return true;
+    if (nHet == null || nHom == null) return null;
+    const c = (+nHet) + (+nHom);
+    if (c <= 0) return false;
+    if (c < d.hq.minCarriers) return true;
+    return r2 != null && r2 !== '' && isFinite(+r2) && +r2 >= d.hq.minR2;
+  }
+  /* Why a site is not in the set (for notes), or ''. */
+  function notInSetReason(datasetId, nHet, nHom, r2){
+    const d = datasetById(datasetId);
+    if (!d || !d.hq || inSet(datasetId, nHet, nHom, r2) !== false) return '';
+    const c = (+nHet) + (+nHom);
+    if (c <= 0) return 'no line carries the alternate allele';
+    return `${c.toLocaleString()} carriers and ${r2 == null || r2 === '' ? 'no maxR² (no partner variant within 400-5,000 bp)' : 'maxR² ' + (+r2).toFixed(2)}`
+      + `: the ${d.short || d.sub} set keeps a site with ${d.hq.minCarriers} or more carriers only when its maxR² is ${d.hq.minR2} or more`;
   }
   // The second-generation language-model scores (PlantCAD2 / ESM2 / ESM3) are carried by
   // the GRIN-linked 2026 release (and by MaizeGDB 2026, when listed). Tools call this to
@@ -209,7 +264,12 @@ const Data = (function () {
   const _accCache = {};
   function accessionsFor(datasetId){
     const fam = familyOf(datasetId);
-    if (_accCache[fam]) return _accCache[fam];
+    /* Line QC is per set (the share of clean sites is taken over the set's own sites); the set's
+       `lineQc` names its entry in window.SNP_LINE_QC, the family's otherwise. */
+    const ds = datasetById(datasetId) || DATASETS.find(x => x.family === fam);
+    const qcKey = (ds && ds.lineQc) || fam;
+    const ck = fam + '|' + qcKey;
+    if (_accCache[ck]) return _accCache[ck];
     const node = famNode(datasetId);
     let out = [];
     if (node){
@@ -225,10 +285,10 @@ const Data = (function () {
     }
     /* Line QC (js/<prefix>.lineqc.js, when loaded): the share of clean sites where the line is
        heterozygous, and its class. The generated catalogue file is left as it is. */
-    const lq = (typeof window !== 'undefined' && window.SNP_LINE_QC) ? window.SNP_LINE_QC[fam] : null;
+    const lq = (typeof window !== 'undefined' && window.SNP_LINE_QC) ? window.SNP_LINE_QC[qcKey] : null;
     if (lq && lq.lines) out.forEach(a => { const x = lq.lines[a.id];
       if (x){ a.hetShare = x[0]; a.sampleQC = LINE_QC_LABELS[x[1]] || null; } });
-    _accCache[fam] = out;
+    _accCache[ck] = out;
     return out;
   }
   const LINE_QC_LABELS = {I:'Inbred', E:'Elevated heterozygosity', H:'Heterozygous sample'};
@@ -1045,7 +1105,7 @@ const Data = (function () {
   // Aggregate a gene across the WHOLE panel: which accessions carry damaging/LOF alleles.
   async function geneFunction(gene, dataset){
     dataset = dataset || DATASETS[0].id;
-    const dsName = (DATASETS.find(d=>d.id===dataset)||{}).name || dataset;
+    const dsName = datasetLabel(dataset);
     const g = await lookupGene(gene);
     if (!g || !g.chr) return {gene, dataset, datasetName:dsName, error:'No gene-model coordinates found for '+gene+'.'};
     const ids = (accessionsFor(dataset)||[]).map(a=>a.id);            // FULL panel
@@ -1170,6 +1230,7 @@ const Data = (function () {
     datasets:    () => DATASETS,
     // dataset-aware accession accessors
     projectsFor, accessionsFor, defaultSelectionFor, familyOf, hasSecondaryScores, scoreModels, namFoundersFor,
+    datasetById, datasetLabel, sameFamily, inSet, notInSetReason, gwSitesNote,
     familyMeta:  () => FAMILY_META,
     // parsing helpers shared with SNPGeo (and the Node smoke test)
     parseVcf, parseSub, classifyConsequence,

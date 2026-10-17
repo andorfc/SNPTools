@@ -9,6 +9,7 @@
 #   grin2026/schnable2023_chr10_impute.h5
 #   grin2026/zmgrin2026_chr10_impute.h5  (MaizeGDB GRIN-linked 2026, imputed; build with
 #                                         tools/vcf_to_h5.py from the release VCFs)
+#   grin2026/zmgrin2026_chr10_HQ.h5      (its High Quality set, release v1.4.3 HQ)
 #   grin2026/nam2021_chr10_HQ.h5
 #
 # Obtain these from the data owner / collaborator and drop them in place;

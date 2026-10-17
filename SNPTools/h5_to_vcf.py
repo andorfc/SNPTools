@@ -334,6 +334,19 @@ ZMGRIN_SCORE_INFO_DEFS = [   # the release's own lines for its score keys, as to
 ]
 
 
+# The High Quality subset's stores (zmgrin2026_<chr>_HQ.h5): the two lines its release VCFs carry
+# (release_v1.4.3_HQ/scripts/hq_header.txt), so a download says which set it came from.
+ZMGRIN_HQ_STORE = re.compile(r'_HQ(\.[a-z]+)?\.h5$')
+ZMGRIN_HQ_HEADER = [
+    '##HQ_filter=<Description="High Quality subset of zmgrin2026 genotype release v1.4.3. Kept: sites with at least one '
+    'alternate-allele carrier among the 933 lines (NHET+NHOM>0) and, if they have 10 or more carriers, MAXR2>=0.2. MAXR2 is '
+    'the highest r2 with any variant 400-5,000 bp away on either side, so a site is dropped only when no partner on either '
+    'side reaches 0.2. Sites with 1-9 carriers are kept whatever their MAXR2 (r2 is capped by allele frequency) and keep '
+    'their SITEQC flags. Common sites with no partner in the window (MAXR2 missing) are dropped.">',
+    '##subset=High_Quality',
+]
+
+
 def info_defs(extra=()):
     """The ##INFO / ##FORMAT lines and the #CHROM line. `extra`: a family's own score keys; the
     stores keep no VCF header, so a key nobody declares here reaches the download undeclared
@@ -379,6 +392,8 @@ def header_text():
         lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.4; Grzybowski et al. 2023 sites, Beagle-imputed + direct-call companion lines)")
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
         lines.append("##doi=https://doi.org/10.1111/tpj.16123")
+        if ZMGRIN_HQ_STORE.search(os.path.basename(hdf5_file_path)):
+            lines += ZMGRIN_HQ_HEADER
         lines += info_defs(ZMGRIN_SCORE_INFO_DEFS)
     if not lines:
         # Unknown family: still emit a minimal header. Without the #CHROM line the

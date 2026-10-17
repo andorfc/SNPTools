@@ -33,6 +33,9 @@
   function entries(){ return (data() && data().entries) || []; }
   function byId(id){ return entries().find(e=>e.id===id) || null; }
   function carriers(e){ return e.site ? e.site.nHet + e.site.nHom : null; }
+  /* The records are read from the Imputed set; a set with a site rule (High Quality) holds the same
+     record, unchanged, or not at all. '' when the site is in the chosen set. */
+  function notInSet(e){ return e.site ? Data.notInSetReason(ds(), e.site.nHet, e.site.nHom, e.site.maxr2) : ''; }
   function fmt(v){ return v==null ? '—' : (Math.abs(v)>=100 ? Math.round(v).toLocaleString() : (+v).toFixed(2)); }
   function sc1(v){ return v==null ? '—' : (v>0?'+':'') + (+v).toFixed(1); }
   function pct(a,b){ return b ? ` (${Math.round(100*a/b)}%)` : ''; }
@@ -85,6 +88,8 @@
         <div class="fld"><label for="curMark">Mark</label>
           <select id="curMark" onchange="CURATE.setFilter('fMark', this.value)">
             <option value="all">All marks</option>${['gold','outline','grey'].map(m=>`<option value="${m}" ${CU.fMark===m?'selected':''}>${MARK_NAME[m]}</option>`).join('')}</select></div>
+        ${Data.datasets().length>1?`<div class="fld"><label for="curDataset" data-tt="The set the hand-offs query. The records are read from the Imputed set; the High Quality set holds the same record at each site it keeps.">Dataset</label>
+          <select id="curDataset" onchange="CURATE.setDataset(this.value)">${Data.datasets().map(d=>`<option value="${esc(d.id)}" ${d.id===ds()?'selected':''}>${esc(Data.datasetLabel(d.id))}</option>`).join('')}</select></div>`:''}
         <div class="fld"><label for="curStatus">Status in this release</label>
           <select id="curStatus" onchange="CURATE.setFilter('fStatus', this.value)">
             <option value="all">Any status</option>${stat.map(k=>`<option value="${k}" ${CU.fStatus===k?'selected':''}>${esc(STATUS[k].label)}</option>`).join('')}</select></div>
@@ -116,7 +121,7 @@
         <td><b>${esc(e.symbol)}</b><div class="c-mono cur-sub">${esc(e.gene)}</div></td>
         <td>${esc(change(e))}</td>
         <td>${esc(e.trait)}</td>
-        <td>${esc(STATUS[e.status] ? STATUS[e.status].label : e.status)}</td>
+        <td>${esc(STATUS[e.status] ? STATUS[e.status].label : e.status)}${notInSet(e)?`<div class="cur-sub cur-out" data-tt="${esc(notInSet(e))}">not in the ${esc(setShort())} set</div>`:''}</td>
         <td class="num">${s ? `${s.nHet.toLocaleString()} / <b>${s.nHom.toLocaleString()}</b>` : '<span class="muted">—</span>'}</td>
         <td>${s ? siteQcPill(s.qc, s.nHet, s.nHom) : ''}</td>
         <td>${s ? prioPill(s.priority) : '<span class="muted">—</span>'}</td>
@@ -156,10 +161,11 @@
     const subs = s.subpop.filter(x=>x.hom).map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${x.hom.toLocaleString()} of ${x.total.toLocaleString()}${pct(x.hom,x.total)}</td></tr>`).join('');
     const ctys = s.country.map((x,i)=>`<tr${i>=12?' class="cur-more" hidden':''}><td>${esc(x.name)}</td><td class="num">${x.carriers.toLocaleString()} of ${x.total.toLocaleString()}${pct(x.carriers,x.total)}</td></tr>`).join('');
     return `<div class="card pad cur-record" id="curRec_${esc(e.id)}">${top}
+      ${notInSet(e)?`<div class="cur-why" id="curOut"><b>Not in the ${esc(setShort())} set.</b> ${esc(notInSet(e))}. The record below is the Imputed set's; SNPVersity and SNPFunction show the gene without this site.</div>`:''}
       <div class="cur-actions">
         <button class="btn" onclick="CURATE.toVersity('${esc(e.id)}')" ${carriers(e)?'':'disabled'}>${ICONS.dna||''} Carriers in SNPVersity</button>
         <button class="btn" onclick="CURATE.toFunction('${esc(e.id)}')">${ICONS.func||''} Gene in SNPFunction</button>
-        <button class="btn" onclick="CURATE.toMap('${esc(e.id)}')">${ICONS.map||''} On the map</button>
+        <button class="btn" onclick="CURATE.toMap('${esc(e.id)}')" ${notInSet(e)?`disabled title="The ${esc(setShort())} set has no record at this site."`:''}>${ICONS.map||''} On the map</button>
         <span class="muted" id="curBusy">${CU.busy===e.id?'Querying all lines…':''}</span>
       </div>
       <div class="cur-grid cur-facts">
@@ -195,7 +201,9 @@
   }
 
   /* ---------- hand-offs ---------- */
-  function ds(){ return Data.datasets()[0].id; }
+  /* the site-wide set (S.dataset, shared with the other tools), else the first listed */
+  function ds(){ const L=Data.datasets(); return (S.dataset && L.some(d=>d.id===S.dataset)) ? S.dataset : L[0].id; }
+  function setShort(){ const d=Data.datasetById(ds()); return d ? (d.short || d.sub || d.name) : ''; }
   async function interval(e){
     const g = await Data.lookupGene(e.gene);
     if (!g || !g.chr || g.chr !== e.chr) return {chr:e.chr, start:+e.pos, end:+e.pos};
@@ -213,6 +221,7 @@
       .cur-lg{display:flex;align-items:baseline;gap:8px}
       .cur-filters .fld input{border:1px solid var(--line);border-radius:9px;padding:8px 10px;min-width:min(240px,100%)}
       .cur-sub{font-size:11.5px;color:var(--muted)}
+      .cur-out{color:#9a5b00}
       .cur-ref{font-size:12px;white-space:nowrap}
       .cur-table td{vertical-align:top}
       .cur-record{margin-top:16px}
@@ -237,6 +246,7 @@
   }
 
   window.CURATE = {
+    setDataset(id){ if (!Data.datasets().some(d=>d.id===id)) return; S.dataset=id; render(); },
     setFilter(k, v){ CU[k]=v; const t=document.getElementById('curTable'); if (t){ t.innerHTML=tableHTML(); if (typeof attachTT==='function') attachTT(); } },
     sort(k){ if (CU.sortKey===k) CU.sortDir*=-1; else { CU.sortKey=k; CU.sortDir = k==='carriers' ? -1 : 1; }
       const t=document.getElementById('curTable'); if (t){ t.innerHTML=tableHTML(); if (typeof attachTT==='function') attachTT(); } },

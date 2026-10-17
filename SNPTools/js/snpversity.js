@@ -109,9 +109,11 @@ function applyPendingRequest(){
   S.pendingVersity = null;
 
   // Accession IDs are not portable between dataset families, so a handoff that
-  // switches dataset can only ever reset the selection — 'add' is meaningless.
+  // switches family can only ever reset the selection — 'add' is meaningless. The sets of
+  // one family (Imputed, High Quality) share their lines, so there 'add' still applies.
   const crossDataset = !!(req.dataset && req.dataset!==S.dataset && DATASETS.some(d=>d.id===req.dataset));
-  const merge = crossDataset ? 'replace' : (req.merge==='add' ? 'add' : 'replace');
+  const crossFamily = crossDataset && !Data.sameFamily(req.dataset, S.dataset);
+  const merge = crossFamily ? 'replace' : (req.merge==='add' ? 'add' : 'replace');
 
   // Snapshot dataset + region + selection *before* touching any of them, so a
   // single Undo reverts the whole query state coherently rather than half of it.
@@ -151,7 +153,7 @@ function applyPendingRequest(){
 
   S.page=1;
   return {gene:req.gene||'', from:req.from||'SNPFunction', note:req.note||'',
-          merge, crossDataset, requested:wanted.length,
+          merge, crossDataset, crossFamily, dataset:S.dataset, requested:wanted.length,
           added, already, removed,
           selected:S.selected.size, total:S.selected.size, missing};
 }
@@ -164,7 +166,8 @@ function inboundBanner(i){
     <b>From ${escAttr(i.from)}</b>
     <span>${i.gene?`<span class="mono">${escAttr(i.gene)}</span> — `:''}${escAttr(i.note||'carrier accessions')}
       ${i.merge==='add'?'added to your selection':'replaced your selection'}: ${delta}.
-      ${i.crossDataset?`<br><span class="ho-hint">Dataset changed — accessions are not shared between datasets, so the previous selection could not be kept.</span>`:''}</span>
+      ${i.crossFamily?`<br><span class="ho-hint">Dataset changed — accessions are not shared between datasets, so the previous selection could not be kept.</span>`
+        :i.crossDataset?`<br><span class="ho-hint">Dataset changed to ${escAttr(Data.datasetLabel(i.dataset))} — the same lines, so the selection carries over.</span>`:''}</span>
     <span class="from-fn-acts">
       ${undoChip()}
       <button class="btn" onclick="runQuery()">${ICONS.dna||''} Build VCF &amp; view</button>
@@ -232,12 +235,15 @@ function renderDatasets(){
 }
 function selectDataset(id){
   touchSelection();
+  const keep=Data.sameFamily(id, S.dataset);   // the sets of one release share their lines
   S.dataset=id;
   // switch to this dataset's real accession catalog
   PROJECTS   = Data.projectsFor(id);
   ACCESSIONS = Data.accessionsFor(id);
-  S.selected.clear();
-  Data.defaultSelectionFor(id).forEach(x=>S.selected.add(x));
+  if(!keep){
+    S.selected.clear();
+    Data.defaultSelectionFor(id).forEach(x=>S.selected.add(x));
+  }
   renderDatasets(); renderAccPicker(); renderRunbar();
   const m=document.getElementById('mAcc'); if(m)m.textContent=S.selected.size;
 }
@@ -805,7 +811,7 @@ function resultHandoff(res){
   res=res||S.results;
   const q=resultQuery(res);
   return {rows:res.rows, accs:res.accs, chr:q.chr, start:q.lo, end:q.hi, dataset:q.dataset,
-    datasetName:(Data.datasets().find(d=>d.id===q.dataset)||{}).name||q.dataset, vcfUrl:res.vcfUrl};
+    datasetName:Data.datasetLabel(q.dataset), vcfUrl:res.vcfUrl};
 }
 let RUN_SEQ=0;               // a second Build overtakes the first; the first's answer is dropped
 async function runQuery(){

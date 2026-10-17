@@ -230,7 +230,7 @@ async function geoLookupGene(){
       start: result.start || 0,
       end: result.end || 0,
       dataset: S.dataset,
-      datasetName: (Data.datasets().find(d=>d.id===S.dataset)||{}).name || S.dataset,
+      datasetName: Data.datasetLabel(S.dataset),
       gene: gene,  // track the gene name
       vcfUrl: result.vcfUrl
     };

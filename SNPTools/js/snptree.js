@@ -228,7 +228,7 @@ const SNPTree = (function () {
       if (!e || !p || !(p.trees || []).length) return;
       const name = {nj:'Neighbour-Joining', upgma:'UPGMA'};
       e.innerHTML = `<div class="card pad" style="margin-bottom:16px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <b>Genome-wide tree</b><span style="color:var(--muted);font-size:12.5px">precomputed from all sites of the release${p.n ? ' · ' + p.n.toLocaleString() + ' lines' : ''} (Newick)</span>
+        <b>Genome-wide tree</b><span style="color:var(--muted);font-size:12.5px">precomputed from all sites of the release${p.n ? ' · ' + p.n.toLocaleString() + ' lines' : ''} (Newick)${Data.gwSitesNote(ds) ? ' · ' + Data.gwSitesNote(ds) : ''}</span>
         <span style="margin-left:auto;display:flex;gap:8px">${p.trees.map(t =>
           `<a class="qbtn" id="treeGW_${t}" href="ibsCompare.php?tree=${t}&dataset=${encodeURIComponent(fam)}" download="${fam}_genomewide_${t}.nwk">Download ${name[t] || t}</a>`).join('')}</span>
       </div></div>`;

@@ -267,7 +267,7 @@ function refreshSelChip(bump){
   const d=(typeof Data!=='undefined'&&Data.datasets)?Data.datasets().find(x=>x.id===S.dataset):null;
   document.getElementById('selChipN').textContent=n.toLocaleString();
   document.getElementById('selChipLbl').textContent=many;
-  b.title=`${n.toLocaleString()} ${many} selected for SNPVersity${d?' ('+d.name+')':''}. Click to browse, filter and edit the selection.`;
+  b.title=`${n.toLocaleString()} ${many} selected for SNPVersity${d?' ('+Data.datasetLabel(d.id)+')':''}. Click to browse, filter and edit the selection.`;
   b.setAttribute('aria-label',`Selection: ${n.toLocaleString()} ${many}. Browse, filter and edit`);
   if(bump){ b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }

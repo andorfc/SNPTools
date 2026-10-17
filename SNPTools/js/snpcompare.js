@@ -492,7 +492,7 @@ const SNPCompare = (function () {
     const ids=gAvail ? (Data.accessionsFor(ds)||[]).map(a=>a.id)
                      : (local ? ST.input.accs.map(a=>a.id) : []);
     const region=local?`${ST.input.chr}:${(+ST.input.start).toLocaleString()}–${(+ST.input.end).toLocaleString()}`:null;
-    const dsName=ST.input?(ST.input.datasetName||ST.dataset):ST.dataset;
+    const dsName=ST.input?(ST.input.datasetName||Data.datasetLabel(ST.dataset)):Data.datasetLabel(ST.dataset);
     return `
     <section class="sec"><div class="bar"></div><div style="width:100%">
       <h1>SNPCompare</h1>
@@ -531,7 +531,7 @@ const SNPCompare = (function () {
           <button class="qbtn ${siteMode()==='all'?'solid':''}" onclick="SNPCompare.setSites('all')">All sites</button></div>`:''}
       </div>
       ${!gAvail?`<div class="mtx-note" style="margin-top:12px">No precomputed genome-wide IBS matrix is installed for <b>${esc(dsName)}</b> (expected in <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>). Use <b>This region</b> — SNPCompare computes identity-by-state live from your SNPVersity result.</div>`
-        :(Data.familyOf(ds)!=='mgdb2026'?`<div class="mtx-note" id="cmpGNote" style="margin-top:12px">Genome-wide: precomputed IBS over the whole release (${((gProbe()||{}).n||0).toLocaleString()} lines${ST.gsites==='snp'?', SNPs only':', all variant sites'}), <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>.</div>`:'')}
+        :(Data.familyOf(ds)!=='mgdb2026'?`<div class="mtx-note" id="cmpGNote" style="margin-top:12px">Genome-wide: precomputed IBS over the whole release (${((gProbe()||{}).n||0).toLocaleString()} lines${ST.gsites==='snp'?', SNPs only':', all variant sites'}), <span class="c-mono">distance/${esc(Data.familyOf(ds))}/</span>${Data.gwSitesNote(ds)?`, ${esc(Data.gwSitesNote(ds))}`:''}.</div>`:'')}
 
       ${accListHTML()}
 

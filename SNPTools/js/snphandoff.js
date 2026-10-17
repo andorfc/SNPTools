@@ -66,11 +66,13 @@
   }
 
   /* Accession IDs are not portable between dataset families, so a handoff
-     that switches dataset can only ever reset the selection. */
+     that switches family can only ever reset the selection. The sets of one
+     family (the Imputed and High Quality sets of a release) share their lines. */
   function sameDataset(ds){
     if (ds == null || ds === '') return true;
     if (typeof S === 'undefined' || !S) return true;
-    return String(ds) === String(S.dataset);
+    if (String(ds) === String(S.dataset)) return true;
+    return typeof Data !== 'undefined' && !!Data.sameFamily && Data.sameFamily(ds, S.dataset);
   }
 
   function esc(s){
