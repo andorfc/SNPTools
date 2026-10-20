@@ -836,7 +836,8 @@ async function until(site, expr, ms = 8000){
   }
 
   /* ---------- SNPCurate (js/snpcurate.data.js from data/curate/snpcurate.source.json) ----------
-     The table, the filters and sorts, every record as drawn, and the three buttons of SC0001.
+     The table, the filters and sorts, every record as drawn, and the three buttons of SC0001
+     (Carriers in SNPVersity, Gene in SNPFunction, Send to SNPGeo).
      check_snpcurate.py recomputes each number from the stores, the catalogue, the trait file and
      the source. Needs the full stores of the chromosomes the entries are on. */
   if (['chr1', 'chr2', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chr10'].every(c => (R.store || {})[c] > 100000)){
@@ -848,7 +849,7 @@ async function until(site, expr, ms = 8000){
       glyph:tr.querySelector('.cur-badge').textContent, cells:[...tr.children].slice(1).map(td=>td.textContent.replace(/\\s+/g,' ').trim())}))`;
     K.table = $c(tableRows);
     const ids = sel => $c(`(()=>{ ${sel}; return [...document.querySelectorAll('#curTable tbody tr')].map(tr=>tr.dataset.id); })()`);
-    K.filters = {gold: ids(`CURATE.setFilter('fMark','gold')`), grey: ids(`CURATE.setFilter('fMark','grey')`),
+    K.filters = {gold: ids(`CURATE.setFilter('fMark','gold')`), white: ids(`CURATE.setFilter('fMark','white')`),
                  site: ids(`CURATE.setFilter('fMark','all'); CURATE.setFilter('fStatus','site')`),
                  kernel: ids(`CURATE.setFilter('fStatus','all'); CURATE.setFilter('fText','kernel')`),
                  byCarriers: ids(`CURATE.setFilter('fText',''); CURATE.sort('carriers')`), byGene: ids(`CURATE.sort('gene')`)};
@@ -922,15 +923,15 @@ async function until(site, expr, ms = 8000){
       await s.wait(300);
       if (withData){
         // test-only entries, added to the loaded copy only
-        M.testEntry = $m(`(()=>{ const e={id:'SC9901', gene:'Zm00001eb174590', symbol:'su1', label:'G627W (test only)', kind:'tag', evidence:'tag', status:'site',
-          chr:'chr4', pos:43437627, ref:'G', alt:'T', trait:'test', refs:[], mark:'outline', site:{nHet:31, nHom:0, nMiss:0, qc:'HET_ONLY', priority:'TOP'}};
+        M.testEntry = $m(`(()=>{ const e={id:'SC9901', gene:'Zm00001eb174590', symbol:'su1', label:'G627W (test only)', role:'associated', status:'site',
+          chr:'chr4', pos:43437627, ref:'G', alt:'T', trait:'test', refs:[], mark:'silver', site:{nHet:31, nHom:0, nMiss:0, qc:'HET_ONLY', priority:'TOP'}};
           window.SNP_CURATE.entries.push(e); return Data.curatedAt('chr4',43437627,'G','T')===e; })()`);
         M.impactSu1 = await impact(43430007, 43438753);
         $m(`S.functionGene='Zm00001eb174590'; go('snpfunction')`);
         await until(s, `!!document.getElementById('fnAlleles')`, 60000); await s.wait(150);
         M.funcSu1Test = $m(`[...document.querySelectorAll('#fnCurated .fn-cur-item')].map(d=>d.dataset.curate)`);
         M.foldTest = await $m(`(async()=>{ const d=await Data.geneFunction('Zm00001eb406050','zmgrin2026_imp'); const f=d.foldVariants.find(v=>Data.qcUsable(v.qc));
-          window.SNP_CURATE.entries.push({id:'SC9902', gene:'Zm00001eb406050', symbol:'test', label:f.variant+' (test only)', kind:'tag', evidence:'tag', status:'site',
+          window.SNP_CURATE.entries.push({id:'SC9902', gene:'Zm00001eb406050', symbol:'test', label:f.variant+' (test only)', role:'causal', status:'site',
             chr:d.chr, pos:f.pos, ref:f.refNt, alt:f.altNt, trait:'test', refs:[], mark:'gold', site:{nHet:f.nHet, nHom:f.nHom, nMiss:0, qc:f.qc, priority:f.priority}});
           return {pos:f.pos, variant:f.variant}; })()`);
         $m(`goFold('Zm00001eb406050')`);

@@ -17,7 +17,7 @@ pages; recomputed here from the two VCFs, the line QC tables and the SNPCurate d
     and SNPCompare say the matrices were computed on the Imputed set's sites (none for Imputed);
 (e) per-set line QC: each set's classes equal its data/qc/<family>.lineqc.tsv;
 (f) SNPCurate: the set chooser follows the site-wide set; a site the rule drops is marked in the
-    table and the record, "On the map" is disabled, and nothing is marked on the Imputed set.
+    table and the record, "Send to SNPGeo" is disabled, and nothing is marked on the Imputed set.
 Standard library only."""
 import gzip, json, os, sys
 
@@ -128,13 +128,17 @@ for ds_id, key, f_ in (('zmgrin2026_imp', 'imp', 'zmgrin2026.lineqc.tsv'), ('zmg
 diff = sorted(k for k in H['lineqc']['imp'] if H['lineqc']['imp'][k] != H['lineqc']['hq'][k])
 print(f"     lines whose class differs between the sets: {diff}")
 
-# (f) SNPCurate
+# (f) SNPCurate: the curated sites the High Quality rule drops (carriers >= 10 and maxR2 < 0.2 or missing)
 cu = H['curate']
-check(cu['select'] == 'zmgrin2026_hq' and cu['options'] == [ds['zmgrin2026_imp']['label'], ds['zmgrin2026_hq']['label']] and cu['outRows'] == 0,
-      f"(f) SNPCurate set chooser {cu['options']}; no curated site outside the High Quality set")
+_cj = open(os.path.join(root, 'js', 'snpcurate.data.js'), encoding='utf-8').read()
+_ce = json.loads(_cj[_cj.index('{'):_cj.rindex('}') + 1])['entries']
+out_ids = [e['id'] for e in _ce if e.get('site') and (e['site']['nHet'] + e['site']['nHom']) >= 10
+           and (e['site']['maxr2'] is None or e['site']['maxr2'] < 0.2)]
+check(cu['select'] == 'zmgrin2026_hq' and cu['options'] == [ds['zmgrin2026_imp']['label'], ds['zmgrin2026_hq']['label']] and cu['outRows'] == len(out_ids),
+      f"(f) SNPCurate set chooser {cu['options']}; curated sites outside the High Quality set marked: {cu['outRows']} = {out_ids}")
 check(cu['row'] == 'not in the High Quality set' and cu['note'].startswith(f"Not in the High Quality set. {cu['carriers']:,} carriers and maxR² 0.05")
-      and dict(cu['map']).get('On the map') is True and dict(cu['map']).get('Carriers in SNPVersity') is False,
-      f"(f) a dropped site ({cu['id']}, maxR² set to 0.05): marked, record note, On the map disabled")
+      and dict(cu['map']).get('Send to SNPGeo') is True and dict(cu['map']).get('Carriers in SNPVersity') is False,
+      f"(f) a dropped site ({cu['id']}, maxR² set to 0.05): marked, record note, Send to SNPGeo disabled")
 check(not cu['imp']['note'] and cu['imp']['rows'] == 0, "(f) nothing marked on the Imputed set")
 check(not H.get('consoleErrors'), f"no script errors {H.get('consoleErrors')}")
 print(f"High Quality set: {len(fails)} failed; mismatches={len(fails)}")

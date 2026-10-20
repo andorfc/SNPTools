@@ -6,8 +6,10 @@
  *  tools/build_snpcurate.py from data/curate/snpcurate.source.json, the variant
  *  stores and their site-QC sidecars, the catalogue and the GRIN trait file.
  *  A table of the entries with filters, and a record view below it; a record
- *  opens from another tool with openCurate(id) (S.curateId). Marks: gold,
- *  outline and grey (curateBadge in data.js).
+ *  opens from another tool with openCurate(id) (S.curateId). Marks (curateBadge
+ *  in data.js): gold, a published causal change that is a site in this release;
+ *  silver, a published variant, marker or lead SNP that is a site; white, a
+ *  published variant that is not in this marker set.
  * ===================================================================== */
 (function () {
 
@@ -15,18 +17,21 @@
   const STATUS = {
     site:          {label:'Site in this release'},
     not_a_site:    {label:'Not a site',         why:'The release has no site at this position, so it cannot show the allele.'},
+    different_allele:{label:'Other allele here', why:'The release has a site at this position, but with a different allele from the published one.'},
     not_locatable: {label:'Not locatable',      why:'The change cannot be placed on the B73 v5 gene model the release is annotated with.'},
     structural:    {label:'Structural variant', why:'The allele is a transposon or indel haplotype, which a release of SNPs and short indels cannot genotype.'},
     unreliable:    {label:'Unreliable calls',   why:'Most sites in this gene are dominated by heterozygous calls, so the release cannot genotype the allele series reliably.'},
     not_annotated: {label:'Gene not annotated', why:'The gene model is missing from the annotation behind the release’s consequence calls.'},
   };
-  const MARK_NAME = {gold:'Gold', outline:'Outline', grey:'Grey'};
-  const MARK_ORDER = {gold:0, outline:1, grey:2};
+  const MARKS = ['gold','silver','white'];
+  const MARK_NAME = {gold:'Gold', silver:'Silver', white:'White'};
+  const MARK_ORDER = {gold:0, silver:1, white:2};
   // PlantCAD2: the one-pass score (release v1.4.3, 8,192-bp windows), as in the other tools; the data file keeps
   // the 512-bp pc2 too
   const SCORE_LABEL = [['pc1','PlantCAD1'],['pc2op','PlantCAD2'],['evo2','Evo2'],['esm1','ESM1'],['esm2','ESM2'],['esm3','ESM3'],['esmc','ESM-C']];
-  const KIND = {causal:'Causal change', published_marker:'Published marker', tag:'Tagging site'};
-  const EVIDENCE = {validated:'Validated', associated:'Associated', tag:'Tag'};
+  /* what the publication says the variant is (the source's role field) */
+  const ROLE = {causal:'Causal change', proposed:'Proposed causal change', allele:'Allele-defining change', associated:'Associated variant',
+                lead_snp:'Lead SNP', marker:'Published marker'};
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function data(){ return (typeof window!=='undefined' && window.SNP_CURATE) || null; }
@@ -56,7 +61,7 @@
       (!q || (e.trait+' '+e.symbol+' '+e.gene).toLowerCase().includes(q)) &&
       (CU.fMark==='all' || e.mark===CU.fMark) &&
       (CU.fStatus==='all' || e.status===CU.fStatus));
-    // default order: by mark (gold, outline, grey), then gene name; a header click sorts by gene or carriers
+    // default order: by mark (gold, silver, white), then gene name; a header click sorts by gene or carriers
     if (!CU.sortKey) L = L.slice().sort((a,b)=>(MARK_ORDER[a.mark]-MARK_ORDER[b.mark]) || String(a.symbol).localeCompare(String(b.symbol)) || a.id.localeCompare(b.id));
     if (CU.sortKey==='gene') L = L.slice().sort((a,b)=>CU.sortDir*String(a.symbol).localeCompare(String(b.symbol)) || a.id.localeCompare(b.id));
     if (CU.sortKey==='carriers') L = L.slice().sort((a,b)=>{ const x=carriers(a), y=carriers(b);
@@ -75,11 +80,11 @@
         <p>SNPCurate reads <span class="c-mono">js/snpcurate.data.js</span>, built by <span class="c-mono">make curate</span>.</p></div>`;
       return;
     }
-    const counts = {gold:0, outline:0, grey:0}; entries().forEach(e=>{ counts[e.mark]=(counts[e.mark]||0)+1; });
+    const counts = {gold:0, silver:0, white:0}; entries().forEach(e=>{ counts[e.mark]=(counts[e.mark]||0)+1; });
     const stat = Object.keys(STATUS).filter(k=>entries().some(e=>e.status===k));
     page.innerHTML = head() + `
       <div class="card pad cur-legend" id="curLegend">
-        ${['gold','outline','grey'].map(m=>`<div class="cur-lg">${curateBadge({id:'', mark:m, symbol:'', label:''}).replace(/onclick="[^"]*"/,'onclick="return false;"').replace(/ data-curate="[^"]*"/,'')}
+        ${MARKS.map(m=>`<div class="cur-lg">${curateBadge({id:'', mark:m, symbol:'', label:''}).replace(/onclick="[^"]*"/,'onclick="return false;"').replace(/ data-curate="[^"]*"/,'')}
           <span><b>${MARK_NAME[m]}</b> · ${esc(D.marks[m])} <span class="muted">(${counts[m]||0})</span></span></div>`).join('')}
       </div>
       <div class="filterbar cur-filters">
@@ -87,7 +92,7 @@
           <input id="curText" type="search" value="${esc(CU.fText)}" placeholder="e.g. kernel color, su1" oninput="CURATE.setFilter('fText', this.value)"></div>
         <div class="fld"><label for="curMark">Mark</label>
           <select id="curMark" onchange="CURATE.setFilter('fMark', this.value)">
-            <option value="all">All marks</option>${['gold','outline','grey'].map(m=>`<option value="${m}" ${CU.fMark===m?'selected':''}>${MARK_NAME[m]}</option>`).join('')}</select></div>
+            <option value="all">All marks</option>${MARKS.map(m=>`<option value="${m}" ${CU.fMark===m?'selected':''}>${MARK_NAME[m]}</option>`).join('')}</select></div>
         ${Data.datasets().length>1?`<div class="fld"><label for="curDataset" data-tt="The set the hand-offs query. The records are read from the Imputed set; the High Quality set holds the same record at each site it keeps.">Dataset</label>
           <select id="curDataset" onchange="CURATE.setDataset(this.value)">${Data.datasets().map(d=>`<option value="${esc(d.id)}" ${d.id===ds()?'selected':''}>${esc(Data.datasetLabel(d.id))}</option>`).join('')}</select></div>`:''}
         <div class="fld"><label for="curStatus">Status in this release</label>
@@ -103,8 +108,9 @@
     return `<div class="sec"><div class="bar"></div><div>
       <div class="n">PUBLISHED ALLELES · ${esc((data()||{}).release||'')}</div>
       <h2>Curated alleles and what this release shows of them</h2>
-      <p>Published maize alleles with their carriers, Site QC class, scores and trait means in this release.
-      An allele the release cannot genotype is listed with the reason. Click a row for its record.</p>
+      <p>Variants published for maize genes, each with its carriers, Site QC class, scores and trait means in
+      this release. Only variants a publication names are listed; a published variant that is not in this
+      marker set is listed with the reason. Click a row for its record.</p>
     </div></div>`;
   }
   function th(label, key, tt){
@@ -128,7 +134,7 @@
         <td class="cur-ref">${e.refs && e.refs[0] ? esc(e.refs[0].cite.replace(/\.\s.*$/,'').replace(/, et al/,' et al')) + (e.refs.length>1?` <span class="muted">+${e.refs.length-1}</span>`:'') : ''}</td>
       </tr>`; }).join('');
     return `<div class="tbl-wrap" style="max-height:none"><table class="vcf imp cur-table">
-      <thead><tr>${th('Mark','', 'Gold: validated causal change, genotyped here. Outline: published marker, associated change or tag, genotyped here. Grey: known allele this release cannot show.')}
+      <thead><tr>${th('Mark','', 'Gold: published causal change, a site in this release. Silver: published variant, marker or lead SNP, a site here; causality not established. White: published variant that is not in this marker set.')}
         ${th('Gene','gene','Gene symbol and B73 v5 model. Click to sort.')}${th('Change','','The published change.')}${th('Trait','','The trait the allele affects.')}
         ${th('Status in this release','','Whether the release genotypes the allele, and why not when it does not.')}
         ${th('Carriers (het / hom)','carriers','Heterozygous / homozygous carriers among the release lines. Click to sort.')}
@@ -143,17 +149,17 @@
     const s = e.site;
     const refs = (e.refs||[]).map(r=>`<li>${esc(r.cite)}${r.doi?` · <a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">doi:${esc(r.doi)}</a>`:''}</li>`).join('');
     const review = e.needs_review ? `<div class="cur-review" role="note"><b>To confirm:</b> ${esc(e.needs_review)}</div>` : '';
-    const tag = e.tagged_by && byId(e.tagged_by) ? `<p>The haplotype is tagged by ${curateBadge(byId(e.tagged_by))} <a href="#" onclick="CURATE.open('${esc(e.tagged_by)}');return false;">${esc(e.tagged_by)}, ${esc(byId(e.tagged_by).label)}</a>.</p>` : '';
+    const pub = e.published_as ? `<p class="cur-pub"><span class="cur-k" style="display:inline">Published as</span> ${esc(e.published_as)}</p>` : '';
     const top = `<div class="cur-rh">
         <div>${curateBadge(e)} <b class="cur-sym">${esc(e.symbol)}</b> <span class="cur-lbl">${esc(e.label)}</span>
           <div class="muted cur-sub">${esc(e.id)} · <a class="c-mono" href="${maizegdbGeneURL(e.gene)}" target="_blank" rel="noopener">${esc(e.gene)}</a>
-          · ${esc(KIND[e.kind]||e.kind)} · ${esc(EVIDENCE[e.evidence]||e.evidence)} · ${esc(e.trait)}</div></div>
+          · ${esc(ROLE[e.role]||e.role)} · ${esc(e.trait)}</div></div>
         <button class="btn ghost" onclick="CURATE.close()" aria-label="Close the record">✕</button></div>`;
     if (!s){
       const st = STATUS[e.status] || {label:e.status, why:''};
       return `<div class="card pad cur-record" id="curRec_${esc(e.id)}">${top}
         <div class="cur-why"><b>${esc(st.label)}.</b> ${esc(st.why)} <span class="muted">(${esc(where(e))})</span></div>
-        <p>${esc(e.note||'')}</p>${tag}${review}
+        <p>${esc(e.note||'')}</p>${pub}${review}
         <div class="cur-k" style="margin-top:12px">References</div><ul class="cur-refs">${refs}</ul></div>`;
     }
     const gene = s.gene!==e.gene ? ` in <span class="c-mono" style="text-transform:none">${esc(s.gene)}</span>` : '';
@@ -165,7 +171,7 @@
       <div class="cur-actions">
         <button class="btn" onclick="CURATE.toVersity('${esc(e.id)}')" ${carriers(e)?'':'disabled'}>${ICONS.dna||''} Carriers in SNPVersity</button>
         <button class="btn" onclick="CURATE.toFunction('${esc(e.id)}')">${ICONS.func||''} Gene in SNPFunction</button>
-        <button class="btn" onclick="CURATE.toMap('${esc(e.id)}')" ${notInSet(e)?`disabled title="The ${esc(setShort())} set has no record at this site."`:''}>${ICONS.map||''} On the map</button>
+        <button class="btn" onclick="CURATE.toMap('${esc(e.id)}')" ${notInSet(e)?`disabled title="The ${esc(setShort())} set has no record at this site."`:''}>${ICONS.map||''} Send to SNPGeo</button>
         <span class="muted" id="curBusy">${CU.busy===e.id?'Querying all lines…':''}</span>
       </div>
       <div class="cur-grid cur-facts">
@@ -185,7 +191,7 @@
           <table class="cur-mini"><tbody>${ctys}</tbody></table>
           ${s.country.length>12?`<button class="link-btn" onclick="this.previousElementSibling.querySelectorAll('.cur-more').forEach(r=>r.hidden=false);this.remove()">Show all ${s.country.length} countries</button>`:''}</div>
       </div>
-      <p style="margin-top:14px">${esc(e.note||'')}</p>${tag}${review}
+      <p style="margin-top:14px">${esc(e.note||'')}</p>${pub}${review}
       <div class="cur-k" style="margin-top:12px">References</div><ul class="cur-refs">${refs}</ul></div>`;
   }
   function traitHTML(t){
@@ -241,7 +247,8 @@
       .cur-why{background:#f2f4f7;border:1px solid #d5dae2;border-radius:9px;padding:9px 12px;margin:12px 0;font-size:13px}
       .cur-review{background:#fff7e6;border:1px solid #f0d9a8;border-left:4px solid #c27c0e;border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px}
       .cur-refs{margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6}
-      .cur-refs a{word-break:break-all}`;
+      .cur-refs a{word-break:break-all}
+      .cur-pub{font-size:13px;margin:6px 0 0}`;
     document.head.appendChild(s);
   }
 

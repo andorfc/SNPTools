@@ -61,20 +61,25 @@ Release v1.4: 20 H, 26 E, 887 I.
 
 ## build_snpcurate.py (SNPCurate)
 
-`make curate`. The registry is `data/curate/snpcurate.source.json`, edited by hand (one entry per
-published allele: gene and symbol, label, kind `causal` / `published_marker` / `tag`, variant type,
-status `site` / `not_a_site` / `not_locatable` / `structural` / `unreliable` / `not_annotated`, the site
-(chr, pos, ref, alt) or the position or interval where known, `site_gene` when the site is annotated in
-another gene, evidence `validated` / `associated` / `tag`, the trait and its GRIN descriptor, references
-with DOIs, a note, `needs_review`, `tagged_by`, and an `expect` block of het / hom / class for tests).
+`make curate`. The registry is `data/curate/snpcurate.source.json`, edited by hand (its `fields` block
+describes each field). One entry per variant a publication names, never a tagging site or lead SNP we
+pick ourselves: gene and symbol, label, `published_as` (the paper's own name for it), role `causal` /
+`proposed` / `allele` / `associated` / `lead_snp` / `marker`, variant type, status `site` / `not_a_site` /
+`different_allele` / `not_locatable` / `structural` / `unreliable` / `not_annotated`, the site (chr, pos,
+ref, alt) or the position or interval where known, `site_gene` when the site is annotated in another
+gene, the trait and its GRIN descriptor, references with DOIs (required), a note, `needs_review`, and an
+`expect` block of het / hom / class for tests. Induced alleles (EMS, TILLING, transposon tagging,
+CRISPR), candidates a paper rejects and variants whose position cannot be had from the paper stay out.
 For each site entry the builder finds exactly one site (else it stops) and computes the carriers
 (per subpopulation and country of origin, with each group's total), the Site QC class, the allele
 frequency, MAF and maxR², the consequence and substitution of `site_gene` or `gene` read as the app
 reads them, the seven scores, the combined score and priority (as `Data.impactPriority`), the trait by
 genotype, and for a missense entry its rank by each score among the gene's missense variants with a
-carrier. A non-site entry is checked to have no site at its position or codon. It stops when a count
-differs from the `expect` block. Marks: gold (causal, validated, a site, nothing to review), outline
-(any other site), grey (not a site). Release v1.4: 21 entries, 14 sites; gold 2, outline 12, grey 7.
+carrier. A non-site entry is checked to have no site at its position or codon (a `different_allele`
+entry: sites there, none with its alleles). It stops when a count differs from the `expect` block, an
+entry has no reference, or a role or status is unknown. Marks: gold (role `causal` and a site), silver
+(any other role and a site), white (not in this marker set). Release v1.4.3, registry re-read from the
+papers on 2026-10-20: 76 entries for 17 genes, 21 sites; gold 4, silver 17, white 55.
 `--table <out.tsv>` also writes the benchmark table, one row per entry, and the same as Markdown.
 
 ## annotate_release_info.py (SNPVersity annotation INFO for zmgrin2026_imp)

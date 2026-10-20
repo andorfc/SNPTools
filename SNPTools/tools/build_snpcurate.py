@@ -23,9 +23,12 @@ carriers per country with each group's total; the trait by genotype when grin_de
 (numeric: mean and n of the line means for homozygous-reference and homozygous-alternate lines; coded:
 per code, homozygous-alternate lines of the lines with that code); and, for a missense entry, its rank
 by each score (1 = most negative) among the gene's missense variants that have a carrier.
-For any other entry it confirms that no site exists at its pos or codon_positions, and stops if one does.
+For a "different_allele" entry it confirms that sites exist at its pos but none with its ref and alt; for any
+other entry, that no site exists at its pos or codon_positions; it stops otherwise.
 
-Marks: gold = causal, validated, a site and nothing to review; outline = any other site; grey = not a site.
+Only variants a publication names are entries (never a tagging site picked by us). Marks: gold = a published
+causal change (role "causal") that is a site; silver = any other published variant, marker or lead SNP that
+is a site; white = a published variant that is not in this marker set (status other than "site").
 Needs h5py + numpy.
 """
 import argparse, datetime, json, os, re, sys
@@ -40,9 +43,11 @@ SEVERITY = {'HIGH': 3, 'MODERATE': 2, 'LOW': 1, 'MODIFIER': 0}
 SCORES = (('pc1', 'plantcad1_score'), ('pc2', 'plantcad2_score'), ('pc2op', 'plantcad2_onepass_score'), ('evo2', 'evo2_score'),
           ('esm1', 'ESM1_score'), ('esm2', 'ESM2_score'), ('esm3', 'ESM3_score'), ('esmc', 'ESMC_score'))
 ESM_KEYS = ('esm1', 'esm2', 'esm3', 'esmc')
-MARKS = {'gold': 'Validated causal change, genotyped in this release.',
-         'outline': 'Published marker, associated change or tagging site, genotyped in this release.',
-         'grey': 'Known allele that this release cannot show.'}
+MARKS = {'gold': 'Published causal change, a site in this release.',
+         'silver': 'Published variant, marker or lead SNP, a site in this release; causality not established.',
+         'white': 'Published variant that is not in this marker set.'}
+ROLES = ('causal', 'proposed', 'allele', 'associated', 'lead_snp', 'marker')
+STATUSES = ('site', 'not_a_site', 'different_allele', 'not_locatable', 'structural', 'unreliable', 'not_annotated')
 
 
 class BuildError(SystemExit):
@@ -216,16 +221,28 @@ def build(root):
         sub_tot[a.get('subpop') or 'Unknown'] = sub_tot.get(a.get('subpop') or 'Unknown', 0) + 1
         cty_tot[a.get('country') or 'Unknown'] = cty_tot.get(a.get('country') or 'Unknown', 0) + 1
     out = []
+    seen = set()
     for e in src['entries']:
+        if e['id'] in seen: raise BuildError(f"{e['id']}: duplicate id")
+        seen.add(e['id'])
+        if e.get('role') not in ROLES: raise BuildError(f"{e['id']}: role {e.get('role')!r} is not one of {ROLES}")
+        if e.get('status') not in STATUSES: raise BuildError(f"{e['id']}: status {e.get('status')!r} is not one of {STATUSES}")
+        if not e.get('refs'): raise BuildError(f"{e['id']}: no publication (every entry is a published variant)")
         r = dict(e)
+        if e['status'] == 'different_allele':
+            r['mark'] = 'white'
+            st = store(e['chr'])
+            if not st.any_at(e['pos']) or st.find(e['pos'], e['ref'], e['alt']):
+                raise BuildError(f"{e['id']}: different_allele needs sites at {e['chr']}:{e['pos']}, none of them {e['ref']}>{e['alt']}")
+            out.append(r); continue
         if e['status'] != 'site':
-            r['mark'] = 'grey'
+            r['mark'] = 'white'
             st = store(e['chr'])
             for p in ([e['pos']] if e.get('pos') else []) + list(e.get('codon_positions') or []):
                 if st.any_at(p):
                     raise BuildError(f"{e['id']}: a site exists at {e['chr']}:{p}, but the entry says {e['status']}")
             out.append(r); continue
-        r['mark'] = 'gold' if (e['kind'] == 'causal' and e['evidence'] == 'validated' and not e.get('needs_review')) else 'outline'
+        r['mark'] = 'gold' if e['role'] == 'causal' else 'silver'
         st = store(e['chr'])
         hit = st.find(e['pos'], e['ref'], e['alt'])
         if len(hit) != 1:
@@ -329,7 +346,7 @@ def main():
     ap.add_argument('--no-js', action='store_true', help='do not write js/snpcurate.data.js')
     a = ap.parse_args()
     src, entries = build(a.root)
-    marks = {m: sum(e['mark'] == m for e in entries) for m in ('gold', 'outline', 'grey')}
+    marks = {m: sum(e['mark'] == m for e in entries) for m in ('gold', 'silver', 'white')}
     sites = sum(e['status'] == 'site' for e in entries)
     for e in entries:
         s = e.get('site')

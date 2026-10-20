@@ -1378,7 +1378,7 @@
       const cur=v.curated;
       g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${escFold(v.variant)} · ${escFold(v.consequence)} · residue ${resi}${cur?` · curated: ${escFold(cur.symbol)} ${escFold(cur.label)}`:''}">`;
       g+=`<line x1="${xx.toFixed(1)}" y1="${base}" x2="${xx.toFixed(1)}" y2="${head.toFixed(1)}" stroke="${col}" stroke-width="${on?2:1.4}"/>`;
-      if (cur) g+=`<circle class="cur-ring" data-curate="${escFold(cur.id)}" cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${(on?6:4.5)+3.2}" fill="none" stroke="${cur.mark==='gold'?'#c99a06':'#8a7642'}" stroke-width="1.8"/>`;
+      if (cur) g+=`<circle class="cur-ring" data-curate="${escFold(cur.id)}" cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${(on?6:4.5)+3.2}" fill="none" stroke="${cur.mark==='gold'?'#c99a06':'#8d97a4'}" stroke-width="1.8"/>`;
       g+=`<circle cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${on?6:4.5}" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
       if (v.consClass==='lof') g+=`<text x="${xx.toFixed(1)}" y="${(head-8).toFixed(1)}" class="vlab" text-anchor="middle">✱</text>`;
       g+=`</g>`;

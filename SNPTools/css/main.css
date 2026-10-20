@@ -329,19 +329,20 @@ table.vcf tbody tr:hover td{background:#f8faff}
 .load-versity{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;text-align:left;
   background:#eef4ff;border:1px solid #c9dafc;border-left:5px solid var(--blue);border-radius:12px;padding:12px 14px;margin:0 0 16px}
 .load-versity .lv-sub{font-size:12.5px;color:var(--muted)}
-/* SNPCurate marks (curateBadge in data.js): a glyph per mark; gold also has a gold border */
+/* SNPCurate marks (curateBadge in data.js): a gold star (published causal change), a silver star (published
+   variant, marker or lead SNP) and a white star with an outline (published, not in this marker set) */
 .cur-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;margin-left:4px;
   border-radius:5px;border:1px solid;font-size:11px;line-height:1;text-decoration:none;vertical-align:1px;cursor:pointer}
 .cur-badge.cur-gold{background:#fff6d6;color:#7a5600;border:1.5px solid #c99a06}
-.cur-badge.cur-outline{background:#fff;color:#6b5414;border-color:#d6c389}
-.cur-badge.cur-grey{background:#f2f4f7;color:#5b6472;border-color:#cdd3dc}
+.cur-badge.cur-silver{background:#eef1f5;color:#6e7886;border:1.5px solid #9ba5b2}
+.cur-badge.cur-white{background:#fff;color:#4f5967;border-color:#aab3bf}
 .cur-badge:hover{box-shadow:0 0 0 2px rgba(201,154,6,.25)}
-/* SNPVersity: a curated allele's row; its site and annotation cells on light gold (not the score or
-   genotype cells), a gold bar on the left */
+/* SNPVersity: a curated allele's row; its site and annotation cells on light gold, or light grey for a
+   silver mark (not the score or genotype cells), a bar of the mark's colour on the left */
 table.vcf tbody tr.cur-row > td:not(.score):not(.gt){background:#fff3c4}
-table.vcf tbody tr.cur-row-outline > td:not(.score):not(.gt){background:#fff8dc}
+table.vcf tbody tr.cur-row-silver > td:not(.score):not(.gt){background:#f1f3f6}
 table.vcf tbody tr.cur-row > td:first-child{box-shadow:inset 4px 0 0 #c99a06}
-table.vcf tbody tr.cur-row-outline > td:first-child{box-shadow:inset 4px 0 0 #d6c389}
+table.vcf tbody tr.cur-row-silver > td:first-child{box-shadow:inset 4px 0 0 #9ba5b2}
 /* line QC: a sample heterozygous as sequenced (sampleHetMark in data.js) */
 .het-mark{display:inline-block;margin-left:4px;padding:0 4px;border-radius:4px;font:700 9.5px/1.45 var(--body,'Inter',sans-serif);
   letter-spacing:.2px;background:#fdf1d6;color:#7a4a00;border:1px solid #efd59c;vertical-align:1px;white-space:nowrap}

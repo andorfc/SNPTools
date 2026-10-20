@@ -537,10 +537,11 @@ const Data = (function () {
       (e.codon_positions || []).some(p => p >= lo && p <= hi) ||
       (e.start != null && e.end != null && e.start <= hi && e.end >= lo)));
   }
-  const CURATE_STATUS = {not_a_site:'Not a site in this release.', not_locatable:'Cannot be placed on this release\u2019s gene model.',
+  const CURATE_STATUS = {not_a_site:'Not a site in this release.', different_allele:'This release has a site here, but not the published allele.',
+    not_locatable:'Cannot be placed on this release\u2019s gene model.',
     structural:'A structural variant this release cannot genotype.', unreliable:'Calls in this gene are unreliable in this release.',
     not_annotated:'The gene model is not in this release\u2019s annotation.'};
-  /* one sentence on why the release cannot show a grey entry ('' for a site) */
+  /* one sentence on why the release cannot show a white entry ('' for a site) */
   function curateStatusText(e){ return (e && CURATE_STATUS[e.status]) || ''; }
 
   /* A region's genotype matrix is variants × accessions — by far the biggest
@@ -1321,14 +1322,14 @@ function scoreColorValue(key, v){
    as a small link that opens its record. Each mark has its own glyph, so color is not the only
    cue: gold (validated causal change, genotyped here), outline (published marker, associated
    change or tag, genotyped here), grey (known allele this release cannot show). */
-var CURATE_GLYPH = {gold:'\u2605', outline:'\u2606', grey:'\u25CB'};
+var CURATE_GLYPH = {gold:'\u2605', silver:'\u2605', white:'\u2606'};   // gold and silver stars, a white star with an outline
 function curateBadge(e){
   if (!e || !e.mark) return '';
   var tips = (window.SNP_CURATE && window.SNP_CURATE.marks) || {};
   var tt = String((tips[e.mark] || '') + ' ' + (e.symbol || '') + ' ' + (e.label || '') + ' (' + e.id + ')')
     .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   return '<a href="#" class="cur-badge cur-' + e.mark + '" data-curate="' + e.id + '" data-tt="' + tt + '" aria-label="' + tt +
-    '" onclick="event.stopPropagation();openCurate(\'' + e.id + '\');return false;">' + (CURATE_GLYPH[e.mark] || CURATE_GLYPH.grey) + '</a>';
+    '" onclick="event.stopPropagation();openCurate(\'' + e.id + '\');return false;">' + (CURATE_GLYPH[e.mark] || CURATE_GLYPH.white) + '</a>';
 }
 function openCurate(id){
   if (typeof S !== 'undefined') S.curateId = id;

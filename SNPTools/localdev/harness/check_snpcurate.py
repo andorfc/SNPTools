@@ -12,12 +12,14 @@ gff/genes_index.txt, independently of tools/build_snpcurate.py:
     (Data.impactPriority), the carriers, homozygous carriers per subpopulation and carriers per
     country with their totals, the trait by genotype, and for a missense entry its rank by each
     score among the gene's missense variants that have a carrier;
-(b) each other entry: no site at its pos or codon positions;
-(c) the marks (gold / outline / grey) and the counts the page states;
+(b) each other entry: no site at its pos or codon positions (a different_allele entry: sites at its
+    pos, none with its alleles); every entry cites a publication and has a known role;
+(c) the marks (gold: a causal change that is a site; silver: any other published variant that is a
+    site; white: not a site) and the counts the page states;
 (d) the page as drawn (run_scenarios.js, curate): the data file, the table rows, the filters and
     sorts, every record's facts, scores and ranks, subpopulation, country and trait rows, the reason
-    shown for an allele the release cannot show, the references as DOI links, and the three buttons
-    of SC0001 (carriers to SNPVersity, gene to SNPFunction, site to SNPGeo).
+    shown for a variant the release cannot show, the published name, the references as DOI links, and
+    the three buttons of SC0001 (carriers to SNPVersity, gene to SNPFunction, Send to SNPGeo).
 Standard library only; the store reads run h5_to_vcf.py."""
 import json, math, os, re, subprocess, sys, tempfile
 
@@ -30,8 +32,10 @@ QC_LABEL = {'PASS': 'pass', 'HET_ELEVATED': 'Het elevated', 'HET_EXCESS': 'Het e
 SCORES = [('pc1', 'plantcad1_score', 'PlantCAD1'), ('pc2', 'plantcad2_score', 'PlantCAD2 (512 bp)'),
           ('pc2op', 'plantcad2_onepass_score', 'PlantCAD2'), ('evo2', 'evo2_score', 'Evo2'),
           ('esm1', 'ESM1_score', 'ESM1'), ('esm2', 'ESM2_score', 'ESM2'), ('esm3', 'ESM3_score', 'ESM3'), ('esmc', 'ESMC_score', 'ESM-C')]
-STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
+ROLES = ('causal', 'proposed', 'allele', 'associated', 'lead_snp', 'marker')
+STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'different_allele': 'Other allele here', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
           'unreliable': 'Unreliable calls', 'not_annotated': 'Gene not annotated'}
+N_ENTRIES = 76     # the registry re-read from the papers on 2026-10-20
 fails = []
 
 
@@ -153,12 +157,19 @@ for a in CAT.values():
 D = {e['id']: e for e in K['data']['entries']}
 EXP = {}
 for e in src['entries']:
-    x = {'mark': 'grey'}
+    x = {'mark': 'white'}
+    check(e.get('role') in ROLES and e.get('refs') and all(r.get('cite') for r in e['refs']),
+          f"{e['id']} {e['symbol']}: role {e.get('role')}, {len(e.get('refs') or [])} publication(s)")
+    if e['status'] == 'different_allele':
+        here = vcf(e['chr'], e['pos'], e['pos'], ids_one)
+        check(here and not any((r[0], r[1], r[2]) == (e['pos'], e['ref'], e['alt']) for r in here),
+              f"{e['id']} {e['symbol']} (different_allele): {len(here)} site(s) at {e['pos']}, none {e['ref']}>{e['alt']}")
+        EXP[e['id']] = x; continue
     if e['status'] != 'site':
         hits = [p for p in ([e['pos']] if e.get('pos') else []) + list(e.get('codon_positions') or []) if vcf(e['chr'], p, p, ids_one)]
         check(not hits, f"{e['id']} {e['symbol']} ({e['status']}): no site at {e.get('pos') or e.get('codon_positions') or 'its interval (nothing to test)'}")
         EXP[e['id']] = x; continue
-    x['mark'] = 'gold' if e['kind'] == 'causal' and e['evidence'] == 'validated' and not e.get('needs_review') else 'outline'
+    x['mark'] = 'gold' if e['role'] == 'causal' else 'silver'
     rows = [r for r in vcf(e['chr'], e['pos'], e['pos'], ids_all) if (r[0], r[1], r[2]) == (e['pos'], e['ref'], e['alt'])]
     if len(rows) != 1:
         check(False, f"{e['id']}: {len(rows)} sites for {e['chr']}:{e['pos']} {e['ref']}>{e['alt']}"); continue
@@ -222,17 +233,18 @@ for e in src['entries']:
               f"{len(homs) + len(hets)} carriers{', rank pool ' + str(x['pool']) if 'pool' in x else ''}")
 
 # (c) marks and counts
-marks = {m: sorted(i for i, x in EXP.items() if x['mark'] == m) for m in ('gold', 'outline', 'grey')}
-check(all(D[i]['mark'] == x['mark'] for i, x in EXP.items()) and len(D) == len(src['entries']) == 21,
-      f"marks: gold {marks['gold']}, outline {len(marks['outline'])}, grey {marks['grey']}")
-check([l['badge'] for l in K['legend']] == ['cur-badge cur-gold', 'cur-badge cur-outline', 'cur-badge cur-grey']
-      and len({l['glyph'] for l in K['legend']}) == 3 and all(f"({len(marks[m])})" in l['text'] for m, l in zip(('gold', 'outline', 'grey'), K['legend'])),
-      f"legend: three marks, three glyphs, counts {[len(marks[m]) for m in ('gold', 'outline', 'grey')]}")
+MK = ('gold', 'silver', 'white')
+marks = {m: sorted(i for i, x in EXP.items() if x['mark'] == m) for m in MK}
+check(all(D[i]['mark'] == x['mark'] for i, x in EXP.items()) and len(D) == len(src['entries']) == N_ENTRIES and len({e['id'] for e in src['entries']}) == N_ENTRIES,
+      f"marks: gold {len(marks['gold'])}, silver {len(marks['silver'])}, white {len(marks['white'])} ({N_ENTRIES} entries)")
+check([l['badge'] for l in K['legend']] == [f'cur-badge cur-{m}' for m in MK] and [l['glyph'] for l in K['legend']] == ['\u2605', '\u2605', '\u2606']
+      and all(f"({len(marks[m])})" in l['text'] for m, l in zip(MK, K['legend'])),
+      f"legend: gold, silver and white stars, counts {[len(marks[m]) for m in MK]}")
 
 # (d) the page as drawn
 check(K['nav'] == ['SNPCuratenew'] and not K.get('consoleErrors'), f"nav item {K['nav']}; no script errors {K.get('consoleErrors')}")
-# the table opens sorted by mark (gold, outline, grey), then gene name (case-insensitive), then id
-MARK_ORDER = {'gold': 0, 'outline': 1, 'grey': 2}
+# the table opens sorted by mark (gold, silver, white), then gene name (case-insensitive), then id
+MARK_ORDER = {'gold': 0, 'silver': 1, 'white': 2}
 order = [e['id'] for e in sorted(src['entries'], key=lambda e: (MARK_ORDER[EXP[e['id']]['mark']], e['symbol'].lower(), e['id']))]
 tbl_ok = [r['id'] for r in K['table']] == order
 for r in K['table']:
@@ -247,18 +259,19 @@ carr = lambda i: EXP[i]['nHet'] + EXP[i]['nHom'] if 'nHet' in EXP[i] else None
 src_order = [e['id'] for e in src['entries']]     # a header sort starts from the source order; ties by id
 want_c = sorted([i for i in src_order if carr(i) is not None], key=lambda i: (-carr(i), src_order.index(i))) + [i for i in src_order if carr(i) is None]
 want_g = sorted(order, key=lambda i: (next(e['symbol'] for e in src['entries'] if e['id'] == i).lower(), i))
-check(F['gold'] == [i for i in order if i in marks['gold']] and F['grey'] == [i for i in order if i in marks['grey']] and F['site'] == [i for i in order if 'nHet' in EXP[i]]
+check(F['gold'] == [i for i in order if i in marks['gold']] and F['white'] == [i for i in order if i in marks['white']] and F['site'] == [i for i in order if 'nHet' in EXP[i]]
       and F['kernel'] == [i for i in order for e in src['entries'] if e['id'] == i and 'kernel' in (e['trait'] + ' ' + e['symbol'] + ' ' + e['gene']).lower()] and len(F['kernel']) > 1
       and F['byCarriers'] == want_c and [i.lower() for i in F['byGene']] == [i.lower() for i in want_g],
-      f"filters (gold {len(F['gold'])}, grey {len(F['grey'])}, sites {len(F['site'])}, 'kernel' {len(F['kernel'])}) and sorts (carriers, gene)")
+      f"filters (gold {len(F['gold'])}, white {len(F['white'])}, sites {len(F['site'])}, 'kernel' {len(F['kernel'])}) and sorts (carriers, gene)")
 for e in src['entries']:
     r, x = K['records'][e['id']], EXP[e['id']]
     refs_ok = len(r['refs']) == len(e['refs']) and r['dois'] == [f"https://doi.org/{ref['doi']}" for ref in e['refs'] if ref.get('doi')]
-    review_ok = (r['review'] == f"To confirm: {e['needs_review']}") if e.get('needs_review') else r['review'] is None
+    review_ok = ((r['review'] == f"To confirm: {e['needs_review']}") if e.get('needs_review') else r['review'] is None) \
+        and (any(p == f"Published as {e['published_as']}" for p in r['note']) if e.get('published_as') else True)
     if 'nHet' not in x:
         ok = r['why'] is not None and r['why'].startswith(STATUS[e['status']] + '.') and refs_ok and review_ok and not r['buttons'] \
-             and (not e.get('tagged_by') or any(e['tagged_by'] in p for p in r['note']))
-        check(ok, f"{e['id']} {e['symbol']:<15} record: \"{(r['why'] or '')[:70]}\"{' tagged by ' + e['tagged_by'] if e.get('tagged_by') else ''}")
+             and r['badge'] == 'cur-badge cur-white'
+        check(ok, f"{e['id']} {e['symbol']:<15} record: \"{(r['why'] or '')[:70]}\"")
         continue
     facts = r['facts']
     exp_qc = f"Site QC{QC_LABEL[x['qc']]} {x['nHet']:,} het · {x['nHom']:,} hom · {x['nMiss']:,} missing"
@@ -280,7 +293,7 @@ for e in src['entries']:
         trait_ok = r['trait'] == want_t and r['traitHead'].startswith(TR['dictionary'][e['grin_descriptor']]['name'])
     ok = (facts[2] == exp_qc and facts[4] == exp_pr and facts[3].startswith(exp_af) and r['scores'] == scores and r['subpop'] == (subs or ['No homozygous carrier'])
           and r['country'] == ctys and trait_ok and refs_ok and review_ok and r['badge'] == f"cur-badge cur-{x['mark']}"
-          and r['buttons'] == ['Carriers in SNPVersity', 'Gene in SNPFunction', 'On the map'])
+          and r['buttons'] == ['Carriers in SNPVersity', 'Gene in SNPFunction', 'Send to SNPGeo'])
     if not ok:
         for k, g, w in (('qc', facts[2], exp_qc), ('priority', facts[4], exp_pr), ('af', facts[3], exp_af), ('scores', r['scores'], scores),
                         ('subpop', r['subpop'], subs), ('country', r['country'][:3], ctys[:3]), ('trait', r['trait'], 'trait ok' if trait_ok else '')):
@@ -294,12 +307,12 @@ check(K['toVersity'] == {'tool': 'snpversity', 'selected': sorted(x['hom'] + x['
       f"SC0001 Carriers in SNPVersity: {len(K['toVersity']['selected'])} lines on {K['toVersity']['chr']}:{K['toVersity']['start']}-{K['toVersity']['end']}")
 check(K['toFunction'] == {'tool': 'snpfunction', 'gene': 'Zm00001eb175150'}, f"SC0001 Gene in SNPFunction: {K['toFunction']}")
 check(K['toMap']['tool'] == 'snpgeo' and K['toMap']['rows'] == [[46648374, 'C', 'G']] and K['toMap']['accs'] == len(IDS),
-      f"SC0001 On the map: SNPGeo with {K['toMap']['rows']} for {K['toMap']['accs']} lines")
+      f"SC0001 Send to SNPGeo: SNPGeo with {K['toMap']['rows']} for {K['toMap']['accs']} lines")
 # (e) the marks in the other tools (run_scenarios.js, curateMarks), recomputed from the source
 CM = json.load(open(res)).get('curateMarks')
 if CM:
     W, WO = CM['with'], CM['without']
-    GLY = {'gold': '\u2605', 'outline': '\u2606', 'grey': '\u25cb'}
+    GLY = {'gold': '\u2605', 'silver': '\u2605', 'white': '\u2606'}
     SRC = src['entries']
     def in_iv(e, chrom, lo, hi):
         return e['chr'] == chrom and ((e.get('pos') is not None and lo <= e['pos'] <= hi) or any(lo <= p <= hi for p in e.get('codon_positions') or [])
@@ -326,9 +339,9 @@ if CM:
           f"SNPImpact chr4:46,647,932-46,652,896, Hide flagged and no-carrier: {[(c['variant'], c['id']) for c in im['curated']]}")
     check(W['geo']['badges'] == ['SC0001'] and W['geo']['label'], f"SNPGeo tga1: badge {W['geo']['badges']} in the table and beside the label")
     t = [c for c in W['impactSu1']['curated'] if c['id'] == 'SC9901']
-    check(W['testEntry'] and W['impactSu1']['filter'] == 'usable' and len(t) == 1 and t[0]['qc'] == 'Het only' and t[0]['cls'] == 'cur-badge cur-outline'
+    check(W['testEntry'] and W['impactSu1']['filter'] == 'usable' and len(t) == 1 and t[0]['qc'] == 'Het only' and t[0]['cls'] == 'cur-badge cur-silver'
           and t[0]['variant'] == 'p.G627W' and 'SC9901' in W['funcSu1Test'],
-          f"test-only su1 G627W (HET_ONLY): kept by SNPImpact's default filter with {t[0]['qc'] if t else None} and an outline badge; listed by SNPFunction")
+          f"test-only su1 G627W (HET_ONLY): kept by SNPImpact's default filter with {t[0]['qc'] if t else None} and a silver badge; listed by SNPFunction")
     check(W['foldTest']['ring'] == ['SC9902'] and W['foldTest']['table'] == ['SC9902'],
           f"test-only {W['foldTest']['variant']} of Zm00001eb406050: SNPFold ring {W['foldTest']['ring']} and table badge {W['foldTest']['table']}")
     src_txt = open(f'{root}/data/curate/snpcurate.source.json', encoding='utf-8').read() + open(f'{root}/js/snpcurate.data.js', encoding='utf-8').read()
