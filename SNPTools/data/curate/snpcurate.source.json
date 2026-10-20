@@ -1,0 +1,1867 @@
+{
+ "schema": "snpcurate-source-2",
+ "release": "zmgrin2026 v1.4.3",
+ "reference": "Zm-B73-REFERENCE-NAM-5.0",
+ "made": "2026-10-20",
+ "note": "The variants published for each gene, re-read from the papers on 2026-10-20. Only variants a publication names are entries: no tagging site or lead SNP chosen by us. Induced alleles (EMS, TILLING, transposon tagging, CRISPR), candidates a paper itself rejects and variants whose position could not be obtained from the paper are left out. Retired ids (self-picked tags of the first registry): SC0009, SC0017, SC0018, SC0020, SC0021.",
+ "fields": {
+  "role": "what the publication says the variant is: causal (shown to cause the trait or the allele phenotype), proposed (proposed as the cause, not tested), allele (one of the changes that define a published allele), associated, lead_snp, marker",
+  "status": "site (the release has exactly this change), not_a_site (no site at that position), different_allele (sites there, none with the published alleles), structural (a transposon, large indel or copy-number allele), not_locatable (cannot be placed on v5), unreliable (calls in the gene are dominated by heterozygotes), not_annotated (the gene model is missing from the annotation)",
+  "mark": "computed by tools/build_snpcurate.py: gold = role causal and status site; silver = any other role and status site; white = any other status",
+  "published_as": "the publication's own name or description of the variant",
+  "pos/ref/alt": "B73 v5 position and alleles (plus strand, VCF style); start/end for a structural allele",
+  "site_gene": "the gene whose consequence the record shows when the site is annotated in another gene",
+  "expect": "het / hom carriers and the Site QC class of a site, checked at build time"
+ },
+ "entries": [
+  {
+   "id": "SC0001",
+   "gene": "Zm00001eb175150",
+   "symbol": "tga1",
+   "label": "N6K (Lys6 in teosinte, Asn6 in maize)",
+   "published_as": "Lys6-to-Asn6 (K6N) substitution; ORF position +18 C (maize) / G (teosinte); snp+18",
+   "role": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 46648374,
+   "ref": "C",
+   "alt": "G",
+   "trait": "Glume architecture, naked kernels",
+   "refs": [
+    {
+     "cite": "Wang H, et al. 2005. Nature 436:714-719",
+     "doi": "10.1038/nature03863"
+    },
+    {
+     "cite": "Wang H, et al. 2015. Genetics 200:965-974",
+     "doi": "10.1534/genetics.115.175752"
+    },
+    {
+     "cite": "Fairbanks RA, Ross-Ibarra J. 2025. Proc Natl Acad Sci USA 122:e2503748122",
+     "doi": "10.1073/pnas.2503748122"
+    }
+   ],
+   "note": "The causal change of tga1 and the only fixed difference in its protein between maize and teosinte. The alternate allele is the teosinte lysine; every maize line here, B73 included, carries the asparagine, and the 7 parviglumis lines are homozygous for the lysine.",
+   "expect": {
+    "het": 0,
+    "hom": 7,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0002",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "T344N (SNP7)",
+   "published_as": "SNP7, C>A, Thr to Asn in the fifth exon (Fu 2013); position 4657 C/A, Thr (ACT) to Asn (AAT) (Palaisa 2003, U32636 numbering, after Buckner 1996)",
+   "role": "associated",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 91645900,
+   "ref": "C",
+   "alt": "A",
+   "trait": "Kernel carotenoids, endosperm color",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Fu Z, et al. 2013. Theor Appl Genet 126:923-935",
+     "doi": "10.1007/s00122-012-2026-0"
+    },
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "Thr344Asn in exon 5 of phytoene synthase, associated with total carotenoid content (Fu et al., SNP7); the asparagine (alternate) is the favorable allele. It does not make kernels yellow: B73 is yellow and carries the threonine.",
+   "expect": {
+    "het": 12,
+    "hom": 599,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0003",
+   "gene": "Zm00001eb277490",
+   "symbol": "DGAT1-2",
+   "label": "F469 insertion (high-oil allele)",
+   "published_as": "F469 ins (F469)",
+   "role": "causal",
+   "variant_type": "inframe_insertion",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 115184121,
+   "ref": "T",
+   "alt": "TGAA",
+   "trait": "Kernel oil content and composition",
+   "grin_descriptor": "OIL",
+   "refs": [
+    {
+     "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
+     "doi": "10.1038/ng.85"
+    }
+   ],
+   "note": "A phenylalanine insertion that raises oil and oleic acid; adding or removing it in yeast reproduces the activity difference. The alternate allele is the ancestral high-oil allele; B73 lacks it. In-frame insertions have no language-model score.",
+   "expect": {
+    "het": 6,
+    "hom": 181,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0004",
+   "gene": "Zm00001eb357090",
+   "symbol": "lcyE",
+   "label": "D70E (SNP216)",
+   "published_as": "SNP216 ('216 G/T'; 'an amino acid substitution in exon 1'; 'codon 216' in the QTL paragraph)",
+   "role": "proposed",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 142587884,
+   "ref": "T",
+   "alt": "G",
+   "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Harjes CE, et al. 2008. Science 319:330-333",
+     "doi": "10.1126/science.1150255"
+    },
+    {
+     "cite": "Owens BF, et al. 2014. Genetics 198:1699-1716 (Table S2, marker primers)",
+     "doi": "10.1534/genetics.114.169979"
+    }
+   ],
+   "note": "Asp70Glu in exon 1 of lycopene epsilon cyclase, the SNP216 of Harjes et al. (its PCR marker ends on this base). The glutamate (alternate) is the favorable allele; B73 carries the aspartate and Mo17 the glutamate. The paper does not test the substitution itself.",
+   "expect": {
+    "het": 9,
+    "hom": 401,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0005",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "E214G",
+   "published_as": "E214G (SNP 2654, Glu to Gly)",
+   "role": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 185149224,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Banded leaf and sheath blight resistance",
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "One of the two substitutions of the resistant Chang7-2 allele; B73 is the susceptible reference. Together with S217R it blocks the interaction of ZmFBL41 with ZmCAD in yeast; neither change alone does.",
+   "expect": {
+    "het": 11,
+    "hom": 710,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0006",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "S217R",
+   "published_as": "S217R (SNP 2662, Ser to Arg)",
+   "role": "causal",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 185149216,
+   "ref": "T",
+   "alt": "G",
+   "trait": "Banded leaf and sheath blight resistance",
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "The second substitution of the resistant Chang7-2 allele, acting together with E214G.",
+   "expect": {
+    "het": 10,
+    "hom": 708,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0007",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "F163L (su1-Ref)",
+   "published_as": "Phe to Leu at residue 163 (F163L); C to G transversion at nt 576 of U18908",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 43430966,
+   "ref": "C",
+   "alt": "G",
+   "trait": "Sweet kernel (sugary1)",
+   "grin_descriptor": "KERNEL-TYPE",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "One of three changes of the su1-Ref allele (with E338V and W578R); the paper names W578R, not F163L, as the likely cause. Sweet inbreds are homozygous for the leucine here, but so are many popcorn, flint and dent lines, so the site marks the haplotype su1-Ref arose on rather than sweet corn.",
+   "expect": {
+    "het": 6,
+    "hom": 113,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0008",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1096 (promoter)",
+   "published_as": "SNP-1096",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126681474,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 promoter variants of ZCN8 that Guo et al. found associated with days to anthesis (their Table S1), 1.1 kb upstream of the start codon. It was not tested functionally and does not co-segregate with the flowering QTL; only SNP-1245 does.",
+   "expect": {
+    "het": 2,
+    "hom": 35,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0010",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "W578R (su1-Ref)",
+   "published_as": "Trp to Arg at residue 578 (W578R); T to C transition at nt 1,819 of U18908",
+   "role": "proposed",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "pos": 43436836,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Sweet kernel (sugary1)",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "The proposed causal change of su1-Ref, chosen by the paper from conservation, at the first base of codon 578 (chr4:43,436,836). The release has no site in this codon, so su1-Ref is seen here only through the linked F163L."
+  },
+  {
+   "id": "SC0011",
+   "gene": "Zm00001eb199880",
+   "symbol": "ub3",
+   "label": "Ser220Asn (S35)",
+   "published_as": "S35, A/G SNP in an exon of UB3 (= Ser220Asn of Chuck et al. 2014)",
+   "role": "associated",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "pos": 205415107,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Kernel row number",
+   "refs": [
+    {
+     "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
+     "doi": "10.1371/journal.pgen.1005670"
+    },
+    {
+     "cite": "Chuck GS, et al. 2014. Proc Natl Acad Sci USA 111:18775-18780",
+     "doi": "10.1073/pnas.1407401112"
+    }
+   ],
+   "note": "The UB3 Ser220Asn change associated with kernel row number (S35), at the second base of codon 220. B73 carries Asn220, the high-row-number allele. The release has no site there."
+  },
+  {
+   "id": "SC0012",
+   "gene": "Zm00001eb116010",
+   "symbol": "Bx13",
+   "label": "Start codon ATG to TTG (Oh43 type)",
+   "published_as": "Bx13-Oh43 start codon mutation (ATG to TTG)",
+   "role": "causal",
+   "variant_type": "start_codon",
+   "status": "not_a_site",
+   "chr": "chr2",
+   "pos": 237501769,
+   "ref": "T",
+   "alt": "A",
+   "trait": "Benzoxazinoid profile (DIM2BOA-Glc)",
+   "refs": [
+    {
+     "cite": "Handrick V, et al. 2016. Plant Cell 28:1682-1700",
+     "doi": "10.1105/tpc.16.00065"
+    }
+   ],
+   "note": "The knockout allele of Oh43, LH38 and LH39 changes the start codon to TTG; near-isogenic lines and the truncated enzyme confirm it. The release has no site at the start codon."
+  },
+  {
+   "id": "SC0013",
+   "gene": "Zm00001eb300220",
+   "symbol": "tin1",
+   "label": "Splice-site variant G|GT to C|GT (5' UTR intron)",
+   "published_as": "splice-site variant G/GT to C/GT (position -117)",
+   "role": "proposed",
+   "variant_type": "splice_site",
+   "status": "not_a_site",
+   "chr": "chr7",
+   "pos": 6008437,
+   "ref": "C",
+   "alt": "G",
+   "trait": "Tillering",
+   "refs": [
+    {
+     "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
+     "doi": "10.1038/s41467-019-13425-6"
+    }
+   ],
+   "note": "The published tin1 variant, G|GT to C|GT at the 5' splice site of an intron in the 5' UTR (chr7:6,008,437 C>G), proposed to raise tiller number. The B73 v5 model has a single exon, and the release has no site at that base."
+  },
+  {
+   "id": "SC0014",
+   "gene": "Zm00001eb428470",
+   "symbol": "crtRB1",
+   "label": "3'TE (transposon alleles at the 3' end)",
+   "published_as": "3'TE: allele 1 = no insertion (favorable), 2 = 325-bp insertion, 3 = 1,250-bp insertion",
+   "role": "associated",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr10",
+   "start": 138687384,
+   "end": 138688635,
+   "trait": "Kernel beta-carotene content",
+   "refs": [
+    {
+     "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
+     "doi": "10.1038/ng.551"
+    }
+   ],
+   "note": "Transposon insertion alleles at the 3' end of crtRB1; the allele without an insertion gives the most beta-carotene. B73 carries the 1,250-bp insertion. A SNP release cannot genotype them."
+  },
+  {
+   "id": "SC0015",
+   "gene": "Zm00001eb360640",
+   "symbol": "Htn1",
+   "label": "Htn1 resistance allele",
+   "published_as": "Htn1 (ZmWAK-RLK1 from Pepitilla; PH99N cDNA identical)",
+   "role": "causal",
+   "variant_type": "structural",
+   "status": "unreliable",
+   "chr": "chr8",
+   "start": 156052603,
+   "end": 156053476,
+   "trait": "Northern leaf blight resistance",
+   "refs": [
+    {
+     "cite": "Hurni S, et al. 2015. Proc Natl Acad Sci USA 112:8780-8785",
+     "doi": "10.1073/pnas.1502522112"
+    },
+    {
+     "cite": "Yang P, et al. 2021. Plant J 106:526-535",
+     "doi": "10.1111/tpj.15183"
+    }
+   ],
+   "note": "The Htn1 resistance allele from Pepitilla differs from susceptible alleles by many changes in the extracellular domain; no single change is named. Most release sites in that domain have more heterozygous than homozygous carriers, the signature of reads from related kinase genes."
+  },
+  {
+   "id": "SC0016",
+   "gene": "Zm00001eb375610",
+   "symbol": "ZmCCoAOMT2",
+   "label": "N145D",
+   "published_as": "amino acid substitution in exon 3 (Supp Table 4 Exon3 721 A/G)",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr9",
+   "pos": 17959457,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Southern leaf blight and gray leaf spot resistance",
+   "grin_descriptor": "GRAY-LEAF-SPOT",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
+     "doi": "10.1038/ng.3919"
+    }
+   ],
+   "note": "Asn145Asp in exon 3, one of the amino-acid differences of the resistant qMdr9.02 allele (NC250). ZmCCoAOMT2 is missing from the annotation behind the consequence calls, so the release labels this site as upstream of a neighbor and gives it no missense call or score.",
+   "expect": {
+    "het": 3,
+    "hom": 104,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0019",
+   "gene": "Zm00001eb014290",
+   "symbol": "p1",
+   "label": "Lead SNP for pericarp pigmentation",
+   "published_as": "Most significant SNP, chr1:47,924,442 (S1_47924442)",
+   "role": "lead_snp",
+   "variant_type": "synonymous",
+   "status": "site",
+   "chr": "chr1",
+   "pos": 47924442,
+   "ref": "T",
+   "alt": "C",
+   "site_gene": "Zm00001eb014260",
+   "trait": "Pericarp pigmentation",
+   "grin_descriptor": "PERICARP-COLOR",
+   "refs": [
+    {
+     "cite": "Schoemaker DL, et al. 2024. G3 14:jkad256",
+     "doi": "10.1093/g3journal/jkad256"
+    }
+   ],
+   "note": "The strongest association for pericarp pigmentation in the Wisconsin Diversity panel (P = 1e-16). In v5 it is a synonymous site in the paralog p2, 24 kb from the p1 repeat cluster.",
+   "expect": {
+    "het": 10,
+    "hom": 369,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0022",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "E338V (su1-Ref)",
+   "published_as": "Glu to Val at residue 338 (E338V); A to G transition at nt 1,100 of U18908",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "pos": 43432637,
+   "ref": "A",
+   "alt": "T",
+   "trait": "Sweet kernel (sugary1)",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "The third change of su1-Ref, found only in the W64A su1-Ref stock. The position is certain (second base of codon 338); the alternate base is not, because the A-to-G change the paper gives would encode glycine, not valine. The release has no site there.",
+   "needs_review": "The paper gives the change as A to G, which would encode glycine; valine (the residue it names) needs A to T."
+  },
+  {
+   "id": "SC0023",
+   "gene": "Zm00001eb174590",
+   "symbol": "su1",
+   "label": "su1-st (Toad insertion in exon 10)",
+   "published_as": "su1-st (sugary1-starchy); 638-bp Toad transposon-like element in exon 10",
+   "role": "causal",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr4",
+   "start": 43433506,
+   "end": 43433515,
+   "trait": "Sweet kernel (sugary1)",
+   "refs": [
+    {
+     "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
+     "doi": "10.1104/pp.125.3.1406"
+    }
+   ],
+   "note": "The su1-st allele is a 638-bp Toad element inserted in exon 10 (chr4:43,433,506-43,433,515, a 10-bp target duplication); it causes exon skipping and a mild sugary phenotype. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0024",
+   "gene": "Zm00001eb199880",
+   "symbol": "ub3",
+   "label": "S45 (3' UTR SNP)",
+   "published_as": "S45, G/A SNP in the 3'-UTR of UB3",
+   "role": "associated",
+   "variant_type": "3_prime_UTR",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 205414300,
+   "ref": "G",
+   "alt": "A",
+   "trait": "Kernel row number",
+   "grin_descriptor": "KERNEL-ROW-NUMBER",
+   "refs": [
+    {
+     "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
+     "doi": "10.1371/journal.pgen.1005670"
+    }
+   ],
+   "note": "A 3' UTR SNP of ub3 associated with kernel row number (S45). B73 carries the favorable G, the minor allele in both the paper's panel and this release.",
+   "needs_review": "The paper gives no position for S45; this site is the only 3’ UTR G/A whose frequency and line genotypes match it.",
+   "expect": {
+    "het": 9,
+    "hom": 635,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0025",
+   "gene": "Zm00001eb199880",
+   "symbol": "ub3",
+   "label": "S23 (promoter indel, about 700 bp)",
+   "published_as": "S23, 700/170/0-bp insertion in the UB3 promoter",
+   "role": "associated",
+   "variant_type": "indel",
+   "status": "structural",
+   "chr": "chr4",
+   "start": 205419015,
+   "end": 205419814,
+   "trait": "Kernel row number",
+   "refs": [
+    {
+     "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
+     "doi": "10.1371/journal.pgen.1005670"
+    }
+   ],
+   "note": "A promoter indel of ub3 with three length alleles (S23), associated with kernel row number; B73 carries the long allele. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0026",
+   "gene": "Zm00001eb199880",
+   "symbol": "ub3",
+   "label": "KRN4 1.2-kb presence/absence variant",
+   "published_as": "1.2-Kb PAV in KRN4 (two Harbinger-containing segments)",
+   "role": "proposed",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr4",
+   "start": 205350477,
+   "end": 205351859,
+   "trait": "Kernel row number",
+   "refs": [
+    {
+     "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
+     "doi": "10.1371/journal.pgen.1005670"
+    }
+   ],
+   "note": "The proposed cause of the KRN4 row-number QTL: a 1.2-kb presence/absence variant about 61 kb downstream of ub3 (B73 has the presence allele, the high-row-number one). A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0027",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "R56R (exon 1, nt 2101)",
+   "published_as": "T-to-C transition at Y1 GenBank position 2101, first exon, silent; one of the two core SNPs completely associated with endosperm colour",
+   "role": "associated",
+   "variant_type": "synonymous",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 91643347,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Kernel carotenoids, endosperm color",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "A silent exon-1 SNP that Palaisa et al. found perfectly associated with white versus yellow endosperm; the alternate C is the white allele. Here 90 of 96 white lines and 2 of 682 yellow lines carry it.",
+   "expect": {
+    "het": 2,
+    "hom": 111,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0028",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "A38A (exon 1, nt 2047)",
+   "published_as": "G-to-A transition at Y1 GenBank position 2047, first exon, silent; the other core SNP completely associated with endosperm colour",
+   "role": "associated",
+   "variant_type": "synonymous",
+   "status": "not_a_site",
+   "chr": "chr6",
+   "pos": 91643293,
+   "ref": "G",
+   "alt": "A",
+   "trait": "Kernel carotenoids, endosperm color",
+   "refs": [
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "The second silent exon-1 SNP completely associated with white endosperm (A is the white allele). The release has no site there."
+  },
+  {
+   "id": "SC0029",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "14-bp promoter insertion (white lines)",
+   "published_as": "14-bp insertion between nucleotides 697 and 698 of the Y1 GenBank sequence (5' regulatory region)",
+   "role": "associated",
+   "variant_type": "indel",
+   "status": "not_a_site",
+   "chr": "chr6",
+   "pos": 91641958,
+   "ref": "A",
+   "alt": "ACGACTGCATGCATG",
+   "trait": "Kernel carotenoids, endosperm color",
+   "refs": [
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "A 14-bp promoter insertion carried by nearly all white lines and no yellow line. The release has no site for it (its 12-bp insertion three bases away is a different event)."
+  },
+  {
+   "id": "SC0030",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "Ins2, 382-bp promoter element",
+   "published_as": "Ins2, 382-bp insertion at Y1 GenBank nt 1397-1776 (5' regulatory region); probably Fu 2013's InDel4 (390 bp)",
+   "role": "proposed",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr6",
+   "start": 91642658,
+   "end": 91643039,
+   "trait": "Kernel carotenoids, endosperm color",
+   "refs": [
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    },
+    {
+     "cite": "Fu Z, et al. 2013. Theor Appl Genet 126:923-935",
+     "doi": "10.1007/s00122-012-2026-0"
+    }
+   ],
+   "note": "Ins2, a 382-bp element in the y1 promoter present in B73 and nearly all yellow lines and absent from white lines; Palaisa et al.'s favored causal candidate. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0031",
+   "gene": "Zm00001eb271860",
+   "symbol": "y1",
+   "label": "InDel1, 378-bp upstream insertion",
+   "published_as": "InDel1, 378-bp InDel upstream of the transcription start site (Fu 2013); 378-bp insertion at Y1 GenBank 448/449 in inbred Lo32 (Palaisa 2003)",
+   "role": "associated",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr6",
+   "start": 91641706,
+   "end": 91641707,
+   "trait": "Kernel carotenoids, endosperm color",
+   "refs": [
+    {
+     "cite": "Fu Z, et al. 2013. Theor Appl Genet 126:923-935",
+     "doi": "10.1007/s00122-012-2026-0"
+    },
+    {
+     "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
+     "doi": "10.1105/tpc.012526"
+    }
+   ],
+   "note": "A 378-bp insertion about 1.5 kb upstream of y1 whose absence Fu et al. associate with higher PSY1 expression and carotenoid content; B73 lacks it. A SNP release cannot genotype it.",
+   "needs_review": "Placed by matching Fu et al.’s InDel1 to the 378-bp Lo32 insertion of Palaisa et al.; Fu et al. show its position only in a figure."
+  },
+  {
+   "id": "SC0032",
+   "gene": "Zm00001eb357090",
+   "symbol": "lcyE",
+   "label": "5'TE (promoter transposon alleles)",
+   "published_as": "5' TE (classes 1+4 / 2 / 3); 'a large promoter indel'",
+   "role": "proposed",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr8",
+   "start": 142587149,
+   "end": 142587528,
+   "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "refs": [
+    {
+     "cite": "Harjes CE, et al. 2008. Science 319:330-333",
+     "doi": "10.1126/science.1150255"
+    },
+    {
+     "cite": "Babu R, et al. 2013. Theor Appl Genet 126:389-399 (lcyE marker primers)",
+     "doi": "10.1007/s00122-012-1987-3"
+    },
+    {
+     "cite": "Owens BF, et al. 2014. Genetics 198:1699-1716 (Table S2, marker primers)",
+     "doi": "10.1534/genetics.114.169979"
+    }
+   ],
+   "note": "Transposon insertions in the lcyE promoter that lower its expression and shift flux toward beta-carotene; the main lcyE marker in breeding. A SNP release cannot genotype them."
+  },
+  {
+   "id": "SC0033",
+   "gene": "Zm00001eb357090",
+   "symbol": "lcyE",
+   "label": "3'Indel (8-bp insertion)",
+   "published_as": "3' Indel (8/0; 8-bp insertion favorable), 'a second indel in the 3' UTR'",
+   "role": "proposed",
+   "variant_type": "indel",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 142592097,
+   "ref": "C",
+   "alt": "CCCGTACGG",
+   "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "refs": [
+    {
+     "cite": "Harjes CE, et al. 2008. Science 319:330-333",
+     "doi": "10.1126/science.1150255"
+    },
+    {
+     "cite": "Babu R, et al. 2013. Theor Appl Genet 126:389-399 (lcyE marker primers)",
+     "doi": "10.1007/s00122-012-1987-3"
+    },
+    {
+     "cite": "Owens BF, et al. 2014. Genetics 198:1699-1716 (Table S2, marker primers)",
+     "doi": "10.1534/genetics.114.169979"
+    }
+   ],
+   "note": "An 8-bp insertion in the 3' region of lcyE, part of the most favorable lcyE haplotype. The release has no site for it."
+  },
+  {
+   "id": "SC0034",
+   "gene": "Zm00001eb428470",
+   "symbol": "crtRB1",
+   "label": "5'TE (promoter transposon alleles)",
+   "published_as": "5'TE: allele 1 = 397-bp insertion, 2 = 206-bp insertion (favorable), 3 = no insertion",
+   "role": "associated",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr10",
+   "start": 138690659,
+   "end": 138691475,
+   "trait": "Kernel beta-carotene content",
+   "refs": [
+    {
+     "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
+     "doi": "10.1038/ng.551"
+    }
+   ],
+   "note": "Transposon insertion alleles in the crtRB1 5' region; the rare 206-bp allele (CI7, B77) gives the most beta-carotene, and B73 carries the 397-bp one. A SNP release cannot genotype them."
+  },
+  {
+   "id": "SC0035",
+   "gene": "Zm00001eb428470",
+   "symbol": "crtRB1",
+   "label": "InDel4 (12-bp in-frame insertion)",
+   "published_as": "InDel4, 12-bp insertion in exon 1 (4-amino-acid insertion); alleles 12/0, 12 favorable",
+   "role": "associated",
+   "variant_type": "inframe_insertion",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 138689991,
+   "ref": "A",
+   "alt": "AGCGCCGTCTCCG",
+   "trait": "Kernel beta-carotene content",
+   "refs": [
+    {
+     "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
+     "doi": "10.1038/ng.551"
+    }
+   ],
+   "note": "A 12-bp (four-codon) in-frame insertion in exon 1 carried by the high-beta-carotene CI7 haplotype. The release has no site for it; the 18-bp insertion it has nearby is a different polymorphism."
+  },
+  {
+   "id": "SC0036",
+   "gene": "Zm00001eb428470",
+   "symbol": "crtRB1",
+   "label": "G294* (NC320 stop, 'G300STOP')",
+   "published_as": "G300STOP, the naturally occurring NC320 stop codon in the sixth exon that truncates 26 amino acids (numbering includes the 6-aa InDel2; G294 in B73)",
+   "role": "proposed",
+   "variant_type": "stop_gained",
+   "status": "site",
+   "chr": "chr10",
+   "pos": 138688586,
+   "ref": "C",
+   "alt": "A",
+   "trait": "Kernel beta-carotene content",
+   "grin_descriptor": "KERNEL-COLOR",
+   "refs": [
+    {
+     "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
+     "doi": "10.1038/ng.551"
+    }
+   ],
+   "note": "The NC320 stop codon, which removes the last 26 residues of CRTRB1. Yan et al. recreated it and found in E. coli that it shifts the enzyme's products; they do not link it to kernel beta-carotene.",
+   "expect": {
+    "het": 2,
+    "hom": 10,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0037",
+   "gene": "Zm00001eb277490",
+   "symbol": "DGAT1-2",
+   "label": "V45G",
+   "published_as": "V45G",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 115190306,
+   "ref": "A",
+   "alt": "C",
+   "trait": "Kernel oil content and composition",
+   "grin_descriptor": "OIL",
+   "refs": [
+    {
+     "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
+     "doi": "10.1038/ng.85"
+    }
+   ],
+   "note": "One of the four differences between the high-oil and low-oil DGAT1-2 alleles of the mapping parents; the high-oil allele is the alternate. Not shown to affect oil.",
+   "expect": {
+    "het": 8,
+    "hom": 295,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0038",
+   "gene": "Zm00001eb277490",
+   "symbol": "DGAT1-2",
+   "label": "P55S",
+   "published_as": "P55S",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr6",
+   "pos": 115190277,
+   "ref": "G",
+   "alt": "A",
+   "trait": "Kernel oil content and composition",
+   "grin_descriptor": "OIL",
+   "refs": [
+    {
+     "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
+     "doi": "10.1038/ng.85"
+    }
+   ],
+   "note": "One of the four differences between the high-oil and low-oil DGAT1-2 alleles; the high-oil allele is the alternate. Not shown to affect oil.",
+   "expect": {
+    "het": 3,
+    "hom": 113,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0039",
+   "gene": "Zm00001eb277490",
+   "symbol": "DGAT1-2",
+   "label": "Q67del",
+   "published_as": "Q67 del",
+   "role": "allele",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr6",
+   "pos": 115190236,
+   "ref": "GTGC",
+   "alt": "G",
+   "trait": "Kernel oil content and composition",
+   "refs": [
+    {
+     "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
+     "doi": "10.1038/ng.85"
+    }
+   ],
+   "note": "A 3-bp deletion in the glutamine run of the high-oil DGAT1-2 allele, one of its four differences from the low-oil allele. The release has no site for it."
+  },
+  {
+   "id": "SC0040",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "SNP 2655 (E214E)",
+   "published_as": "SNP 2655",
+   "role": "associated",
+   "variant_type": "synonymous",
+   "status": "site",
+   "chr": "chr4",
+   "pos": 185149223,
+   "ref": "C",
+   "alt": "T",
+   "trait": "Banded leaf and sheath blight resistance",
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "A synonymous SNP of the resistant ZmFBL41 haplotype, in codon 214 beside E214G; the alternate is the resistant-haplotype allele. Associated, not causal.",
+   "expect": {
+    "het": 9,
+    "hom": 186,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0041",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "SNP 2840 (D276V)",
+   "published_as": "SNP 2840",
+   "role": "associated",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "pos": 185149038,
+   "ref": "T",
+   "alt": "A",
+   "trait": "Banded leaf and sheath blight resistance",
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "An associated SNP of the resistant ZmFBL41 haplotype. The release has no site there."
+  },
+  {
+   "id": "SC0042",
+   "gene": "Zm00001eb193970",
+   "symbol": "ZmFBL41",
+   "label": "SNP 2867 (D285V), lead SNP",
+   "published_as": "SNP 2867 (lead SNP; GWAS chr4.S_180199219)",
+   "role": "lead_snp",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr4",
+   "pos": 185149011,
+   "ref": "T",
+   "alt": "A",
+   "trait": "Banded leaf and sheath blight resistance",
+   "refs": [
+    {
+     "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
+     "doi": "10.1038/s41588-019-0503-y"
+    }
+   ],
+   "note": "The lead SNP of the GWAS for banded leaf and sheath blight. The release has no site there (no sites between chr4:185,148,988 and 185,149,216); the paper attributes resistance to E214G and S217R, which are sites."
+  },
+  {
+   "id": "SC0043",
+   "gene": "Zm00001eb375610",
+   "symbol": "ZmCCoAOMT2",
+   "label": "G150A",
+   "published_as": "amino acid substitution in exon 3 (Supp Table 4 Exon3 737 G/C)",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "site",
+   "chr": "chr9",
+   "pos": 17959441,
+   "ref": "C",
+   "alt": "G",
+   "trait": "Southern leaf blight and gray leaf spot resistance",
+   "grin_descriptor": "GRAY-LEAF-SPOT",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
+     "doi": "10.1038/ng.3919"
+    }
+   ],
+   "note": "Gly150Ala in exon 3, another amino-acid difference of the resistant qMdr9.02 allele; the resistant allele is the alternate. As for N145D, the release gives this site no missense call because the gene is missing from the annotation.",
+   "expect": {
+    "het": 5,
+    "hom": 114,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0044",
+   "gene": "Zm00001eb375610",
+   "symbol": "ZmCCoAOMT2",
+   "label": "3-amino-acid deletion in exon 1",
+   "published_as": "deletion of three amino acids in the first exon",
+   "role": "allele",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr9",
+   "pos": 17960145,
+   "ref": "AGCCTTGGCC",
+   "alt": "A",
+   "trait": "Southern leaf blight and gray leaf spot resistance",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
+     "doi": "10.1038/ng.3919"
+    }
+   ],
+   "note": "A three-amino-acid deletion in exon 1 of the resistant allele, in a hypervariable repeat with several length alleles among the NAM founders. The release has no site for it."
+  },
+  {
+   "id": "SC0045",
+   "gene": "Zm00001eb375610",
+   "symbol": "ZmCCoAOMT2",
+   "label": "2-amino-acid deletion in exon 1 (CML333)",
+   "published_as": "deletion of two amino acids at the same position in CML333",
+   "role": "allele",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr9",
+   "pos": 17960145,
+   "ref": "AGCCTTG",
+   "alt": "A",
+   "trait": "Southern leaf blight and gray leaf spot resistance",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
+     "doi": "10.1038/ng.3919"
+    }
+   ],
+   "note": "A two-amino-acid deletion at the same place in CML333. The release has no site for the deletion."
+  },
+  {
+   "id": "SC0046",
+   "gene": "Zm00001eb360640",
+   "symbol": "Htn1",
+   "label": "Ht2/Ht3 resistance allele",
+   "published_as": "Ht2 = Ht3 allele of ZmWAK-RLK1 (RP5Ht2, B37Ht2, B37Ht3)",
+   "role": "causal",
+   "variant_type": "structural",
+   "status": "unreliable",
+   "chr": "chr8",
+   "start": 156052603,
+   "end": 156053476,
+   "trait": "Northern leaf blight resistance",
+   "refs": [
+    {
+     "cite": "Yang P, et al. 2021. Plant J 106:526-535",
+     "doi": "10.1111/tpj.15183"
+    },
+    {
+     "cite": "Hurni S, et al. 2015. Proc Natl Acad Sci USA 112:8780-8785",
+     "doi": "10.1073/pnas.1502522112"
+    }
+   ],
+   "note": "Ht2 and Ht3 are a second resistance allele of the same gene, a haplotype of many changes rather than one; the release cannot genotype it reliably."
+  },
+  {
+   "id": "SC0047",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1245 (promoter)",
+   "published_as": "SNP-1245",
+   "role": "causal",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681623,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "The causal ZCN8 promoter SNP: ZmMADS1 binds the early allele (A on the gene strand) more strongly, and changing it to G lowers activation to the late level. It sits 1,246 bp upstream of the v5 start codon (chr8:126,681,623). The release has no site there."
+  },
+  {
+   "id": "SC0048",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Indel-2339 (promoter GAG deletion)",
+   "published_as": "Indel-2339",
+   "role": "causal",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126682714,
+   "ref": "TCTC",
+   "alt": "T",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "A 3-bp GAG deletion 2.3 kb upstream of ZCN8, independent of SNP-1245; the deletion is the early allele, most likely introgressed from mexicana, and raises promoter activity. The release has no site for it."
+  },
+  {
+   "id": "SC0049",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-3366 (PZE-108070380)",
+   "published_as": "SNP-3366 (corresponds to MaizeSNP50 PZE-108070380)",
+   "role": "marker",
+   "variant_type": "upstream",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126683744,
+   "ref": "C",
+   "alt": "T",
+   "trait": "Flowering time (days to anthesis)",
+   "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "PZE-108070380, the flowering-time SNP of earlier GWAS, which Guo et al. identify as SNP-3366 of their LD block 2 (r² 0.85 with Indel-2339). The release has this exact site, but its calls disagree with the published sequences: 5 homozygous carriers (MAF 0.006) against about 22% alternate alleles in the authors' panel, and Mo17 and A619, which carry the alternate allele there, are reference here.",
+   "expect": {
+    "het": 1,
+    "hom": 5,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0050",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1117 (promoter)",
+   "published_as": "SNP-1117",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126681495,
+   "ref": "C",
+   "alt": "T",
+   "trait": "Flowering time (days to anthesis)",
+   "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 promoter variants of ZCN8 associated with days to anthesis (Table S1 of Guo et al.). Not tested functionally.",
+   "expect": {
+    "het": 1,
+    "hom": 30,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0051",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1146 (promoter)",
+   "published_as": "SNP-1146",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "site",
+   "chr": "chr8",
+   "pos": 126681524,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 promoter variants of ZCN8 associated with days to anthesis (Table S1 of Guo et al.). Not tested functionally.",
+   "expect": {
+    "het": 3,
+    "hom": 33,
+    "site_qc": "PASS"
+   }
+  },
+  {
+   "id": "SC0052",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-934 (promoter)",
+   "published_as": "SNP-934",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681312,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8 (Table S1 of Guo et al.). The release has no site there."
+  },
+  {
+   "id": "SC0053",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Indel-948 (promoter, 7 bp)",
+   "published_as": "Indel-948",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681319,
+   "ref": "GTGGGTAC",
+   "alt": "G",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8, a 7-bp deletion. The release has no site for it."
+  },
+  {
+   "id": "SC0054",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1087 (promoter)",
+   "published_as": "SNP-1087",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681466,
+   "ref": "A",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8. Table S1 gives the B73 allele as G, but B73 has T at this base. The release has no site there."
+  },
+  {
+   "id": "SC0055",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Indel-1230 (promoter, 2 bp)",
+   "published_as": "Indel-1230",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681607,
+   "ref": "G",
+   "alt": "GAT",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8, a 2-bp insertion in a repeat; its exact position on v5 is uncertain. The release has no site for it.",
+   "needs_review": "The exact inserted bases and position in the repeat are uncertain."
+  },
+  {
+   "id": "SC0056",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Indel-1243 (promoter, 2 bp)",
+   "published_as": "Indel-1243",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681614,
+   "ref": "GTT",
+   "alt": "G",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8, a 2-bp deletion beside SNP-1245. The release has no site for it."
+  },
+  {
+   "id": "SC0057",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1247 (promoter)",
+   "published_as": "SNP-1247",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681625,
+   "ref": "G",
+   "alt": "C",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8, two bases from SNP-1245. The release has no site there."
+  },
+  {
+   "id": "SC0058",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "Indel-1299 (promoter, 34 bp)",
+   "published_as": "Indel-1299",
+   "role": "associated",
+   "variant_type": "indel",
+   "status": "different_allele",
+   "chr": "chr8",
+   "pos": 126681643,
+   "ref": "ACTGCGGCATAATATTATGGAATTACTATATATAC",
+   "alt": "A",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8, a 34-bp indel. The release calls several small variants in this segment, but not the 34-bp deletion.",
+   "needs_review": "The exact structure of the alternate allele is uncertain."
+  },
+  {
+   "id": "SC0059",
+   "gene": "Zm00001eb353250",
+   "symbol": "ZCN8",
+   "label": "SNP-1311 (promoter)",
+   "published_as": "SNP-1311",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr8",
+   "pos": 126681689,
+   "ref": "G",
+   "alt": "T",
+   "trait": "Flowering time (days to anthesis)",
+   "refs": [
+    {
+     "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
+     "doi": "10.1016/j.cub.2018.07.029"
+    }
+   ],
+   "note": "One of the 13 associated promoter variants of ZCN8. The release has no site there."
+  },
+  {
+   "id": "SC0060",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "CACTA-like transposon in the promoter",
+   "published_as": "CACTA-like TE, 'TE-related PAV' (Yang 2013); TE1 (Wang 2017); CACTA-like insertion (Tibbs-Cortes 2024)",
+   "role": "causal",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr10",
+   "start": 96180837,
+   "end": 96185957,
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
+     "doi": "10.1073/pnas.1310949110"
+    },
+    {
+     "cite": "Wang C, et al. 2017. New Phytol 215:1503-1515",
+     "doi": "10.1111/nph.14688"
+    },
+    {
+     "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
+     "doi": "10.1101/gr.279027.124"
+    }
+   ],
+   "note": "The causal ZmCCT10 allele: a 5.1-kb CACTA-like insertion in the promoter that lowers expression and photoperiod sensitivity, shown with transgenics and near-isogenic lines. B73 carries it (chr10:96,180,837-96,185,957). A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0061",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "SNP1520 (promoter, -1,636)",
+   "published_as": "SNP1520 (Hung 2012); SNP at -1,636 bp (Yang 2013)",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 96179947,
+   "ref": "A",
+   "alt": "G",
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
+     "doi": "10.1073/pnas.1203189109"
+    },
+    {
+     "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
+     "doi": "10.1073/pnas.1310949110"
+    }
+   ],
+   "note": "A promoter SNP that led the photoperiod association in the 282 panel and is in linkage with the transposon. The release has no site there.",
+   "needs_review": "Placed from the haplotype pattern of the deposited sequences; the papers’ tables with flanking sequence could not be retrieved."
+  },
+  {
+   "id": "SC0062",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "SNP1411 (promoter, -1,498)",
+   "published_as": "SNP1411 (Hung 2012); SNP at -1,498 bp (Yang 2013)",
+   "role": "associated",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 96179841,
+   "ref": "A",
+   "alt": "G",
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
+     "doi": "10.1073/pnas.1203189109"
+    },
+    {
+     "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
+     "doi": "10.1073/pnas.1310949110"
+    }
+   ],
+   "note": "The second promoter SNP of the 282-panel association, also in linkage with the transposon. The release has no site there.",
+   "needs_review": "Placed from the haplotype pattern of the deposited sequences; the papers’ tables with flanking sequence could not be retrieved."
+  },
+  {
+   "id": "SC0063",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "Promoter A>T at -1,722 (Hap2)",
+   "published_as": "S4, A-to-T transversion at -1,722 bp (Hap1 to Hap2)",
+   "role": "allele",
+   "variant_type": "promoter",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 96180025,
+   "ref": "T",
+   "alt": "A",
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
+     "doi": "10.1073/pnas.1310949110"
+    }
+   ],
+   "note": "The promoter SNP that separates haplotype 2, the earliest, from haplotype 1. The release has no site there.",
+   "needs_review": "Placed from the haplotype pattern of the deposited sequences; the paper’s haplotype table could not be retrieved."
+  },
+  {
+   "id": "SC0064",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "PZD00131.indel (exon 1)",
+   "published_as": "PZD00131.indel",
+   "role": "marker",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 96178079,
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
+     "doi": "10.1073/pnas.1203189109"
+    }
+   ],
+   "note": "The indel marker used to measure allele-specific expression of ZmCCT10; its placement on v5 (a 6-bp deletion in exon 1) is tentative. The release has no site there.",
+   "needs_review": "The placement of PZD00131.indel is tentative; its definition is in a supplementary table that could not be retrieved."
+  },
+  {
+   "id": "SC0065",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "NAM GWAS marker S10_96198248",
+   "published_as": "S10_96198248, nearest significant DTA-intercept marker to cct1",
+   "role": "associated",
+   "variant_type": "intergenic",
+   "status": "site",
+   "chr": "chr10",
+   "pos": 96198248,
+   "ref": "T",
+   "alt": "C",
+   "trait": "Photoperiod response, flowering time",
+   "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
+   "refs": [
+    {
+     "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
+     "doi": "10.1101/gr.279027.124"
+    }
+   ],
+   "note": "The significant NAM marker nearest ZmCCT10 for the intercept of days to anthesis, about 20 kb upstream of the gene. The paper gives its position, not its alleles. The site is flagged for elevated heterozygosity here.",
+   "expect": {
+    "het": 19,
+    "hom": 57,
+    "site_qc": "HET_ELEVATED"
+   }
+  },
+  {
+   "id": "SC0066",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "NAM GWAS marker S10_96177044 (intron)",
+   "published_as": "S10_96177044, nearest significant DTA-slope marker, in the cct1 intron",
+   "role": "associated",
+   "variant_type": "intron",
+   "status": "not_a_site",
+   "chr": "chr10",
+   "pos": 96177044,
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
+     "doi": "10.1101/gr.279027.124"
+    }
+   ],
+   "note": "The significant NAM marker nearest ZmCCT10 for the plasticity (slope) of days to anthesis, in the intron. The release has no site there."
+  },
+  {
+   "id": "SC0067",
+   "gene": "Zm00001eb418700",
+   "symbol": "ZmCCT10",
+   "label": "0.8-kb upstream insertion (Ky21)",
+   "published_as": "0.8 kb insertion upstream of cct1 in Ky21",
+   "role": "allele",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr10",
+   "trait": "Photoperiod response, flowering time",
+   "refs": [
+    {
+     "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
+     "doi": "10.1101/gr.279027.124"
+    }
+   ],
+   "note": "A 0.8-kb insertion upstream of ZmCCT10 seen in the Ky21 assembly, a possible weak allele; the paper shows it only in a figure. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0068",
+   "gene": "Zm00001eb300220",
+   "symbol": "tin1",
+   "label": "Promoter SNP at -297",
+   "published_as": "variant at position -297",
+   "role": "associated",
+   "variant_type": "upstream",
+   "status": "not_a_site",
+   "chr": "chr7",
+   "pos": 6008617,
+   "ref": "G",
+   "alt": "A",
+   "trait": "Tillering",
+   "refs": [
+    {
+     "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
+     "doi": "10.1038/s41467-019-13425-6"
+    }
+   ],
+   "note": "A promoter SNP in linkage with the tin1 splice-site variant. The release has no site there."
+  },
+  {
+   "id": "SC0069",
+   "gene": "Zm00001eb300220",
+   "symbol": "tin1",
+   "label": "Promoter SNP at -313",
+   "published_as": "variant at position -313",
+   "role": "associated",
+   "variant_type": "upstream",
+   "status": "not_a_site",
+   "chr": "chr7",
+   "pos": 6008633,
+   "ref": "G",
+   "alt": "T",
+   "trait": "Tillering",
+   "refs": [
+    {
+     "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
+     "doi": "10.1038/s41467-019-13425-6"
+    }
+   ],
+   "note": "A promoter SNP in linkage with the tin1 splice-site variant. The release has no site there."
+  },
+  {
+   "id": "SC0070",
+   "gene": "Zm00001eb300220",
+   "symbol": "tin1",
+   "label": "Promoter SNP at -324",
+   "published_as": "variant at position -324",
+   "role": "associated",
+   "variant_type": "upstream",
+   "status": "not_a_site",
+   "chr": "chr7",
+   "pos": 6008644,
+   "ref": "C",
+   "alt": "T",
+   "trait": "Tillering",
+   "refs": [
+    {
+     "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
+     "doi": "10.1038/s41467-019-13425-6"
+    }
+   ],
+   "note": "A promoter SNP in linkage with the tin1 splice-site variant. The release has no site at this base; the 1-bp deletion it calls at the neighboring base is carried by lines of the other allele."
+  },
+  {
+   "id": "SC0071",
+   "gene": "Zm00001eb402840",
+   "symbol": "White Cap (wc1)",
+   "label": "Wc: tandem Ccd1 array (1 to 23 copies)",
+   "published_as": "White Cap (Wc) locus; Wc-ref allele (~24 Ccd1 copies)",
+   "role": "proposed",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr9",
+   "start": 156675817,
+   "end": 156675824,
+   "trait": "White endosperm (White Cap)",
+   "refs": [
+    {
+     "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
+     "doi": "10.1534/genetics.116.198911"
+    }
+   ],
+   "note": "White Cap is a transposon carrying 1 to 23 tandem copies of a 28-kb Ccd1 repeat; on v5 it inserts at chr9:156,675,817-156,675,824, 1.8 Mb from the single B73 Ccd1. A SNP release cannot genotype it or its copy number."
+  },
+  {
+   "id": "SC0072",
+   "gene": "Zm00001eb402840",
+   "symbol": "White Cap (wc1)",
+   "label": "Hel1 helitron at the Ccd1r promoter (B73 type)",
+   "published_as": "Hel1 (5.4 kb helitron) at the Ccd1r transcription start, B73 haplotype",
+   "role": "associated",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr9",
+   "start": 158496519,
+   "end": 158502031,
+   "trait": "White endosperm (White Cap)",
+   "refs": [
+    {
+     "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
+     "doi": "10.1534/genetics.116.198911"
+    }
+   ],
+   "note": "A 5.4-kb helitron at the Ccd1r promoter, the B73 state, which the paper links with yellow grain. A SNP release cannot score its absence."
+  },
+  {
+   "id": "SC0073",
+   "gene": "Zm00001eb402840",
+   "symbol": "White Cap (wc1)",
+   "label": "Helitron upstream of Ccd1r (Oh43 type)",
+   "published_as": "OH43 Helitron insertion (OH43 promoter variant of Ccd1r)",
+   "role": "associated",
+   "variant_type": "transposon",
+   "status": "structural",
+   "chr": "chr9",
+   "trait": "White endosperm (White Cap)",
+   "refs": [
+    {
+     "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
+     "doi": "10.1534/genetics.116.198911"
+    }
+   ],
+   "note": "A different helitron upstream of Ccd1r, found in 11 of 83 lines including Oh43. The paper gives no position."
+  },
+  {
+   "id": "SC0074",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "392-bp insertion in exon 1 (nsf1)",
+   "published_as": "+392 bp insertion at 939 bp (Indel 5); nsf1/ben1 392-bp insertion",
+   "role": "proposed",
+   "variant_type": "insertion",
+   "status": "structural",
+   "chr": "chr5",
+   "start": 6963988,
+   "end": 6963989,
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    },
+    {
+     "cite": "Nordby JN, et al. 2008. Weed Sci 56:376-382",
+     "doi": "10.1614/ws-07-145.1"
+    }
+   ],
+   "note": "A 392-bp insertion near the end of exon 1 that truncates CYP81A9: the nsf1 (ben1) allele of GA209 and W703a. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0075",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "TGGA insertion (frameshift)",
+   "published_as": "TGGA insertion at 846 bp (Indel 4)",
+   "role": "proposed",
+   "variant_type": "frameshift",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6964080,
+   "ref": "C",
+   "alt": "CTCCA",
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "A 4-bp frameshift insertion in exon 1 that defines a loss-of-function haplotype. The release has no site for it."
+  },
+  {
+   "id": "SC0076",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "351-bp deletion removing the start codon",
+   "published_as": "-351 bp deletion in the 5'UTR and exon 1 (Indel 1, -190)",
+   "role": "causal",
+   "variant_type": "structural",
+   "status": "structural",
+   "chr": "chr5",
+   "start": 6964766,
+   "end": 6965116,
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "A 351-bp deletion removing the end of the 5’ UTR, the start codon and the start of exon 1 (chr5:6,964,766-6,965,116): the JS188 null allele, which fails to complement an EMS null. A SNP release cannot genotype it."
+  },
+  {
+   "id": "SC0077",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "15-bp in-frame deletion (SAAAL)",
+   "published_as": "Indel 2 (Deletion), 29-43, SAAAL",
+   "role": "associated",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6964883,
+   "ref": "AAGAGGGCGGCGGCGG",
+   "alt": "A",
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "An in-frame 15-bp deletion (codons 10 to 14) found in 15 of 20 nicosulfuron-sensitive lines and no tolerant line. The release has no site for it."
+  },
+  {
+   "id": "SC0078",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "G27V",
+   "published_as": "SNP 1, G80T (G-V)",
+   "role": "associated",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6964847,
+   "ref": "C",
+   "alt": "A",
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "Gly27Val marks the common sensitive haplotype (12 of 20 sensitive lines, no tolerant line). The release has no site there."
+  },
+  {
+   "id": "SC0079",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "6-bp in-frame deletion (Ala-Lys)",
+   "published_as": "Indel 3 (Deletion), 91-97, AK",
+   "role": "allele",
+   "variant_type": "inframe_deletion",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6964830,
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "An in-frame 6-bp deletion of one Ala-Lys unit, in one sensitive line; its exact position in the repeat is uncertain. The release has no site for it."
+  },
+  {
+   "id": "SC0080",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "V178A",
+   "published_as": "SNP 2, T533C (V-A)",
+   "role": "allele",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6964394,
+   "ref": "A",
+   "alt": "G",
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "Val178Ala, found in two sensitive lines. The release has no site there."
+  },
+  {
+   "id": "SC0081",
+   "gene": "Zm00001eb214410",
+   "symbol": "CYP81A9",
+   "label": "C1445T (T482M in v5)",
+   "published_as": "SNP 3, C1445T (R-C)",
+   "role": "associated",
+   "variant_type": "missense",
+   "status": "not_a_site",
+   "chr": "chr5",
+   "pos": 6963189,
+   "ref": "G",
+   "alt": "A",
+   "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "refs": [
+    {
+     "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
+     "doi": "10.3389/fpls.2024.1443413"
+    }
+   ],
+   "note": "A SNP in exon 2 on the common sensitive haplotype. The paper calls it an Arg-to-Cys change; on v5 it is Thr482Met. The release has no site there."
+  }
+ ]
+}

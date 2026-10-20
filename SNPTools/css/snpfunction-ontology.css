@@ -1,0 +1,516 @@
+/* ==========================================================================
+   SNPFunction — Gene Ontology and Pathways views (js/snpfunction-ontology.js)
+   --------------------------------------------------------------------------
+   Ported from MaizeGDB's css/mgdb-gene-function.css (2026-09-30) so a gene's
+   function looks the same on both sites. The MaizeGDB tokens the rules read
+   (--mgdb-space-*, --mgdb-text-*, surfaces) are defined on .gf below and
+   mapped to SNPTools' denser type scale (14px body, not MaizeGDB's 16px);
+   the aspect colours (BP green, MF blue, CC wine) and the gold for "this
+   one" are MaizeGDB's own. The protein-class rules are left out with the
+   block they styled.
+
+   Every colour is also a word: squares, nodes and steps carry titles, and the
+   tooltips carry the definitions.
+   ========================================================================== */
+
+.gf {
+  --mgdb-space-1: 4px;
+  --mgdb-space-2: 8px;
+  --mgdb-space-3: 12px;
+  --mgdb-space-4: 16px;
+  --mgdb-space-5: 22px;
+  --mgdb-text-xs: 11.5px;
+  --mgdb-text-sm: 12.5px;
+  --mgdb-text-base: 14px;
+  --mgdb-text-lg: 16px;
+  --mgdb-text-xl: 20px;
+  --mgdb-radius-sm: var(--rad-sm, 9px);
+  --mgdb-surface: #fff;
+  --mgdb-surface-alt: #f7f9fc;
+  --mgdb-surface-sunken: #f2f5fa;
+  --mgdb-focus: var(--blue, #2563eb);
+  --mgdb-font-mono: var(--mono, ui-monospace, Menlo, monospace);
+  --mgdb-genome-absent: #e3e5e1;
+  --gf-ink: var(--ink, #0f1b2d);
+  --gf-muted: var(--muted, #62718a);
+  --gf-rule: var(--line, #e3e9f2);
+  --gf-band: #eef1f5;
+  --gf-bp: #285d46;
+  --gf-mf: #1a5b7a;
+  --gf-cc: #7a2c43;
+  --gf-gold: #f2a515;
+  --gf-gold-wash: #fff8e6;
+  position: relative;
+  color: var(--gf-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Tiles
+   -------------------------------------------------------------------------- */
+
+.gf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--mgdb-space-3);
+  margin-bottom: var(--mgdb-space-4);
+}
+
+.gf-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--mgdb-space-3) var(--mgdb-space-4);
+  border: 1px solid var(--gf-rule);
+  border-left: 3px solid var(--gf-bp);
+  border-radius: var(--mgdb-radius-sm);
+  background: var(--mgdb-surface);
+}
+
+.gf-tile:nth-child(2) { border-left-color: var(--gf-mf); }
+.gf-tile:nth-child(3) { border-left-color: var(--gf-cc); }
+.gf-tile:nth-child(4) { border-left-color: var(--gf-gold); }
+
+.gf-tile-label {
+  color: var(--gf-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.gf-tile-value {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: var(--mgdb-text-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.gf-tile-value small { font-family: var(--body, sans-serif); font-size: var(--mgdb-text-sm); font-weight: 400; color: var(--gf-muted); }
+.gf-tile-note { color: var(--gf-muted); font-size: var(--mgdb-text-xs); line-height: 1.35; }
+.gf-tile-note strong { color: var(--gf-ink); font-weight: 600; }
+
+@media (max-width: 1000px) { .gf-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .gf-tiles { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+   The view switch (SNPTools' .seg control) and the panes
+   -------------------------------------------------------------------------- */
+
+.gf-switchbar { display: flex; align-items: center; gap: var(--mgdb-space-3); margin: 0 0 var(--mgdb-space-4); }
+.gf-tab { display: inline-flex; align-items: center; gap: 7px; }
+.gf-tab-n {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--gf-band);
+  color: var(--gf-muted);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+}
+.gf-tab.on .gf-tab-n { background: rgba(255, 255, 255, .22); color: #fff; }
+.gf-tab:focus-visible { outline: 3px solid var(--mgdb-focus); outline-offset: -3px; }
+.gf-pane[hidden] { display: none; }
+.gf-empty { margin: 0; padding: var(--mgdb-space-2) 0; font-size: var(--mgdb-text-sm); }
+
+/* --------------------------------------------------------------------------
+   Blocks
+   -------------------------------------------------------------------------- */
+
+.gf-block { margin-top: var(--mgdb-space-5); }
+.gf-pane > .gf-block:first-child { margin-top: 0; }
+
+.gf-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--mgdb-space-2) var(--mgdb-space-4);
+  margin-bottom: var(--mgdb-space-3);
+}
+
+.gf-block-head h4 { margin: 0; font-size: 15px; font-weight: 600; color: var(--gf-ink); }
+.gf-block-head h4 small { display: block; margin-top: 2px; color: var(--gf-muted); font-size: var(--mgdb-text-xs); font-weight: 400; }
+.gf-out { margin-left: auto; font-size: var(--mgdb-text-sm); font-weight: 600; white-space: nowrap; }
+
+.gf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  gap: var(--mgdb-space-1) var(--mgdb-space-4);
+  color: var(--gf-muted);
+  font-size: var(--mgdb-text-xs);
+}
+
+.gf-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.gf-legend .gf-sq { width: 12px; height: 12px; cursor: default; }
+
+.gf-note { margin: var(--mgdb-space-2) 0 0; color: var(--gf-muted); font-size: var(--mgdb-text-xs); line-height: 1.4; }
+.gf-muted { color: var(--gf-muted); }
+
+.gf-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--gf-rule);
+  border-radius: 999px;
+  background: var(--mgdb-surface);
+  color: var(--gf-ink);
+  font: inherit;
+  font-size: var(--mgdb-text-xs);
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.gf-chip:hover { background: var(--mgdb-surface-alt); }
+.gf-chip:focus-visible { outline: 3px solid var(--mgdb-focus); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   Gene Ontology: one row per aspect, opening with that aspect's ancestry
+   graph. The plant-slim categories are named above their squares at 45
+   degrees, the squares run in one unbroken strip across the width, and the
+   terms sit beneath. The strip's top padding and left inset are measured
+   from the names by the script (--gf-lbl-h, --gf-inset); the stylesheet
+   only knows how to rotate.
+   -------------------------------------------------------------------------- */
+
+.gf-aspect-rows { display: grid; gap: var(--mgdb-space-3); margin-top: var(--mgdb-space-2); }
+.gf-aspect-rows > .gf-legend { flex-basis: auto; margin-bottom: var(--mgdb-space-1); }
+
+.gf-aspect {
+  min-width: 0;
+  padding: var(--mgdb-space-3) var(--mgdb-space-4) var(--mgdb-space-2);
+  border: 1px solid var(--gf-rule);
+  border-top: 3px solid var(--gf-bp);
+  border-radius: var(--mgdb-radius-sm);
+  background: var(--mgdb-surface);
+}
+
+.gf-aspect-bp { border-top-color: var(--gf-bp); color: var(--gf-bp); }
+.gf-aspect-mf { border-top-color: var(--gf-mf); color: var(--gf-mf); }
+.gf-aspect-cc { border-top-color: var(--gf-cc); color: var(--gf-cc); }
+
+.gf-aspect h5 { margin: 0; color: var(--gf-ink); font-size: var(--mgdb-text-base); font-weight: 600; }
+.gf-aspect h5 small { color: var(--gf-muted); font-size: var(--mgdb-text-xs); font-weight: 400; }
+
+/* The strip scrolls sideways rather than wrapping: the fingerprint is one
+   line by design, and a narrow screen gets a scrollbar, not a broken
+   pattern. The negative margin lets a pinned square's ring clear the edge. */
+.gf-strip-scroll {
+  margin: 0 calc(-1 * var(--mgdb-space-2));
+  padding: 0 var(--mgdb-space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.gf-fpx {
+  --gf-n: 1;
+  --gf-inset: 0px;
+  --gf-lbl-h: 160px;
+  display: grid;
+  grid-template-columns: repeat(var(--gf-n), minmax(0, 1fr));
+  min-width: calc(var(--gf-n) * 22px + var(--gf-inset));
+  padding: var(--gf-lbl-h) 0 6px var(--gf-inset);
+}
+
+.gf-cell { position: relative; display: flex; justify-content: center; min-width: 0; padding: 0 1.5px; }
+
+/* One square per plant-slim category, fixed order. Colour is the aspect's;
+   a lit square lights up when the figure is ready. */
+.gf-sq {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 3px;
+  background: var(--gf-band);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color .4s ease, opacity .4s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.gf-cell .gf-sq { width: 100%; max-width: 30px; height: auto; aspect-ratio: 1 / 1; }
+
+.gf-sq-bp { color: var(--gf-bp); }
+.gf-sq-mf { color: var(--gf-mf); }
+.gf-sq-cc { color: var(--gf-cc); }
+
+.gf.is-ready .gf-sq.is-lit, .gf-legend .gf-sq.is-lit { background: currentColor; border-color: transparent; }
+.gf.is-ready .gf-sq.is-lit-1 { opacity: .6; }
+.gf.is-ready .gf-sq.is-lit-2 { opacity: .8; }
+.gf-sq.is-implied { background: transparent; border: 2px dashed currentColor; }
+.gf-sq.is-hot, .gf-sq[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--gf-gold); transform: scale(1.25); opacity: 1; z-index: 1; }
+.gf-sq:focus-visible { outline: 3px solid var(--mgdb-focus); outline-offset: 1px; }
+
+/* The category's name, rotated 45 degrees about the bottom-right corner of
+   its box, which is pinned just above the centre of its square: the name
+   reads down toward the square it names. Lit categories take the aspect's
+   colour; the rest stay quiet so the pattern reads first. */
+.gf-lbl {
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 5px);
+  transform-origin: 100% 100%;
+  transform: rotate(45deg);
+  color: var(--gf-muted);
+  font-size: var(--mgdb-text-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+
+.gf-lbl.is-lit { color: inherit; font-weight: 700; }
+.gf-lbl.is-implied { color: inherit; font-style: italic; }
+.gf-lbl.is-hot { color: var(--gf-ink); font-weight: 700; text-decoration: underline; text-decoration-color: var(--gf-gold); text-decoration-thickness: 2px; text-underline-offset: 2px; }
+
+.gf-terms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));   /* min(): a phone-width card is under 300px */
+  gap: 0 var(--mgdb-space-4);
+  margin: var(--mgdb-space-2) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--gf-rule);
+  list-style: none;
+  color: var(--gf-ink);
+}
+
+.gf-term {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--gf-rule);
+  font-size: var(--mgdb-text-sm);
+  cursor: default;
+  transition: background-color .15s ease;
+}
+
+.gf-term.is-hot { background: var(--gf-gold-wash); box-shadow: inset 3px 0 0 var(--gf-gold); }
+.gf-term-name { font-weight: 600; line-height: 1.3; }
+.gf-term-implied .gf-term-name { color: var(--gf-muted); font-weight: 500; font-style: italic; }
+.gf-term-obsolete .gf-term-name { text-decoration: line-through; text-decoration-color: var(--gf-muted); }
+.gf-term-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--gf-muted); font-size: var(--mgdb-text-xs); }
+.gf-term-meta a { font-family: var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+
+.gf-badge {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--mgdb-surface-sunken);
+  color: var(--gf-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.gf-badge-experimental { background: #e3f0e8; color: #174634; }
+.gf-badge-similarity { background: #e6eef3; color: #1a5b7a; }
+.gf-badge-author { background: #ece8f5; color: #4a45ad; }
+.gf-badge-computational { background: #eeefee; color: #4b5650; }
+.gf-badge-implied { background: #fff1d6; color: #7a4a00; }
+.gf-badge-obsolete { background: #f8e3e3; color: #7a2c43; }
+.gf-badge-merged { background: #e6eef3; color: #1a5b7a; }
+
+/* --------------------------------------------------------------------------
+   Ancestry graph
+   -------------------------------------------------------------------------- */
+
+/* One graph per aspect card, between the heading and the strip. */
+.gf-aspect .gf-graph { margin: var(--mgdb-space-2) 0 var(--mgdb-space-1); }
+.gf-block-head > .gf-chip { margin-left: auto; }
+
+.gf-graph {
+  margin-top: var(--mgdb-space-2);
+  padding: var(--mgdb-space-2);
+  border: 1px solid var(--gf-rule);
+  border-radius: var(--mgdb-radius-sm);
+  background: var(--mgdb-surface);
+  overflow-x: auto;
+}
+
+.gf-graph-svg { display: block; min-width: 320px; }
+.gf-graph-title { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; fill: var(--gf-muted); }
+.gf-graph-title-bp { fill: var(--gf-bp); }
+.gf-graph-title-mf { fill: var(--gf-mf); }
+.gf-graph-title-cc { fill: var(--gf-cc); }
+.gf-graph-divider { stroke: var(--gf-rule); stroke-width: 1; }
+.gf-graph-edge { fill: none; stroke: rgba(40, 93, 70, .35); stroke-width: 1.3; }
+
+.gf-node { cursor: pointer; outline: none; }
+.gf-node-bp { color: var(--gf-bp); }
+.gf-node-mf { color: var(--gf-mf); }
+.gf-node-cc { color: var(--gf-cc); }
+.gf-node rect { fill: #fff; stroke: currentColor; stroke-width: 1.3; transition: stroke-width .15s ease; }
+.gf-node text { font-family: var(--body, sans-serif); font-size: 11px; fill: currentColor; pointer-events: none; }
+.gf-node-root rect { fill: var(--gf-band); stroke: var(--gf-muted); }
+.gf-node-root text { fill: var(--gf-ink); font-weight: 700; }
+.gf-node-term rect { fill: currentColor; }
+.gf-node-term text { fill: #fff; font-weight: 600; }
+.gf-node.is-hot rect, .gf-node:focus-visible rect { stroke: var(--gf-gold); stroke-width: 3; }
+.gf-node.is-hot text { text-decoration: none; }
+
+/* --------------------------------------------------------------------------
+   Metabolic pathways
+   -------------------------------------------------------------------------- */
+
+.gf-pw-list { display: grid; gap: var(--mgdb-space-3); }
+
+.gf-pw {
+  min-width: 0;
+  padding: var(--mgdb-space-3) var(--mgdb-space-4);
+  border: 1px solid var(--gf-rule);
+  border-radius: var(--mgdb-radius-sm);
+  background: var(--mgdb-surface);
+}
+
+.gf-pw-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: var(--mgdb-space-2); }
+.gf-pw-name { font-size: var(--mgdb-text-base); font-weight: 600; }
+.gf-pw-class { flex-basis: 100%; color: var(--gf-muted); font-size: var(--mgdb-text-xs); }
+.gf-var { color: var(--gf-muted); font-size: var(--mgdb-text-xs); }
+
+.gf-pan { padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.gf-pan-core { background: #e3f0e8; color: #174634; }
+.gf-pan-near-core { background: #e0f0ee; color: #0e6a5e; }
+.gf-pan-shell { background: #fff1d6; color: #7a4a00; }
+.gf-pan-genome-specific { background: #f8e3e3; color: #7a2c43; }
+.gf-pan-absent { background: var(--mgdb-surface-sunken); color: var(--gf-muted); }
+
+.gf-steps { display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px; }
+
+.gf-step {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 92px;
+  max-width: 160px;
+  padding: 6px 9px;
+  border: 1.5px solid var(--gf-bp);
+  border-radius: 6px;
+  background: var(--mgdb-surface);
+  color: var(--gf-bp);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+
+.gf-step:hover, .gf-step:focus-visible { box-shadow: 0 3px 10px rgba(0, 0, 0, .12); transform: translateY(-1px); outline: none; }
+.gf-step.is-this { border-color: var(--gf-gold); background: var(--gf-gold-wash); box-shadow: 0 0 0 2px var(--gf-gold); color: var(--gf-ink); }
+.gf-step.is-this:hover, .gf-step.is-this:focus-visible { box-shadow: 0 0 0 2px var(--gf-gold), 0 3px 10px rgba(0, 0, 0, .12); }
+.gf-step.is-empty { border-style: dashed; border-color: var(--gf-muted); background: transparent; color: var(--gf-muted); }
+.gf-step-ec { font-family: var(--mono, ui-monospace, monospace); font-size: var(--mgdb-text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
+.gf-step-enz { color: var(--gf-muted); font-size: 10.5px; line-height: 1.2; }
+.gf-step.is-this .gf-step-enz { color: var(--gf-ink); }
+.gf-step-bar { display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--gf-band); overflow: hidden; }
+.gf-step-bar span { display: block; height: 100%; background: currentColor; }
+.gf-step-arrow { align-self: center; color: var(--gf-muted); font-size: var(--mgdb-text-sm); }
+
+.gf-step-key { display: inline-block; width: 14px; height: 10px; border: 1.5px solid var(--gf-bp); border-radius: 3px; background: #fff; vertical-align: middle; }
+.gf-step-key.is-this { border-color: var(--gf-gold); background: var(--gf-gold-wash); box-shadow: 0 0 0 1px var(--gf-gold); }
+.gf-step-key.is-empty { border-style: dashed; border-color: var(--gf-muted); background: transparent; }
+.gf-step-key.is-bar { width: 18px; height: 3px; border: 0; border-radius: 2px; background: var(--gf-bp); }
+
+.gf-pw-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: var(--mgdb-space-2); color: var(--gf-muted); font-size: var(--mgdb-text-xs); }
+.gf-pw-foot strong { color: var(--gf-ink); }
+.gf-presence { display: inline-flex; gap: 2px; }
+.gf-presence-dot { display: inline-block; width: 7px; height: 10px; border-radius: 2px; background: var(--gf-band); }
+.gf-presence-dot.is-on { background: var(--gf-bp); }
+/* An absent founder's dot: grey, edged in its group color. */
+.gf-presence-dot:not(.is-on)[style] {
+  box-sizing: border-box;
+  border: 1px solid var(--mgdb-genome-edge);
+  background: var(--mgdb-genome-absent);
+}
+/* A present founder's dot in its group color, edged so pale fills show. */
+.gf-presence-dot.is-on[style] {
+  box-sizing: border-box;
+  border: 1px solid var(--mgdb-genome-edge);
+  background: var(--mgdb-genome-fill);
+}
+
+/* The founder group key (MaizeGDB's .mgdb-genome-key, from mgdb-modern.css). */
+.gf-groups { margin: 0 0 var(--mgdb-space-2); }
+.gf .mgdb-genome-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mgdb-space-1) var(--mgdb-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--gf-muted);
+  font-size: var(--mgdb-text-xs);
+}
+.gf .mgdb-genome-key li { display: inline-flex; align-items: center; gap: 6px; }
+.gf .mgdb-genome-swatch {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--mgdb-genome-edge, var(--gf-rule));
+  border-radius: 3px;
+  background: var(--mgdb-genome-fill, var(--mgdb-surface-sunken));
+}
+
+/* --------------------------------------------------------------------------
+   KEGG and EggNOG (EnTAP): the description with its COG categories, the
+   KEGG orthologs, then the maps as the pathway cards above.
+   -------------------------------------------------------------------------- */
+
+.gf-kegg-desc { margin: 0 0 var(--mgdb-space-2); line-height: 1.5; }
+.gf-cog {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--gf-rule);
+  border-radius: 999px;
+  color: var(--gf-muted);
+  font-size: var(--mgdb-text-xs);
+  /* MaizeGDB's rule is nowrap; a long category ("Posttranslational
+     modification, protein turnover, chaperones") then runs off a phone. */
+  max-width: 100%;
+  white-space: normal;
+}
+.gf-ko-list { margin: 0 0 var(--mgdb-space-3); padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--mgdb-text-sm); }
+.gf-ko-id { font-family: var(--mgdb-font-mono); font-weight: 700; }
+.gf-ko-ec { color: var(--gf-muted); font-family: var(--mgdb-font-mono); font-size: var(--mgdb-text-xs); }
+.gf-kegg-maps { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+
+/* --------------------------------------------------------------------------
+   Tooltip and footer
+   -------------------------------------------------------------------------- */
+
+.gf-tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 340px;
+  padding: 8px 10px;
+  border: 1px solid var(--gf-rule);
+  border-radius: var(--mgdb-radius-sm);
+  background: var(--mgdb-surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+  color: var(--gf-ink);
+  font-size: var(--mgdb-text-xs);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.gf-tip[hidden] { display: none; }
+.gf-tip strong { display: block; font-size: var(--mgdb-text-sm); }
+.gf-tip p { margin: 4px 0; }
+.gf-tip ul { margin: 4px 0 0; padding-left: 1.1rem; }
+.gf-tip .gf-tip-muted { display: block; color: var(--gf-muted); }
+.gf-tip .gf-tip-path { margin-top: 4px; color: var(--gf-bp); }
+.gf-tip .gf-tip-eq { color: var(--gf-muted); }
+
+.gf-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mgdb-space-2) var(--mgdb-space-4); margin-top: var(--mgdb-space-4); padding-top: var(--mgdb-space-3); border-top: 1px solid var(--gf-rule); }
+.gf-footer p { flex: 1 1 32ch; margin: 0; color: var(--gf-muted); font-size: var(--mgdb-text-xs); line-height: 1.4; }
+.gf-footer-links { display: flex; flex-wrap: wrap; gap: var(--mgdb-space-3); align-items: center; font-size: var(--mgdb-text-sm); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-sq, .gf-step, .gf-term, .gf-node rect { transition: none; }
+}

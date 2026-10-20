@@ -1,0 +1,204 @@
+{
+ "format": "snptools-siteqc-summary-1",
+ "family": "zmgrin2026_HQ",
+ "release": "zmgrin2026 v1.4.3 High Quality",
+ "built": "2026-10-17",
+ "rule": "First match wins. NO_CARRIER: NHET+NHOM = 0; HET_ONLY: NHOM = 0; HET_EXCESS: NHET > NHOM; HET_ELEVATED: 4*NHET >= NHET+NHOM; PASS: everything else. Usable = PASS or HET_ELEVATED; flagged = HET_ONLY or HET_EXCESS.",
+ "codes": [
+  "NO_CARRIER",
+  "HET_ONLY",
+  "HET_EXCESS",
+  "HET_ELEVATED",
+  "PASS"
+ ],
+ "usable": [
+  "PASS",
+  "HET_ELEVATED"
+ ],
+ "flagged": [
+  "HET_ONLY",
+  "HET_EXCESS"
+ ],
+ "counts_over": "all 933 samples of the release",
+ "by_chromosome": {
+  "chr1": {
+   "sites": 4134314,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 328286,
+   "HET_EXCESS": 684027,
+   "HET_ELEVATED": 454772,
+   "PASS": 2667229,
+   "clean": 2406144
+  },
+  "chr2": {
+   "sites": 3177718,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 266648,
+   "HET_EXCESS": 543991,
+   "HET_ELEVATED": 363412,
+   "PASS": 2003667,
+   "clean": 1834611
+  },
+  "chr3": {
+   "sites": 3118577,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 270369,
+   "HET_EXCESS": 520341,
+   "HET_ELEVATED": 347093,
+   "PASS": 1980774,
+   "clean": 1790987
+  },
+  "chr4": {
+   "sites": 3446252,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 348868,
+   "HET_EXCESS": 600775,
+   "HET_ELEVATED": 381204,
+   "PASS": 2115405,
+   "clean": 1878811
+  },
+  "chr5": {
+   "sites": 2809932,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 261921,
+   "HET_EXCESS": 477765,
+   "HET_ELEVATED": 302995,
+   "PASS": 1767251,
+   "clean": 1575713
+  },
+  "chr6": {
+   "sites": 2201885,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 180074,
+   "HET_EXCESS": 394200,
+   "HET_ELEVATED": 248152,
+   "PASS": 1379459,
+   "clean": 1243643
+  },
+  "chr7": {
+   "sites": 2344946,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 213708,
+   "HET_EXCESS": 384978,
+   "HET_ELEVATED": 253058,
+   "PASS": 1493202,
+   "clean": 1369399
+  },
+  "chr8": {
+   "sites": 2291274,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 201087,
+   "HET_EXCESS": 406793,
+   "HET_ELEVATED": 244690,
+   "PASS": 1438704,
+   "clean": 1301793
+  },
+  "chr9": {
+   "sites": 2173856,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 173750,
+   "HET_EXCESS": 363712,
+   "HET_ELEVATED": 243429,
+   "PASS": 1392965,
+   "clean": 1256545
+  },
+  "chr10": {
+   "sites": 2088347,
+   "NO_CARRIER": 0,
+   "HET_ONLY": 181614,
+   "HET_EXCESS": 354993,
+   "HET_ELEVATED": 233940,
+   "PASS": 1317800,
+   "clean": 1184156
+  }
+ },
+ "total": {
+  "sites": 27787101,
+  "NO_CARRIER": 0,
+  "HET_ONLY": 2426325,
+  "HET_EXCESS": 4731575,
+  "HET_ELEVATED": 3072745,
+  "PASS": 17556456
+ },
+ "clean_site": "PASS and NHOM >= 3",
+ "clean_sites": 15841802,
+ "line_qc": {
+  "thresholds": {
+   "elevated": 0.02,
+   "heterozygous": 0.05
+  },
+  "labels": {
+   "I": "Inbred",
+   "E": "Elevated heterozygosity",
+   "H": "Heterozygous sample"
+  },
+  "counts": {
+   "H": 21,
+   "E": 25,
+   "I": 887
+  },
+  "share": "heterozygous calls at clean sites / clean sites"
+ },
+ "stores": {
+  "chr1": {
+   "store": "zmgrin2026_chr1_HQ.h5",
+   "store_bytes": 1906974889,
+   "sidecar": "zmgrin2026_chr1_HQ.siteqc.h5",
+   "sidecar_bytes": 16685465
+  },
+  "chr2": {
+   "store": "zmgrin2026_chr2_HQ.h5",
+   "store_bytes": 1485314661,
+   "sidecar": "zmgrin2026_chr2_HQ.siteqc.h5",
+   "sidecar_bytes": 12976244
+  },
+  "chr3": {
+   "store": "zmgrin2026_chr3_HQ.h5",
+   "store_bytes": 1439191337,
+   "sidecar": "zmgrin2026_chr3_HQ.siteqc.h5",
+   "sidecar_bytes": 12627876
+  },
+  "chr4": {
+   "store": "zmgrin2026_chr4_HQ.h5",
+   "store_bytes": 1566766802,
+   "sidecar": "zmgrin2026_chr4_HQ.siteqc.h5",
+   "sidecar_bytes": 13786340
+  },
+  "chr5": {
+   "store": "zmgrin2026_chr5_HQ.h5",
+   "store_bytes": 1287926900,
+   "sidecar": "zmgrin2026_chr5_HQ.siteqc.h5",
+   "sidecar_bytes": 11315565
+  },
+  "chr6": {
+   "store": "zmgrin2026_chr6_HQ.h5",
+   "store_bytes": 1014575079,
+   "sidecar": "zmgrin2026_chr6_HQ.siteqc.h5",
+   "sidecar_bytes": 8933426
+  },
+  "chr7": {
+   "store": "zmgrin2026_chr7_HQ.h5",
+   "store_bytes": 1090739272,
+   "sidecar": "zmgrin2026_chr7_HQ.siteqc.h5",
+   "sidecar_bytes": 9532384
+  },
+  "chr8": {
+   "store": "zmgrin2026_chr8_HQ.h5",
+   "store_bytes": 1061009142,
+   "sidecar": "zmgrin2026_chr8_HQ.siteqc.h5",
+   "sidecar_bytes": 9367125
+  },
+  "chr9": {
+   "store": "zmgrin2026_chr9_HQ.h5",
+   "store_bytes": 1011590491,
+   "sidecar": "zmgrin2026_chr9_HQ.siteqc.h5",
+   "sidecar_bytes": 8853415
+  },
+  "chr10": {
+   "store": "zmgrin2026_chr10_HQ.h5",
+   "store_bytes": 951868580,
+   "sidecar": "zmgrin2026_chr10_HQ.siteqc.h5",
+   "sidecar_bytes": 8415765
+  }
+ }
+}
