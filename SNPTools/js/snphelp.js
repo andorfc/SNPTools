@@ -265,6 +265,8 @@ const SNPHelp = (function () {
       ['Carriers (het / hom)', 'Heterozygous / homozygous carriers among the release lines.'],
       ['Site QC', 'The class of the site from its heterozygous and homozygous carriers.'],
       ['Priority', 'The SNPMaize priority of the change, as SNPImpact computes it, with the composite AI score (z, how many of the four scores it averages, and its percentile among the release’s missense sites).'],
+      ['Favorable allele', 'Which allele a breeder wants, as the publication reads it: Alternate, Reference (B73\u2019s allele), Depends (on the market class, latitude or goal; the note beside it says what on), or a dash when the publication gives no direction or the alleles are not given.'],
+      ['B73', 'B73\u2019s genotype at the site: Ref (homozygous for the reference allele, which is B73\u2019s own sequence at every site of this release), Het or Alt.'],
       ['Reference', 'The first publication; the record lists all.'],
       ['Default order', 'By mark (gold, silver, white), then by gene name; click Gene or Carriers to sort.'],
     ]},

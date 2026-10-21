@@ -43,6 +43,9 @@ SCORES = [('pc1', 'plantcad1_score', 'PlantCAD1'), ('pc2', 'plantcad2_score', 'P
           ('pc2op', 'plantcad2_onepass_score', 'PlantCAD2'), ('evo2', 'evo2_score', 'Evo2'),
           ('esm1', 'ESM1_score', 'ESM1'), ('esm2', 'ESM2_score', 'ESM2'), ('esm3', 'ESM3_score', 'ESM3'), ('esmc', 'ESMC_score', 'ESM-C')]
 ROLES = ('causal', 'proposed', 'allele', 'associated', 'lead_snp', 'marker')
+FAV = {'alt': 'Alternate', 'ref': 'Reference', 'depends': 'Depends', 'unknown': '—'}
+GT_WORD = {'ref': 'Ref', 'het': 'Het', 'alt': 'Alt', 'missing': 'Missing'}
+GT_LONG = {'ref': 'homozygous for the reference allele', 'het': 'heterozygous', 'alt': 'homozygous for the alternate allele', 'missing': 'a missing call'}
 STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'different_allele': 'Other allele here', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
           'unreliable': 'Unreliable calls', 'not_annotated': 'Gene not annotated'}
 N_ENTRIES = 76     # the registry re-read from the papers on 2026-10-20
@@ -208,6 +211,7 @@ for e in src['entries']:
     x.update(nHet=het, nHom=hom, nMiss=miss, qc=rule(het, hom), af=round((het + 2 * hom) / (2 * (len(G) - miss)), 4),
              maf=num(I.get('MAF')), maxr2=num(I.get('MAXR2')), consequence=label, consClass=cls, sub=a[3] or None, impact=a[2],
              scores=sc, combined=comb, combinedN=comb_n, priority=priority(cls, severe, comb, a[2]), hom=homs, het=hets,
+             b73={0: 'ref', 1: 'het', 2: 'alt', 3: 'missing'}[G['ZmG_B73']], missing=sorted(s for s, v in G.items() if v is None),
              subpop=sorted(((k, sub.get(k, 0), n) for k, n in sub_tot.items()), key=lambda t: (-t[1], -t[2], t[0])),
              country=sorted(((k, v, cty_tot[k]) for k, v in cty.items()), key=lambda t: (-t[1], t[0])))
     if e.get('expect'):
@@ -238,9 +242,12 @@ for e in src['entries']:
         x['pool'] = len(pool)
     EXP[e['id']] = x
     s = D[e['id']]['site']
-    ok = ((s['nHet'], s['nHom'], s['nMiss'], s['qc'], s['af'], s['maf'], s['maxr2'], s['consequence'], s['consClass'], s['sub'], s['impact'], s['combined'], s.get('combinedN'), s['priority'])
-          == (het, hom, miss, x['qc'], x['af'], x['maf'], x['maxr2'], label, cls, x['sub'], a[2], comb, comb_n, x['priority'])
-          and s['scores'] == sc and s['carriers'] == {'hom': homs, 'het': hets}
+    FIELDS = ('nHet', 'nHom', 'nMiss', 'qc', 'af', 'maf', 'maxr2', 'consequence', 'consClass', 'sub', 'impact', 'combined', 'combinedN', 'priority', 'b73', 'missing')
+    got = (s['nHet'], s['nHom'], s['nMiss'], s['qc'], s['af'], s['maf'], s['maxr2'], s['consequence'], s['consClass'], s['sub'], s['impact'], s['combined'], s.get('combinedN'), s['priority'], s.get('b73'), s['carriers'].get('missing'))
+    want = (het, hom, miss, x['qc'], x['af'], x['maf'], x['maxr2'], label, cls, x['sub'], a[2], comb, comb_n, x['priority'], x['b73'], x['missing'])
+    ok = got == want
+    if not ok: print('   differs:', ', '.join(f"{f}: data {g!r} vs expected {w!r}" for f, g, w in zip(FIELDS, got, want) if g != w))
+    ok = (ok and s['scores'] == sc and s['carriers'] == {'hom': homs, 'het': hets, 'missing': x['missing']}
           and [(t['name'], t['hom'], t['total']) for t in s['subpop']] == x['subpop'] and [(t['name'], t['carriers'], t['total']) for t in s['country']] == x['country']
           and (s.get('rank') == x.get('rank')) and (s.get('rankPool') == x.get('pool')))
     if 'trait' in x:
@@ -269,10 +276,11 @@ order = [e['id'] for e in sorted(src['entries'], key=lambda e: (MARK_ORDER[EXP[e
 tbl_ok = [r['id'] for r in K['table']] == order
 for r in K['table']:
     e = next(x for x in src['entries'] if x['id'] == r['id']); x = EXP[r['id']]
-    cells = r['cells']   # gene, change, trait, status, carriers, site qc, priority, reference
-    want = [f"{e['symbol']}{e['gene']}", e['label'], e['trait'], STATUS[e['status']],
-            f"{x['nHet']:,} / {x['nHom']:,}" if 'nHet' in x else '—', QC_LABEL.get(x.get('qc'), ''), x.get('priority', '—')]
-    if cells[:7] != want or r['badge'] != f"cur-badge cur-{x['mark']}": tbl_ok = False; print('   row', r['id'], cells[:7], want)
+    cells = r['cells']   # gene, change, trait, favorable, status, carriers, B73, site qc, priority, reference
+    want = [f"{e['symbol']}{e['gene']}", e['label'], e['trait'], FAV[e['favorable']], STATUS[e['status']],
+            f"{x['nHet']:,} / {x['nHom']:,}" if 'nHet' in x else '—', GT_WORD[x['b73']] if 'b73' in x else '—',
+            QC_LABEL.get(x.get('qc'), ''), x.get('priority', '—')]
+    if cells[:9] != want or r['badge'] != f"cur-badge cur-{x['mark']}": tbl_ok = False; print('   row', r['id'], cells[:9], want)
 check(tbl_ok, f"table: {len(K['table'])} rows by mark then gene ({', '.join(order[:4])}, ...) with mark, gene, change, trait, status, carriers, Site QC, priority")
 F = K['filters']
 carr = lambda i: EXP[i]['nHet'] + EXP[i]['nHom'] if 'nHet' in EXP[i] else None
@@ -293,7 +301,9 @@ for e in src['entries']:
              and r['badge'] == 'cur-badge cur-white'
         check(ok, f"{e['id']} {e['symbol']:<15} record: \"{(r['why'] or '')[:70]}\"")
         continue
-    facts = r['facts']
+    facts = r['facts']   # site, consequence, site QC, allele frequency, favorable allele, B73, priority
+    exp_fav = f"Favorable allele{FAV[e['favorable']]}" + (f" · {e['favorable_note']}" if e.get('favorable_note') else '')
+    exp_b73 = f"B73{GT_WORD[x['b73']]} {GT_LONG[x['b73']]}"
     exp_qc = f"Site QC{QC_LABEL[x['qc']]} {x['nHet']:,} het · {x['nHom']:,} hom · {x['nMiss']:,} missing"
     exp_pr = f"Priority{x['priority']} composite " + ('—' if x['combined'] is None else
              ('+' if x['combined'] > 0 else '') + format(x['combined'], '.2f') + f" z · {x['combinedN']} of 4 scores · {ordinal(percentile(x['combined']))} percentile")
@@ -312,7 +322,7 @@ for e in src['entries']:
         else:
             want_t = [f"{lab} ({code}){alt:,} of {n:,}{pct(alt, n)}" for code, lab, n, alt in t]
         trait_ok = r['trait'] == want_t and r['traitHead'].startswith(TR['dictionary'][e['grin_descriptor']]['name'])
-    ok = (facts[2] == exp_qc and facts[4] == exp_pr and facts[3].startswith(exp_af) and r['scores'] == scores and r['subpop'] == (subs or ['No homozygous carrier'])
+    ok = (facts[2] == exp_qc and facts[4] == exp_fav and facts[5] == exp_b73 and facts[6] == exp_pr and facts[3].startswith(exp_af) and r['scores'] == scores and r['subpop'] == (subs or ['No homozygous carrier'])
           and r['country'] == ctys and trait_ok and refs_ok and review_ok and r['badge'] == f"cur-badge cur-{x['mark']}"
           and r['buttons'] == ['Carriers in SNPVersity', 'Gene in SNPFunction', 'Send to SNPGeo'])
     if not ok:

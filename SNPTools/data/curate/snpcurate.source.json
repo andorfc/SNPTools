@@ -11,7 +11,9 @@
   "published_as": "the publication's own name or description of the variant",
   "pos/ref/alt": "B73 v5 position and alleles (plus strand, VCF style); start/end for a structural allele",
   "site_gene": "the gene whose consequence the record shows when the site is annotated in another gene",
-  "expect": "het / hom carriers and the Site QC class of a site, checked at build time"
+  "expect": "het / hom carriers and the Site QC class of a site, checked at build time",
+  "favorable": "which allele the breeder wants, as the publication reads it: alt (the alternate allele), ref (the reference, B73's), depends (on the market class, latitude or goal; favorable_note says), unknown (the publication gives no direction, or the alleles are not given)",
+  "favorable_note": "one line on the favorable allele: the trait direction and, for depends, what it depends on"
  },
  "entries": [
   {
@@ -28,6 +30,8 @@
    "ref": "C",
    "alt": "G",
    "trait": "Glume architecture, naked kernels",
+   "favorable": "ref",
+   "favorable_note": "naked kernels: the maize asparagine; the alternate is the teosinte lysine",
    "refs": [
     {
      "cite": "Wang H, et al. 2005. Nature 436:714-719",
@@ -63,6 +67,8 @@
    "ref": "C",
    "alt": "A",
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "alt",
+   "favorable_note": "higher total carotenoids (the asparagine)",
    "grin_descriptor": "KERNEL-COLOR",
    "refs": [
     {
@@ -95,6 +101,8 @@
    "ref": "T",
    "alt": "TGAA",
    "trait": "Kernel oil content and composition",
+   "favorable": "alt",
+   "favorable_note": "higher oil and oleic acid (the insertion)",
    "grin_descriptor": "OIL",
    "refs": [
     {
@@ -123,6 +131,8 @@
    "ref": "T",
    "alt": "G",
    "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "favorable": "alt",
+   "favorable_note": "the favorable allele of Harjes et al. for provitamin A (the glutamate)",
    "grin_descriptor": "KERNEL-COLOR",
    "refs": [
     {
@@ -155,6 +165,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Banded leaf and sheath blight resistance",
+   "favorable": "alt",
+   "favorable_note": "banded leaf and sheath blight resistance (the Chang7-2 allele, with S217R)",
    "refs": [
     {
      "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
@@ -182,6 +194,8 @@
    "ref": "T",
    "alt": "G",
    "trait": "Banded leaf and sheath blight resistance",
+   "favorable": "alt",
+   "favorable_note": "banded leaf and sheath blight resistance (the Chang7-2 allele, with E214G)",
    "refs": [
     {
      "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
@@ -209,6 +223,8 @@
    "ref": "C",
    "alt": "G",
    "trait": "Sweet kernel (sugary1)",
+   "favorable": "depends",
+   "favorable_note": "sweet kernel: the leucine marks the su1-Ref haplotype, wanted in sweet corn only",
    "grin_descriptor": "KERNEL-TYPE",
    "refs": [
     {
@@ -237,6 +253,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time: alternate carriers flower later here (tropical allele)",
    "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
    "refs": [
     {
@@ -265,6 +283,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Sweet kernel (sugary1)",
+   "favorable": "depends",
+   "favorable_note": "sweet kernel (su1-Ref), wanted in sweet corn only",
    "refs": [
     {
      "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
@@ -287,6 +307,7 @@
    "ref": "T",
    "alt": "C",
    "trait": "Kernel row number",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
@@ -313,6 +334,7 @@
    "ref": "T",
    "alt": "A",
    "trait": "Benzoxazinoid profile (DIM2BOA-Glc)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Handrick V, et al. 2016. Plant Cell 28:1682-1700",
@@ -335,6 +357,7 @@
    "ref": "C",
    "alt": "G",
    "trait": "Tillering",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
@@ -356,6 +379,7 @@
    "start": 138687384,
    "end": 138688635,
    "trait": "Kernel beta-carotene content",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
@@ -377,6 +401,7 @@
    "start": 156052603,
    "end": 156053476,
    "trait": "Northern leaf blight resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Hurni S, et al. 2015. Proc Natl Acad Sci USA 112:8780-8785",
@@ -403,6 +428,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Southern leaf blight and gray leaf spot resistance",
+   "favorable": "alt",
+   "favorable_note": "southern leaf blight and gray leaf spot resistance (the qMdr9.02 allele)",
    "grin_descriptor": "GRAY-LEAF-SPOT",
    "refs": [
     {
@@ -432,6 +459,7 @@
    "alt": "C",
    "site_gene": "Zm00001eb014260",
    "trait": "Pericarp pigmentation",
+   "favorable": "unknown",
    "grin_descriptor": "PERICARP-COLOR",
    "refs": [
     {
@@ -460,6 +488,8 @@
    "ref": "A",
    "alt": "T",
    "trait": "Sweet kernel (sugary1)",
+   "favorable": "depends",
+   "favorable_note": "sweet kernel (su1-Ref), wanted in sweet corn only",
    "refs": [
     {
      "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
@@ -482,6 +512,8 @@
    "start": 43433506,
    "end": 43433515,
    "trait": "Sweet kernel (sugary1)",
+   "favorable": "depends",
+   "favorable_note": "sugary kernel (su1-st), wanted in sweet corn only",
    "refs": [
     {
      "cite": "Dinges JR, et al. 2001. Plant Physiol 125:1406-1418",
@@ -504,6 +536,8 @@
    "ref": "G",
    "alt": "A",
    "trait": "Kernel row number",
+   "favorable": "ref",
+   "favorable_note": "more kernel rows: B73 carries the favorable G",
    "grin_descriptor": "KERNEL-ROW-NUMBER",
    "refs": [
     {
@@ -532,6 +566,7 @@
    "start": 205419015,
    "end": 205419814,
    "trait": "Kernel row number",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
@@ -553,6 +588,7 @@
    "start": 205350477,
    "end": 205351859,
    "trait": "Kernel row number",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Liu L, et al. 2015. PLoS Genet 11:e1005670",
@@ -575,6 +611,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "depends",
+   "favorable_note": "white endosperm: the alternate C marks white lines",
    "grin_descriptor": "KERNEL-COLOR",
    "refs": [
     {
@@ -603,6 +641,7 @@
    "ref": "G",
    "alt": "A",
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
@@ -625,6 +664,7 @@
    "ref": "A",
    "alt": "ACGACTGCATGCATG",
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
@@ -646,6 +686,7 @@
    "start": 91642658,
    "end": 91643039,
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Palaisa KA, et al. 2003. Plant Cell 15:1795-1806",
@@ -671,6 +712,7 @@
    "start": 91641706,
    "end": 91641707,
    "trait": "Kernel carotenoids, endosperm color",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Fu Z, et al. 2013. Theor Appl Genet 126:923-935",
@@ -697,6 +739,7 @@
    "start": 142587149,
    "end": 142587528,
    "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Harjes CE, et al. 2008. Science 319:330-333",
@@ -727,6 +770,7 @@
    "ref": "C",
    "alt": "CCCGTACGG",
    "trait": "Provitamin A, ratio of alpha- to beta-branch carotenoids",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Harjes CE, et al. 2008. Science 319:330-333",
@@ -756,6 +800,7 @@
    "start": 138690659,
    "end": 138691475,
    "trait": "Kernel beta-carotene content",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
@@ -778,6 +823,7 @@
    "ref": "A",
    "alt": "AGCGCCGTCTCCG",
    "trait": "Kernel beta-carotene content",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yan J, et al. 2010. Nat Genet 42:322-327",
@@ -800,6 +846,7 @@
    "ref": "C",
    "alt": "A",
    "trait": "Kernel beta-carotene content",
+   "favorable": "unknown",
    "grin_descriptor": "KERNEL-COLOR",
    "refs": [
     {
@@ -828,6 +875,8 @@
    "ref": "A",
    "alt": "C",
    "trait": "Kernel oil content and composition",
+   "favorable": "alt",
+   "favorable_note": "marks the high-oil allele (not shown to affect oil itself)",
    "grin_descriptor": "OIL",
    "refs": [
     {
@@ -856,6 +905,8 @@
    "ref": "G",
    "alt": "A",
    "trait": "Kernel oil content and composition",
+   "favorable": "alt",
+   "favorable_note": "marks the high-oil allele (not shown to affect oil itself)",
    "grin_descriptor": "OIL",
    "refs": [
     {
@@ -884,6 +935,7 @@
    "ref": "GTGC",
    "alt": "G",
    "trait": "Kernel oil content and composition",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zheng P, et al. 2008. Nat Genet 40:367-372",
@@ -906,6 +958,8 @@
    "ref": "C",
    "alt": "T",
    "trait": "Banded leaf and sheath blight resistance",
+   "favorable": "alt",
+   "favorable_note": "marks the resistant ZmFBL41 haplotype",
    "refs": [
     {
      "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
@@ -933,6 +987,7 @@
    "ref": "T",
    "alt": "A",
    "trait": "Banded leaf and sheath blight resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
@@ -955,6 +1010,7 @@
    "ref": "T",
    "alt": "A",
    "trait": "Banded leaf and sheath blight resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Li N, et al. 2019. Nat Genet 51:1540-1548",
@@ -977,6 +1033,8 @@
    "ref": "C",
    "alt": "G",
    "trait": "Southern leaf blight and gray leaf spot resistance",
+   "favorable": "alt",
+   "favorable_note": "southern leaf blight and gray leaf spot resistance (the qMdr9.02 allele)",
    "grin_descriptor": "GRAY-LEAF-SPOT",
    "refs": [
     {
@@ -1005,6 +1063,7 @@
    "ref": "AGCCTTGGCC",
    "alt": "A",
    "trait": "Southern leaf blight and gray leaf spot resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
@@ -1027,6 +1086,7 @@
    "ref": "AGCCTTG",
    "alt": "A",
    "trait": "Southern leaf blight and gray leaf spot resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yang Q, et al. 2017. Nat Genet 49:1364-1372",
@@ -1048,6 +1108,7 @@
    "start": 156052603,
    "end": 156053476,
    "trait": "Northern leaf blight resistance",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yang P, et al. 2021. Plant J 106:526-535",
@@ -1074,6 +1135,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time: A is the early allele, G the late one",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1096,6 +1159,8 @@
    "ref": "TCTC",
    "alt": "T",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time: the deletion is the early allele",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1118,6 +1183,8 @@
    "ref": "C",
    "alt": "T",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time (LD block 2 marker)",
    "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
    "refs": [
     {
@@ -1146,6 +1213,8 @@
    "ref": "C",
    "alt": "T",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time: alternate carriers flower later here (tropical allele)",
    "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
    "refs": [
     {
@@ -1174,6 +1243,8 @@
    "ref": "T",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "depends",
+   "favorable_note": "flowering time: alternate carriers flower later here (tropical allele)",
    "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
    "refs": [
     {
@@ -1202,6 +1273,7 @@
    "ref": "T",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1224,6 +1296,7 @@
    "ref": "GTGGGTAC",
    "alt": "G",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1246,6 +1319,7 @@
    "ref": "A",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1268,6 +1342,7 @@
    "ref": "G",
    "alt": "GAT",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1291,6 +1366,7 @@
    "ref": "GTT",
    "alt": "G",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1313,6 +1389,7 @@
    "ref": "G",
    "alt": "C",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1335,6 +1412,7 @@
    "ref": "ACTGCGGCATAATATTATGGAATTACTATATATAC",
    "alt": "A",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1358,6 +1436,7 @@
    "ref": "G",
    "alt": "T",
    "trait": "Flowering time (days to anthesis)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Guo L, et al. 2018. Curr Biol 28:3005-3015",
@@ -1379,6 +1458,8 @@
    "start": 96180837,
    "end": 96185957,
    "trait": "Photoperiod response, flowering time",
+   "favorable": "depends",
+   "favorable_note": "photoperiod: the insertion (B73) lowers sensitivity, wanted at temperate latitudes",
    "refs": [
     {
      "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
@@ -1409,6 +1490,7 @@
    "ref": "A",
    "alt": "G",
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
@@ -1436,6 +1518,7 @@
    "ref": "A",
    "alt": "G",
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
@@ -1463,6 +1546,7 @@
    "ref": "T",
    "alt": "A",
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Yang Q, et al. 2013. Proc Natl Acad Sci USA 110:16969-16974",
@@ -1484,6 +1568,7 @@
    "chr": "chr10",
    "pos": 96178079,
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Hung HY, et al. 2012. Proc Natl Acad Sci USA 109:E1913-E1921",
@@ -1507,6 +1592,7 @@
    "ref": "T",
    "alt": "C",
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "grin_descriptor": "GDU-POLLEN-F_LAT40-49",
    "refs": [
     {
@@ -1533,6 +1619,7 @@
    "chr": "chr10",
    "pos": 96177044,
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
@@ -1552,6 +1639,7 @@
    "status": "structural",
    "chr": "chr10",
    "trait": "Photoperiod response, flowering time",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Tibbs-Cortes LE, et al. 2024. Genome Res 34:1253-1263",
@@ -1574,6 +1662,7 @@
    "ref": "G",
    "alt": "A",
    "trait": "Tillering",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
@@ -1596,6 +1685,7 @@
    "ref": "G",
    "alt": "T",
    "trait": "Tillering",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
@@ -1618,6 +1708,7 @@
    "ref": "C",
    "alt": "T",
    "trait": "Tillering",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang X, et al. 2019. Nat Commun 10:5608",
@@ -1639,6 +1730,7 @@
    "start": 156675817,
    "end": 156675824,
    "trait": "White endosperm (White Cap)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
@@ -1660,6 +1752,7 @@
    "start": 158496519,
    "end": 158502031,
    "trait": "White endosperm (White Cap)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
@@ -1679,6 +1772,7 @@
    "status": "structural",
    "chr": "chr9",
    "trait": "White endosperm (White Cap)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Tan BC, et al. 2017. Genetics 206:135-150",
@@ -1700,6 +1794,7 @@
    "start": 6963988,
    "end": 6963989,
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1726,6 +1821,7 @@
    "ref": "C",
    "alt": "CTCCA",
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1747,6 +1843,8 @@
    "start": 6964766,
    "end": 6965116,
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "ref",
+   "favorable_note": "nicosulfuron tolerance: the intact gene; the deletion is the null allele",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1769,6 +1867,7 @@
    "ref": "AAGAGGGCGGCGGCGG",
    "alt": "A",
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1791,6 +1890,7 @@
    "ref": "C",
    "alt": "A",
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1811,6 +1911,7 @@
    "chr": "chr5",
    "pos": 6964830,
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1833,6 +1934,7 @@
    "ref": "A",
    "alt": "G",
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",
@@ -1855,6 +1957,7 @@
    "ref": "G",
    "alt": "A",
    "trait": "Response to sulfonylurea herbicides (nicosulfuron)",
+   "favorable": "unknown",
    "refs": [
     {
      "cite": "Zhang Y, et al. 2024. Front Plant Sci 15:1443413",

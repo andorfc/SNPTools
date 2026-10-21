@@ -83,7 +83,8 @@ pick ourselves: gene and symbol, label, `published_as` (the paper's own name for
 `proposed` / `allele` / `associated` / `lead_snp` / `marker`, variant type, status `site` / `not_a_site` /
 `different_allele` / `not_locatable` / `structural` / `unreliable` / `not_annotated`, the site (chr, pos,
 ref, alt) or the position or interval where known, `site_gene` when the site is annotated in another
-gene, the trait and its GRIN descriptor, references with DOIs (required), a note, `needs_review`, and an
+gene, the trait and its GRIN descriptor, the favorable allele as the publication reads it (`favorable`: alt, ref,
+depends or unknown, with `favorable_note`), references with DOIs (required), a note, `needs_review`, and an
 `expect` block of het / hom / class for tests. Induced alleles (EMS, TILLING, transposon tagging,
 CRISPR), candidates a paper rejects and variants whose position cannot be had from the paper stay out.
 For each site entry the builder finds exactly one site (else it stops) and computes the carriers

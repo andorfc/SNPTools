@@ -21,7 +21,8 @@ computed for), the composite score and the priority as Data.compositeScore and D
 them from data/qc/zmgrin2026.scorecal.json (tools/build_score_cal.py: the composite is the mean of the
 standardized PlantCAD1, PlantCAD2 one-pass, ESM1 and ESM2 scores the site has, the tiers are percentile
 cutoffs of that composite among the release's missense sites); the homozygous and heterozygous carriers,
-homozygous carriers per subpopulation and
+B73's genotype at the site (b73: ref, het, alt or missing), the lines with a missing call
+(carriers.missing, for SNPCurate's lines panel), homozygous carriers per subpopulation and
 carriers per country with each group's total; the trait by genotype when grin_descriptor is set
 (numeric: mean and n of the line means for homozygous-reference and homozygous-alternate lines; coded:
 per code, homozygous-alternate lines of the lines with that code); and, for a missense entry, its rank
@@ -29,6 +30,8 @@ by each score (1 = most negative) among the gene's missense variants that have a
 For a "different_allele" entry it confirms that sites exist at its pos but none with its ref and alt; for any
 other entry, that no site exists at its pos or codon_positions; it stops otherwise.
 
+Every entry names the favorable allele as the publication reads it (favorable: alt, ref, depends, unknown;
+favorable_note says what it depends on or which trait direction), shown in the table and the record.
 Only variants a publication names are entries (never a tagging site picked by us). Marks: gold = a published
 causal change (role "causal") that is a site; silver = any other published variant, marker or lead SNP that
 is a site; white = a published variant that is not in this marker set (status other than "site").
@@ -50,6 +53,9 @@ MARKS = {'gold': 'Published causal change, a site in this release.',
          'silver': 'Published variant, marker or lead SNP, a site in this release; causality not established.',
          'white': 'Published variant that is not in this marker set.'}
 ROLES = ('causal', 'proposed', 'allele', 'associated', 'lead_snp', 'marker')
+FAVORABLE = ('alt', 'ref', 'depends', 'unknown')
+B73 = 'ZmG_B73'
+GT_WORD = {0: 'ref', 1: 'het', 2: 'alt', 3: 'missing'}
 STATUSES = ('site', 'not_a_site', 'different_allele', 'not_locatable', 'structural', 'unreliable', 'not_annotated')
 
 
@@ -238,6 +244,8 @@ def build(root):
         if e.get('role') not in ROLES: raise BuildError(f"{e['id']}: role {e.get('role')!r} is not one of {ROLES}")
         if e.get('status') not in STATUSES: raise BuildError(f"{e['id']}: status {e.get('status')!r} is not one of {STATUSES}")
         if not e.get('refs'): raise BuildError(f"{e['id']}: no publication (every entry is a published variant)")
+        if e.get('favorable') not in FAVORABLE: raise BuildError(f"{e['id']}: favorable {e.get('favorable')!r} is not one of {FAVORABLE}")
+        if e.get('favorable') == 'depends' and not e.get('favorable_note'): raise BuildError(f"{e['id']}: favorable 'depends' needs a favorable_note")
         r = dict(e)
         if e['status'] == 'different_allele':
             r['mark'] = 'white'
@@ -273,6 +281,8 @@ def build(root):
         comb, comb_n = composite_of(sc, cal)
         called = len(gt) - miss
         homs = sorted(s for s, g in gt.items() if g == 2); hets = sorted(s for s, g in gt.items() if g == 1)
+        misses = sorted(s for s, g in gt.items() if g == 3)
+        if B73 not in gt: raise BuildError(f"{e['id']}: {B73} is not among the store's samples")
         subpop = {}
         for s in homs: subpop[cat[s].get('subpop') or 'Unknown'] = subpop.get(cat[s].get('subpop') or 'Unknown', 0) + 1
         country = {}
@@ -284,7 +294,8 @@ def build(root):
             'gene': target, 'geneEntry': bool(ent), 'effect': ann['effect'], 'consequence': cls['label'], 'consClass': cls['klass'],
             'impact': ann['impact'], 'sub': ann['sub'] or None, 'scores': sc, 'combined': comb, 'combinedN': comb_n,
             'priority': impact_priority(cls, comb, ann['impact'], cal['composite']['tiers']),
-            'carriers': {'hom': homs, 'het': hets},
+            'b73': GT_WORD[gt[B73]],
+            'carriers': {'hom': homs, 'het': hets, 'missing': misses},
             'subpop': sorted(({'name': k, 'hom': subpop.get(k, 0), 'total': n} for k, n in sub_tot.items()),
                              key=lambda x: (-x['hom'], -x['total'], x['name'])),
             'country': sorted(({'name': k, 'carriers': v, 'total': cty_tot[k]} for k, v in country.items()),

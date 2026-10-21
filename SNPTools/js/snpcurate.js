@@ -32,6 +32,12 @@
   /* what the publication says the variant is (the source's role field) */
   const ROLE = {causal:'Causal change', proposed:'Proposed causal change', allele:'Allele-defining change', associated:'Associated variant',
                 lead_snp:'Lead SNP', marker:'Published marker'};
+  /* the favorable allele as the publication reads it (the source's favorable field) */
+  const FAV = {alt:'Alternate', ref:'Reference', depends:'Depends', unknown:'—'};
+  const FAV_TIP = {alt:'The alternate allele is the one a breeder wants.', ref:'The reference allele (B73\u2019s) is the one a breeder wants.',
+                   depends:'Which allele is wanted depends on the goal, market class or latitude.', unknown:'The publication gives no direction, or the alleles are not given.'};
+  const GT_WORD = {ref:'Ref', het:'Het', alt:'Alt', missing:'Missing'};
+  const GT_LONG = {ref:'homozygous for the reference allele', het:'heterozygous', alt:'homozygous for the alternate allele', missing:'a missing call'};
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function data(){ return (typeof window!=='undefined' && window.SNP_CURATE) || null; }
@@ -52,6 +58,18 @@
     return c;
   }
   function change(e){ return e.site && e.site.sub ? `${e.label}` : e.label; }
+  function favHTML(e){ const f=e.favorable||'unknown'; const tip=(e.favorable_note? esc(e.favorable_note)+' ' : '')+esc(FAV_TIP[f]||'');
+    return `<span class="cur-fav cur-fav-${esc(f)}" data-tt="${tip}">${FAV[f]||'—'}</span>`; }
+  function b73HTML(e){ const s=e.site; if (!s || !s.b73) return '<span class="muted">—</span>';
+    return `<span class="cur-b73 cur-b73-${esc(s.b73)}" data-tt="B73 is ${esc(GT_LONG[s.b73]||s.b73)} at this site.">${esc(GT_WORD[s.b73]||s.b73)}</span>`; }
+  /* "Zheng et al. 2008" from a citation "Zheng P, et al. 2008. Nat Genet 40:367-372" */
+  function shortCite(cite){
+    const m=/^(.*?)\s(\d{4})\./.exec(cite||''); if (!m) return String(cite||'').replace(/\.\s.*$/,'');
+    const names=m[1].split(/,\s*/).map(x=>x.trim()).filter(Boolean), first=(names[0]||'').split(' ')[0];
+    if (names.length>2 || names.some(x=>/^et al/.test(x))) return `${first} et al. ${m[2]}`;
+    if (names.length===2) return `${first} & ${names[1].split(' ')[0]} ${m[2]}`;
+    return `${first} ${m[2]}`;
+  }
   function compositePct(z){ return Data.compositePercentile ? Data.compositePercentile(z, ds()) : null; }
   function ordinal(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
   function prioPill(p){ return p ? `<span class="prio ${p.toLowerCase()}">${p}</span>` : '<span class="muted">—</span>'; }
@@ -131,20 +149,24 @@
         <td><b>${esc(e.symbol)}</b><div class="c-mono cur-sub">${esc(e.gene)}</div></td>
         <td>${esc(change(e))}</td>
         <td>${esc(e.trait)}</td>
+        <td>${favHTML(e)}</td>
         <td>${esc(STATUS[e.status] ? STATUS[e.status].label : e.status)}${notInSet(e)?`<div class="cur-sub cur-out" data-tt="${esc(notInSet(e))}">not in the ${esc(setShort())} set</div>`:''}</td>
         <td class="num">${s ? `${s.nHet.toLocaleString()} / <b>${s.nHom.toLocaleString()}</b>` : '<span class="muted">—</span>'}</td>
+        <td>${b73HTML(e)}</td>
         <td>${s ? siteQcPill(s.qc, s.nHet, s.nHom) : ''}</td>
         <td>${s ? prioPill(s.priority) : '<span class="muted">—</span>'}</td>
-        <td class="cur-ref">${e.refs && e.refs[0] ? esc(e.refs[0].cite.replace(/\.\s.*$/,'').replace(/, et al/,' et al')) + (e.refs.length>1?` <span class="muted">+${e.refs.length-1}</span>`:'') : ''}</td>
+        <td class="cur-ref">${e.refs && e.refs[0] ? esc(shortCite(e.refs[0].cite)) + (e.refs.length>1?` <span class="muted">+${e.refs.length-1}</span>`:'') : ''}</td>
       </tr>`; }).join('');
     return `<div class="tbl-wrap" style="max-height:none"><table class="vcf imp cur-table">
       <thead><tr>${th('Mark','', 'Gold: published causal change, a site in this release. Silver: published variant, marker or lead SNP, a site here; causality not established. White: published variant that is not in this marker set.')}
         ${th('Gene','gene','Gene symbol and B73 v5 model. Click to sort.')}${th('Change','','The published change.')}${th('Trait','','The trait the allele affects.')}
+        ${th('Favorable allele','','Which allele a breeder wants, as the publication reads it: the alternate, the reference (B73\u2019s), or it depends (hover for what on).')}
         ${th('Status in this release','','Whether the release genotypes the allele, and why not when it does not.')}
         ${th('Carriers (het / hom)','carriers','Heterozygous / homozygous carriers among the release lines. Click to sort.')}
+        ${th('B73','','B73\u2019s genotype at the site: Ref, Het or Alt.')}
         ${th('Site QC','','The class of the site from its heterozygous and homozygous carriers.')}${th('Priority','','The SNPMaize priority of the change, as SNPImpact computes it.')}${th('Reference','','The first publication; the record lists all.')}</tr></thead>
       <tbody>${rows}</tbody></table></div>
-      <div class="pager"><div class="info">Showing <span class="mono">${L.length}</span> of <span class="mono">${entries().length}</span> curated alleles</div></div>`;
+      <div class="pager"><div class="info">Showing <span class="mono">${L.length}</span> of <span class="mono">${entries().length}</span> published alleles · <span class="mono">${new Set(L.map(e=>e.gene)).size}</span> of <span class="mono">${new Set(entries().map(e=>e.gene)).size}</span> genes</div></div>`;
   }
 
   /* ---------- record ---------- */
@@ -163,6 +185,7 @@
       const st = STATUS[e.status] || {label:e.status, why:''};
       return `<div class="card pad cur-record" id="curRec_${esc(e.id)}">${top}
         <div class="cur-why"><b>${esc(st.label)}.</b> ${esc(st.why)} <span class="muted">(${esc(where(e))})</span></div>
+        ${e.favorable&&e.favorable!=='unknown'?`<p class="cur-pub"><span class="cur-k" style="display:inline">Favorable allele</span> ${favHTML(e)}${e.favorable_note?` <span class="muted">· ${esc(e.favorable_note)}</span>`:''}</p>`:''}
         <p>${esc(e.note||'')}</p>${pub}${review}
         <div class="cur-k" style="margin-top:12px">References</div><ul class="cur-refs">${refs}</ul></div>`;
     }
@@ -183,6 +206,8 @@
         <div><div class="cur-k">Consequence${gene}</div><div class="cur-v"><span class="cons ${esc(s.consClass)}">${esc(s.consequence)}</span>${s.sub?` <span class="c-mono">${esc(s.sub)}</span>`:''} <span class="muted">${esc(s.impact)}</span></div></div>
         <div><div class="cur-k">Site QC</div><div class="cur-v">${siteQcPill(s.qc, s.nHet, s.nHom)} ${s.nHet.toLocaleString()} het · ${s.nHom.toLocaleString()} hom · ${s.nMiss.toLocaleString()} missing</div></div>
         <div><div class="cur-k">Allele frequency</div><div class="cur-v">${s.af==null?'—':(s.af*100).toFixed(1)+'%'} <span class="muted">among called lines · MAF ${s.maf==null?'—':s.maf} · max LD r² ${s.maxr2==null?'—':s.maxr2}</span></div></div>
+        <div><div class="cur-k">Favorable allele</div><div class="cur-v">${favHTML(e)}${e.favorable_note?` <span class="muted">· ${esc(e.favorable_note)}</span>`:''}</div></div>
+        <div><div class="cur-k">B73</div><div class="cur-v">${b73HTML(e)} <span class="muted">${esc(GT_LONG[s.b73]||'')}</span></div></div>
         <div><div class="cur-k">Priority</div><div class="cur-v">${prioPill(s.priority)} <span class="muted" data-tt="The composite AI score: the mean of the standardized PlantCAD1, PlantCAD2 and ESM1, ESM2 scores the site has, as a z against the release's missense sites; the tiers are its 5th, 25th and 80th percentiles.">composite ${s.combined==null?'—':(s.combined>0?'+':'')+(+s.combined).toFixed(2)+' z · '+(s.combinedN||0)+' of 4 scores'+(compositePct(s.combined)==null?'':' · '+ordinal(compositePct(s.combined))+' percentile')}</span></div></div>
       </div>
       <div class="cur-k" style="margin-top:14px">Scores${s.rank?` <span class="muted" style="text-transform:none;font-weight:400">· rank among the ${s.rankPool} missense variants of the gene that have a carrier (1 = most negative)</span>`:''}</div>
@@ -252,7 +277,12 @@
       .cur-review{background:#fff7e6;border:1px solid #f0d9a8;border-left:4px solid #c27c0e;border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px}
       .cur-refs{margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6}
       .cur-refs a{word-break:break-all}
-      .cur-pub{font-size:13px;margin:6px 0 0}`;
+      .cur-pub{font-size:13px;margin:6px 0 0}
+      .cur-fav{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#f5f8fc;color:var(--ink)}
+      .cur-fav-alt{background:#e7f3ec;border-color:#bfe0cb;color:#176c3a} .cur-fav-ref{background:#eaf1fc;border-color:#c5d6f3;color:#274b8f}
+      .cur-fav-depends{background:#fff7e6;border-color:#f0d9a8;color:#8a5a0b} .cur-fav-unknown{color:var(--muted)}
+      .cur-b73{font-family:var(--mono);font-size:12px;padding:2px 7px;border-radius:7px;border:1px solid var(--line);background:#f5f8fc}
+      .cur-b73-alt{background:#fde9cc;border-color:#f0c58a} .cur-b73-het{background:#efe0fb;border-color:#d7bdf3}`;
     document.head.appendChild(s);
   }
 
