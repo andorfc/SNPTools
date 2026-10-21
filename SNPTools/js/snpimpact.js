@@ -302,6 +302,7 @@
       </div>
 
       ${IMP.hasQc?qcNoteHTML():''}
+      ${Data.pc2FallbackNote&&Data.pc2FallbackNote()?`<div class="qc-note" id="impPc2Note">${esc(Data.pc2FallbackNote())}</div>`:''}
       <div class="tbl-wrap" style="max-height:none">
         <table class="vcf imp">
           <thead><tr>

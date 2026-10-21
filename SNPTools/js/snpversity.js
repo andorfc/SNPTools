@@ -1121,6 +1121,7 @@ function renderTable(){
     ${annotNoteHTML()}
     ${genesPanel()}
     ${curatedLineHTML()}
+    ${Data.pc2FallbackNote&&Data.pc2FallbackNote()?`<div class="qc-note" id="versityPc2Note">${escAttr(Data.pc2FallbackNote())}</div>`:''}
     <div class="tbl-wrap"><table class="vcf">
       <thead><tr>
         <th data-tt="Chromosome — reference chromosome containing the variant.">CHR</th><th data-tt="Position — 1-based coordinate on B73 v5.">POS</th><th class="num" data-tt="Reference allele in B73 v5.">REF</th><th class="num" data-tt="Alternate allele represented by this row.">ALT</th>

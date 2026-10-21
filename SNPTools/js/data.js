@@ -647,7 +647,20 @@ const Data = (function () {
         gts,
       });
     }
-    return {rows, sampleCols};
+    /* A store without the one-pass score (release v1.4.2 and earlier, as snpmaize.maizegdb.org
+       ran in October 2026): the PlantCAD2 columns show the masked 512-bp score instead of an empty
+       column, marked on each row (pc2opIs512) so the composite score leaves it out and the colour
+       scale is the 512-bp one (scoreColorValue). Decided per result, over all its rows. */
+    const onePass = rows.some(r => r.pc2op != null);
+    const fallback = !onePass && rows.some(r => r.pc2 != null);
+    if (fallback) rows.forEach(r => { r.pc2op = r.pc2; r.pc2opIs512 = true; });
+    if (rows.length) PC2_FALLBACK = fallback;
+    return {rows, sampleCols, pc2Fallback: fallback};
+  }
+  /* true when the last parsed result showed the 512-bp PlantCAD2 score in the PlantCAD2 columns */
+  function pc2Fallback(){ return PC2_FALLBACK; }
+  function pc2FallbackNote(){
+    return PC2_FALLBACK ? 'PlantCAD2 shows the masked 512-bp score (plantcad2_score): this store carries no one-pass score (release v1.4.3). The 512-bp score is not part of the composite score.' : '';
   }
 
   /* ---- one site, several consequences ----
@@ -1021,6 +1034,7 @@ const Data = (function () {
     let sum = 0, n = 0;
     for (const k of cal.composite.of){
       const v = r[k], c = cal.scores[k];
+      if (k === 'pc2op' && r.pc2opIs512) continue;        // the 512-bp stand-in is not the one-pass score
       if (v == null || !isFinite(v) || !c || !(c.sd > 0)) continue;
       sum += (v - c.mean) / c.sd; n++;
     }
@@ -1299,6 +1313,7 @@ const Data = (function () {
     rankImpact,
     // the composite AI score: calibration, value, percentile, tiers (window.SNP_SCORE_CAL)
     scoreCal, compositeScore, compositePercentile, compositeTiers, compositeTier, compositeDamaging,
+    pc2Fallback, pc2FallbackNote,   // the PlantCAD2 columns show the 512-bp score when a store has no one-pass score
     ensureGeneDomains,
     geneDomains,
     ensureGeneModels,
@@ -1346,8 +1361,9 @@ function scoreHeadHTML(label){ return String(label).replace(/^PlantCAD(\d?)$/, '
    the score itself. Any other key: the value unchanged. */
 var PC2OP_COLOR_Q = [[-9.4,-6.8],[-8.9,-6.3],[-8.4,-5.7],[-7.5,-4.7],[-6.5,-3.7],[-5.0,-2.3],[-3.4,-0.7],
                      [-1.7,0.5],[0.1,1.7],[1.3,2.7],[2.7,4.0],[3.5,4.9],[4.1,5.6]];
+var PC2_FALLBACK = false;   // set by Data.parseVcf: the PlantCAD2 columns hold the 512-bp score (no one-pass score in the store)
 function scoreColorValue(key, v){
-  if (v == null || !isFinite(v) || (key !== 'pc2op' && key !== 'plantcad2op')) return v;
+  if (v == null || !isFinite(v) || (key !== 'pc2op' && key !== 'plantcad2op') || PC2_FALLBACK) return v;
   var q = PC2OP_COLOR_Q, n = q.length;
   if (v <= q[0][0]) return v + (q[0][1] - q[0][0]);
   if (v >= q[n - 1][0]) return v + (q[n - 1][1] - q[n - 1][0]);

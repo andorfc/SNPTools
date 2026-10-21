@@ -1138,6 +1138,33 @@ async function until(site, expr, ms = 8000){
     P.errors = s16.errors.filter(e => !/favicon/.test(e));
     s16.window.close(); }
 
+  /* ---------- PlantCAD2 fallback to the 512-bp score (check_pc2_fallback.py) ----------
+     Data.parseVcf on a two-sample VCF text with and without plantcad2_onepass_score; the note in the
+     pages is checked by rendering SNPVersity's results and SNPImpact over a parsed result. */
+  { const s17 = await openSite(ROOT); const $q = s17.$eval; const F = R.pc2fallback = {};
+    const vcf = (onePass) => ['##fileformat=VCFv4.2', '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tZmG_B73\tZmG_B97',
+      'chr2\t4491500\t.\tC\tT\t.\t.\tTYPE=missense_variant;EFFECT=MODERATE;GENEMODEL=Zm00001eb067740;SUB=A10V;plantcad1_score=-1.2;plantcad2_score=-2.4'
+        + (onePass ? ';plantcad2_onepass_score=-4.6' : '') + ';evo2_score=-0.5;ESM1_score=-5.1;ESM2_score=-4.9;MAF=0.1;NHET=1;NHOM=5;SITEQC=PASS\tGT\t0/0\t1/1'].join('\n');
+    const probe = (onePass) => $q(`(()=>{ const r=Data.parseVcf(${JSON.stringify(vcf(onePass))}, ['ZmG_B73','ZmG_B97']).rows[0];
+      const c=Data.compositeScore(r,'zmgrin2026_imp');
+      return {pc2op:r.pc2op, pc2:r.pc2, is512:!!r.pc2opIs512, flag:Data.pc2Fallback(), compN:c.n, compN4:(c.n===4?4:null), color:scoreColorValue('pc2op', r.pc2op), note:Data.pc2FallbackNote()}; })()`);
+    F.without = probe(false);
+    // the pages: SNPVersity's result, SNPImpact over it, SNPFunction's burden card, with the fallback on
+    $q(`(()=>{ const p=Data.parseVcf(${JSON.stringify(vcf(false))}, ['ZmG_B73','ZmG_B97']);
+      S.results={rows:p.rows, accs:[{id:'ZmG_B73'},{id:'ZmG_B97'}], chr:'chr2', q:{dataset:'zmgrin2026_imp', chr:'chr2', lo:4491400, hi:4491600}, sampleCols:p.sampleCols};
+      S.selected=new Set(['ZmG_B73','ZmG_B97']); go('snpversity'); renderResults(); })()`);
+    const notes = {versity: $q(`!!document.getElementById('versityPc2Note')`)};
+    $q(`sendToImpact()`); await s17.wait(300); notes.impact = $q(`!!document.getElementById('impPc2Note')`);
+    F.pageNotes = notes;   // SNPFunction queries the store itself (one-pass present locally), so its note is not exercised here
+    F.with = probe(true);
+    $q(`(()=>{ const p=Data.parseVcf(${JSON.stringify(vcf(true))}, ['ZmG_B73','ZmG_B97']);
+      S.results={rows:p.rows, accs:[{id:'ZmG_B73'},{id:'ZmG_B97'}], chr:'chr2', q:{dataset:'zmgrin2026_imp', chr:'chr2', lo:4491400, hi:4491600}, sampleCols:p.sampleCols};
+      go('snpversity'); renderResults(); })()`);
+    F.pageNotesOff = {versity: $q(`!!document.getElementById('versityPc2Note')`)};
+    $q(`sendToImpact()`); await s17.wait(300); F.pageNotesOff.impact = $q(`!!document.getElementById('impPc2Note')`);
+    F.errors = s17.errors.filter(e => !/favicon/.test(e));
+    s17.window.close(); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

@@ -435,6 +435,7 @@
     const nss = b.nonsynSyn==null ? '∞' : b.nonsynSyn;
     const af = b.afSpectrum;
     return `<div class="card pad" style="margin-bottom:16px">
+      ${Data.pc2FallbackNote&&Data.pc2FallbackNote()?`<div class="muted" id="fnPc2Note" style="font-size:12px;margin:0 0 8px">${esc(Data.pc2FallbackNote())}</div>`:''}
       <div class="fn-h">Variant burden${b.nUsed!=null?` <span class="muted" id="fnBurdenSites" style="font-weight:400;font-size:12px" data-tt="Flagged sites (het only, het excess) and sites with no carrier in this release are left out of the burden.">over ${b.nUsed.toLocaleString()} usable sites of ${b.nSites.toLocaleString()}</span>`:''}</div>
       <div class="fn-stats">
         ${stat('Non-syn : syn', nss, 'coding constraint (higher = more nonsynonymous)')}
