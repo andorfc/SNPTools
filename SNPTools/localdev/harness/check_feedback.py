@@ -35,7 +35,7 @@ hides = re.search(r'@media \(max-width:640px\)\{[^}]*\}[^@]*?\.mg-help \.mg-lbl\
 check(bool(hides) and all(x['svg'] for x in h), "(a) every masthead button has an icon (labels are hidden at 640 px and below)")
 check(F['props'] and F['props']['trigger'] == 'function', f"(b) collector config {F['props']}")
 hc = F['headerClick']
-check(hc['shown'] == 1 and hc['prevented'] and hc['hash'] == '', f"(b) Contact us opens the dialog once {hc}")
+check(hc['shown'] == 1 and hc['prevented'] and hc['hash'] == '#snpversity', f"(b) Contact us opens the dialog once, the page's own route untouched {hc}")   # href="#" must not navigate
 check(F['helpOn'] == [True, False], f"(c) on the Help page only Help & FAQ is marked {F['helpOn']}")
 check(F['afterGo'] == [False, False], f"(c) nothing marked after going to a tool {F['afterGo']}")
 g = F['gwas']

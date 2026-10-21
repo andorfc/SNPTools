@@ -404,6 +404,7 @@ const SNPHelp = (function () {
 
   /* ---- what's new (the changes of October 2026) ---- */
   const NEWS = [
+    ['Permalinks', 'The address bar follows what is on screen, so a link opens it again: #snpcurate/SC0003 opens that record; #snpfunction/<gene>, #snpfold/<gene>, #snpgeo/<gene> and #paneffect/<gene> open that gene; #snpgwas/<dataset> opens that GWAS dataset; #snpversity?ds=zmgrin2026_imp&chr=chr6&start=115183121&end=115185121 runs that region with the current selection. Back returns to the previous tool or record, and the tab is titled after the tool and the thing it shows.'],
     ['High Quality set', 'The GRIN-linked 2026 release is offered as two sets: Imputed (all 46,054,265 sites) and High Quality (27,787,101 sites: the sites with a carrier, less the common ones whose maxR² is below 0.2). Every tool works on either; they share their 933 lines, so a selection carries over when you switch. Genome-wide IBS in SNPCompare and SNPTree is precomputed on the Imputed set\u2019s sites.'],
     ['Min. maxR²', 'SNPVersity\u2019s table has a Min. maxR² filter beside Min. MAF: it hides the sites whose maxR² is below the value, and those without one.'],
     ['SNPMaize', 'SNPTools is now SNPMaize: a SNP toolkit to explore variant diversity across maize germplasm.'],

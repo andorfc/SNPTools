@@ -1110,6 +1110,34 @@ async function until(site, expr, ms = 8000){
     s15.window.close();
   }
 
+  /* ---------- permalinks: the hash router of core.js (check_permalinks.py) ----------
+     A hash the app did not write (a pasted link, Back) is applied on hashchange; a tool writes its
+     thing into the hash once it is on screen. jsdom fires hashchange on a location.hash assignment. */
+  { const s16 = await openSite(ROOT); const $p = s16.$eval; const P = R.permalinks = {};
+    const php = () => s16.log.filter(x => x.url && x.url.endsWith('processForm.php')).length;
+    P.boot = $p(`({hash:location.hash, title:document.title, tool:S.tool})`);
+    $p(`go('snpcurate'); CURATE.open('SC0003')`); await s16.wait(100);
+    P.curate = $p(`({hash:location.hash, title:document.title})`);
+    $p(`location.hash='#snpfunction/Zm00001eb277490'`); await s16.wait(400);
+    P.func = $p(`({hash:location.hash, tool:S.tool, title:document.title, gene:(document.getElementById('fnGeneInput')||{}).value})`);
+    $p(`location.hash='#snpcurate'`); await s16.wait(300);
+    P.back = $p(`({tool:S.tool, record:!!document.querySelector('.cur-record'), hash:location.hash})`);
+    $p(`location.hash='#snpversity?ds=zmgrin2026_imp&chr=chr4&start=46648300&end=46648450'`);
+    for (let i = 0; i < 150; i++){ await s16.wait(200); if ($p(`!!(S.results&&S.results.q&&S.results.q.chr==='chr4')`)) break; }
+    await s16.wait(300);
+    P.versity = $p(`({tool:S.tool, hash:location.hash, q:S.results&&S.results.q, n:S.results&&S.results.rows&&S.results.rows.length, title:document.title})`);
+    P.versity.requests = php();
+    $p(`location.hash='#snpcurate'`); await s16.wait(200);
+    $p(`location.hash='#snpversity?ds=zmgrin2026_imp&chr=chr4&start=46648300&end=46648450'`); await s16.wait(600);
+    P.rerun = {tool: $p(`S.tool`), requests: php()};
+    $p(`location.hash='#nosuchtool'`); await s16.wait(200);
+    P.unknown = $p(`({tool:S.tool, hash:location.hash})`);
+    $p(`location.hash='#snpgwas/tibbscortes2024_nam_asi_intcp'`);
+    for (let i = 0; i < 50; i++){ await s16.wait(200); if ($p(`SNPTools.registry.snpgwas.activeEntryId()==='tibbscortes2024_nam_asi_intcp' && location.hash.indexOf('/')>0`)) break; }
+    P.gwas = $p(`({tool:S.tool, active:SNPTools.registry.snpgwas.activeEntryId(), hash:location.hash, title:document.title})`);
+    P.errors = s16.errors.filter(e => !/favicon/.test(e));
+    s16.window.close(); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

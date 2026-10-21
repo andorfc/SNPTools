@@ -265,6 +265,7 @@
 
   /* re-show already-rendered content without re-analyzing */
   function reshowLoaded(){
+    if (typeof setRoute==='function') setRoute('snpfunction', FN.loadedGene||'', FN.loadedGene||'');   // #snpfunction/<gene>
     syncDatasetChooser();
     // the SNPVersity selection may have changed while we were away — refresh the
     // "Replace current selection (N)" hint so the count on screen is never stale
@@ -284,6 +285,7 @@
     FN.loaded = true;                // commit to the loaded view (keep across navigation)
     FN.loadedGene = FN.gene;
     FN.loading = true;
+    if (typeof setRoute==='function') setRoute('snpfunction', FN.gene, FN.gene);   // the permalink: #snpfunction/<gene>
     FN.goCurated = false;            // reset GO filter for the new gene
     loadAnnotation(FN.gene);         // fetch functional annotation in parallel (independent of variant data)
     loadOntology(FN.gene);           // and MaizeGDB's GO + pathways, also in parallel

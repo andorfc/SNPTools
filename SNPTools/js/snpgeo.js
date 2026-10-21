@@ -141,6 +141,8 @@ function renderGeo(page){
   `;
 
   page.innerHTML = header + results;
+  // a permalink's gene (#snpgeo/<gene>, core.js applyRoute sets S.geoGene): search it once the page is up
+  if (S.geoGene){ const g=S.geoGene; S.geoGene=null; const inp=document.getElementById('geoGeneInput'); if (inp){ inp.value=g; geoLookupGene(); } }
 
   if (!hasResults) {
     // Focus gene input when no results yet
@@ -236,6 +238,7 @@ async function geoLookupGene(){
     };
     
     if (statusEl) statusEl.innerHTML = `<span style="color:#10b981">${result.rows.length} variants found</span>`;
+    if (geoIsCurrent(seq) && typeof setRoute==='function') setRoute('snpgeo', gene, gene);   // the permalink: #snpgeo/<gene>
     
     // Re-render SNPGeo with results (unless another search or another tool took over meanwhile)
     setTimeout(() => {

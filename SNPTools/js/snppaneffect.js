@@ -229,6 +229,7 @@
    *  LOAD FLOW — resolve canonical, apply policy, then render          *
    * ------------------------------------------------------------------ */
   async function loadGene() {
+    if (typeof setRoute==='function') setRoute('paneffect', PE.state.gene, PE.state.gene);   // the permalink: #paneffect/<gene>
     status('Checking transcript…');
     let info = null;
     try { info = await resolveGene(PE.state.gene); } catch (e) { info = null; }

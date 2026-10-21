@@ -105,6 +105,8 @@
       <div id="curRecord">${S.curateId ? recordHTML(byId(S.curateId)) : ''}</div>`;
     if (typeof attachTT==='function') attachTT();
     if (S.curateId){ const r=document.getElementById('curRecord'); if (r && r.scrollIntoView) r.scrollIntoView({block:'start'}); }
+    const rec = S.curateId ? byId(S.curateId) : null;     // the permalink: #snpcurate/SC0003
+    if (typeof setRoute==='function') setRoute('snpcurate', rec ? rec.id : '', rec ? `${rec.symbol} ${rec.label}` : '');
   }
   function head(){
     return `<div class="sec"><div class="bar"></div><div>

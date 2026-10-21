@@ -155,9 +155,55 @@ function renderNav(){
 }
 
 
-/* ================= ROUTER ================= */
+/* ================= ROUTER + PERMALINKS =================
+   The URL hash names the tool and, for a tool that opens on one thing, that thing, so a link
+   can open a record, a gene or a region:
+     #snpcurate/SC0003            #snpfunction/Zm00001eb277490     #snpfold/Zm00001eb277490
+     #snpgeo/Zm00001eb277490      #paneffect/Zm00001eb277490       #snpgwas/<dataset id>
+     #snpversity?ds=zmgrin2026_imp&chr=chr6&start=115183121&end=115185121   (runs the query)
+     #<tool>                      any other tool, or a tool without its thing
+   go() writes "#<tool>"; a tool writes its thing with setRoute() once it is on screen. Each write
+   is a history entry, so Back returns to the previous tool or thing. A hash the app did not write
+   (Back, Forward, a pasted link, the first load) is applied by applyRoute(). The tab title follows:
+   "SNPMaize · SNPCurate · DGAT1-2 F469 insertion". */
+const ROUTE = {current:''};
+function routeHash(id, thing, query){ return '#'+id+(thing?'/'+encodeURIComponent(thing):'')+(query?'?'+query:''); }
+/* the tool's thing on screen: thing = a gene, a record id, a dataset id (encoded in the hash),
+   label = what the tab title says for it, query = SNPVersity's region */
+function setRoute(id, thing, label, query){
+  const h=routeHash(id, thing, query);
+  ROUTE.current=h;
+  if(location.hash!==h){ try{ location.hash=h; }catch(e){} }
+  document.title='SNPMaize · '+((TOOLS[id]&&TOOLS[id].name)||id)+(label?' · '+label:'');
+}
+function parseRoute(h){
+  const m=/^#([a-z]+)(?:\/([^?]*))?(?:\?(.*))?$/.exec(h||'');
+  if(!m||!TOOLS[m[1]]) return null;
+  let thing=''; try{ thing=decodeURIComponent(m[2]||''); }catch(e){ thing=m[2]||''; }
+  return {id:m[1], thing, q:new URLSearchParams(m[3]||'')};
+}
+/* set the tool's state from a hash and open the tool; false when the hash names no tool */
+function applyRoute(h){
+  const r=parseRoute(h); if(!r) return false;
+  const t=r.thing.trim();
+  switch(r.id){
+    case 'snpcurate':   S.curateId=t||null; break;
+    case 'snpfunction': if(t) S.functionGene=t; break;
+    case 'snpfold':     if(t) S.foldGene=t; break;
+    case 'snpgeo':      if(t) S.geoGene=t; break;
+    case 'paneffect':   if(t) S.pe={gene:t}; break;
+    case 'snpgwas':     S.gwasEntry=t||null; break;
+    case 'snpversity':  if(r.q.has('chr')) S.versityRoute={dataset:r.q.get('ds'), chr:r.q.get('chr'), start:r.q.get('start'), end:r.q.get('end')}; break;
+  }
+  ROUTE.current=h;
+  go(r.id);
+  return true;
+}
+window.addEventListener('hashchange',()=>{ if(location.hash!==ROUTE.current) applyRoute(location.hash); });
+
 function go(id){
   S.tool=id; closeMenu(); toggleRail(false);
+  ROUTE.current='';                 // the tool's render may write its thing (setRoute); else "#<tool>" below
   document.querySelectorAll('.mg-help.on').forEach(el=>el.classList.remove('on'));   // left the Help page (SNPHelp.open sets it)
   document.getElementById('crumbTool').innerHTML='<b>'+TOOLS[id].name+'</b>';
   document.getElementById('sendBtn').style.display = id==='snpversity'?'inline-flex':'none';
@@ -175,6 +221,12 @@ function go(id){
     page.innerHTML='<div class="card pad" style="border-color:#f3c2bd;background:#fff6f5;margin-top:14px">'
       +'<h3 style="font-family:var(--disp);color:#b42318;margin:0 0 8px">'+(TOOLS[id]?TOOLS[id].name:id)+' hit an error</h3>'
       +'<pre style="white-space:pre-wrap;background:#fff;border:1px solid #f0cfca;border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;color:#8a2a20">'+String(err&&err.stack||err)+'</pre></div>';
+  }
+  if(!ROUTE.current){
+    // a pasted link to this tool whose thing is still loading (e.g. a SNPVersity region) keeps its hash
+    const r=parseRoute(location.hash);
+    if(r&&r.id===id){ ROUTE.current=location.hash; document.title='SNPMaize · '+TOOLS[id].name; }
+    else setRoute(id,'');
   }
   refreshSelChip();
 }
@@ -310,7 +362,7 @@ function toggleRail(show){document.getElementById('rail').classList.toggle('show
 
 /* ================= INIT (runs after every tool file has registered) ================= */
 function init(){
-  try{ renderNav(); go('snpversity'); }
+  try{ renderNav(); if(!applyRoute(location.hash)) go('snpversity'); }
   catch(err){
     console.error('SNPTools init error:',err);
     var p=document.getElementById('page');

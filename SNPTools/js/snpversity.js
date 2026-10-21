@@ -35,8 +35,23 @@ function syncDatasetBinding(){
     [...S.selected].forEach(id => { if (!known.has(id)) S.selected.delete(id); });
   }
 }
+/* a permalink's region (#snpversity?ds=&chr=&start=&end=, core.js applyRoute sets S.versityRoute):
+   applied to the form, then queried with the current selection once the page is up. A region the
+   page already shows (Back to it) is not queried again. */
+function applyVersityRoute(){
+  const r=S.versityRoute; S.versityRoute=null;
+  if(!r) return null;
+  if(r.dataset && Data.datasets().some(d=>d.id===r.dataset)) S.dataset=r.dataset;
+  const chr=String(r.chr||'').startsWith('chr')?r.chr:'chr'+r.chr;
+  const lo=Math.floor(+r.start), hi=Math.ceil(+r.end);
+  if(!CHR_LEN[chr] || !(lo>=0) || !(hi>lo)) return null;
+  S.chr=chr; S.start=lo; S.end=hi;
+  const q=S.results&&S.results.q;
+  return {run: !(q && q.dataset===S.dataset && q.chr===chr && q.lo===lo && q.hi===hi)};
+}
 function renderVersity(){
   injectVersityCSS();
+  const route = applyVersityRoute();
   syncDatasetBinding();
   const inbound = applyPendingRequest();   // e.g. carriers handed over from SNPFunction
   const p=document.getElementById('page');
@@ -84,6 +99,7 @@ function renderVersity(){
     document.getElementById('runbar').scrollIntoView({behavior:'smooth',block:'center'});
     return;
   }
+  if(route && route.run){ runQuery(); return; }
   // returning from another tool: restore the last results instead of forcing a rebuild
   if(S.results && S.results.rows && S.results.rows.length) renderResults();
 }
@@ -832,6 +848,9 @@ async function runQuery(){
     const res = await Data.queryVariants(q.dataset, q.chr, lo, hi, [...S.selected]);
     if(seq!==RUN_SEQ) return;
     res.q=q; S.results=res;
+    // the permalink of this result: #snpversity?ds=…&chr=…&start=…&end=…
+    if(typeof setRoute==='function' && S.tool==='snpversity')
+      setRoute('snpversity', '', `${q.chr}:${lo.toLocaleString()}–${hi.toLocaleString()}`, `ds=${encodeURIComponent(q.dataset)}&chr=${q.chr}&start=${lo}&end=${hi}`);
     if(S.results.wide){
       anchor.innerHTML=wideResultCard(S.results, lo, hi);
       return;

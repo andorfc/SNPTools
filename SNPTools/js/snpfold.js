@@ -846,6 +846,8 @@
     if (requestedVariant && typeof S !== 'undefined' && S) S.foldVariant = null;
     if (requestedVariant) FD.pendingVariant = requestedVariant;
 
+    // a loaded gene shown again keeps its permalink (loadStructure writes it for a new load)
+    if (!requestedGene && FD.loaded && FD.loadedGene && typeof setRoute==='function') setRoute('snpfold', FD.loadedGene, FD.loadedGene);
     if (requestedGene){
       /* came from another tool — honor the explicit request and autoload */
       S.foldGene = null;
@@ -1006,6 +1008,7 @@
     FD.truncation = null;
     FD.loaded = true;               // commit to the loaded view (keep across navigation)
     FD.loadedGene = FD.gene;
+    if (typeof setRoute==='function') setRoute('snpfold', FD.gene, FD.gene);   // the permalink: #snpfold/<gene>
 
     const header = datasetChooser() + searchBar();
 

@@ -30,7 +30,7 @@ if not L:
     print('change list of 3 October: skipped (the full chr2 / chr4 stores are not installed)'); sys.exit(0)
 TAG = 'A SNP toolkit to explore variant diversity across maize germplasm'
 b = L['brand']
-check(b == {'title': 'SNPMaize — SNPVersity 2.1', 'rail': 'SNPMaize', 'railTag': TAG, 'mast': 'SNPMaize', 'mastTag': TAG, 'crumb': 'SNPMaize'},
+check(b == {'title': 'SNPMaize · SNPVersity', 'rail': 'SNPMaize', 'railTag': TAG, 'mast': 'SNPMaize', 'mastTag': TAG, 'crumb': 'SNPMaize'},
       f"name and tagline: {b['rail']} / {b['mast']} / crumb {b['crumb']} / title {b['title']}")
 
 # (b) SNPVersity

@@ -125,6 +125,12 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
 | **SNPTree** | Neighbour-joining / UPGMA trees from the region's genotypes (Newick, MEGA, PHYLIP); the precomputed genome-wide trees as downloads. Usable sites by default, with a switch to all sites (SNPMatrix likewise). |
 | **PanEffect** | Every amino-acid substitution of a protein scored by ESM, for B73 and across the pan-genome, with domains and secondary structure (native port of MaizeGDB's PanEffect). |
 
+**Permalinks.** The URL hash follows what is on screen and opens it again when pasted: `#snpcurate/SC0003`
+(a record), `#snpfunction/<gene>`, `#snpfold/<gene>`, `#snpgeo/<gene>`, `#paneffect/<gene>`, `#snpgwas/<dataset id>`,
+and `#snpversity?ds=<set>&chr=<chr>&start=<bp>&end=<bp>`, which runs that region with the current selection.
+Each is a history entry, so Back returns to the previous tool or record; the tab title names the tool and the
+thing shown (`core.js` `setRoute` / `applyRoute`).
+
 SNPImpute, SNPDensity and SNPGermplasm are roadmap placeholders and are not in the navigation.
 
 ---

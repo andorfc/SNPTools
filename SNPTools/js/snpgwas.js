@@ -2614,6 +2614,8 @@
       loadManifest().then(rerenderIfActive).catch(rerenderIfActive);
       return;
     }
+    // a permalink's dataset (#snpgwas/<id>, core.js applyRoute sets S.gwasEntry)
+    if (S.gwasEntry) { const e = MANIFEST.find(function (x) { return x.id === S.gwasEntry; }); S.gwasEntry = null; if (e) setActiveEntry(e); }
     page.innerHTML = shellHTML();
     wireContribute();
     wirePicker();
@@ -2622,6 +2624,8 @@
       updateReadout();
       resizeCanvases();
     }
+    if (typeof setRoute === 'function') setRoute('snpgwas', activeEntry ? activeEntry.id : '',
+      activeEntry ? [activeEntry.trait, activeEntry.measure, activeEntry.population].filter(Boolean).join(' · ') : '');
   }
 
   SNPTools.register('snpgwas', {
