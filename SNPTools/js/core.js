@@ -187,7 +187,7 @@ function applyRoute(h){
   const r=parseRoute(h); if(!r) return false;
   const t=r.thing.trim();
   switch(r.id){
-    case 'snpcurate':   S.curateId=t||null; break;
+    case 'snpcurate':   S.curateId=t||null; S.curateLines = r.q.has('lines') ? r.q.get('lines').split(',').filter(Boolean) : null; break;
     case 'snpfunction': if(t) S.functionGene=t; break;
     case 'snpfold':     if(t) S.foldGene=t; break;
     case 'snpgeo':      if(t) S.geoGene=t; break;

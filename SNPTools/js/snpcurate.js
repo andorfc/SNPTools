@@ -13,7 +13,8 @@
  * ===================================================================== */
 (function () {
 
-  const CU = { fText:'', fMark:'all', fStatus:'all', sortKey:null, sortDir:1, busy:null };
+  const CU = { fText:'', fMark:'all', fStatus:'all', sortKey:null, sortDir:1, busy:null,
+               lines:[], linesReport:null };     // the lines panel: accession ids in the order given, and the last load's report
   const STATUS = {
     site:          {label:'Site in this release'},
     not_a_site:    {label:'Not a site',         why:'The release has no site at this position, so it cannot show the allele.'},
@@ -93,6 +94,8 @@
   function render(page){
     page = page || document.getElementById('page');
     injectCSS();
+    // a permalink's lines (#snpcurate?lines=<ids>, core.js applyRoute sets S.curateLines)
+    if (S.curateLines){ const ids=S.curateLines.filter(id=>Data.accessionById && Data.accessionById(id)); S.curateLines=null; CU.lines=ids; CU.linesReport={matched:ids.length, unmatched:[], fanout:0, considered:ids.length}; }
     page.className = 'page fade';
     const D = data();
     if (!D){
@@ -119,12 +122,104 @@
           <select id="curStatus" onchange="CURATE.setFilter('fStatus', this.value)">
             <option value="all">Any status</option>${stat.map(k=>`<option value="${k}" ${CU.fStatus===k?'selected':''}>${esc(STATUS[k].label)}</option>`).join('')}</select></div>
       </div>
+      <div id="curLines">${linesPanelHTML()}</div>
       <div id="curTable">${tableHTML()}</div>
       <div id="curRecord">${S.curateId ? recordHTML(byId(S.curateId)) : ''}</div>`;
     if (typeof attachTT==='function') attachTT();
     if (S.curateId){ const r=document.getElementById('curRecord'); if (r && r.scrollIntoView) r.scrollIntoView({block:'start'}); }
-    const rec = S.curateId ? byId(S.curateId) : null;     // the permalink: #snpcurate/SC0003
-    if (typeof setRoute==='function') setRoute('snpcurate', rec ? rec.id : '', rec ? `${rec.symbol} ${rec.label}` : '');
+    writeRoute();
+  }
+  /* the permalink: #snpcurate/SC0003, with ?lines=<ids> when the lines panel holds lines */
+  function writeRoute(){
+    const rec = S.curateId ? byId(S.curateId) : null;
+    if (typeof setRoute==='function') setRoute('snpcurate', rec ? rec.id : '', rec ? `${rec.symbol} ${rec.label}` : (CU.lines.length ? `${CU.lines.length} lines` : ''),
+      CU.lines.length ? 'lines=' + CU.lines.map(encodeURIComponent).join(',') : '');
+  }
+
+  /* ---------- the lines panel: which published alleles do these lines carry ----------
+     Rows are the lines (pasted, the SNPVersity selection, or the NAM founders), columns the site
+     entries in the table's order; a cell is the line's genotype at the site, read from the data
+     file's carrier lists (hom, het, missing: everything else is the reference call). A line with a
+     missing call at a site shows "?". The favorable allele colours the cell: green when the line is
+     homozygous for it, pale green when heterozygous. Nothing is queried. */
+  function siteEntries(){
+    return entries().filter(e=>e.site).slice().sort((a,b)=>(MARK_ORDER[a.mark]-MARK_ORDER[b.mark]) || String(a.symbol).localeCompare(String(b.symbol)) || a.id.localeCompare(b.id));
+  }
+  function gtAt(e, id){ const c=e.site.carriers; return c.hom.indexOf(id)>=0 ? 'alt' : c.het.indexOf(id)>=0 ? 'het' : (c.missing||[]).indexOf(id)>=0 ? 'missing' : 'ref'; }
+  const GT_GLYPH = {alt:'H', het:'h', ref:'\u00b7', missing:'?'};
+  /* carries the favorable allele: 'hom', 'het' or '' (also '' when the favorable allele is not known) */
+  function favCarry(e, gt){
+    const f=e.favorable;
+    if (f==='alt') return gt==='alt' ? 'hom' : gt==='het' ? 'het' : '';
+    if (f==='ref') return gt==='ref' ? 'hom' : gt==='het' ? 'het' : '';
+    return '';
+  }
+  function lineLabel(id){ const a=Data.accessionById ? Data.accessionById(id) : null; return a ? (a.label || a.strain || id) : id; }
+  function lineSub(id){ const a=Data.accessionById ? Data.accessionById(id) : null; return a ? (a.subpop || '') : ''; }
+  function linesPanelHTML(){
+    const n=(S.selected&&S.selected.size)||0, E=siteEntries();
+    const rep=CU.linesReport;
+    const status = rep ? `<div class="cur-sub" id="curLinesStatus">${rep.matched} line${rep.matched===1?'':'s'} loaded${rep.fanout?` (${rep.fanout} entries matched several lines)`:''}${rep.unmatched.length?` · <span class="cur-out">${rep.unmatched.length} not found: ${esc(rep.unmatched.slice(0,5).join(', '))}${rep.unmatched.length>5?'…':''}</span>`:''}</div>` : '';
+    return `<div class="card pad cur-lines">
+      <div class="cur-lines-h"><div><div class="n" style="margin:0">YOUR LINES</div><h3 style="margin:2px 0 4px">Which published alleles do these lines carry?</h3>
+        <p class="cur-sub" style="margin:0">Paste accession ids, line names or GRIN numbers (one per line), or take the SNPVersity selection. Each line's genotype at the ${E.length} genotyped alleles is read from the registry; nothing is queried. Click a column to select its carriers for SNPVersity.</p></div></div>
+      <div class="cur-lines-ctl">
+        <textarea id="curLinesPaste" rows="3" placeholder="B73\nIl14H\nPI 550473" spellcheck="false" aria-label="Lines to look up, one per line"></textarea>
+        <div class="cur-lines-btns">
+          <button class="btn" onclick="CURATE.loadLines(document.getElementById('curLinesPaste').value)">${ICONS.search||''} Load lines</button>
+          <button class="btn ghost" onclick="CURATE.useSelection()" ${n?'':'disabled'}>Use the SNPVersity selection (${n.toLocaleString()})</button>
+          <button class="btn ghost" onclick="CURATE.useFounders()">NAM founders</button>
+          ${CU.lines.length?`<button class="btn ghost" onclick="CURATE.clearLines()">Clear</button>`:''}
+        </div>
+      </div>
+      ${status}
+      ${CU.lines.length ? linesMatrixHTML(E) : ''}
+    </div>`;
+  }
+  function linesMatrixHTML(E){
+    const favN = E.filter(e=>e.favorable==='alt'||e.favorable==='ref').length;
+    const head = E.map(e=>`<th class="cur-lcol" data-id="${esc(e.id)}" onclick="CURATE.selectCarriers('${esc(e.id)}')" data-tt="${esc(e.symbol)} ${esc(e.label)} · ${esc(e.trait)} · favorable: ${esc(FAV[e.favorable||'unknown'])}${e.favorable_note?' ('+esc(e.favorable_note)+')':''}. Click to select its ${(e.site.nHet+e.site.nHom).toLocaleString()} carriers for SNPVersity."><span class="cur-lsym">${curateBadge(e)} ${esc(e.symbol)}</span><span class="cur-llab">${esc(e.label.replace(/\s*\(.*$/,''))}</span></th>`).join('');
+    const rows = CU.lines.map(id=>{
+      let fav=0, alt=0;
+      const cells = E.map(e=>{ const gt=gtAt(e,id), c=favCarry(e,gt); if (c==='hom') fav++; if (gt==='alt') alt++;
+        return `<td class="cur-lc cur-lc-${gt}${c?' cur-lc-fav'+c:''}" data-tt="${esc(lineLabel(id))} · ${esc(e.symbol)} ${esc(e.label)}: ${esc(GT_LONG[gt]||gt)}${c?' (the favorable allele)':''}">${GT_GLYPH[gt]}</td>`; }).join('');
+      return `<tr><th class="cur-lrow"><b>${esc(lineLabel(id))}</b><div class="cur-sub">${esc(id)}${lineSub(id)?' · '+esc(lineSub(id)):''}</div></th>${cells}<td class="num" data-tt="Homozygous for the favorable allele at how many of the ${favN} alleles whose favorable allele is known.">${fav} <span class="muted">of ${favN}</span></td><td class="num" data-tt="Homozygous for the alternate allele at how many of the ${E.length} genotyped alleles.">${alt}</td></tr>`;
+    }).join('');
+    return `<div class="cur-lines-acts">
+        <span class="cur-sub"><b>${CU.lines.length.toLocaleString()}</b> line${CU.lines.length===1?'':'s'} × ${E.length} genotyped alleles · H homozygous alternate · h heterozygous · · reference · ? missing</span>
+        <button class="btn ghost" onclick="CURATE.linesDownload()">${ICONS.download||''} TSV</button>
+        <button class="btn ghost" onclick="CURATE.linesToSelection()" data-tt="Make these lines the SNPVersity selection.">Set as the selection</button>
+      </div>
+      <div class="tbl-wrap cur-lines-wrap"><table class="cur-lines-tbl" id="curLinesTbl"><thead><tr><th class="cur-lrow">Line</th>${head}<th class="num">Favorable</th><th class="num">Alt</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  /* rows of the TSV: one per line, a column per genotyped allele (alt / het / ref / missing) */
+  function linesTSV(){
+    const E=siteEntries();
+    const head=['accession','line','subpopulation'].concat(E.map(e=>`${e.id} ${e.symbol} ${e.label}`)).concat(['favorable_hom','alt_hom']);
+    const out=[head.join('\t')];
+    CU.lines.forEach(id=>{ let fav=0, alt=0; const g=E.map(e=>{ const gt=gtAt(e,id); if (favCarry(e,gt)==='hom') fav++; if (gt==='alt') alt++; return gt; });
+      out.push([id, lineLabel(id), lineSub(id)].concat(g).concat([fav, alt]).join('\t')); });
+    return out.join('\n')+'\n';
+  }
+  /* resolve pasted ids, names and GRIN numbers with SNPVersity's resolver (snpversity.js) */
+  function resolveLines(text){
+    const idx = (typeof buildAccIndex==='function') ? buildAccIndex() : null;
+    const seen=new Set(), ids=[], unmatched=[]; let fanout=0, considered=0;
+    String(text||'').split(/\r\n|\r|\n/).forEach(raw=>{
+      const line=String(raw).trim(); if (!line || /^[#!]/.test(line)) return;
+      considered++;
+      let hit = idx && typeof resolveAccEntry==='function' ? resolveAccEntry(line, idx) : null;
+      if (!hit || !hit.ok){ const a=Data.accessionById ? Data.accessionById(line) : null; hit = a ? {ok:true, ids:[a.id]} : null; }
+      if (!hit || !hit.ok){ unmatched.push(line); return; }
+      if (hit.ids.length>1) fanout++;
+      hit.ids.forEach(id=>{ if (!seen.has(id)){ seen.add(id); ids.push(id); } });
+    });
+    return {ids, unmatched, fanout, considered, matched: ids.length};
+  }
+  function setLines(ids, report){
+    CU.lines = ids.slice(); CU.linesReport = report || {matched: ids.length, unmatched:[], fanout:0, considered: ids.length};
+    const host=document.getElementById('curLines'); if (host){ host.innerHTML=linesPanelHTML(); if (typeof attachTT==='function') attachTT(); }
+    writeRoute();
   }
   function head(){
     return `<div class="sec"><div class="bar"></div><div>
@@ -278,6 +373,25 @@
       .cur-refs{margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6}
       .cur-refs a{word-break:break-all}
       .cur-pub{font-size:13px;margin:6px 0 0}
+      .cur-lines{margin:0 0 12px}
+      .cur-lines-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      .cur-lines-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
+      .cur-lines-ctl textarea{flex:1 1 260px;min-width:min(260px,100%);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-family:var(--mono);font-size:12.5px}
+      .cur-lines-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+      .cur-lines-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 6px}
+      .cur-lines-wrap{max-height:520px}
+      .cur-lines-tbl{border-collapse:separate;border-spacing:0;font-size:12.5px}
+      .cur-lines-tbl th,.cur-lines-tbl td{border-bottom:1px solid #eef1f5;padding:4px 6px;white-space:nowrap}
+      .cur-lines-tbl thead th{position:sticky;top:0;background:#fff;z-index:1;vertical-align:bottom;text-align:left}
+      .cur-lines-tbl th.cur-lrow{position:sticky;left:0;background:#fff;z-index:2;text-align:left;font-weight:500;min-width:160px}
+      .cur-lines-tbl thead th.cur-lrow{z-index:3}
+      .cur-lines-tbl th.cur-lcol{cursor:pointer;max-width:92px;white-space:normal;font-weight:500}
+      .cur-lines-tbl th.cur-lcol:hover{background:#f5f8fc}
+      .cur-lsym{display:block;font-weight:600} .cur-llab{display:block;font-size:11px;color:var(--muted);line-height:1.2}
+      .cur-lc{text-align:center;font-family:var(--mono);font-weight:600;width:34px}
+      .cur-lc-ref{color:#9aa3b2} .cur-lc-missing{color:#b0b7c3} .cur-lc-alt{background:#fde9cc} .cur-lc-het{background:#fff7e6}
+      .cur-lc-favhom{background:#cfe8d6;color:#176c3a} .cur-lc-favhet{background:#e7f3ec;color:#176c3a}
+      .cur-lines-tbl td.num{text-align:right}
       .cur-fav{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#f5f8fc;color:var(--ink)}
       .cur-fav-alt{background:#e7f3ec;border-color:#bfe0cb;color:#176c3a} .cur-fav-ref{background:#eaf1fc;border-color:#c5d6f3;color:#274b8f}
       .cur-fav-depends{background:#fff7e6;border-color:#f0d9a8;color:#8a5a0b} .cur-fav-unknown{color:var(--muted)}
@@ -288,6 +402,32 @@
 
   window.CURATE = {
     setDataset(id){ if (!Data.datasets().some(d=>d.id===id)) return; S.dataset=id; render(); },
+    /* the lines panel */
+    loadLines(text){ const r=resolveLines(text); setLines(r.ids, r); },
+    useSelection(){ setLines([...(S.selected||[])]); },
+    useFounders(){ setLines(Data.accessionsFor(ds()).filter(a=>a.namFounder).map(a=>a.id)); },
+    clearLines(){ CU.lines=[]; CU.linesReport=null; const host=document.getElementById('curLines'); if (host) host.innerHTML=linesPanelHTML(); writeRoute(); },
+    linesTSV, linesState(){ return {ids:CU.lines.slice(), report:CU.linesReport}; },
+    linesDownload(){
+      const blob=new Blob([linesTSV()],{type:'text/tab-separated-values'}), u=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=u; a.download=`snpcurate_lines_${CU.lines.length}x${siteEntries().length}.tsv`; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u), 1000);
+    },
+    linesToSelection(){
+      if (!CU.lines.length) return;
+      const before=[...(S.selected||[])];
+      S.selected=new Set(CU.lines); if (typeof refreshSelChip==='function') refreshSelChip(true);
+      if (typeof toast==='function') toast(`Selection is now <b>${CU.lines.length.toLocaleString()}</b> line${CU.lines.length===1?'':'s'}. SNPVersity uses it for its next query.`,
+        [{label:'Undo', run:()=>{ S.selected=new Set(before); if (typeof refreshSelChip==='function') refreshSelChip(true); }}, {label:'Open SNPVersity', run:()=>go('snpversity')}]);
+    },
+    /* a column of the lines panel: the site's carriers (homozygous and heterozygous) become the selection */
+    selectCarriers(id){
+      const e=byId(id); if (!e || !e.site) return;
+      const ids=e.site.carriers.hom.concat(e.site.carriers.het), before=[...(S.selected||[])];
+      S.selected=new Set(ids); if (typeof refreshSelChip==='function') refreshSelChip(true);
+      if (typeof toast==='function') toast(`Selection is now the <b>${ids.length.toLocaleString()}</b> carriers of ${esc(e.symbol)} ${esc(e.label)}.`,
+        [{label:'Undo', run:()=>{ S.selected=new Set(before); if (typeof refreshSelChip==='function') refreshSelChip(true); }}, {label:'Open SNPVersity', run:()=>go('snpversity')}]);
+    },
     setFilter(k, v){ CU[k]=v; const t=document.getElementById('curTable'); if (t){ t.innerHTML=tableHTML(); if (typeof attachTT==='function') attachTT(); } },
     sort(k){ if (CU.sortKey===k) CU.sortDir*=-1; else { CU.sortKey=k; CU.sortDir = k==='carriers' ? -1 : 1; }
       const t=document.getElementById('curTable'); if (t){ t.innerHTML=tableHTML(); if (typeof attachTT==='function') attachTT(); } },

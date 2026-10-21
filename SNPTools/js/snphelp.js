@@ -267,6 +267,7 @@ const SNPHelp = (function () {
       ['Priority', 'The SNPMaize priority of the change, as SNPImpact computes it, with the composite AI score (z, how many of the four scores it averages, and its percentile among the release’s missense sites).'],
       ['Favorable allele', 'Which allele a breeder wants, as the publication reads it: Alternate, Reference (B73\u2019s allele), Depends (on the market class, latitude or goal; the note beside it says what on), or a dash when the publication gives no direction or the alleles are not given.'],
       ['B73', 'B73\u2019s genotype at the site: Ref (homozygous for the reference allele, which is B73\u2019s own sequence at every site of this release), Het or Alt.'],
+      ['Your lines', 'The allele passport of a set of lines: paste accession ids, line names or GRIN numbers, take the SNPVersity selection or the NAM founders, and read each line\u2019s genotype at every genotyped allele of the registry (H homozygous alternate, h heterozygous, \u00b7 reference, ? missing), coloured green where the line carries the favorable allele, with a count of favorable alleles per line. Nothing is queried: the genotypes come from the registry\u2019s carrier lists. Download the matrix as TSV, make the lines the SNPVersity selection, or click a column to select that allele\u2019s carriers. The address bar carries the lines (#snpcurate?lines=\u2026), so the passport can be shared.'],
       ['Reference', 'The first publication; the record lists all.'],
       ['Default order', 'By mark (gold, silver, white), then by gene name; click Gene or Carriers to sort.'],
     ]},
@@ -406,6 +407,7 @@ const SNPHelp = (function () {
 
   /* ---- what's new (the changes of October 2026) ---- */
   const NEWS = [
+    ['Allele passport', 'SNPCurate\u2019s Your lines panel reads the genotype of any set of lines at every genotyped published allele from the registry, colours the favorable alleles, counts them per line, and exports the matrix as TSV; every entry now names its favorable allele and B73\u2019s genotype.'],
     ['Permalinks', 'The address bar follows what is on screen, so a link opens it again: #snpcurate/SC0003 opens that record; #snpfunction/<gene>, #snpfold/<gene>, #snpgeo/<gene> and #paneffect/<gene> open that gene; #snpgwas/<dataset> opens that GWAS dataset; #snpversity?ds=zmgrin2026_imp&chr=chr6&start=115183121&end=115185121 runs that region with the current selection. Back returns to the previous tool or record, and the tab is titled after the tool and the thing it shows.'],
     ['High Quality set', 'The GRIN-linked 2026 release is offered as two sets: Imputed (all 46,054,265 sites) and High Quality (27,787,101 sites: the sites with a carrier, less the common ones whose maxR² is below 0.2). Every tool works on either; they share their 933 lines, so a selection carries over when you switch. Genome-wide IBS in SNPCompare and SNPTree is precomputed on the Imputed set\u2019s sites.'],
     ['Min. maxR²', 'SNPVersity\u2019s table has a Min. maxR² filter beside Min. MAF: it hides the sites whose maxR² is below the value, and those without one.'],

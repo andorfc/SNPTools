@@ -1165,6 +1165,27 @@ async function until(site, expr, ms = 8000){
     F.errors = s17.errors.filter(e => !/favicon/.test(e));
     s17.window.close(); }
 
+  /* ---------- SNPCurate's Your lines panel (check_curate_lines.py) ---------- */
+  if (fs.existsSync(path.join(ROOT, 'js/snpcurate.data.js'))){
+    const s18 = await openSite(ROOT); const $l = s18.$eval; const L = R.curateLines = {};
+    $l(`go('snpcurate'); CURATE.loadLines('B73\\nIl14H\\nPI 550473\\nP39\\nnotaline')`); await s18.wait(100);
+    const read = () => $l(`(()=>{ const t=document.getElementById('curLinesTbl'); if(!t) return null;
+      return {cols:[...t.querySelectorAll('thead th.cur-lcol')].map(h=>h.dataset.id),
+        rows:[...t.querySelectorAll('tbody tr')].map(tr=>{ const tds=[...tr.querySelectorAll('td')]; const cells=tds.filter(td=>td.classList.contains('cur-lc'));
+          const fc={}; cells.forEach((td,i)=>{ fc[t.querySelectorAll('thead th.cur-lcol')[i].dataset.id] = td.classList.contains('cur-lc-favhom')?'hom':td.classList.contains('cur-lc-favhet')?'het':''; });
+          return {id:tr.querySelector('.cur-sub').textContent.split(' · ')[0].trim(), cells:cells.map(td=>td.textContent.trim()), favClasses:fc,
+                  fav:tds[tds.length-2].textContent.replace(/\s+/g,' ').trim(), alt:tds[tds.length-1].textContent.trim()}; })}; })()`);
+    const m = read();
+    L.state = $l(`CURATE.linesState()`); L.cols = m ? m.cols : null; L.rows = m ? m.rows : [];
+    L.tsv = $l(`CURATE.linesTSV()`); L.hash = $l(`location.hash`);
+    $l(`CURATE.selectCarriers('SC0003')`); L.selectCarriers = {selected: $l(`[...S.selected]`), n: $l(`S.selected.size`)};
+    $l(`location.hash='#snpversity'`); await s18.wait(200);
+    $l(`location.hash='#snpcurate?lines=ZmG_B73,ZmG_IL14H,ZmG_P39'`); await s18.wait(300);
+    const m2 = read(); L.route = {ids: $l(`CURATE.linesState().ids`), rows: m2 ? m2.rows.length : 0, tool: $l(`S.tool`)};
+    $l(`CURATE.useFounders()`); L.founders = $l(`CURATE.linesState().ids.length`);
+    L.errors = s18.errors.filter(e => !/favicon/.test(e));
+    s18.window.close(); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;
