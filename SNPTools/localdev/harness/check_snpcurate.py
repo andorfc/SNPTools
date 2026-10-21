@@ -8,7 +8,7 @@ gff/genes_index.txt, independently of tools/build_snpcurate.py:
 (a) each site entry: het / hom / missing calls, Site QC class (and the source's expect block), the
     allele frequency among called lines, MAF, MAXR2, the consequence and substitution of site_gene
     (else gene) read as the app reads it (that gene's most severe SnpEff entry; ESM scores only on the
-    entry they were computed for), the seven scores, the combined score and priority
+    entry they were computed for), the seven scores, the composite score and priority
     (Data.impactPriority), the carriers, homozygous carriers per subpopulation and carriers per
     country with their totals, the trait by genotype, and for a missense entry its rank by each
     score among the gene's missense variants that have a carrier;
@@ -24,6 +24,16 @@ Standard library only; the store reads run h5_to_vcf.py."""
 import json, math, os, re, subprocess, sys, tempfile
 
 res, root = sys.argv[1:3]
+
+# the composite AI score and its tiers, as Data.compositeScore / Data.impactPriority read them from
+# js/zmgrin.scorecal.js (tools/build_score_cal.py): mean z over the scores the site has, 2 dp
+CAL = json.load(open(f'{root}/data/qc/zmgrin2026.scorecal.json', encoding='utf-8'))
+def composite(sc):
+    zs = [(sc[k] - CAL['scores'][k]['mean']) / CAL['scores'][k]['sd'] for k in CAL['composite']['of'] if sc.get(k) is not None]
+    return (round(sum(zs) / len(zs), 2), len(zs)) if zs else (None, 0)
+def tier(z):
+    T = CAL['composite']['tiers']
+    return None if z is None else 'TOP' if z <= T['top'] else 'HIGH' if z <= T['high'] else 'MODERATE' if z <= T['moderate'] else 'LOW'
 root = os.path.abspath(root)
 K = json.load(open(res)).get('curate')
 PY = os.environ.get('PYTHON_PATH') or 'python3'
@@ -142,12 +152,22 @@ def sc1(v): return '—' if v is None else ('+' if v > 0 else '') + f'{v:.1f}'
 def fmtm(v): return '—' if v is None else (f'{jsround(v):,}' if abs(v) >= 100 else f'{v:.2f}')
 
 
-def priority(cls, severe, comb, level):
+def priority(cls, severe, comb, level):     # Data.impactPriority
     if severe: return 'TOP'
     if cls in ('missense', 'indel'):
-        if comb is not None: return 'TOP' if comb <= -7 else 'HIGH' if comb <= -4 else 'MODERATE' if comb <= -1 else 'LOW'
+        if comb is not None: return tier(comb)
         return level if level in ('HIGH', 'MODERATE') else 'LOW'
     return 'HIGH' if level == 'HIGH' else 'LOW'
+
+
+def percentile(z):      # Data.compositePercentile: how many of the 1st..100th percentile values are at or below z
+    P = CAL['composite']['percentiles']
+    return None if z is None else sum(1 for i in range(1, len(P)) if P[i] <= z)
+
+
+def ordinal(n):         # the record's "94th percentile" (snpcurate.js ordinal)
+    v = n % 100
+    return f"{n}{'th' if 10 <= v <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(v % 10, 'th')}"
 
 
 sub_tot, cty_tot = {}, {}
@@ -180,14 +200,14 @@ for e in src['entries']:
     a = ent or first
     cls, severe, label = klass(a[1])
     sc = {k: (num(I.get(key)) if (a[4] or not k.startswith('esm')) else None) for k, key, _ in SCORES}
-    comb = round((sc['pc1'] + sc['esm1']) / 2, 2) if sc['pc1'] is not None and sc['esm1'] is not None else (sc['pc1'] if sc['pc1'] is not None else sc['esm1'])
+    comb, comb_n = composite(sc)
     homs = sorted(s for s, v in G.items() if v == 2); hets = sorted(s for s, v in G.items() if v == 1)
     sub, cty = {}, {}
     for s in homs: sub[CAT[s].get('subpop') or 'Unknown'] = sub.get(CAT[s].get('subpop') or 'Unknown', 0) + 1
     for s in homs + hets: cty[CAT[s].get('country') or 'Unknown'] = cty.get(CAT[s].get('country') or 'Unknown', 0) + 1
     x.update(nHet=het, nHom=hom, nMiss=miss, qc=rule(het, hom), af=round((het + 2 * hom) / (2 * (len(G) - miss)), 4),
              maf=num(I.get('MAF')), maxr2=num(I.get('MAXR2')), consequence=label, consClass=cls, sub=a[3] or None, impact=a[2],
-             scores=sc, combined=comb, priority=priority(cls, severe, comb, a[2]), hom=homs, het=hets,
+             scores=sc, combined=comb, combinedN=comb_n, priority=priority(cls, severe, comb, a[2]), hom=homs, het=hets,
              subpop=sorted(((k, sub.get(k, 0), n) for k, n in sub_tot.items()), key=lambda t: (-t[1], -t[2], t[0])),
              country=sorted(((k, v, cty_tot[k]) for k, v in cty.items()), key=lambda t: (-t[1], t[0])))
     if e.get('expect'):
@@ -218,8 +238,8 @@ for e in src['entries']:
         x['pool'] = len(pool)
     EXP[e['id']] = x
     s = D[e['id']]['site']
-    ok = ((s['nHet'], s['nHom'], s['nMiss'], s['qc'], s['af'], s['maf'], s['maxr2'], s['consequence'], s['consClass'], s['sub'], s['impact'], s['combined'], s['priority'])
-          == (het, hom, miss, x['qc'], x['af'], x['maf'], x['maxr2'], label, cls, x['sub'], a[2], comb, x['priority'])
+    ok = ((s['nHet'], s['nHom'], s['nMiss'], s['qc'], s['af'], s['maf'], s['maxr2'], s['consequence'], s['consClass'], s['sub'], s['impact'], s['combined'], s.get('combinedN'), s['priority'])
+          == (het, hom, miss, x['qc'], x['af'], x['maf'], x['maxr2'], label, cls, x['sub'], a[2], comb, comb_n, x['priority'])
           and s['scores'] == sc and s['carriers'] == {'hom': homs, 'het': hets}
           and [(t['name'], t['hom'], t['total']) for t in s['subpop']] == x['subpop'] and [(t['name'], t['carriers'], t['total']) for t in s['country']] == x['country']
           and (s.get('rank') == x.get('rank')) and (s.get('rankPool') == x.get('pool')))
@@ -275,7 +295,8 @@ for e in src['entries']:
         continue
     facts = r['facts']
     exp_qc = f"Site QC{QC_LABEL[x['qc']]} {x['nHet']:,} het · {x['nHom']:,} hom · {x['nMiss']:,} missing"
-    exp_pr = f"Priority{x['priority']} combined {'—' if x['combined'] is None else ('+' if x['combined'] > 0 else '') + format(x['combined'], '.2f')}"
+    exp_pr = f"Priority{x['priority']} composite " + ('—' if x['combined'] is None else
+             ('+' if x['combined'] > 0 else '') + format(x['combined'], '.2f') + f" z · {x['combinedN']} of 4 scores · {ordinal(percentile(x['combined']))} percentile")
     exp_af = f"Allele frequency{x['af'] * 100:.1f}% among called lines · MAF {('—' if x['maf'] is None else format(x['maf'], 'g'))}"
     # the record shows PlantCAD2 = the one-pass score (the 512-bp pc2 is in the data file, checked above)
     scores = [[lab, sc1(x['scores'][k])] + ([f"rank {x['rank'][k][0]} of {x['rank'][k][1]}"] if x.get('rank') and x['rank'].get(k) else []) for k, _, lab in SCORES if k != 'pc2']

@@ -25,6 +25,16 @@ Standard library only."""
 import gzip, json, os, re, sys
 
 res, root = sys.argv[1:3]
+
+# the composite AI score and its tiers, as Data.compositeScore / Data.impactPriority read them from
+# js/zmgrin.scorecal.js (tools/build_score_cal.py): mean z over the scores the site has, 2 dp
+CAL = json.load(open(f'{root}/data/qc/zmgrin2026.scorecal.json', encoding='utf-8'))
+def composite(sc):
+    zs = [(sc[k] - CAL['scores'][k]['mean']) / CAL['scores'][k]['sd'] for k in CAL['composite']['of'] if sc.get(k) is not None]
+    return (round(sum(zs) / len(zs), 2), len(zs)) if zs else (None, 0)
+def tier(z):
+    T = CAL['composite']['tiers']
+    return None if z is None else 'TOP' if z <= T['top'] else 'HIGH' if z <= T['high'] else 'MODERATE' if z <= T['moderate'] else 'LOW'
 R = json.load(open(res))
 U = R.get('siteqcui')
 NAMES = ['NO_CARRIER', 'HET_ONLY', 'HET_EXCESS', 'HET_ELEVATED', 'PASS']
@@ -122,11 +132,11 @@ def gene_function(vcf, gene):
         cls, severe = klass(e[1])
         d = [dose(c) for c in cells]
         het, hom = d.count(1), d.count(2)
-        pc, es = num(I.get('plantcad1_score')), (num(I.get('ESM1_score')) if e[3] else None)
-        comb = round((pc + es) / 2, 2) if pc is not None and es is not None else (pc if pc is not None else es)
+        comb = composite({'pc1': num(I.get('plantcad1_score')), 'pc2op': num(I.get('plantcad2_onepass_score')),
+                          'esm1': num(I.get('ESM1_score')) if e[3] else None, 'esm2': num(I.get('ESM2_score')) if e[3] else None})[0]
         V.append(dict(key=(pos, ref, alt), cls=cls, severe=severe, het=het, hom=hom, qc=rule(het, hom), combined=comb,
                       homIds={samples[i] for i, x in enumerate(d) if x == 2}))
-    dmg = [v for v in V if v['cls'] == 'lof' or v['severe'] or (v['cls'] == 'missense' and v['combined'] is not None and v['combined'] <= -4)]
+    dmg = [v for v in V if v['cls'] == 'lof' or v['severe'] or (v['cls'] == 'missense' and tier(v['combined']) in ('TOP', 'HIGH'))]
     ko = set().union(*[v['homIds'] for v in dmg if usable(v['qc']) and v['cls'] == 'lof']) if dmg else set()
     kof = set().union(*[v['homIds'] for v in dmg if flagged(v['qc']) and v['cls'] == 'lof']) - ko if dmg else set()
     pcv = [v for v in V if (v['cls'] in ('missense', 'lof', 'indel') or (v['cls'] == 'splice' and v['severe'])) and v['qc'] != 'NO_CARRIER']

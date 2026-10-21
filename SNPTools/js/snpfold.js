@@ -48,10 +48,11 @@
   /* ---------- palettes ---------- */
   function plddtHex(b){ return b>=90?'#0053d6': b>=70?'#65cbf3': b>=50?'#ffdb13':'#ff7d45'; }
   function plddtBand(b){ return b>=90?'Very high': b>=70?'Confident': b>=50?'Low':'Very low'; }
+  /* colour by the composite AI score (a z against the release's missense sites: -3 and below red, +1.5 and above green) */
   function impactHex(s){
     const n = finiteNumber(s);
     if (n == null) return '#8a93a3';
-    const lo=-12,hi=4,t=Math.max(0,Math.min(1,(n-lo)/(hi-lo)));
+    const lo=-3,hi=1.5,t=Math.max(0,Math.min(1,(n-lo)/(hi-lo)));
     const r=t<.5?220:Math.round(220*(1-(t-.5)*2)), g=t<.5?Math.round(180*t*2):170;
     return `rgb(${r},${Math.max(50,g)},55)`;
   }
@@ -516,7 +517,7 @@
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
       plantcad2op:v.plantcad2op != null ? v.plantcad2op : (v.pc2op != null ? v.pc2op : null),
-      esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
+      esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined, combinedN:v.combinedN,
       evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
       qc:v.qc != null ? v.qc : null, nHet:v.nHet != null ? v.nHet : v.het, nHom:v.nHom != null ? v.nHom : v.hom,
@@ -777,7 +778,8 @@
     if (v.combined==null){
       return ['mid', `Missense${where} — no language-model score available.`];
     }
-    const sev = v.combined<=-6 ? 'Likely damaging' : v.combined<=-3 ? 'Possibly damaging' : 'Likely tolerated';
+    const tier = Data.compositeTier(v.combined, FD.dataset);   // the composite's tier (js/zmgrin.scorecal.js)
+    const sev = tier==='TOP' ? 'Likely damaging' : tier==='HIGH' ? 'Possibly damaging' : 'Likely tolerated';
     const wellStruct = c.plddt>=70;
     const tone = sev==='Likely damaging' ? 'bad' : sev==='Possibly damaging' ? 'mid' : 'ok';
     return [tone, `${sev}: ${wellStruct?'well-structured':'low-confidence'} ${c.ssLabel}${where}.`];
@@ -1244,7 +1246,7 @@
     const s=FD.struct, N=s.length;
     const lolliTop=8, lolliH=58, base=lolliTop+lolliH;      // lollipop baseline
     const domY=base+6, domH=18, ssY=domY+domH+22, ssH=12, pY=ssY+ssH+22, pH=12;
-    const maxSev=10;
+    const maxSev=3;                      // lollipop height: the composite z, 0 (tolerated) to -3 (most damaging)
     /* InterProScan site/feature lanes — one horizontal lane per analysis program
        (CDD, PIRSR, SFLD), stacked under the pLDDT strip, mirroring how
        InterProScan's own site view groups hits by member database. All known
@@ -1371,7 +1373,7 @@
       if (resi == null || resi>N) return;   // only protein residues can be placed
       const xx=x(resi);
       const sev=severeFoldConsequence(v) ? maxSev
-        : (v.combined!=null?Math.min(maxSev, Math.abs(v.combined)):maxSev*0.5);
+        : (v.combined!=null?Math.min(maxSev, Math.max(0, -v.combined)):maxSev*0.5);
       const head=base - 6 - (sev/maxSev)*(lolliH-10);
       const col=CONS_FILL[v.consClass]||'#2f5bbf';
       const on=v.id===FD.selId;

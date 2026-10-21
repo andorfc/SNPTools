@@ -29,6 +29,16 @@ import csv, glob, gzip, io, json, os, re, sys
 from store_windows import window_rows, StoreMismatch
 
 res, root = sys.argv[1:3]
+
+# the composite AI score and its tiers, as Data.compositeScore / Data.impactPriority read them from
+# js/zmgrin.scorecal.js (tools/build_score_cal.py): mean z over the scores the site has, 2 dp
+CAL = json.load(open(f'{root}/data/qc/zmgrin2026.scorecal.json', encoding='utf-8'))
+def composite(sc):
+    zs = [(sc[k] - CAL['scores'][k]['mean']) / CAL['scores'][k]['sd'] for k in CAL['composite']['of'] if sc.get(k) is not None]
+    return (round(sum(zs) / len(zs), 2), len(zs)) if zs else (None, 0)
+def tier(z):
+    T = CAL['composite']['tiers']
+    return None if z is None else 'TOP' if z <= T['top'] else 'HIGH' if z <= T['high'] else 'MODERATE' if z <= T['moderate'] else 'LOW'
 P = json.load(open(res))['pergene']
 FX = f'{root}/localdev/fixtures'
 SEV = {'HIGH': 3, 'MODERATE': 2, 'LOW': 1, 'MODIFIER': 0}
@@ -163,7 +173,7 @@ for gene, got in P['genes'].items():
         hom, het = sum(x == 2 for x in d), sum(x == 1 for x in d)
         exp_v.append({'pos': pos, 'ref': ref, 'alt': alt, 'cls': cls, 'esm': esm, 'hom': hom, 'het': het, 'qc': site_qc(het, hom),
                       'severe': severe, 'sub': e[3], 'evo2': num(I.get('evo2_score')), 'esmc': esmc(I, e),
-                      'pc1': num(I.get('plantcad1_score'))})
+                      'pc1': num(I.get('plantcad1_score')), 'pc2op': num(I.get('plantcad2_onepass_score'))})
         if fold_coding(e[1]) and residue(e[3]) is not None:
             exp_fold.append({'pos': pos, 'resi': residue(e[3]), 'esm': esm[0]})
         # (c) a score shown for this gene must be the ESM table's score for this gene's substitution
@@ -190,10 +200,9 @@ for gene, got in P['genes'].items():
             bad += 1; print('SNPFunction variant', gene, v['pos'], g, v)
         if v['cls'] == 'missense' and g['sub'] != v['sub']:
             bad += 1; print('substitution', gene, v['pos'], g['sub'], v['sub'])
-    def combined(v):       # Data.geneFunction: mean of PlantCAD1 and ESM1 when both, else whichever is present
-        pc, es = v['pc1'], v['esm'][0]
-        return round((pc + es) / 2, 2) if pc is not None and es is not None else (pc if pc is not None else es)
-    is_dmg = lambda v: v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and combined(v) is not None and combined(v) <= -4)
+    def combined(v):       # Data.geneFunction: the composite (mean z of PlantCAD1, PlantCAD2 one-pass, ESM1, ESM2)
+        return composite({'pc1': v['pc1'], 'pc2op': v['pc2op'], 'esm1': v['esm'][0], 'esm2': v['esm'][1]})[0]
+    is_dmg = lambda v: v['severe'] or v['cls'] == 'lof' or (v['cls'] == 'missense' and tier(combined(v)) in ('TOP', 'HIGH'))
     dmg = sum(is_dmg(v) for v in used)
     dmg_f = sum(is_dmg(v) and v['qc'] in ('HET_ONLY', 'HET_EXCESS') for v in exp_v)
     dmg_n = sum(is_dmg(v) and v['qc'] == 'NO_CARRIER' for v in exp_v)

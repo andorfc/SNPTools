@@ -84,6 +84,7 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
     │   ├── snppaneffect.js  paneffect-*.js  pe/                      # PanEffect (native port)
     │   ├── zmgrin.catalog.js           # GRIN-linked lines + SNPTrait schema (generated)
     │   ├── zmgrin.lineqc.js            # per-line heterozygosity (generated, tools/build_site_qc.py)
+    │   ├── zmgrin.scorecal.js          # composite AI score calibration (generated, tools/build_score_cal.py)
     │   ├── snpcurate.js  snpcurate.data.js   # SNPCurate page + its registry (generated, tools/build_snpcurate.py)
     │   ├── accessions.catalog.js       # catalogue of the earlier datasets (generated)
     │   ├── accessions.real.js          # legacy flat accession list (fallback)
@@ -115,7 +116,7 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
 | **SNPVersity** | The front door. Choose a dataset, an interval or a B73 v5 gene model, and the lines (quick picks, a pasted list of IDs / line names / GRIN accessions, or *Browse & filter*, which opens SNPTrait over the page). Returns a colour-coded genotype table and a downloadable VCF with predicted effects, Pfam domain, MAF, maxR², Site QC, and PlantCAD1/2, Evo2, ESM1/2/3 and ESM-C scores. A site with consequences in several genes shows its most severe one and "+N" for the others. Every site is shown with its Site QC class; a filter hides flagged and no-carrier sites or keeps passing ones only. |
 | **GWAS Explorer** | Manhattan plots of published NAM GWAS results (`data/gwas/`); drag-select a peak and send the region and/or the lines to SNPVersity. |
 | **SNPTrait** | Select lines by GRIN passport and evaluation data: panel, subpopulation, origin, improvement status, kernel type, binned and numeric trait ranges, and sample heterozygosity (Inbred / Elevated heterozygosity / Heterozygous sample, from `js/zmgrin.lineqc.js`). Several values in one filter section are ORed, sections are ANDed. Send the lines to SNPVersity (replace or add). |
-| **SNPImpact** | Ranks a region's variants by a combined PlantCAD + ESM score with the predicted consequence and Pfam domain; filters and a shortlist. Flagged and no-carrier sites are hidden by default (Site QC filter; the note above the table says how many). Opened empty, it offers SNPVersity's current result ("Load data from SNPVersity"), as SNPTree and SNPCompare do. |
+| **SNPImpact** | Ranks a region's variants by the composite AI score (standardized PlantCAD1, PlantCAD2 and ESM1, ESM2) with the predicted consequence and Pfam domain; filters and a shortlist. Flagged and no-carrier sites are hidden by default (Site QC filter; the note above the table says how many). Opened empty, it offers SNPVersity's current result ("Load data from SNPVersity"), as SNPTree and SNPCompare do. |
 | **SNPFunction** | A gene dossier: domains, MaizeGDB's Gene Ontology and pathway views (read live from the MaizeGDB record API; the local annotation file is the fallback), and the gene's variant burden and damaging alleles across the whole panel, with their carriers. It classes every site from its own carrier counts: the allele list, knockout lines and burden use usable sites, flagged calls and alleles with no carrier sit in two collapsed groups, and a banner warns when most protein-changing sites of the gene are flagged. An allele's carrier panel opens its homozygous carriers, heterozygous carriers, all carriers or the reference lines (homozygous for the reference allele) in SNPVersity; SNPFold's carrier panel does the same. |
 | **SNPCurate** | A registry of published maize alleles (21 in release v1.4: validated causal changes, published markers and tagging sites), each with its carriers by subpopulation and country, Site QC class, scores, priority, rank in its gene and GRIN trait means in this release, or the reason the release cannot show it. Gold, outline and grey marks; hand-offs of the carriers to SNPVersity, the gene to SNPFunction and the site to SNPGeo. The same marks, opening the record, appear on curated alleles in SNPVersity (beside the position, and a line naming the curated alleles of the interval), SNPImpact (never hidden by the Site QC or score filters), SNPFunction (a "Curated alleles" block for the gene, grey ones included), SNPFold (a ring on the track and the table) and SNPGeo. |
 | **SNPFold** | Coding variants on the predicted protein structure (AlphaFold2, Boltz2 or ESMFold model): a linear protein browser (domains, secondary structure, pLDDT, InterProScan sites, disorder) and a 3D view. "Usable alleles only" (on by default) leaves flagged and no-carrier variants out of the track, the table and the 3D view. |
@@ -150,8 +151,16 @@ and the three site-QC fields written into each row's INFO (v1.4.2), and a second
 scored with 8,192-bp windows), coloured like the masked 512-bp score at the same percentile; the
 512-bp `plantcad2_score` stays in the VCF and the CSV exports. The two are on different scales
 (medians about -3.4 and -0.7, r about 0.81), and MaizeGDB 2026's PlantCAD2 (GeneCAD tiled, log2) is
-a third method. No PlantCAD2 score enters the priority, which uses PlantCAD1 and ESM1. The app and
-the VCFs it writes keep the label "release v1.4".
+a third method. The app and the VCFs it writes keep the label "release v1.4".
+
+**Composite AI score and priority.** SNPImpact, SNPFunction, SNPFold and SNPCurate rank a variant by a
+composite of four scores: the mean of the standardized PlantCAD1, PlantCAD2 one-pass, ESM1 and ESM2
+scores it has (z = (score − mean) / sd, each against the release's 412,221 missense sites that carry all
+four; `data/qc/zmgrin2026.scorecal.json` and `js/zmgrin.scorecal.js`, `make score-cal`). Standardizing
+first stops the two scores with the wider scales from dominating. The priority tiers of a missense or
+in-frame change are percentiles of that composite among the same sites (TOP ≤ 5th, HIGH ≤ 25th,
+MODERATE ≤ 80th, LOW above); a loss-of-function or splice-site change is TOP regardless, and a variant
+with no score falls back to the SnpEff impact level. The detail views show the composite's percentile.
 
 **Site QC.** The lines are inbreds, yet 27.5% of non-reference calls are heterozygous, mostly at
 sites where heterozygous carriers outnumber homozygous ones (reads from another copy of the sequence
@@ -244,6 +253,7 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 | `data/curate/snpcurate.source.json` | build_snpcurate.py | SNPCurate's registry of published alleles, edited by hand |
 | `js/snpcurate.data.js` | SNPCurate (optional) | the registry with each site's carriers, class, scores, priority and trait means in this release (`window.SNP_CURATE`, generated) |
 | `js/zmgrin.lineqc.js` | SNPTrait, SNPVersity, SNPFunction (optional) | per-line heterozygous share at clean sites and its class (`window.SNP_LINE_QC`, generated); `Data.accessionsFor` adds `hetShare` and `sampleQC` to each line |
+| `js/zmgrin.scorecal.js` | SNPImpact, SNPFunction, SNPFold, SNPCurate | the composite AI score's reference means and sds, percentiles and tier cutoffs (`window.SNP_SCORE_CAL`, generated); without it a variant's priority falls back to its SnpEff level |
 | `data/domains/by_chr/<chr>.json` (fallback `domains.by_chr.json`) | SNPVersity, SNPImpact | Pfam domain blocks by genomic position |
 | `data/domains/domains.by_gene.json`, `domains.by_protein.json` | SNPImpact, SNPFold, SNPFunction | each gene's canonical-protein domains |
 | `data/genemodels/by_chr/<chr>.json` | SNPImpact, SNPFunction, SNPFold | canonical exon / CDS structure |
@@ -274,6 +284,7 @@ The builders for the GRIN-linked dataset are in `SNPTools/tools/` (details in
 | `vcf_to_h5.py` | `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` from an annotated release VCF |
 | `build_snpcurate.py` | `js/snpcurate.data.js` from `data/curate/snpcurate.source.json` (`make curate`); `--table` writes the benchmark table |
 | `build_site_qc.py` | the `.siteqc.h5` sidecar beside each store; with `--summary`, `data/qc/` and `js/zmgrin.lineqc.js` (`make site-qc`) |
+| `build_score_cal.py` | `data/qc/zmgrin2026.scorecal.json` and `js/zmgrin.scorecal.js`: the composite AI score's reference distributions and priority tiers (`make score-cal`) |
 | `build_gene_index.php` | `gff/genes_index.txt` |
 
 The domain, gene-model and structure files (`data/domains/`, `data/genemodels/`,
@@ -314,8 +325,9 @@ installed (it never replaces a store larger than 50 MB unless `FORCE=1`).
    the sidecars (about 1.5 minutes with `JOBS=4`) and regenerates `data/qc/` and `js/zmgrin.lineqc.js`,
    which are also in git. The v1.4.2 and later stores carry the site-QC fields themselves, so the pages show
    Site QC with or without the sidecars; `make curate` and the summary need them, and so do the pages
-   for a store without the fields. After replacing a store, run `make site-qc` and then `make curate`
-   (`js/snpcurate.data.js`, also in git) again.
+   for a store without the fields. After replacing a store, run `make site-qc`, `make score-cal`
+   (`js/zmgrin.scorecal.js`, the composite score's calibration) and then `make curate`
+   (`js/snpcurate.data.js`, all in git) again.
 3. Make `vcf/` writable by the web server (and `gff/`, if the gene index should rebuild itself).
 4. Set the environment variables below for the PHP process, and point SNPFunction at a MaizeGDB
    host that serves `/api/v1` if not the default.

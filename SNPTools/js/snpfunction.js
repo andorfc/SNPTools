@@ -939,7 +939,7 @@
         .concat(['esm'])
         .concat(sec?['esm2','esm3']:[])
         .concat(sec?['esmc']:[])
-        .concat(['combined','priority','site_qc','het','hom','af','homozygous_carriers','het_carriers']);
+        .concat(['composite_z','composite_scores','priority','site_qc','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
         const base=[v.variant,v.consequence,v.domain,v.plantcad];
         if(sec) base.push(v.plantcad2, v.plantcad2op);
@@ -947,7 +947,7 @@
         base.push(v.esm);
         if(sec) base.push(v.esm2, v.esm3);
         if(sec) base.push(v.esmc);
-        base.push(v.combined,v.priority,v.qc,v.het,v.hom,v.af.toFixed(4),
+        base.push(v.combined,v.combinedN,v.priority,v.qc,v.het,v.hom,v.af.toFixed(4),
           '"'+v.carriersHom.join(';')+'"','"'+v.carriersHet.join(';')+'"');
         return base.map(x=>x==null?'':x).join(',');
       };

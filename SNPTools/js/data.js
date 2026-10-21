@@ -968,12 +968,12 @@ const Data = (function () {
     let res;
     try { res = await queryVariants(dataset, g.chr, g.start, g.end, ids, {forceTable:true}); }
     catch (e){ console.warn('queryFoldVariants:', e && e.message); return []; }
-    return foldVariantsFromRows(res.rows, gene);
+    return foldVariantsFromRows(res.rows, gene, dataset);
   }
   /* The coding variants SNPFold draws, from the rows of a gene's interval. They are site-level
      (INFO only), so any accession set gives the same list: geneFunction() builds it from its
      full-panel rows, which spares SNPFold a second query of the same interval. */
-  function foldVariantsFromRows(rows, gene){
+  function foldVariantsFromRows(rows, gene, datasetId){
     const out = [];
     for (const r0 of (rows || [])){
       // this gene's consequence at the site, even when SnpEff lists another gene first
@@ -985,8 +985,7 @@ const Data = (function () {
       if (!p || p.resi == null) continue;                 // need a residue to place it
       const pc  = (r.pc1  != null ? r.pc1  : null);
       const esm = (r.esm1 != null ? r.esm1 : null);
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2)
-                     : (pc != null ? pc : (esm != null ? esm : null));
+      const cz = compositeScore(r, datasetId), combined = cz.value;
       out.push({
         id:'f' + out.length, gene, resi:p.resi, ref:p.ref, alt:p.alt,
         variant: hgvsProtein(p, cls), consequence: cls.label, consClass: cls.klass,
@@ -997,14 +996,54 @@ const Data = (function () {
         plantcad2op: (r.pc2op != null ? r.pc2op : null),
         esm3: (r.esm3 != null ? r.esm3 : null),
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
-        combined, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
-        priority: combined == null ? null
-                : (combined <= -7 ? 'TOP' : combined <= -4 ? 'HIGH' : combined <= -1 ? 'MODERATE' : 'LOW'),
+        combined, combinedN: cz.n, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
+        priority: compositeTier(combined, datasetId),     // null without a score (as before)
       });
     }
     out.sort((a, b) => a.resi - b.resi);
     return out;
   }
+
+  /* ---------------- the composite AI score (window.SNP_SCORE_CAL, js/zmgrin.scorecal.js) ----------------
+     tools/build_score_cal.py: for PlantCAD1, PlantCAD2 one-pass, ESM1 and ESM2 the mean and sd over the
+     release's missense sites that carry all four; the composite's 0-100th percentiles; the priority
+     tier cutoffs (TOP = 5th, HIGH = 25th, MODERATE = 80th percentile of the composite). One calibration
+     per family (both sets of a release share it). tools/build_snpcurate.py and the harness mirror these. */
+  function scoreCal(datasetId){
+    const all = (typeof window !== 'undefined' && window.SNP_SCORE_CAL) || null;
+    return all ? (all[familyOf(datasetId || DEFAULT_DS)] || null) : null;
+  }
+  /* the composite of a parsed row: the mean of z = (score - mean) / sd over the scores it has (a missense
+     site has all four, a non-coding SNP the two DNA scores, an indel none), to 2 dp, and how many */
+  function compositeScore(r, datasetId){
+    const cal = scoreCal(datasetId);
+    if (!cal || !r) return {value:null, n:0};
+    let sum = 0, n = 0;
+    for (const k of cal.composite.of){
+      const v = r[k], c = cal.scores[k];
+      if (v == null || !isFinite(v) || !c || !(c.sd > 0)) continue;
+      sum += (v - c.mean) / c.sd; n++;
+    }
+    return n ? {value: +((sum / n).toFixed(2)), n} : {value:null, n:0};
+  }
+  /* the percentile (0-100) of a composite value among the release's missense sites: how many of the
+     1st..100th percentile values are at or below it (1 = the most damaging percent) */
+  function compositePercentile(z, datasetId){
+    const cal = scoreCal(datasetId);
+    if (!cal || z == null || !isFinite(z)) return null;
+    const P = cal.composite.percentiles; let n = 0;
+    for (let i = 1; i < P.length; i++) if (P[i] <= z) n++;
+    return n;
+  }
+  function compositeTiers(datasetId){ const cal = scoreCal(datasetId); return cal ? cal.composite.tiers : null; }
+  /* the tier of a composite value alone: TOP / HIGH / MODERATE / LOW, or null without a value or a calibration */
+  function compositeTier(z, datasetId){
+    const T = compositeTiers(datasetId);
+    if (z == null || !T) return null;
+    return z <= T.top ? 'TOP' : z <= T.high ? 'HIGH' : z <= T.moderate ? 'MODERATE' : 'LOW';
+  }
+  /* "damaging" in SNPFunction's allele list: a missense change in the HIGH or TOP tier */
+  function compositeDamaging(z, datasetId){ const t = compositeTier(z, datasetId); return t === 'TOP' || t === 'HIGH'; }
 
   /* ---------------- SNPImpact: rank a region's variants ---------------- */
   // broader than the fold classifier: also covers splice / UTR / intron / intergenic
@@ -1028,27 +1067,25 @@ const Data = (function () {
     if (/intergenic/.test(e))                    return {klass:'other',  label:'Intergenic',         severe:false};
     return {klass:'other', label: (cleanTok(effect) || 'Other'), severe:false};
   }
-  function impactPriority(cls, combined, level){
+  /* the priority tier: a loss-of-function or splice-site change is TOP; a missense or in-frame change
+     takes the tier of its composite score (compositeTier), else its SnpEff level; anything else HIGH
+     only when SnpEff says HIGH */
+  function impactPriority(cls, combined, level, datasetId){
     if (cls.severe) return 'TOP';                          // LOF, splice donor/acceptor
     if (cls.klass === 'missense' || cls.klass === 'indel'){
-      if (combined != null){
-        if (combined <= -7) return 'TOP';
-        if (combined <= -4) return 'HIGH';
-        if (combined <= -1) return 'MODERATE';
-        return 'LOW';
-      }
+      const t = compositeTier(combined, datasetId);
+      if (t) return t;
       return level === 'HIGH' ? 'HIGH' : level === 'MODERATE' ? 'MODERATE' : 'LOW';
     }
     return level === 'HIGH' ? 'HIGH' : 'LOW';               // syn / non-coding
   }
   // rank every variant in a region (from parseVcf rows). Accessions are irrelevant here.
-  function rankImpact(rows){
+  function rankImpact(rows, datasetId){
     const out = [];
     for (const r of (rows || [])){
       const cls = impactClass(r.effect);
       const pc = r.pc1 != null ? r.pc1 : null, esm = r.esm1 != null ? r.esm1 : null;
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2)
-                     : (pc != null ? pc : (esm != null ? esm : null));
+      const cz = compositeScore(r, datasetId), combined = cz.value;
       const p = parseSub(r.sub);
       const coding = (cls.klass === 'missense' || cls.klass === 'lof' || cls.klass === 'indel');
       const variant = (p && p.resi != null && coding)
@@ -1059,12 +1096,12 @@ const Data = (function () {
         variant, consequence: cls.label, consClass: cls.klass,
         resi: p ? p.resi : null, aaRef: p ? p.ref : null, aaAlt: p ? p.alt : null,
         domain: r.domain || '\u2014', impactLevel: r.impact || null,
-        plantcad: pc, esm: esm, combined,
+        plantcad: pc, esm: esm, combined, combinedN: cz.n,
         plantcad2: (r.pc2 != null ? r.pc2 : null), plantcad2op: (r.pc2op != null ? r.pc2op : null),
         pc1: r.pc1, pc2: r.pc2, pc2op: r.pc2op, esm1: r.esm1, esm2: r.esm2, esm3: r.esm3,
         evo2: (r.evo2 != null ? r.evo2 : null), esmc: (r.esmc != null ? r.esmc : null),
         maf: r.maf, r2: r.r2, mq: r.mq, qc: r.qc, nHet: r.nHet, nHom: r.nHom,
-        priority: impactPriority(cls, combined, r.impact), percentile: null,
+        priority: impactPriority(cls, combined, r.impact, datasetId), percentile: null,
       });
     }
     // real region percentile: most deleterious (most negative combined) -> highest
@@ -1129,7 +1166,7 @@ const Data = (function () {
       const pc2op = r.pc2op != null ? r.pc2op : null;
       const esm3 = r.esm3 != null ? r.esm3 : null;
       const evo2 = r.evo2 != null ? r.evo2 : null, esmc = r.esmc != null ? r.esmc : null;
-      const combined = (pc != null && esm != null) ? +(((pc + esm) / 2)).toFixed(2) : (pc != null ? pc : (esm != null ? esm : null));
+      const cz = compositeScore(r, dataset), combined = cz.value;
       let het=0, hom=0, called=0; const homIds=[], hetIds=[], missIds=[];
       for (let k=0;k<accs.length;k++){ const d=_dose(r.gts[k]);
         if (d==null){ missIds.push(accs[k].id); continue; } called++;
@@ -1142,8 +1179,8 @@ const Data = (function () {
       const qc = siteQc(het, hom);
       if (r.qc != null && r.qc !== qc) qcDiffer.push(r.pos);
       return {id:'fx'+vi, pos:r.pos, ref:r.ref, alt:r.alt, variant, consequence:cls.label, consClass:cls.klass, severe:cls.severe,
-        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, plantcad2op:pc2op, esm2, esm3, evo2, esmc, combined,
-        priority: impactPriority(cls, combined, r.impact),
+        domain:r.domain||'\u2014', resi:p?p.resi:null, aaRef:p?p.ref:null, aaAlt:p?p.alt:null, plantcad:pc, esm, plantcad2:pc2, plantcad2op:pc2op, esm2, esm3, evo2, esmc, combined, combinedN: cz.n,
+        priority: impactPriority(cls, combined, r.impact, dataset),
         het, hom, af, carriersHom:homIds, carriersHet:hetIds, qc, nHet:het, nHom:hom,
         nRef: called - het - hom, carriersMiss: missIds};       // reference lines: Data.referenceLines(v)
     });
@@ -1181,7 +1218,7 @@ const Data = (function () {
     }
     const PR = ['TOP','HIGH','MODERATE','LOW'];
     const allDamaging = variants
-      .filter(v => v.consClass==='lof' || v.severe || (v.consClass==='missense' && v.combined!=null && v.combined<=-4))
+      .filter(v => v.consClass==='lof' || v.severe || (v.consClass==='missense' && compositeDamaging(v.combined, dataset)))
       .sort((a,b) => (PR.indexOf(a.priority)-PR.indexOf(b.priority)) || ((a.combined==null?0:a.combined)-(b.combined==null?0:b.combined)));
     const damaging = allDamaging.filter(v => qcUsable(v.qc));
     const damagingFlagged = allDamaging.filter(v => qcFlagged(v.qc));
@@ -1193,7 +1230,7 @@ const Data = (function () {
     damagingFlagged.filter(v=>v.consClass==='lof').forEach(v=>v.carriersHom.forEach(id=>{ if (!koLines.has(id)) koFlagged.add(id); }));
     // SNPFold's list carries the same class, from the same counts
     const qcAt = new Map(variants.map(v => [v.pos + '|' + v.ref + '|' + v.alt, v]));
-    const foldVariants = foldVariantsFromRows(res.rows, gene);
+    const foldVariants = foldVariantsFromRows(res.rows, gene, dataset);
     foldVariants.forEach(f => { const v = qcAt.get(f.pos + '|' + f.refNt + '|' + f.altNt);
       if (v){ f.qc = v.qc; f.nHet = v.het; f.nHom = v.hom; } });
 
@@ -1260,6 +1297,8 @@ const Data = (function () {
     ensureStructure,
     queryFoldVariants,
     rankImpact,
+    // the composite AI score: calibration, value, percentile, tiers (window.SNP_SCORE_CAL)
+    scoreCal, compositeScore, compositePercentile, compositeTiers, compositeTier, compositeDamaging,
     ensureGeneDomains,
     geneDomains,
     ensureGeneModels,

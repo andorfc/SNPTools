@@ -52,6 +52,8 @@
     return c;
   }
   function change(e){ return e.site && e.site.sub ? `${e.label}` : e.label; }
+  function compositePct(z){ return Data.compositePercentile ? Data.compositePercentile(z, ds()) : null; }
+  function ordinal(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
   function prioPill(p){ return p ? `<span class="prio ${p.toLowerCase()}">${p}</span>` : '<span class="muted">—</span>'; }
 
   /* ---------- filters + sort ---------- */
@@ -179,7 +181,7 @@
         <div><div class="cur-k">Consequence${gene}</div><div class="cur-v"><span class="cons ${esc(s.consClass)}">${esc(s.consequence)}</span>${s.sub?` <span class="c-mono">${esc(s.sub)}</span>`:''} <span class="muted">${esc(s.impact)}</span></div></div>
         <div><div class="cur-k">Site QC</div><div class="cur-v">${siteQcPill(s.qc, s.nHet, s.nHom)} ${s.nHet.toLocaleString()} het · ${s.nHom.toLocaleString()} hom · ${s.nMiss.toLocaleString()} missing</div></div>
         <div><div class="cur-k">Allele frequency</div><div class="cur-v">${s.af==null?'—':(s.af*100).toFixed(1)+'%'} <span class="muted">among called lines · MAF ${s.maf==null?'—':s.maf} · max LD r² ${s.maxr2==null?'—':s.maxr2}</span></div></div>
-        <div><div class="cur-k">Priority</div><div class="cur-v">${prioPill(s.priority)} <span class="muted">combined ${s.combined==null?'—':(s.combined>0?'+':'')+(+s.combined).toFixed(2)}</span></div></div>
+        <div><div class="cur-k">Priority</div><div class="cur-v">${prioPill(s.priority)} <span class="muted" data-tt="The composite AI score: the mean of the standardized PlantCAD1, PlantCAD2 and ESM1, ESM2 scores the site has, as a z against the release's missense sites; the tiers are its 5th, 25th and 80th percentiles.">composite ${s.combined==null?'—':(s.combined>0?'+':'')+(+s.combined).toFixed(2)+' z · '+(s.combinedN||0)+' of 4 scores'+(compositePct(s.combined)==null?'':' · '+ordinal(compositePct(s.combined))+' percentile')}</span></div></div>
       </div>
       <div class="cur-k" style="margin-top:14px">Scores${s.rank?` <span class="muted" style="text-transform:none;font-weight:400">· rank among the ${s.rankPool} missense variants of the gene that have a carrier (1 = most negative)</span>`:''}</div>
       <div class="cur-scores">${scores}</div>

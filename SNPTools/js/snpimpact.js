@@ -175,6 +175,10 @@
   /* Site QC hides flagged and no-carrier variants by default; what it hides among the rows
      the other filters keep is counted for the note above the table. */
   function qcHidden(){ filtered(); return _fCache.hidden; }
+  /* the composite AI score (Data.compositeScore) in the HIGH or TOP tier: at or below the release's
+     25th percentile among missense sites (the tier cutoffs of js/zmgrin.scorecal.js) */
+  function tiers(){ return Data.compositeTiers(IMP.input && IMP.input.dataset); }
+  function scoreHigh(z){ const T = tiers(); return z != null && !!T && z <= T.high; }
   function filtered(){
     const key = [IMP._sig, IMP.fCons, IMP.fImpact, IMP.fScore, IMP.fDomain, IMP.fQc, IMP.sortKey, IMP.sortDir].join('|');
     if (_fCache && _fCache.key === key) return _fCache.rows;
@@ -182,7 +186,7 @@
     let r = IMP.rows.filter(v =>
       (IMP.fCons==='all'   || v.consClass===IMP.fCons) &&
       (IMP.fImpact==='all' || v.priority===IMP.fImpact) &&
-      (IMP.fScore==='all'  || v.curated || (v.combined!=null && v.combined<=-4)) &&
+      (IMP.fScore==='all'  || v.curated || scoreHigh(v.combined)) &&
       (IMP.fDomain==='all' || (IMP.fDomain==='dom' ? v.domain!=='—' : v.domain==='—'))
     ).filter(v => {
       if (v.curated || Data.qcKeep(v.qc, IMP.fQc)) return true;   // a curated allele is never hidden by Site QC
@@ -245,7 +249,7 @@
       return;
     }
     if (IMP._sig !== sig){
-      IMP.rows = Data.rankImpact(input.rows);
+      IMP.rows = Data.rankImpact(input.rows, input.dataset);
       IMP._sig = sig; IMP.input = input; IMP.openId = null; IMP.shortlist.clear();
       IMP.hasQc = Data.hasSiteQc(IMP.rows);
     }
@@ -285,7 +289,7 @@
       <div class="filterbar imp-filters">
         ${sel('Category','fCons',[['all','All consequences'],['lof','Loss-of-function'],['splice','Splice'],['missense','Missense'],['indel','In-frame indel'],['syn','Synonymous'],['other','Non-coding / other']])}
         ${sel('Priority','fImpact',[['all','All priorities'],['TOP','TOP'],['HIGH','HIGH'],['MODERATE','MODERATE'],['LOW','LOW']])}
-        ${sel('AI score','fScore',[['all','All scores'],['high','AI high-priority (≤ −4)']])}
+        ${sel('AI score','fScore',[['all','All scores'],['high','AI high-priority (composite in the top 25%)']])}
         ${sel('Domain effect','fDomain',[['all','All'],['dom','In a Pfam domain'],['nodom','No domain hit']])}
         ${IMP.hasQc?sel('Site QC','fQc',Data.SITE_QC_CHOICES):''}
         <div class="right">
@@ -563,7 +567,8 @@
 
         <div class="id-step">
           <div class="id-step-h"><span class="num-dot">3</span> AI score summary</div>
-          <div class="ai-pill ${r.combined!=null&&r.combined<=-4?'hi':''}">AI score: ${r.combined==null?'n/a':r.combined<=-7?'high impact':r.combined<=-4?'elevated':'low impact'}</div>
+          <div class="ai-pill ${scoreHigh(r.combined)?'hi':''}">AI score: ${r.combined==null?'n/a':(Data.compositeTier(r.combined, IMP.input&&IMP.input.dataset)==='TOP'?'high impact':scoreHigh(r.combined)?'elevated':'low impact')}</div>
+          ${compositeLine(r)}
           ${scoreBar('PlantCAD1', r.plantcad)}
           ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2op, 'pc2op'):''}
           ${IMP.sec?scoreBar('Evo2', r.evo2):''}
@@ -572,7 +577,7 @@
           ${IMP.sec?scoreBar('ESM-C', r.esmc):''}
           <div class="pctl">
             <div class="pctl-l">Region impact percentile</div>
-            <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':r.percentile+'th'}</span></div>
+            <div class="pctl-bar"><div class="pctl-fill" style="width:${r.percentile==null?0:r.percentile}%"></div><span class="pctl-v">${r.percentile==null?'n/a':ordinal(r.percentile)}</span></div>
           </div>
           <div class="muted" style="font-size:11px;margin-top:6px">MAF ${fmtMaf(r.maf)} · max LD r² ${r.r2==null?'—':(+r.r2).toFixed(2)}${mqShown(IMP.input&&IMP.input.dataset)?` · MQ ${r.mq==null?'—':r.mq}`:''}</div>
         </div>
@@ -584,6 +589,14 @@
       </div>
     </div>`;
   }
+  /* the composite: its value, how many of the four scores it averages, and its percentile among the
+     release's missense sites (1 = most damaging) */
+  function compositeLine(r){
+    if (r.combined==null) return `<div class="muted" style="font-size:11.5px;margin:2px 0 8px">No composite score: none of PlantCAD1, PlantCAD2, ESM1 and ESM2 is available for this variant.</div>`;
+    const ds = IMP.input && IMP.input.dataset, pct = Data.compositePercentile(r.combined, ds);
+    return `<div style="font-size:12px;margin:2px 0 8px" data-tt="The composite AI score: the mean of the standardized PlantCAD1, PlantCAD2 and ESM1, ESM2 scores the variant has (z against the release's missense sites). More negative is more damaging; the tiers are its 5th, 25th and 80th percentiles.">Composite <b class="mono">${r.combined>0?'+':''}${r.combined.toFixed(2)}</b> <span class="muted">z · ${r.combinedN||0} of 4 scores${pct==null?'':` · ${ordinal(pct)} percentile of the release's missense sites`}</span></div>`;
+  }
+  function ordinal(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
   function scoreBar(label, v, key){
     if (v==null) return `<div class="sbar"><div class="sbar-h"><span>${label} score</span><b class="mono">—</b></div><div class="sbar-track" style="background:linear-gradient(90deg,#e5484d 0%,#f5b545 50%,#2f9e44 100%)"></div></div>`;
     return `<div class="sbar">
@@ -631,11 +644,11 @@
         .concat(['esm'])
         .concat(IMP.sec?['esm2','esm3']:[])
         .concat(IMP.sec?['esmc']:[])
-        .concat(['combined','priority','percentile','impactLevel','maf','pos','ref','alt']);
+        .concat(['combined','combinedN','priority','percentile','impactLevel','maf','pos','ref','alt']);
       const rows=filtered();
       const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';
         if(typeof v==='string' && /[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"'; return v; }).join(',');
-      const head={plantcad2op:'plantcad2_onepass'};         // plantcad2 = the 512-bp score, as before
+      const head={plantcad2op:'plantcad2_onepass', combined:'composite_z', combinedN:'composite_scores'};   // plantcad2 = the 512-bp score, as before
       const csv=[cols.map(c=>head[c]||c).join(',')].concat(rows.map(line)).join('\n');
       const blob=new Blob([csv],{type:'text/csv'}), u=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=u; a.download=`snpimpact_${(IMP.input.chr||'region')}_${IMP.input.start}_${IMP.input.end}.csv`;

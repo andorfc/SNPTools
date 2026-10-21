@@ -17,8 +17,11 @@ class, the alternate-allele frequency among called lines, MAF and MAXR2; the con
 substitution for site_gene if given, else for gene (that gene's most severe SnpEff entry, as the app
 reads it: Data.rowForGene), with the eight scores (PlantCAD2 twice: the masked 512-bp plantcad2_score
 and the one-pass plantcad2_onepass_score of release v1.4.3; ESM scores only on the entry they were
-computed for) and the priority as Data.impactPriority computes it (combined = mean of PlantCAD1 and ESM1 when
-both exist); the homozygous and heterozygous carriers, homozygous carriers per subpopulation and
+computed for), the composite score and the priority as Data.compositeScore and Data.impactPriority compute
+them from data/qc/zmgrin2026.scorecal.json (tools/build_score_cal.py: the composite is the mean of the
+standardized PlantCAD1, PlantCAD2 one-pass, ESM1 and ESM2 scores the site has, the tiers are percentile
+cutoffs of that composite among the release's missense sites); the homozygous and heterozygous carriers,
+homozygous carriers per subpopulation and
 carriers per country with each group's total; the trait by genotype when grin_descriptor is set
 (numeric: mean and n of the line means for homozygous-reference and homozygous-alternate lines; coded:
 per code, homozygous-alternate lines of the lines with that code); and, for a missense entry, its rank
@@ -79,13 +82,13 @@ def impact_class(effect):       # Data.impactClass in js/data.js
     return {'klass': 'other', 'label': clean_tok(effect) or 'Other', 'severe': False}
 
 
-def impact_priority(cls, combined, level):   # Data.impactPriority
+def impact_priority(cls, combined, level, tiers):   # Data.impactPriority
     if cls['severe']: return 'TOP'
     if cls['klass'] in ('missense', 'indel'):
-        if combined is not None:
-            if combined <= -7: return 'TOP'
-            if combined <= -4: return 'HIGH'
-            if combined <= -1: return 'MODERATE'
+        if combined is not None and tiers:
+            if combined <= tiers['top']: return 'TOP'
+            if combined <= tiers['high']: return 'HIGH'
+            if combined <= tiers['moderate']: return 'MODERATE'
             return 'LOW'
         return level if level in ('HIGH', 'MODERATE') else 'LOW'
     return 'HIGH' if level == 'HIGH' else 'LOW'
@@ -140,10 +143,16 @@ def scores_of(info, entry):
     return out
 
 
-def combined_of(sc):
-    pc, es = sc['pc1'], sc['esm1']
-    if pc is not None and es is not None: return round((pc + es) / 2, 2)
-    return pc if pc is not None else es
+def load_score_cal(root):
+    p = os.path.join(root, 'data', 'qc', 'zmgrin2026.scorecal.json')
+    if not os.path.isfile(p): raise BuildError(f'no score calibration {p}: run make score-cal')
+    return json.load(open(p, encoding='utf-8'))
+
+
+def composite_of(sc, cal):      # Data.compositeScore: mean z over the scores the site has, 2 dp; (value, n)
+    zs = [(sc[k] - cal['scores'][k]['mean']) / cal['scores'][k]['sd'] for k in cal['composite']['of'] if sc.get(k) is not None]
+    if not zs: return None, 0
+    return round(sum(zs) / len(zs), 2), len(zs)
 
 
 class Store:
@@ -213,6 +222,7 @@ def build(root):
     src = json.load(open(os.path.join(root, 'data', 'curate', 'snpcurate.source.json'), encoding='utf-8'))
     cat = load_catalog(root)
     traits = json.load(open(os.path.join(root, 'data', 'traits', 'zmgrin2026.traits.json'), encoding='utf-8'))
+    cal = load_score_cal(root)
     genes = gene_index(root)
     stores = {}
     store = lambda c: stores.setdefault(c, Store(root, c))
@@ -260,7 +270,7 @@ def build(root):
         ann = ent or first
         cls = impact_class(ann['effect'])
         sc = scores_of(info, ann)
-        comb = combined_of(sc)
+        comb, comb_n = composite_of(sc, cal)
         called = len(gt) - miss
         homs = sorted(s for s, g in gt.items() if g == 2); hets = sorted(s for s, g in gt.items() if g == 1)
         subpop = {}
@@ -272,8 +282,8 @@ def build(root):
             'af': round((het + 2 * hom) / (2 * called), 4) if called else None,
             'maf': num(info.get('MAF')), 'maxr2': num(info.get('MAXR2')),
             'gene': target, 'geneEntry': bool(ent), 'effect': ann['effect'], 'consequence': cls['label'], 'consClass': cls['klass'],
-            'impact': ann['impact'], 'sub': ann['sub'] or None, 'scores': sc, 'combined': comb,
-            'priority': impact_priority(cls, comb, ann['impact']),
+            'impact': ann['impact'], 'sub': ann['sub'] or None, 'scores': sc, 'combined': comb, 'combinedN': comb_n,
+            'priority': impact_priority(cls, comb, ann['impact'], cal['composite']['tiers']),
             'carriers': {'hom': homs, 'het': hets},
             'subpop': sorted(({'name': k, 'hom': subpop.get(k, 0), 'total': n} for k, n in sub_tot.items()),
                              key=lambda x: (-x['hom'], -x['total'], x['name'])),
@@ -307,7 +317,8 @@ def build(root):
 def write_js(root, src, entries):
     today = datetime.date.today().isoformat()
     obj = {'release': src.get('release'), 'reference': src.get('reference'), 'built': today,
-           'source': 'data/curate/snpcurate.source.json', 'marks': MARKS, 'entries': entries}
+           'source': 'data/curate/snpcurate.source.json', 'marks': MARKS,
+           'composite': 'mean z of PlantCAD1, PlantCAD2 one-pass, ESM1 and ESM2 (data/qc/zmgrin2026.scorecal.json)', 'entries': entries}
     p = os.path.join(root, 'js', 'snpcurate.data.js')
     with open(p, 'w', encoding='utf-8') as fh:
         fh.write(f'/* Generated by tools/build_snpcurate.py on {today} from data/curate/snpcurate.source.json, the\n'

@@ -56,7 +56,7 @@ const TOOLS = {
   snpimpact:{name:'SNPImpact', icon:'star', color:'#7c3aed', cat:'Explore & Analyze',
     tag:'Prioritize candidate variants using AI',
     desc:'Rank variants using AI-based allele scores together with functional annotations. Combine PlantCAD and ESM predictions with predicted effects to prioritize candidate causal variation at scale.',
-    feats:[['star','Rank by impact','Order variants by combined AI score and consequence.'],['func','Score + effect','PlantCAD / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
+    feats:[['star','Rank by impact','Order variants by the composite AI score and consequence.'],['func','Score + effect','PlantCAD / ESM scores beside predicted protein effects.'],['compare','Shortlist alleles','Flag alleles for comparison and validation.']]},
   snpfunction:{name:'SNPFunction', icon:'func', color:'#2563eb', cat:'Explore & Analyze',
     tag:'Give variants biological and genomic context',
     desc:'Add biological context by integrating gene models, regulatory features, conservation, and nearby genomic evidence — interpreting variants within their local genomic region.',

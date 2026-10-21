@@ -11,6 +11,7 @@ All builders are Python 3.8+ standard library unless noted. Outputs mirror `SNPT
 | `vcf_to_h5.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` | one release VCF per chromosome |
 | `build_snpcurate.py` (h5py, numpy) | `js/snpcurate.data.js`; with `--table`, the benchmark table (.tsv + .md) | `data/curate/snpcurate.source.json`, the stores and sidecars, `js/zmgrin.catalog.js`, `data/traits/zmgrin2026.traits.json`, `gff/genes_index.txt` |
 | `build_site_qc.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.siteqc.h5`; with `--summary`, `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv`, `js/zmgrin.lineqc.js` | the stores (read-only) |
+| `build_score_cal.py` (h5py, numpy) | `data/qc/zmgrin2026.scorecal.json`, `js/zmgrin.scorecal.js`: the composite AI score's reference distributions, percentiles and priority tiers (`make score-cal`) | the stores (read-only) |
 
 The files committed in this branch were built for release v1.4 (933 samples = 926 imputed
 + 7 companion direct-call lines; v1.4 adds NAM founder CML103, `ZmG_CML103`, PI 690319). The
@@ -59,6 +60,21 @@ v1.4). A line's share is its heterozygous calls at clean sites over the clean si
 (heterozygous sample) above 0.05, E (elevated heterozygosity) above 0.02, I (inbred) otherwise.
 Release v1.4: 20 H, 26 E, 887 I.
 
+## build_score_cal.py (the composite AI score)
+
+`make score-cal` (= `build_score_cal.py --jobs 4`, about 10 s). It reads the INFO of every site of the ten
+Imputed stores and keeps the missense sites that carry all four of PlantCAD1 (`plantcad1_score`),
+PlantCAD2 one-pass (`plantcad2_onepass_score`), ESM1 (`ESM1_score`) and ESM2 (`ESM2_score`): 412,221 of
+46,054,265 sites in release v1.4.3. For each score it stores the mean and standard deviation over those
+sites; the **composite score** of a variant is the mean of its standardized scores, z = (score − mean) / sd,
+over the scores it has (a missense site has all four; a non-coding SNP the two DNA scores; an indel none),
+rounded to two decimals. The **priority tiers** are percentile cutoffs of the composite over the same
+sites: TOP at or below the 5th percentile, HIGH the 25th, MODERATE the 80th, LOW above (v1.4.3:
+−1.535, −0.444, 0.613). The file also holds the composite's 0–100th percentiles, which the app uses to
+show "nth percentile of the release's missense sites". `js/data.js` (`Data.compositeScore`,
+`Data.impactPriority`), `build_snpcurate.py` and the harness read the same file, so the four agree.
+Both outputs are in git; rebuild after replacing a store, before `make curate`.
+
 ## build_snpcurate.py (SNPCurate)
 
 `make curate`. The registry is `data/curate/snpcurate.source.json`, edited by hand (its `fields` block
@@ -73,7 +89,8 @@ CRISPR), candidates a paper rejects and variants whose position cannot be had fr
 For each site entry the builder finds exactly one site (else it stops) and computes the carriers
 (per subpopulation and country of origin, with each group's total), the Site QC class, the allele
 frequency, MAF and maxR², the consequence and substitution of `site_gene` or `gene` read as the app
-reads them, the seven scores, the combined score and priority (as `Data.impactPriority`), the trait by
+reads them, the seven scores, the composite score and priority (as `Data.compositeScore` and
+`Data.impactPriority`, from `data/qc/zmgrin2026.scorecal.json`), the trait by
 genotype, and for a missense entry its rank by each score among the gene's missense variants with a
 carrier. A non-site entry is checked to have no site at its position or codon (a `different_allele`
 entry: sites there, none with its alleles). It stops when a count differs from the `expect` block, an
