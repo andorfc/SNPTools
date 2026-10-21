@@ -18,7 +18,10 @@ const CENTRO      = Data.centromeres();
 Data.defaultSelectionFor(S.dataset).forEach(id=>S.selected.add(id));
 
 /* default query region */
-S.chr='chr10'; S.start=3750832; S.end=3755732;
+/* The default region: DGAT1-2 (Zm00001eb277490, chr6:115,183,677-115,190,578) ± 1 kb, so a first query
+   shows a gold curated allele (the F469 insertion), missense sites with every score and the curated line
+   above the table. (It was chr10:3,750,832-3,755,732: nine intronic and downstream sites.) */
+S.chr='chr6'; S.start=115182677; S.end=115191578;
 
 /* ================= SNPVERSITY PAGE ================= */
 /* Other tools (SNPTrait, SNPGeo, SNPFold dataset pills) set S.dataset directly.
