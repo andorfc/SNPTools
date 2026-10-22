@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SNPMaize</title>   <!-- core.js setRoute names the tool on screen: "SNPMaize · SNPCurate · …" -->
-<script type='text/javascript' src='https://maizegdb.atlassian.net/s/d41d8cd98f00b204e9800998ecf8427e-T/-3o5b4z/b/5/c95134bc67d3a521bb3f4331beb9b804/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&collectorId=883299e6'></script>
+<!-- the Jira feedback collector: deferred, so a slow Atlassian server never holds up the page; it runs after the
+     document is parsed, when ATL_JQ_PAGE_PROPS (end of the body) is defined -->
+<script type='text/javascript' defer src='https://maizegdb.atlassian.net/s/d41d8cd98f00b204e9800998ecf8427e-T/-3o5b4z/b/5/c95134bc67d3a521bb3f4331beb9b804/_/download/batch/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector/com.atlassian.jira.collector.plugin.jira-issue-collector-plugin:issuecollector.js?locale=en-US&collectorId=883299e6'></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
@@ -154,25 +156,16 @@
      SNPCurate data and no curated marks in the other tools) -->
 <script src="./js/snpcurate.data.js"></script>
 <script src="./js/data.js"></script>
-<script src="./data/structures/alphafold/structure-Zm00001eb378140.js"></script>
 <script src="./js/snpgwas.js"></script>
 <script src="./js/snpversity.js"></script>
 <script src="./js/snpimpact.js"></script>
 <script src="./js/snpfold.js"></script>
 
 <!-- ===== Native PanEffect engine =====================================
-     PanEffect's ported scripts (classic scripts, shared global scope) +
-     the canvas heatmap + the engine. Data is served from ./paneffect/
-     (same-origin). Must load before snppaneffect.js. -->
-<script src="https://d3js.org/d3.v5.min.js"></script>
-<script src="./js/pe/support.js"></script>
-<script src="./js/pe/genome.js"></script>
-<script src="./js/pe/pan.js"></script>
-<script src="./js/pe/dom.js"></script>
-<script src="./js/pe/main.js"></script>
-<script src="./js/paneffect-heatmap.js"></script>
-<script src="./js/paneffect-engine.js"></script>
-<!-- =================================================================== -->
+     PanEffect's ported scripts (classic scripts, shared global scope), the canvas heatmap and the
+     engine, with d3 v5, are loaded when PanEffect is opened (snppaneffect.js PE.cfg.scripts,
+     core.js loadScriptsOnce), not on every page view; SNPGeo loads d3 the same way. Data is served
+     from ./paneffect/ (same-origin). -->
 
 <script src="./js/snppaneffect.js"></script>
 <script src="./js/snptree.js"></script>

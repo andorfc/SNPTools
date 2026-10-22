@@ -33,6 +33,9 @@
       /* local data folder (same-origin) used by BOTH the native engine and
          the panel's own canonical-transcript check */
       dataBase:   './paneffect/',
+      /* the native engine, loaded on first use (classic scripts, in this order; d3 first) */
+      scripts: [D3_URL, './js/pe/support.js', './js/pe/genome.js', './js/pe/pan.js', './js/pe/dom.js', './js/pe/main.js',
+                './js/paneffect-heatmap.js', './js/paneffect-engine.js'],
       /* only used by the 'embed' fallback */
       baseUrl:    'https://maizegdb.org/effect/maize_v2/index.html',
       esmModels:  ['ESM1', 'ESM2', 'ESM3'],
@@ -384,6 +387,16 @@
     const nativeReady =
       window.PanEffectEngine && typeof window.PanEffectEngine.render === 'function' &&
       typeof window.runPanEffect === 'function';   /* ported pipeline present */
+
+    /* first use: fetch the engine's scripts, then come back here */
+    if (PE.cfg.engine === 'native' && !nativeReady && !PE.engineFailed && typeof loadScriptsOnce === 'function') {
+      const seq = PE.loadSeq = (PE.loadSeq || 0) + 1;
+      status('Loading PanEffect…'); onLoadingIcon_safe();
+      loadScriptsOnce(PE.cfg.scripts)
+        .then(() => { if (seq === PE.loadSeq && S.tool === 'paneffect') loadViews(); })
+        .catch(err => { console.error('[paneffect] engine scripts:', err); PE.engineFailed = true; if (seq === PE.loadSeq && S.tool === 'paneffect') loadViews(); });
+      return;
+    }
 
     if (PE.cfg.engine === 'native' && nativeReady) {
       renderNative(host);

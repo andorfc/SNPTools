@@ -111,6 +111,22 @@ function randomSample(arr, n){
   return a.slice(0, k);
 }
 
+/* ---- scripts loaded on demand: one <script> per URL, once, in order ----
+   d3 and the PanEffect engine (about 1 MB together) used to load on every page view; a tool that
+   needs them calls this when it opens (SNPGeo, PanEffect). A failed load rejects. */
+const D3_URL='https://d3js.org/d3.v5.min.js';
+const _scriptLoads={};
+function loadScriptOnce(src){
+  if(_scriptLoads[src]) return _scriptLoads[src];
+  _scriptLoads[src]=new Promise((resolve,reject)=>{
+    const el=document.createElement('script'); el.src=src; el.async=false;
+    el.onload=()=>resolve(src); el.onerror=()=>{ delete _scriptLoads[src]; reject(new Error('could not load '+src)); };
+    document.head.appendChild(el);
+  });
+  return _scriptLoads[src];
+}
+async function loadScriptsOnce(srcs){ for(const s of srcs) await loadScriptOnce(s); }
+
 /* ---- MaizeGDB gene model links — shared across tools ---- */
 const MAIZEGDB_GENE_BASE = 'https://www.maizegdb.org/gene_center/gene/';
 function maizegdbGeneURL(g){ return MAIZEGDB_GENE_BASE + encodeURIComponent(g); }

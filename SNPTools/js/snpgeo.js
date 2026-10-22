@@ -103,6 +103,13 @@ function renderGeo(page){
   const hasResults = S.geoInput && S.geoInput.rows && S.geoInput.rows.length;
   page.className = 'page fade';
   injectGeoCSS();
+  // d3 (the map) is loaded on first use, not on every page view (core.js loadScriptOnce)
+  if (hasResults && typeof d3 === 'undefined' && typeof loadScriptOnce === 'function'){
+    page.innerHTML = geoDatasetChooser() + geoSearchBar() + `<div class="card pad"><div class="loading"><div class="spinner"></div><div>Loading the map library…</div></div></div>`;
+    loadScriptOnce(D3_URL).then(() => { if (S.tool === 'snpgeo') renderGeo(page); })
+      .catch(() => { const el = document.querySelector('#page .loading'); if (el) el.innerHTML = 'The map library (d3) could not be loaded.'; });
+    return;
+  }
 
   const header = geoDatasetChooser() + geoSearchBar()
     + `<div id="geoLookupStatus" style="margin:-8px 0 16px;font-size:12px;color:var(--muted)"></div>`;
