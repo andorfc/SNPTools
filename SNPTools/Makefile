@@ -45,7 +45,7 @@ samples:
 	  --out data/zmgrin2026_samples.tsv
 catalog:
 	$(PY) tools/build_maize_trait_catalog.py --samples data/zmgrin2026_samples.tsv --t5 $(T5) --t4b $(T4B) --t4c $(T4C) \
-	  --crosswalk $(CROSSWALK) --outdir .
+	  --crosswalk $(CROSSWALK) --outdir . --bins-from data/traits/zmgrin2026.traits.json
 $(NE_DIR)/%.geojson:
 	mkdir -p $(NE_DIR) && curl -fsSL -o $@ $(NE_RAW)/$*.geojson
 regions: $(NE_DIR)/ne_110m_admin_0_countries.geojson

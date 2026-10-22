@@ -5,7 +5,7 @@
  *  Local testing (MAMP) vs production (Linux/Docker): nothing in this file
  *  changes between machines. The Python interpreter is resolved from the
  *  PYTHON_PATH environment variable, falling back to 'python3' on PATH.
- *  Python deps are declared in requirements.txt (pip-installed at image build).
+ *  Python deps: h5py and numpy (localdev/RUN_LOCAL.md names the conda environment used locally).
  * ===================================================================== */
 
 header('Content-Type: application/json');

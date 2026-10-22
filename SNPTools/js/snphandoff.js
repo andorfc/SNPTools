@@ -22,7 +22,7 @@
   'use strict';
 
   /* ---------- session state ---------------------------------------- */
-  /* S.handoff.mode:  null = auto (decided by the heuristic below)
+  /* S.handoff.mode:  null = the default ('add': merge into the current selection)
                       'add' | 'replace' = pinned by the user            */
   function st(){
     if (typeof S === 'undefined' || !S) return null;
@@ -36,18 +36,6 @@
         return Data.defaultSelectionFor(ds) || [];
     } catch (e) { /* no data layer yet */ }
     return [];
-  }
-
-  /* A selection is "pristine" while it is still exactly the dataset's
-     preselected founders — nothing of the user's own is in it yet, so
-     replacing it destroys no work. Once they have curated it at all,
-     the safe default flips to add. */
-  function isPristine(){
-    if (typeof S === 'undefined' || !S || !S.selected) return true;
-    const def = defaultsFor(S.dataset);
-    if (S.selected.size !== def.length) return false;
-    for (let i = 0; i < def.length; i++) if (!S.selected.has(def[i])) return false;
-    return true;
   }
 
   function mode(){
@@ -177,7 +165,6 @@
     mode: mode,
     setMode: setMode,
     isPinned: isPinned,
-    isPristine: isPristine,
     sameDataset: sameDataset,
     selectedCount: selectedCount,
     controlHTML: controlHTML,

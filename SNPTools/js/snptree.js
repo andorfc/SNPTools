@@ -281,6 +281,7 @@ const SNPTree = (function () {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <button class="qbtn" onclick="SNPTree.toCompare('table')">SNPCompare (Table view) →</button>
         <button class="qbtn" onclick="SNPTree.toCompare('matrix')">SNPCompare (Distance matrix) →</button>
+        <button class="qbtn" onclick="SNPTree.toMatrix()">SNPMatrix →</button>
         <span style="margin-left:auto"></span>
         <button class="qbtn" onclick="SNPTree.downloadSVG()">Download SVG</button>
         <button class="qbtn" onclick="SNPTree.downloadPNG()">Download PNG</button>
@@ -314,6 +315,7 @@ const SNPTree = (function () {
     if (g==='format') refreshText();     // text output can update without rebuilding
     else draw();                          // topology/layout/color need a redraw
   }
+  function toMatrix(){ if(ST.input) S.matrixInput=ST.input; go('snpmatrix'); }
   function toCompare(view){
     if(ST.input){
       // Reuse the exact SNPVersity result that produced this tree.
@@ -442,7 +444,7 @@ const SNPTree = (function () {
     const rowH=18, pad=24;
     const H=Math.max(240, leaves.length*rowH + pad*2);
     const labelW=Math.min(320, 30+Math.max(...b.labels.map(l=>l.length))*7);
-    const W=Math.max(760, 900);
+    const W=900;
     const treeW=W-labelW-pad;
     layoutRect(b.tree.root, treeW, H, pad);
     let edges='', tips='';
@@ -581,6 +583,6 @@ const SNPTree = (function () {
   return { render, draw, setOpt, toCompare, forceBuild, copyText, downloadText,
            downloadSVG, downloadPNG, downloadPDF,
            // exposed for testing
-           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage, usedRows, siteMode, _ST:ST };
+           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage, usedRows, siteMode, toMatrix, _ST:ST };
 })();
 if (typeof window !== 'undefined') window.SNPTree = SNPTree;

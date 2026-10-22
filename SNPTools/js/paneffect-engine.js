@@ -467,7 +467,7 @@
     keys.innerHTML =
       '<span><i style="background:' + THEME.colorFor('gene', 0) + '"></i>wild type</span>' +
       '<span><i style="background:' + THEME.colorFor('pan', 0) + '"></i>exact match</span>' +
-      '<span><i style="background:' + THEME.gapColor() + '"></i>gap / no data</span>';
+      '<span><i style="background:' + THEME.gapColor() + '"></i>gap</span>';
     wrap.appendChild(bar); wrap.appendChild(labels); wrap.appendChild(keys);
     return wrap;
   }

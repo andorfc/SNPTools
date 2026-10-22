@@ -39,7 +39,7 @@ function numberToAminoAcid(number) {
     if (number >= 0 && number < aminoAcids.length) {
         return aminoAcids[number];
     } else {
-        throw new Error("Invalid number. The number should be between 0 and 19 inclusive.");
+        throw new Error("Invalid number. The number should be between 0 and 20 inclusive.");
     }
 }
 

@@ -215,7 +215,7 @@ async function fetchAndProcessQueryData(queryFilename) {
         // Fetch the TSV content
         let response = await fetch(queryFilename);
         if (!response.ok) {
-            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
             return false;
             //throw new Error("Failed to fetch the file.");
         }
@@ -224,7 +224,7 @@ async function fetchAndProcessQueryData(queryFilename) {
 
         if(data.includes("<html") || data.includes("<script"))
         {
-            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
             return false;
         }
 
@@ -255,7 +255,7 @@ async function fetchAndProcessQueryData(queryFilename) {
         return true;
 
     } catch (error) {
-        document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
         console.log("Error fetching or processing the file:", error);
         return false;
     }
@@ -288,7 +288,7 @@ async function fetchTargetData(targetFilename) {
         return true;
 
     } catch (error) {
-        document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
         console.log("Target Error fetching or processing the TSV file:", error);
     }
 }
@@ -522,14 +522,14 @@ async function fetchDataAndSetup(protein, protein_can, b73_flag, pan_flag) {
                         let response_can = await fetch(heatmap_filename);
 
                         if (!response_can.ok) {
-                            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+                            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
                             throw new Error("Failed to fetch gene model canonical CSV file.");
                         }
                         let data_can = await response_can.text();
 
                         if(data_can.includes("<html") || data_can.includes("<script"))
                         {
-                            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+                            document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
                             throw new Error("Failed to fetch gene model canonical CSV file.");
                         }
 
@@ -544,7 +544,7 @@ async function fetchDataAndSetup(protein, protein_can, b73_flag, pan_flag) {
                     }
                 } catch (error) {
                     offLoadingIcon();
-                    document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+                    document.getElementById("pan-genome").innerHTML = '<div class="text-content" style="color: red;">Pan-genome data for the gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
                     console.error("There was an error:", error.message);
                 }
       }

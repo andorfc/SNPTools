@@ -318,8 +318,8 @@ function renderRegion(){
         </div>
         <div class="field" style="margin:0;width:120px">
           <label>Loci / page</label>
-          <select id="perPage" onchange="S.perPage=+this.value">
-            <option>50</option><option selected>100</option><option>250</option><option>500</option>
+          <select id="perPage" onchange="S.perPage=+this.value;S.page=1;if(S.results&&S.results.rows&&S.results.rows.length)renderTable()">
+            ${[50,100,250,500].map(n=>`<option value="${n}" ${n===S.perPage?'selected':''}>${n}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -804,7 +804,7 @@ function renderRunbar(){
     <div class="summ">
       <span class="kick${ready?'':' wait'}">${ready?'Ready to run':'Finish steps 1–3 to run'}</span>
       <b>${d.name} ${d.sub}</b> · <span class="mono">${S.chr}:${lo.toLocaleString()}–${hi.toLocaleString()}</span><br>
-      <span>${S.selected.size} accessions · ${spanStr} interval${mode?' · '+mode:''}</span>
+      <span>${S.selected.size} accession${S.selected.size===1?'':'s'} · ${spanStr} interval${mode?' · '+mode:''}</span>
     </div>
     <div class="spacer"></div>
     <button class="btn primary" ${ready?'':'disabled'} onclick="runQuery()">
@@ -945,6 +945,7 @@ function renderResults(){
           ${sendBtnHTML('sendToImpact()',  sendGate('impact'),  'Send to SNPImpact',   ICONS.star)}
           ${sendBtnHTML('sendToCompare()', sendGate('compare'), 'Send to SNPCompare',  ICONS.compare||ICONS.grid)}
           ${sendBtnHTML('sendToTree()',    sendGate('tree'),    'Send data to SNPTree', ICONS.tree)}
+          ${sendBtnHTML('sendToMatrix()',  sendGate('tree'),    'Send data to SNPMatrix', ICONS.grid)}
           ${sendBtnHTML('sendToGeo()',     sendGate('geo'),     'Send to SNPGeo',      ICONS.map||'')}
           <button class="btn${pgOK?'':' off'}" ${pgOK?'':'aria-disabled="true" data-tt="Selected region too large for Pangenome viewer - choose a region under 10 kb"'} onclick="openPangenomeRegion()">${ICONS.grid||''} Pangenome viewer ↗</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
@@ -1002,18 +1003,18 @@ async function sendToGeo(){
   if(!(S.results&&S.results.rows&&S.results.rows.length)){ go('snpgeo'); return; }
   const q=resultQuery();
   const allIds=(Data.accessionsFor(q.dataset)||[]).map(a=>a.id);
-  let res=S.results, requeried=false;
+  let res=S.results;
   const partial=(S.results.accs||[]).length < allIds.length;
   if(partial && S.results.rows.length*allIds.length <= GEO_HANDOFF_WORK_MAX){
     const btns=[...document.querySelectorAll('button')].filter(b=>/Send to SNPGeo/.test(b.textContent));
     btns.forEach(b=>{b.dataset.lbl=b.innerHTML; b.innerHTML='Querying all '+allIds.length+' samples…'; b.disabled=true;});
     try{
       const r=await Data.queryVariants(q.dataset, q.chr, q.lo, q.hi, allIds);
-      if(r && !r.wide && r.rows && r.rows.length){ r.q=q; res=r; requeried=true; }
+      if(r && !r.wide && r.rows && r.rows.length){ r.q=q; res=r; }
     }catch(e){ console.warn('[sendToGeo] full-dataset re-query failed; handing off the selection only', e); }
     btns.forEach(b=>{b.innerHTML=b.dataset.lbl; b.disabled=false;});
   }
-  S.geoInput=Object.assign(resultHandoff(res), {requeried});
+  S.geoInput=resultHandoff(res);
   go('snpgeo');
 }
 /* hand the region's variants to SNPImpact for ranking (accessions irrelevant there) */
@@ -1162,7 +1163,7 @@ const ANNOT_TT={
   r2:'Maximum LD r² — linkage-disequilibrium correlation; closer to 1 is stronger.',
   maf:'Minor-allele frequency — frequency of the less common allele (0 to 0.5).',
   qc:'Site QC — the class of the site from its heterozygous and homozygous carriers among all lines of the release. Pass: fewer than a quarter of carriers heterozygous. Het elevated: a quarter or more. Het excess: more heterozygous than homozygous carriers. Het only: no homozygous carrier. No carrier: no line carries the allele. Hover a cell for its counts.',
-  pc1:'PlantCAD DNA language-model score; more extreme values are more disruptive.',
+  pc1:'PlantCAD1 DNA language-model score; more negative is more disruptive.',
   pc2op:'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
   evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP; more negative is more disruptive.',
   esm1:'ESM protein language-model score for the amino-acid change.',

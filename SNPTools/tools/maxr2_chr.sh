@@ -5,7 +5,7 @@
 set -eo pipefail
 C=$1; SD=$2
 G=/90daydata/maizegdb/carson/grz2023; R=$G/release_v1.4; B=$G/snptools_build/$C; O=$G/snptools_build/maxr2; mkdir -p $B $O
-T=/tmp/mx_$C; mkdir -p $T
+T=$(mktemp -d "${TMPDIR:-/tmp}/mx_${C}.XXXXXX"); trap 'rm -rf "$T"' EXIT   # a fresh folder per run; a stale fifo made the next mkfifo fail
 M=$B/zmgrin2026_v1.4_${C}_933.gt.vcf.gz
 if [ ! -s $M.tbi ]; then   # same 933-sample merge as stageB_ceres.sh (reused by the SNPTools build)
   bcftools annotate --threads 2 -x ^FORMAT/GT $R/all/grz2023_release_v1.4_all_$C.vcf.gz -Oz -o $T/imp.vcf.gz; bcftools index -t $T/imp.vcf.gz

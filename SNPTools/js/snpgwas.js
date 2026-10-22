@@ -1310,7 +1310,7 @@
       const switching = chosenVersityDatasetId() !== defaultVersityDatasetId()
         && typeof S !== 'undefined' && S.dataset !== chosenVersityDatasetId();
       DOM.hoHint.textContent = !canRegion
-        ? 'This region spans multiple chromosomes, so it can’t be sent to SNPVersity; SNPVersity needs a single continuous region, on one chromosome.'
+        ? 'This region holds no SNPs, or spans more than one chromosome; SNPVersity needs a single continuous region on one chromosome with SNPs in it.'
         : (switching && !wantsReplace && !wantsAdd
           ? 'SNPVersity will switch to this VCF set; its accession lists are not shared with other sets, so the current selection is cleared.'
           : '');
@@ -1347,7 +1347,6 @@
       noteParts.push(info.mapped.length + ' of ' + info.names.length + ' NAM lines incl. B73 (' + info.ids.length + ' sample' + (info.ids.length === 1 ? '' : 's')
         + (info.translated ? ', GRIN-linked release ids' : '') + ')'
         + (info.missing.length ? '; not available in this set: ' + info.missing.join(', ') : ''));
-      payload.notAvailable = info.missing.slice();
     } else {
       /* No accessions in this payload — never let a leftover merge choice
          apply to (and potentially wipe) the user's existing accession
@@ -2119,7 +2118,7 @@
      the two don't repeat the same framing. */
   function generalHeaderHTML() {
     return '<div class="sec"><div class="bar"></div><div style="width:100%">' +
-      '<div class="n">GWAS MANHATTAN PLOT EXPLORER </div>' +
+      '<div class="n">GWAS EXPLORER · MANHATTAN PLOTS</div>' +
       '<h2>Explore published GWAS results</h2>' +
       '<p>Browse Manhattan plots displaying results from curated GWAS publications across traits and populations. ' +
       'Pick a dataset below, then pan, zoom, and drag-select regions to inspect significant SNPs; ' +
@@ -2474,7 +2473,7 @@
     '.gwx-toolbar select:focus,.gwx-toolbar input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-50)}' +
     '.gwx-toolbar input[type=text]{font:inherit;font-family:var(--mono);font-size:12.5px;padding:7px 11px;border-radius:var(--rad-sm);border:1px solid var(--line);background:#fff;color:var(--ink);width:210px}' +
     '.gwx-search-wrap{position:relative}' +
-    '.gwx-search-status{position:absolute;top:100%;left:0;margin-top:6px;background:#fff8ec;border:1px solid #f3e3c2;color:#7a5a17;font-size:11.5px;line-height:1.4;padding:6px 10px;border-radius:8px;box-shadow:var(--shadow-lg);white-space:nowrap;z-index:15;display:none}' +
+    '.gwx-search-status{position:absolute;top:100%;left:0;margin-top:6px;background:#fff8ec;border:1px solid #f3e3c2;color:#7a5a17;font-size:11.5px;line-height:1.4;padding:6px 10px;border-radius:8px;box-shadow:var(--shadow-lg);white-space:normal;max-width:min(360px,90vw);z-index:15;display:none}' +
     '.gwx-search-status.show{display:block}' +
     '.gwx-help-wrap{position:relative;display:inline-flex}' +
     '.gwx-help-btn{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted);font:inherit;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1}' +
@@ -2510,7 +2509,7 @@
     '#gwxPlot.dragging{cursor:grabbing}' +
     '.gwx-selrect{position:absolute;top:0;bottom:0;background:rgba(207,138,18,.20);border-left:1.5px solid var(--gold);border-right:1.5px solid var(--gold);pointer-events:none;display:none}' +
     /* top/bottom match MARGIN.top(16)/MARGIN.bottom(34) so the line spans exactly the plot area */
-    '.gwx-crosshair{position:absolute;top:16px;bottom:34px;width:0;border-left:1.5px dashed var(--blue-600);pointer-events:none;display:none;z-index:4}' +
+    '.gwx-crosshair{position:absolute;top:50px;bottom:34px;width:0;border-left:1.5px dashed var(--blue-600);pointer-events:none;display:none;z-index:4}' +
     '.gwx-sel-label{position:absolute;top:3px;transform:translateX(-50%);background:var(--gold);color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;display:none;z-index:6}' +
     '.gwx-tooltip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-lg);padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);min-width:198px;z-index:5;display:none}' +
     '.gwx-tooltip .coord{font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--blue-600);margin-bottom:2px}' +

@@ -78,8 +78,8 @@ const SNPMatrix = (function () {
       page.innerHTML = shellHead() + `<div class="empty-state"><div class="ei">${ICONS.grid||ICONS.compare||''}</div>
         <h3>Send a region from SNPVersity</h3>
         <p>SNPMatrix computes the pairwise identity-by-state distance among the accessions you queried.
-        Run a query in SNPVersity (pick at least two accessions) and use <b>Send to SNPMatrix</b>,
-        or open it from SNPTree.</p>
+        Run a query in SNPVersity (pick at least two accessions) and use <b>Send data to SNPMatrix</b>,
+        or open it from SNPTree (<b>SNPMatrix →</b>) or SNPCompare's Matrix view.</p>
         <button class="btn solid" onclick="go('snpversity')">Go to SNPVersity</button></div>`;
       return;
     }
@@ -245,7 +245,7 @@ const SNPMatrix = (function () {
   /* ---- public ---- */
   function set(k,v){ ST[k] = (v==='true')?true:(v==='false')?false:v;
     const stage=document.getElementById('mtxStage'); if(stage) stage.innerHTML=stageInner(ST.input);
-    document.querySelectorAll('.page .qbtn').forEach(()=>{}); render(); }
+    render(); }
   function force(){ ST.force=true; const stage=document.getElementById('mtxStage'); if(stage) stage.innerHTML=stageInner(ST.input); }
   function toTree(){ if(ST.input){ S.treeInput=ST.input; } go('snptree'); }
 

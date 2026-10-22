@@ -1,7 +1,7 @@
 # Running the maize SNPTools instance locally (SNPTrait + SNPGeo port)
 
-Tree: `~/Documents/code/SNPTools_maize_port` (branch content `maize-snptrait-snpgeo` =
-`main` @ `4bf370d8` + the 25 patches in `patches/`). Dataset with metadata and a local
+Tree: `~/Documents/code/SNPTools_maize_port` (the branch `maize-grin-2026` on github andorfc/SNPTools =
+`main` @ `4bf370d8` + the patches in `patches/`, applied in order). Dataset with metadata and a local
 test store: **MaizeGDB GRIN-linked 2026 · Imputed (Grzybowski 2023 sites)** (`zmgrin2026_imp`,
 933 lines, release v1.4 = 926 imputed + 7 separately called, incl. NAM founder CML103) -- since
 patch 0029 the only dataset offered (initial release; the MaizeGDB 2026 sets are commented out in
@@ -252,12 +252,12 @@ chromosome by chromosome (a dashed header and a note above the table).
    *Heterozygous sample*, select visible and send them to SNPVersity: the 20 lines carry a "het" marker
    in the selection chips and the table header (ZmG_CH9: heterozygous at 27.1% of clean sites). The
    CSV and JSON exports add `sampleQC` and `hetShare`. SNPFunction marks them in the carrier chips.
-10. **SNPCurate** ("Explore & Analyze"): 21 published alleles, gold 2 / outline 12 / grey 7. Open
+10. **SNPCurate** ("Explore & Analyze"): 76 published variants of 17 genes, gold 4 / silver 17 / white 55. Open
    *tga1* (SC0001): homozygous in 7 of 7 *Z. parviglumis* lines and no other, priority LOW (composite
    +1.22 z, 4 of 4 scores, 94th percentile of the release's missense sites). *Carriers in SNPVersity* selects those 7 lines on the tga1 interval, *Gene in SNPFunction*
-   opens Zm00001eb175150, *On the map* shows the site for all 933 lines in SNPGeo. *p1* (SC0019): cob
-   color White 335 of 346, Red 11 of 543; United States 248 of 749, Mexico 43 of 44. A grey entry such
-   as *su1* W578R (SC0010) says why the release cannot show it. Rebuild with `make curate` after editing
+   opens Zm00001eb175150, *Send to SNPGeo* shows the site for all 933 lines in SNPGeo. *p1* (SC0019) shows
+   pericarp color by genotype from the GRIN descriptor. A white entry such as *su1* W578R (SC0010) says
+   why the release cannot show it. Rebuild with `make curate` after editing
    `data/curate/snpcurate.source.json`. The marks also appear in the other tools: SNPVersity on the
    tga1 interval (chr4:46,647,932-46,652,896) shows the gold ★ beside 46,648,374 and "Curated alleles in
    this interval"; SNPFunction for su1 lists F163L (★ silver) and W578R (○, not a site in this release) above the
@@ -296,11 +296,11 @@ local server therefore clears day-old query VCFs from `vcf/`.
 
 ## 6. Turning the tree into the git branch
 
-The sandbox that built this could not create `.git` directories, so the folder is a plain tree.
-To get the branch with its 25 commits:
+The folder is a plain tree (no `.git`); the branch `maize-grin-2026` on GitHub carries the same
+patches as commits. To rebuild the branch from the patches:
 
     git clone https://github.com/andorfc/SNPTools.git SNPTools_git && cd SNPTools_git
-    git checkout -b maize-snptrait-snpgeo 4bf370d892615783aa52bcec979ad6340b30e4da
+    git checkout -b maize-grin-2026 4bf370d892615783aa52bcec979ad6340b30e4da
     git am --whitespace=nowarn /path/to/patches/*.patch      # author: "SNPTools maize port"
     # optional: git rebase -r --exec 'git commit --amend --no-edit --reset-author' 4bf370d8
 

@@ -46,8 +46,8 @@ ROLES = ('causal', 'proposed', 'allele', 'associated', 'lead_snp', 'marker')
 FAV = {'alt': 'Alternate', 'ref': 'Reference', 'depends': 'Depends', 'unknown': '—'}
 GT_WORD = {'ref': 'Ref', 'het': 'Het', 'alt': 'Alt', 'missing': 'Missing'}
 GT_LONG = {'ref': 'homozygous for the reference allele', 'het': 'heterozygous', 'alt': 'homozygous for the alternate allele', 'missing': 'a missing call'}
-STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'different_allele': 'Other allele here', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
-          'unreliable': 'Unreliable calls', 'not_annotated': 'Gene not annotated'}
+STATUS = {'site': 'Site in this release', 'not_a_site': 'Not a site', 'different_allele': 'Site, different allele', 'not_locatable': 'Not locatable', 'structural': 'Structural variant',
+          'unreliable': 'Calls unreliable', 'not_annotated': 'Gene not annotated'}
 N_ENTRIES = 76     # the registry re-read from the papers on 2026-10-20
 fails = []
 

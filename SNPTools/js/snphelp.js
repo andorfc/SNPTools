@@ -45,7 +45,7 @@ const SNPHelp = (function () {
       tag:'Similarity to a focal accession',
       what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is allele sharing over the co-called sites (1 for the same genotype, 0.5 for a heterozygote against a homozygote, 0 for the two homozygotes), which is 1 \u2212 the distance SNPTree and SNPMatrix compute. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression. The region scope uses usable sites by default (Region sites: Usable only or All sites); the genome-wide values are precomputed over all sites.',
       give:'A focal accession, and optionally a region handed off from SNPVersity or loaded with Load data from SNPVersity.',
-      get:'A ranked similarity table with project, SRA ID, accession name, and PI number (the line’s GRIN accession).' },
+      get:'A ranked similarity table with project, accession id, accession name, and GRIN accession (PI, Ames or NSL number).' },
     { id:'snptree', name:'SNPTree', icon:'tree', color:'#15803d', status:LIVE,
       tag:'Local phylogeny',
       what:'Builds a local phylogenetic tree from the genotype matrix already in memory, using identity-by-state distances (UPGMA / neighbour-joining). Useful for reading haplotype structure, introgression, and how lines cluster in a region. Distances use usable sites by default (Sites: Usable only or All).',
@@ -155,13 +155,13 @@ const SNPHelp = (function () {
       ['COMP', 'Completeness: the proportion of accessions with a non-missing genotype call at that site.'],
       ['maxR²', 'Maximum linkage-disequilibrium r² with any variant 400-5,000 bp away (PLINK 1.9); values closer to 1 indicate stronger correlation. For the GRIN-linked 2026 set it is computed from the 933 release genotypes without filtering (blank = no partner variant in range, or monomorphic). The table rounds it to two decimals.'],
       ['Min. maxR²', 'The filter above the table: hides the sites whose maxR² is below the value (0 to 1; 0 shows every site). Above 0, a site with no maxR² is hidden too. A note under the filters counts the sites it hides; the downloaded VCF keeps every site. Shown for sets that carry maxR².'],
-      ['MAF', 'Minor-allele frequency among the selected or source accessions, depending on the returned record.'],
+      ['MAF', 'Minor-allele frequency over all 933 lines of the release (the INFO MAF field), whichever accessions were queried.'],
       ['Site QC', 'The class of the site from its heterozygous and homozygous carriers among all lines of the release; hover a cell for its counts. The filter above the table shows All sites (the default), Hide flagged and no-carrier, or Passing only.'],
       ['PlantCAD1 / PlantCAD2', 'DNA language-model variant scores, on every SNP of the GRIN-linked 2026 set (indels have none). More extreme disruptive scores are prioritized according to the score convention used by the data pipeline. PlantCAD2 is the one-pass long-context score (8,192-bp windows, plantcad2_onepass_score); it is not on the scale of the 512-bp PlantCAD2 score, which is in the downloaded VCF as plantcad2_score. In the GRIN-linked 2026 set PlantCAD1/PlantCAD2 (and Evo2) are rounded to 0.1, like the ESM scores. Their headers break over two lines (Plant / CAD1) so the columns are as narrow as the other scores.'],
       ['Evo2', 'Evo2 7B DNA language-model log-likelihood ratio for the allele (256-bp left context), scored for every SNP; more negative is more disruptive. Filled on every chromosome of the GRIN-linked 2026 set.'],
       ['ESM1 / ESM2 / ESM3', 'Protein language-model scores for amino-acid substitutions, filled for missense sites.'],
       ['ESM-C', 'ESM C 600M protein language-model log-likelihood ratio for the amino-acid substitution, missense sites only; more negative is more disruptive. Shown where the dataset carries it.'],
-      ['Accession genotype columns', 'Each accession column shows its genotype at the site: 0/0 reference homozygous, 0/1 heterozygous, 1/1 alternate homozygous, or ./. missing.'],
+      ['Accession genotype columns', 'Each accession column shows its genotype at the site as a dosage: 0 reference homozygous, 1 heterozygous, 2 alternate homozygous, or · missing (the downloaded VCF carries the 0/0, 0/1, 1/1 and ./. calls).'],
       ['het', 'Beside an accession name: the line is a Heterozygous sample (more than 5% of clean sites heterozygous).'],
       ['Curated row', 'A row whose site is a curated allele: its SNPCurate mark beside the position, and its site and annotation cells shaded light gold (light grey for a silver mark). The curated variants of the interval, white ones included, are named above the table.'],
       ['Gene models in this region', 'The B73 v5 gene models the queried interval overlaps, each linked to its MaizeGDB gene page.'],
@@ -208,7 +208,7 @@ const SNPHelp = (function () {
       ['Priority', 'Integrated candidate tier. TOP is the strongest prioritization, followed by HIGH, MODERATE, and LOW: a loss-of-function or splice-site change is TOP; a missense or in-frame change is tiered by its composite AI score (TOP at or below the 5th percentile of the release’s missense sites, HIGH the 25th, MODERATE the 80th); the AI score filter keeps the HIGH and TOP composites. The CSV export carries the composite as composite_z with composite_scores, the number of scores it averages.'],
       ['Composite score', 'The mean of the standardized PlantCAD1, PlantCAD2 (one-pass), ESM1 and ESM2 scores a variant has: each score is turned into a z against the release’s 412,221 missense sites that carry all four (z = (score − mean) / sd), so no one model’s scale dominates, then averaged. A missense SNP averages four scores, a non-coding SNP the two DNA scores, an indel has none. More negative is more damaging; the detail view shows the value, how many scores it averages and its percentile among those missense sites (1st = most damaging).'],
       ['Site QC', 'The class of the variant’s site. The filter shows All sites, Hide flagged and no-carrier (the default), or Passing only; a note above the table counts the variants it hides. A curated allele is never hidden.'],
-      ['Shortlist / flag', 'A user-selected marker for retaining a candidate variant for later review or export.'],
+      ['Shortlist / flag', 'A star you set on a candidate variant to keep it in view; the CSV export carries it as the shortlisted column.'],
       ['Gene-model diagram', 'A compact display of exons, introns, coding sequence, strand, and the variant position.'],
       ['Exon', 'A transcript segment retained in the mature RNA; coding portions contribute to the protein sequence.'],
       ['Intron', 'A transcribed segment removed during RNA splicing.'],
@@ -276,7 +276,7 @@ const SNPHelp = (function () {
       ['Project', 'BioProject or dataset project associated with the accession.'],
       ['SRA ID', 'Sequence Read Archive run identifier associated with the accession.'],
       ['Accession name', 'Human-readable line or germplasm name.'],
-      ['PI number', 'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'],
+      ['GRIN accession', 'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'],
       ['Global sim', 'Genome-wide identity-by-state similarity between the focal accession and the comparison accession, from the precomputed matrix.'],
       ['Local sim', 'Identity-by-state similarity calculated only from variants in the current SNPVersity region: allele sharing over the co-called sites (a heterozygote against a homozygote counts 0.5), 1 \u2212 the distance SNPTree and SNPMatrix report for the same pair.'],
       ['Δ (local−global)', 'Local similarity minus global similarity. Positive values indicate the pair is more similar in the selected region than genome-wide; negative values indicate less similarity in the region.'],
@@ -419,7 +419,8 @@ const SNPHelp = (function () {
     ['SNPCurate', 'A new registry of the variants published for maize genes and what this release shows of them. Its gold, silver and white marks appear in SNPVersity (where a curated row is shaded), SNPImpact, SNPFunction, SNPFold and SNPGeo.'],
     ['Reference lines', 'SNPFunction and SNPFold can send the lines homozygous for the reference allele to SNPVersity, beside the homozygous, heterozygous and all carriers.'],
     ['Load data from SNPVersity', 'SNPImpact, SNPCompare and SNPTree offer the current SNPVersity result on their empty page, in one click.'],
-    ['SNPCompare', 'A PI number column gives each line’s GRIN accession.'],
+    ['SNPCompare', 'A GRIN accession column gives each line’s PI, Ames or NSL number.'],
+    ['Evo2', 'The Evo2 7B DNA language-model score (a log-likelihood ratio with 256-bp left context) is on every SNP of the GRIN-linked 2026 release, beside PlantCAD1 and PlantCAD2, in every tool.'],
     ['SNPVersity table', 'maxR² is shown to two decimals, the PlantCAD columns are as narrow as the other scores, and the gene models of the region link to their MaizeGDB pages.'],
     ['Phones', 'SNPTrait and SNPFunction fit a 375 px screen.'],
     ['Composite AI score', 'SNPImpact, SNPFunction, SNPFold and SNPCurate now rank variants by a composite of four scores, the mean of the standardized PlantCAD1, PlantCAD2 (one-pass), ESM1 and ESM2 scores a variant has, each as a z against the release’s missense sites. The priority tiers of missense and in-frame changes are percentiles of that composite (TOP 5th, HIGH 25th, MODERATE 80th), and the detail views show the percentile. Before, the priority used the raw mean of PlantCAD1 and ESM1.'],
@@ -676,7 +677,7 @@ const SNPHelp = (function () {
 
       <section id="hp-tools" class="hp-sec">
         <div class="hp-h"><span class="hp-n">03</span><h2>The tools</h2></div>
-        <p class="hp-lead">Fourteen tools. Twelve are live today; SNPImpute and SNPGermplasm are on the roadmap and will
+        <p class="hp-lead">Twelve tools are live today; SNPImpute, SNPGermplasm and SNPDensity are on the roadmap and will
           share the same data and coordinates. Expand any tool for what it does, what it takes, and what it returns.</p>
         <div class="hp-tools">${toolCards}</div>
       </section>

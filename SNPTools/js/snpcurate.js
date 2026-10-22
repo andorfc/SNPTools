@@ -18,10 +18,10 @@
   const STATUS = {
     site:          {label:'Site in this release'},
     not_a_site:    {label:'Not a site',         why:'The release has no site at this position, so it cannot show the allele.'},
-    different_allele:{label:'Other allele here', why:'The release has a site at this position, but with a different allele from the published one.'},
+    different_allele:{label:'Site, different allele', why:'The release has a site at this position, but with a different allele from the published one.'},
     not_locatable: {label:'Not locatable',      why:'The change cannot be placed on the B73 v5 gene model the release is annotated with.'},
     structural:    {label:'Structural variant', why:'The allele is a transposon or indel haplotype, which a release of SNPs and short indels cannot genotype.'},
-    unreliable:    {label:'Unreliable calls',   why:'Most sites in this gene are dominated by heterozygous calls, so the release cannot genotype the allele series reliably.'},
+    unreliable:    {label:'Calls unreliable',   why:'Most sites in this gene are dominated by heterozygous calls, so the release cannot genotype the allele series reliably.'},
     not_annotated: {label:'Gene not annotated', why:'The gene model is missing from the annotation behind the release’s consequence calls.'},
   };
   const MARKS = ['gold','silver','white'];
@@ -450,7 +450,7 @@
       try {
         const res = await Data.queryVariants(ds(), e.chr, +e.pos, +e.pos, Data.accessionsFor(ds()).map(a=>a.id));
         res.q = {dataset:ds(), chr:e.chr, lo:+e.pos, hi:+e.pos};
-        S.geoInput = Object.assign(resultHandoff(res), {requeried:true});
+        S.geoInput = resultHandoff(res);
         go('snpgeo');
       } finally { CU.busy = null; }
     },

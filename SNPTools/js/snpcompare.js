@@ -778,7 +778,7 @@ const SNPCompare = (function () {
 
   /* ---------------- table ---------------- */
   function cols(){
-    const c=[{k:'rank',t:'#'},{k:'id',t:'Final_ID'}];
+    const c=[{k:'rank',t:'#'},{k:'id',t:'Accession ID'}];
     if(ST.mode==='both'){
       c.push({k:'gsim',t:'Global sim'},{k:'lsim',t:'Local sim'},{k:'dsim',t:'Δ (local−global)'},
              {k:'gmiss',t:'Global miss%'},{k:'lmiss',t:'Local miss%'},{k:'lboth',t:'Co-called sites'});
@@ -788,7 +788,7 @@ const SNPCompare = (function () {
       c.push({k:'gsim',t:'Similarity'},{k:'gmiss',t:'Missing%'});
     }
     c.push({k:'bio',t:'Project'},{k:'run',t:'SRA ID'},{k:'name',t:'Accession Name'},
-           {k:'grin',t:'PI number',tt:'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'});
+           {k:'grin',t:'GRIN accession',tt:'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'});
     return c;
   }
   const fmtSim=v=>v==null?'—':v.toFixed(4);

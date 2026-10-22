@@ -445,7 +445,7 @@
           d.koLinesFlagged ? `<div class="fn-statn" id="fnKoFlagged">${d.koLinesFlagged.toLocaleString()} more lines only in flagged calls</div>` : '')}
         ${stat('Mean PlantCAD1', b.meanPlantcad==null?'—':b.meanPlantcad, 'average PlantCAD1 DNA language-model score')}
         ${sec?stat('Mean PlantCAD2', b.meanPlantcad2op==null?'—':b.meanPlantcad2op, 'average PlantCAD2 one-pass DNA language-model score (8,192-bp windows; not on the scale of the 512-bp PlantCAD2)'):''}
-        ${stat('Mean ESM', b.meanEsm==null?'—':b.meanEsm, 'average ESM protein language-model score')}
+        ${stat('Mean ESM1', b.meanEsm==null?'—':b.meanEsm, 'average ESM1 protein language-model score')}
         ${sec?stat('Mean ESM2', b.meanEsm2==null?'—':b.meanEsm2, 'average ESM2 protein language-model score'):''}
         ${sec?stat('Mean ESM3', b.meanEsm3==null?'—':b.meanEsm3, 'average ESM3 protein language-model score'):''}
         ${sec?stat('Mean Evo2', b.meanEvo2==null?'—':b.meanEvo2, 'average Evo2 DNA language-model score (every SNP)'):''}
@@ -543,7 +543,7 @@
     const dsId = d.dataset!=null ? d.dataset : FN.dataset;
     return `<div class="card pad">
       <div class="fn-h" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Damaging &amp; knockout alleles
-        <span class="muted" style="font-weight:400;font-size:12px">${d.damaging.length} alleles · click a row for carrier lines</span>
+        <span class="muted" style="font-weight:400;font-size:12px">${d.damaging.length} allele${d.damaging.length===1?'':'s'} · click a row for carrier lines</span>
         <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
           ${anyCarrier?`<button class="btn" title="Open this gene's region in SNPVersity with every accession carrying any damaging allele preselected"
             onclick="FUNCTION.toVersity('all','all')">${ICONS.dna||''} Send all carriers to SNPVersity</button>`:''}
@@ -944,7 +944,8 @@
         .concat(sec?['esmc']:[])
         .concat(['composite_z','composite_scores','priority','site_qc','het','hom','af','homozygous_carriers','het_carriers']);
       const line=v=>{
-        const base=[v.variant,v.consequence,v.domain,v.plantcad];
+        const q=x=>{ x=String(x==null?'':x); return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x; };   // CSV fields with a comma or quote
+        const base=[q(v.variant),q(v.consequence),q(v.domain),v.plantcad];
         if(sec) base.push(v.plantcad2, v.plantcad2op);
         if(sec) base.push(v.evo2);
         base.push(v.esm);

@@ -307,7 +307,7 @@
         <table class="vcf imp">
           <thead><tr>
             ${th('Gene','gene')}<th data-tt="${COL_TT['Variant']}">Variant</th>${th('Consequence','consequence')}${th('Domain','domain')}
-            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2op','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
+            ${th('PlantCAD1','plantcad','num')}${IMP.sec?th('PlantCAD2','plantcad2op','num'):''}${IMP.sec?th('Evo2','evo2','num'):''}${th('ESM1','esm','num')}${IMP.sec?th('ESM2','esm2','num')+th('ESM3','esm3','num'):''}${IMP.sec?th('ESM-C','esmc','num'):''}${IMP.hasQc?`<th data-tt="${COL_TT['Site QC']}">Site QC</th>`:''}${th('Priority','priority')}<th></th>
           </tr></thead>
           <tbody>${rows.map(rowHTML).join('')}</tbody>
         </table>
@@ -353,7 +353,7 @@
     'Domain':'Pfam domain containing the affected amino acid, when present.',
     'PlantCAD1':'PlantCAD DNA language-model score estimating sequence disruption.',
     'PlantCAD2':'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
-    'ESM':'ESM protein language-model score for the amino-acid substitution.',
+    'ESM1':'ESM1 protein language-model score for the amino-acid substitution.',
     'ESM2':'ESM2 protein language-model score.',
     'ESM3':'ESM3 protein language-model score.',
     'Evo2':'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
@@ -573,7 +573,7 @@
           ${scoreBar('PlantCAD1', r.plantcad)}
           ${IMP.sec?scoreBar('PlantCAD2', r.plantcad2op, 'pc2op'):''}
           ${IMP.sec?scoreBar('Evo2', r.evo2):''}
-          ${scoreBar('ESM', r.esm)}
+          ${scoreBar('ESM1', r.esm)}
           ${IMP.sec?scoreBar('ESM2', r.esm2)+scoreBar('ESM3', r.esm3):''}
           ${IMP.sec?scoreBar('ESM-C', r.esmc):''}
           <div class="pctl">
@@ -645,9 +645,9 @@
         .concat(['esm'])
         .concat(IMP.sec?['esm2','esm3']:[])
         .concat(IMP.sec?['esmc']:[])
-        .concat(['combined','combinedN','priority','percentile','impactLevel','maf','pos','ref','alt']);
+        .concat(['combined','combinedN','priority','percentile','impactLevel','maf','pos','ref','alt','shortlisted']);
       const rows=filtered();
-      const line=r=>cols.map(c=>{ let v=r[c]; if(v==null)return '';
+      const line=r=>cols.map(c=>{ let v=(c==='shortlisted')?(IMP.shortlist.has(r.id)?'yes':''):r[c]; if(v==null)return '';
         if(typeof v==='string' && /[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"'; return v; }).join(',');
       const head={plantcad2op:'plantcad2_onepass', combined:'composite_z', combinedN:'composite_scores'};   // plantcad2 = the 512-bp score, as before
       const csv=[cols.map(c=>head[c]||c).join(',')].concat(rows.map(line)).join('\n');

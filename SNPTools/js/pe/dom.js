@@ -105,14 +105,14 @@ function errorInnerHTML() {
 
     const element4 = document.getElementById("b73");
     if (element4) {
-        element4.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        element4.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
     } else {
         console.error("Element with id:", element4, "not found!");
     }
 
     const element5 = document.getElementById("pan-genome");
     if (element5) {
-        element5.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        element5.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Enter another gene model, transcript or protein id above.</div>';
     } else {
         console.error("Element with id:", element5, "not found!");
     }
@@ -123,21 +123,21 @@ function emptyInnerHTML() {
 
     const element2 = document.getElementById("summary");
     if (element2) {
-        element2.innerHTML = '<br>Use the search tab to enter a gene, transcript, or protein id.</p>';
+        element2.innerHTML = '<br>Enter a gene model, transcript or protein id above.';
     } else {
         console.error("Element with id:", element2, "not found!");
     }
 
     const element4 = document.getElementById("b73");
     if (element4) {
-        element4.innerHTML = '<br>Use the search tab to enter a gene, transcript, or protein id.</p>';
+        element4.innerHTML = '<br>Enter a gene model, transcript or protein id above.';
     } else {
         console.error("Element with id:", element4, "not found!");
     }
 
     const element5 = document.getElementById("pan-genome");
     if (element5) {
-        element5.innerHTML = '<br>Use the search tab to enter a gene, transcript, or protein id.</p>';
+        element5.innerHTML = '<br>Enter a gene model, transcript or protein id above.';
     } else {
         console.error("Element with id:", element5, "not found!");
     }

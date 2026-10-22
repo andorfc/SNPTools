@@ -369,25 +369,26 @@ def info_defs(extra=()):
 
 def header_text():
     lines = []
-    if "maizegdb" in hdf5_file_path:
+    store_name = os.path.basename(hdf5_file_path).lower()   # the family from the store's NAME, not its folder
+    if "maizegdb" in store_name:
         lines += common_info_header()
         lines.append("##source=MaizeGDB")
         lines.append("##reference=Andorf CM, Ross-Ibarra J, Seetharam AS, Hufford MB, Woodhouse MR. (2024) A unified VCF data set from nearly 1,500 diverse maize accessions and resources to explore the genomic landscape of maize. G3 Genes|Genomes|Genetics.")
         lines.append("##doi=https://doi.org/10.1101/2024.04.30.591904")
         lines += info_defs()
-    if "nam" in hdf5_file_path:
+    if "nam" in store_name:
         lines += common_info_header()
         lines.append("##source=MaizeGDB+NAM")
         lines.append("##reference=Hufford MB, Seetharam AS, Woodhouse MR, et al. De novo assembly, annotation, and comparative analysis of 26 diverse maize genomes. Science. 2021;373(6555):655-662.")
         lines.append("##doi=https://doi.org/10.1126/science.abg5289")
         lines += info_defs()
-    if "schnable" in hdf5_file_path:
+    if "schnable" in store_name:
         lines += common_info_header()
         lines.append("##source=Schnable2023")
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")
         lines.append("##doi=https://doi.org/10.1111/tpj.16123")
         lines += info_defs()
-    if "zmgrin" in hdf5_file_path:
+    if "zmgrin" in store_name:
         lines += common_info_header()
         lines.append("##source=MaizeGDB GRIN-linked 2026 (release v1.4; Grzybowski et al. 2023 sites, Beagle-imputed + direct-call companion lines)")
         lines.append("##reference=Grzybowski MW, Mural RV, Xu G, Turkus J, Yang J, Schnable JC. A common resequencing-based genetic marker data set for global maize diversity. Plant J. 2023;113(6):1109-1121.")

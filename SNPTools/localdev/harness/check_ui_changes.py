@@ -10,7 +10,7 @@ SNPCurate data file:
     "Gene models in this region" linked to its MaizeGDB page;
 (c) SNPTree, SNPImpact, SNPCompare: no "Load data from SNPVersity" before SNPVersity has a result;
     afterwards the offer names its region, lines and variants, and the button loads it;
-(d) SNPCompare's PI number column equals each line's GRIN accession in the catalogue;
+(d) SNPCompare's GRIN accession column equals each line's GRIN accession in the catalogue;
 (e) SNPFunction's "Reference lines" hand-off sends exactly the lines homozygous for the reference
     allele (the panel minus the carriers and the missing calls).
 (Widths at 375 px are checked in a browser; jsdom does no layout.) Standard library only."""
@@ -62,13 +62,13 @@ for t, x in L['load'].items():
     check(x['offer'] and 'chr4:46,647,932–46,652,896 · 26 lines' in x['offer'] and x['tool'] == t and x['loaded'] and not x['block'],
           f"{t}: offers \"{(x['offer'] or '')[:60]}...\" and the button loads it")
 
-# (d) SNPCompare PI number
+# (d) SNPCompare GRIN accession
 cat_js = open(f'{root}/js/zmgrin.catalog.js', encoding='utf-8').read()
 fam = json.loads(re.search(r'families\["zmgrin2026"\]\s*=\s*(\{.*?\});\n', cat_js, re.S).group(1))
 grin = {a['id']: a.get('grin') or '' for p_ in fam['projects'] for g_ in p_['groups'] for a in g_['accessions']}
 c = L['compare']
-check('PI number' in c['head'] and len(c['rows']) == len(grin) and all(pi == grin[i] for i, pi in c['rows']),
-      f"SNPCompare PI number column: {len(c['rows'])} rows equal the catalogue's GRIN accession (e.g. {c['rows'][0]})")
+check('GRIN accession' in c['head'] and len(c['rows']) == len(grin) and all(pi == grin[i] for i, pi in c['rows']),
+      f"SNPCompare GRIN accession column: {len(c['rows'])} rows equal the catalogue's GRIN accession (e.g. {c['rows'][0]})")
 
 # (e) reference lines
 rf = L['reference']

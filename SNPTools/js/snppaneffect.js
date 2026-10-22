@@ -141,7 +141,7 @@
       <h2>Predicted effects of amino-acid substitutions</h2>
       <p>Pick a gene model and a protein language-model, then read every possible
          substitution as a heatmap — in B73 and across the pan-genome. Jump here
-         from SNPVersity or SNPFold on a specific missense call and it lands
+         from SNPVersity, SNPImpact, SNPFunction or SNPFold on a specific missense call and it lands
          pre-highlighted.</p>
     </div></div>
 
@@ -403,7 +403,7 @@
     } else {
       if (PE.cfg.engine === 'native') {
         status(window.PanEffectEngine
-          ? 'PanEffect scripts (./js/pe/*.js) aren’t loaded — showing embedded view. See console.'
+          ? 'PanEffect’s scripts could not be loaded — showing the embedded view.'
           : 'Native engine not loaded — showing embedded view.');
       }
       renderEmbed(host);

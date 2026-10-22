@@ -956,7 +956,7 @@ async function until(site, expr, ms = 8000){
   /* ---------- the change list of 3 October 2026 (check_ui_changes.py) ----------
      Name and tagline; SNPVersity's maxR² to hundredths, two-line PlantCAD headers, MaizeGDB gene
      links, a curated row on gold; "Load data from SNPVersity" in SNPTree, SNPImpact and SNPCompare;
-     SNPCompare's PI number column; the reference lines hand-off of SNPFunction. (Widths at 375 px
+     SNPCompare's GRIN accession column; the reference lines hand-off of SNPFunction. (Widths at 375 px
      are checked in a browser: jsdom does no layout.) */
   if (['chr2', 'chr4'].every(c => (R.store || {})[c] > 100000)){
     const s13 = await openSite(ROOT); const $u = s13.$eval; const L = R.uiList = {};
@@ -989,11 +989,11 @@ async function until(site, expr, ms = 8000){
       $u(`(document.querySelector('#loadVersity button')||{click(){}}).click()`); await s13.wait(t === 'snptree' ? 600 : 300);
       L.load[t] = {offer: offer && offer.replace(/\s+/g, ' ').trim(), tool: $u('S.tool'), loaded: $u(check), block: $u(`!!document.getElementById('loadVersity')`)};
     }
-    // SNPCompare: PI number column (genome-wide table)
+    // SNPCompare: GRIN accession column (genome-wide table)
     $u(`S.compareInput=null; go('snpcompare')`); await s13.wait(400);
     $u(`SNPCompare.setMode('global'); SNPCompare.setView('table')`);
     await until(s13, `document.querySelectorAll('.cmp-table tbody tr').length>0`, 20000);
-    L.compare = $u(`(()=>{ const h=[...document.querySelectorAll('.cmp-table thead th')].map(t=>t.textContent.replace(/[▾▴]/g,'').trim()); const i=h.indexOf('PI number'), j=h.indexOf('Final_ID');
+    L.compare = $u(`(()=>{ const h=[...document.querySelectorAll('.cmp-table thead th')].map(t=>t.textContent.replace(/[▾▴]/g,'').trim()); const i=h.indexOf('GRIN accession'), j=h.indexOf('Accession ID');
       return {head:h, rows:[...document.querySelectorAll('.cmp-table tbody tr')].map(tr=>[tr.children[j].textContent, tr.children[i]?tr.children[i].textContent:null])}; })()`);
     // SNPFunction: the reference lines of ZmWAK T102A to SNPVersity (replace)
     $u(`S.functionGene='Zm00001eb116160'; S.functionDataset='zmgrin2026_imp'; go('snpfunction')`);

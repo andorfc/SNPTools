@@ -256,8 +256,8 @@ domainsArray.forEach((domain, index) => {
     document.body.appendChild(tooltip);
 
     div.className = 'domain';
-    div.style.left = scale(domain.start) + 'px';
-    div.style.width = (scale(domain.end) - scale(domain.start)) + 'px';
+    div.style.left = scale(domain.start - 1) + 'px';                               // cells sit at (x-1)*w: a domain starts at its first residue, not one late
+    div.style.width = (scale(domain.end) - scale(domain.start - 1)) + 'px';
     div.style.top = ((domainHeight + domainMarginTop) * 2 * index) + 'px';
     div.style.backgroundColor = pastelColors[index % pastelColors.length]; // Color assignment
 
@@ -285,8 +285,8 @@ domainsArray.forEach((domain, index) => {
                         tooltip.innerHTML = `
                             Pfam id: <a target="_blank" href="https://www.ebi.ac.uk/interpro/entry/pfam/${domain.pfam_id}">${domain.pfam_id}</a><br>
                             Pfam name: ${domain.pfam_name}<br>
-                            Interprot id: ${domain.inter_id}<br>
-                            Interprot name: ${domain.inter_name}<br>
+                            InterPro id: ${domain.inter_id}<br>
+                            InterPro name: ${domain.inter_name}<br>
                             GO terms: ${domain.go}<br>
                             Start: ${domain.start}<br>
                             End: ${domain.end}<br>
@@ -305,8 +305,8 @@ domainsArray.forEach((domain, index) => {
                     tooltip.innerHTML = `
                         Pfam id: <a target="_blank" href="https://www.ebi.ac.uk/interpro/entry/pfam/${domain.pfam_id}">${domain.pfam_id}</a><br>
                         Pfam name: ${domain.pfam_name}<br>
-                        Interprot id: ${domain.inter_id}<br>
-                        Interprot name: ${domain.inter_name}<br>
+                        InterPro id: ${domain.inter_id}<br>
+                        InterPro name: ${domain.inter_name}<br>
                         GO terms: ${domain.go}<br>
                         Start: ${domain.start}<br>
                         End: ${domain.end}<br>
@@ -323,8 +323,8 @@ geneModelElement.appendChild(div);
 const pfamNameDiv = document.createElement('div');
 pfamNameDiv.innerText = domain.pfam_name;
 pfamNameDiv.className = 'truncate';
-pfamNameDiv.style.left = scale(domain.start) + 'px';
-pfamNameDiv.style.width = (scale(domain.end) - scale(domain.start)) + 'px';
+pfamNameDiv.style.left = scale(domain.start - 1) + 'px';
+pfamNameDiv.style.width = (scale(domain.end) - scale(domain.start - 1)) + 'px';
 pfamNameDiv.style.top = (((domainHeight + domainMarginTop) * 2 * index) + 30) + 'px';
 
 PGM_height = (((domainHeight + domainMarginTop) * 2 * index) + 30);

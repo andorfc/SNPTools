@@ -160,7 +160,7 @@ function renderNav(){
       ${g.tools.map(id=>{
         const t=TOOLS[id]; const active=id===S.tool?'active':'';
         const _bl={snpgwas:'new',snpversity:'updated',snptrait:'new',snpgeo:'new',snptree:'new',snpcompare:'new',snpimpact:'new',snpfold:'new',snpfunction:'new',snpcurate:'new',snpmatrix:'new',paneffect:'new'}[id]||'soon';
-        const _bc={new:'#1f8a4c',demo:'#2563eb',soon:'#c0362c'}[_bl];
+        const _bc={new:'#1f8a4c',updated:'#2563eb',demo:'#2563eb',soon:'#c0362c'}[_bl];
         const soon=`<span class="soon" style="color:${_bc};border-color:${_bc}">${_bl}</span>`;
         return `<button class="navitem ${active}" onclick="go('${id}')">
           <span class="ico">${ICONS[t.icon]}</span><span>${t.name}</span>${soon}</button>`;
@@ -321,7 +321,10 @@ document.addEventListener('mouseover',e=>{
 document.addEventListener('mousemove',e=>{
   if(!ttEl) return;
   if(!ttEl.isConnected){ ttHide(); return; }
-  tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY+14)+'px';
+  // kept inside the viewport: near the right or bottom edge it flips to the other side of the pointer
+  const w=tt.offsetWidth||280, h=tt.offsetHeight||40, vw=window.innerWidth||1024, vh=window.innerHeight||768;
+  tt.style.left=((e.clientX+12+w>vw-8)? Math.max(8, e.clientX-12-w) : e.clientX+12)+'px';
+  tt.style.top =((e.clientY+14+h>vh-8)? Math.max(8, e.clientY-14-h) : e.clientY+14)+'px';
 });
 document.addEventListener('mouseout',e=>{ if(!e.relatedTarget) ttHide(); });   // left the window
 function attachTT(){}

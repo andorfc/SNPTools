@@ -211,7 +211,7 @@
   }
   function aiScoreSummary(v){
     const scores = [
-      ['PlantCAD', modelScore(v, 'plantcad')],
+      ['PlantCAD1', modelScore(v, 'plantcad')],
       ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2op')]] : []),
       ...(FD.sec ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
@@ -766,7 +766,7 @@
     const where = inDom ? (' in the '+c.domain.name+' domain')
                         : (c.domain && c.domain.kind==='region' ? (' in the '+c.domain.name) : ' in an inter-domain region');
     if (v.consClass==='lof'){
-      const after = inDom ? ('within / before the '+c.domain.name+' domain') : 'in the C-terminal region';
+      const after = inDom ? ('within / before the '+c.domain.name+' domain') : (finiteNumber(v.resi)!=null && FD.struct ? `at residue ${v.resi} of ${FD.struct.length}` : 'outside any annotated domain');
       const what = v.consequence==='Start lost' ? 'Disrupts the start codon'
                  : v.consequence==='Stop lost'  ? 'Removes the stop codon'
                  : 'Truncates the protein';
@@ -1641,7 +1641,7 @@
       get:v => finiteNumber(ctxFor(v).plddt) },
     { key:'ss',          label:'Structure',   type:'str',
       get:v => { const c = ctxFor(v); return c.inModel ? c.ssLabel : null; } },
-    { key:'plantcad',    label:'PlantCAD',    type:'num', num:true,
+    { key:'plantcad',    label:'PlantCAD1',   type:'num', num:true,
       get:v => modelScore(v, 'plantcad') },
     // PlantCAD2: the table shows the one-pass score; the CSV/TSV keeps "PlantCAD2" = the 512-bp score,
     // as before, and adds "PlantCAD2 one-pass"
@@ -1885,7 +1885,7 @@
           return n ? `<button class="btn" title="Preselect the ${n} accession${n>1?'s':''} carrying this allele in SNPVersity"
             onclick="FOLD.toVersity('${v.id}','all')">${ICONS.dna||''} Carriers to SNPVersity</button>` : ''; })()}
         <button class="btn" onclick="go('snpimpact')">${ICONS.star} SNPImpact</button>
-        <button class="btn" onclick="go('snpcompare')">${ICONS.compare} Send to SNPCompare</button>
+        <button class="btn" onclick="go('snpcompare')" title="Opens SNPCompare; send this gene's region from SNPVersity to compare the lines">${ICONS.compare} Open SNPCompare</button>
       </div>`;
   }
 
@@ -2208,7 +2208,7 @@
       a.href = url;
       a.download = `${FD.gene||'variants'}_coding_variants.${format === 'tsv' ? 'tsv' : 'csv'}`;
       document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);   // after the click has started the download (Firefox)
     },
     reset(){ if(FD.viewer){ FD.viewer.zoomTo(); FD.viewer.render(); } },
     focus(){ focusResidue(true); },
