@@ -22,7 +22,7 @@ CHRS := 1 2 3 4 5 6 7 8 9 10
 # stores processed in parallel by the site-QC builder
 JOBS ?= 4
 
-.PHONY: help samples catalog regions geo-layers store site-qc site-qc-hq site-qc-check score-cal curate local-store local-hq-store start stop test
+.PHONY: help samples catalog regions geo-layers store site-qc site-qc-hq site-qc-check score-cal curate sites-split local-store local-hq-store start stop test
 help:
 	@echo "samples     data/zmgrin2026_samples.tsv       (T0= CROSSWALK= [RELEASE_MANIFEST=] [EXTRA_SAMPLES=])"
 	@echo "catalog     js/zmgrin.catalog.js + data/traits (T5= T4B= T4C= CROSSWALK=)"
@@ -34,6 +34,7 @@ help:
 	@echo "site-qc-check  verify the sidecars against their stores"
 	@echo "score-cal   data/qc/zmgrin2026.scorecal.json + js/zmgrin.scorecal.js: the composite AI score's reference distributions and tiers  [JOBS=4]"
 	@echo "curate      js/snpcurate.data.js from data/curate/snpcurate.source.json (needs the stores, sidecars + score-cal)"
+	@echo "sites-split data/sites/by_gene/<gene>.tsv + MANIFEST.json from data/results.sites.tsv (SNPFold fetches one gene's file)"
 	@echo "local-store small test store from localdev/fixtures"
 	@echo "local-hq-store  small High Quality test stores: 500-kb windows cut from the HQ release VCFs on Ceres (ssh)"
 	@echo "start/stop  local PHP server on 127.0.0.1:8877;  test  headless end-to-end checks"
@@ -71,6 +72,8 @@ score-cal:
 	$(PYTHON_PATH) tools/build_score_cal.py --jobs $(JOBS)
 curate:
 	$(PYTHON_PATH) tools/build_snpcurate.py
+sites-split:
+	$(PY) tools/split_sites.py
 local-store:
 	PYTHON_PATH=$(PYTHON_PATH) localdev/build_test_store.sh
 local-hq-store:

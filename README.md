@@ -264,7 +264,7 @@ Static files under `SNPTools/`, loaded on demand and cached by `js/data.js` and 
 | `data/domains/domains.by_gene.json`, `domains.by_protein.json` | SNPImpact, SNPFold, SNPFunction | each gene's canonical-protein domains |
 | `data/genemodels/by_chr/<chr>.json` | SNPImpact, SNPFunction, SNPFold | canonical exon / CDS structure |
 | `data/structures/{alphafold,boltz,esmfold}/structure-<gene>.js` | SNPFold | per-gene model with pLDDT, secondary structure and domains (`window.SNPFOLD_STRUCT` / `SNPFOLD_PDB`) |
-| `data/results.sites.tsv`, `data/B73_iupred2a_data_*` | SNPFold | InterProScan residue sites; IUPred2A disorder |
+| `data/results.sites.tsv`, `data/sites/by_gene/` (`make sites-split`), `data/B73_iupred2a_data_*` | SNPFold | InterProScan residue sites (the whole table, and one file per gene with a MANIFEST.json, which SNPFold prefers); IUPred2A disorder |
 | `data/function/annotations/<gene>.json` | SNPFunction | local functional annotation (fallback for the GO / pathway views; its GO is computational, see `data/function/README.md`) |
 | `data/traits/zmgrin2026.traits.json` | SNPTrait | GRIN trait summaries per line |
 | `data/geo/countries.geo.json`, `admin1_na.geo.json` | SNPGeo | Natural Earth base maps |

@@ -11,6 +11,7 @@ All builders are Python 3.8+ standard library unless noted. Outputs mirror `SNPT
 | `vcf_to_h5.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.h5` | one release VCF per chromosome |
 | `build_snpcurate.py` (h5py, numpy) | `js/snpcurate.data.js`; with `--table`, the benchmark table (.tsv + .md) | `data/curate/snpcurate.source.json`, the stores and sidecars, `js/zmgrin.catalog.js`, `data/traits/zmgrin2026.traits.json`, `gff/genes_index.txt` |
 | `build_site_qc.py` (h5py, numpy) | `hdf5/grin2026/zmgrin2026_<chr>_impute.siteqc.h5`; with `--summary`, `data/qc/zmgrin2026.siteqc.summary.json`, `data/qc/zmgrin2026.lineqc.tsv`, `js/zmgrin.lineqc.js` | the stores (read-only) |
+| `split_sites.py` | `data/sites/by_gene/<gene>.tsv` + `MANIFEST.json` (`make sites-split`): SNPFold fetches one gene's InterProScan sites instead of the 55 MB table | `data/results.sites.tsv` |
 | `build_score_cal.py` (h5py, numpy) | `data/qc/zmgrin2026.scorecal.json`, `js/zmgrin.scorecal.js`: the composite AI score's reference distributions, percentiles and priority tiers (`make score-cal`) | the stores (read-only) |
 
 The files committed in this branch were built for release v1.4 (933 samples = 926 imputed

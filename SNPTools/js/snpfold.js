@@ -1469,9 +1469,12 @@
      data/results.sites.tsv is one header-less standard InterProScan "sites" TSV
      for every isoform of every gene (12 tab-delimited columns: protein_id, md5,
      seq_length, analysis[-version], signature, sig_start, sig_end, group,
-     residue, site_start, site_end, description). It's ~55MB / 460k rows, so we
-     fetch and index it once (lazily, on first use) rather than per gene. */
+     residue, site_start, site_end, description). It's ~55MB / 460k rows. tools/split_sites.py
+     (`make sites-split`) cuts it into one file per gene under data/sites/by_gene/ with a MANIFEST.json;
+     when that manifest is there, a gene's file (a few kilobytes) is fetched on its own; without it
+     the whole file is fetched and indexed once, as before. */
   const SITES_URL = 'data/results.sites.tsv';
+  const SITES_DIR = 'data/sites/by_gene/';
   const SITE_PROGRAM_COLOR = { CDD:'#7a4fd6', PIRSR:'#0f9d78', SFLD:'#c2740c' };
   function siteProgramOf(analysis){
     const m = /^([A-Za-z]+)/.exec(String(analysis||''));
@@ -1503,18 +1506,8 @@
     const s = String(desc||'').trim();
     return s.replace(/^null:\s*/i, '');
   }
-  let sitesIndexPromise = null;
-  function ensureSitesIndex(){
-    if (sitesIndexPromise) return sitesIndexPromise;
-    sitesIndexPromise = (async () => {
-      if (typeof fetch !== 'function') return new Map();
-      let text;
-      try {
-        const resp = await fetch(SITES_URL);
-        if (!resp.ok) return new Map();
-        text = await resp.text();
-      } catch (e) { console.warn('InterProScan sites load failed', e); return new Map(); }
-      /* index by base gene id -> isoform suffix (e.g. "P002") -> row[] */
+  /* index by base gene id -> isoform suffix (e.g. "P002") -> row[] */
+  function parseSitesText(text){
       const genes = new Map();
       const lines = text.split('\n');
       for (const line of lines){
@@ -1535,15 +1528,54 @@
         rows.push(row);
       }
       return genes;
+  }
+  let sitesIndexPromise = null;
+  function ensureSitesIndex(){
+    if (sitesIndexPromise) return sitesIndexPromise;
+    sitesIndexPromise = (async () => {
+      if (typeof fetch !== 'function') return new Map();
+      let text;
+      try {
+        const resp = await fetch(SITES_URL);
+        if (!resp.ok) return new Map();
+        text = await resp.text();
+      } catch (e) { console.warn('InterProScan sites load failed', e); return new Map(); }
+      return parseSitesText(text);
     })();
     return sitesIndexPromise;
+  }
+  /* per-gene files: the manifest decides once; a gene's rows are cached */
+  let sitesManifestPromise = null;
+  const sitesGeneCache = new Map();
+  function sitesManifest(){
+    if (sitesManifestPromise) return sitesManifestPromise;
+    sitesManifestPromise = (async () => {
+      if (typeof fetch !== 'function') return null;
+      try { const r = await fetch(SITES_DIR + 'MANIFEST.json'); return r.ok ? await r.json() : null; }
+      catch (e) { return null; }
+    })();
+    return sitesManifestPromise;
+  }
+  /* the isoform map of one gene: from its own file when the split is installed, else from the whole table */
+  async function sitesForGene(gene){
+    const man = await sitesManifest();
+    if (!man) return (await ensureSitesIndex()).get(gene) || null;
+    if (sitesGeneCache.has(gene)) return sitesGeneCache.get(gene);
+    const p = (async () => {
+      try {
+        const r = await fetch(SITES_DIR + encodeURIComponent(gene) + '.tsv');
+        if (!r.ok) return null;                      // no sites for this gene
+        return parseSitesText(await r.text()).get(gene) || null;
+      } catch (e) { return null; }
+    })();
+    sitesGeneCache.set(gene, p);
+    return p;
   }
   /* picks the isoform whose recorded seq_length matches the loaded structure
      exactly, falling back to whichever isoform has the most site rows. */
   async function loadSitesForGene(gene, structLen){
     if (!gene) return null;
-    const genes = await ensureSitesIndex();
-    const byIso = genes.get(gene);
+    const byIso = await sitesForGene(gene);
     if (!byIso || !byIso.size) return null;
     let bestIso = null, bestRows = null;
     for (const [iso, rows] of byIso){
