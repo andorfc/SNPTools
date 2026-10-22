@@ -199,7 +199,7 @@ const SNPTree = (function () {
     injectCSS();
     const crumb=document.getElementById('crumbTool'); if(crumb) crumb.innerHTML='<b>SNPTree</b>';
     const inp = S.treeInput || ST.input;
-    if (inp !== ST.input) ST.force = false;
+    if (inp !== ST.input){ ST.force = false; ST.built = null; }   // a new hand-off: nothing is built for it yet
     ST.input = inp;
     if (!ST.sites) ST.sites = Data.SITE_QC_DEFAULTS.distance;
     if (!inp || !inp.rows || !inp.rows.length){
@@ -499,8 +499,9 @@ const SNPTree = (function () {
   function refreshText(){
     const ta=document.getElementById('fmtOut'); const ti=document.getElementById('fmtTitle');
     if(!ta) return;
-    if(!ST.built) build();
-    ta.value=currentText();
+    // nothing built (the cost notice is up, or the tree is still computing): no text, and no build
+    // behind the cost gates of draw()
+    ta.value=ST.built ? currentText() : '';
     if(ti) ti.textContent = ST.format==='mega'?'Pairwise diversity (MEGA)':ST.format==='phylip'?'PHYLIP distance matrix':'Newick';
   }
   function copyText(){ const ta=document.getElementById('fmtOut'); if(!ta)return; ta.select();

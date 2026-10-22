@@ -115,12 +115,13 @@ const SNPMatrix = (function () {
   }
 
   function build(inp){
-    const sig = `${inp.chr}:${inp.start}-${inp.end}:${inp.accs.length}:${(inp.rows||[]).length}:${siteMode()}`;
-    if (ST.built && ST._sig===sig) return ST.built;
+    // the cache is for this very hand-off: a different set of the same size and region is a new build
+    const sig = `${inp.chr}:${inp.start}-${inp.end}:${inp.accs.map(a=>a.id).join('|')}:${(inp.rows||[]).length}:${siteMode()}`;
+    if (ST.built && ST._sig===sig && ST._sigInput===inp) return ST.built;
     const n = inp.accs.length;
     const {M,C,sites} = ibsMatrix(usedRows(inp), n);
     ST.built = {M, C, sites, n, accs:inp.accs, labels:inp.accs.map(a=>a.id), total:(inp.rows||[]).length, qc:Data.hasSiteQc(inp.rows)};
-    ST._sig = sig;
+    ST._sig = sig; ST._sigInput = inp;
     return ST.built;
   }
   function orderedIdx(b){ return ST.order==='clustered' ? clusterOrder(b.M) : b.M.map((_,i)=>i); }
