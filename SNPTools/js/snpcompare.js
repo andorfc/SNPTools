@@ -123,7 +123,11 @@ const SNPCompare = (function () {
     return (r && regionHasQc()) ? ` · <span id="cmpSitesUsed"><b>${r.rows.length.toLocaleString()}</b> of ${ST.input.rows.length.toLocaleString()} sites used</span>` : '';
   }
 
-  /* full n×n IBS from a SNPVersity result, cached on the hand-off */
+  /* full n×n IBS from a SNPVersity result, cached on the hand-off. Similarity is allele sharing over
+     the sites both lines are called at: 1 for the same genotype, 0.5 for a heterozygote against a
+     homozygote, 0 for the two homozygotes; that is 1 - SNPTree's and SNPMatrix's distance
+     (mean |dose_i - dose_j| / 2), so the three tools agree. (It used to count whole-genotype matches,
+     a het against a hom scoring 0, so the matrix SNPTree opened here was not 1 - its distances.) */
   function pairKey(input){
     return [input.dataset,input.chr,input.start,input.end,
             input.rows.length,input.siteMode||'all',input.accs.map(a=>a.id).join('|')].join('~');
@@ -146,7 +150,7 @@ const SNPCompare = (function () {
       for(let j=i;j<n;j++){
         const b=D[j]; let bo=0, mt=0;
         for(let s=0;s<m;s++){ const x=a[s], y=b[s];
-          if(x<0||y<0) continue; bo++; if(x===y) mt++; }
+          if(x<0||y<0) continue; bo++; mt += 1 - Math.abs(x-y)/2; }
         const v = bo? mt/bo : NaN, ms = m? 100*(m-bo)/m : 0;
         sim[i*n+j]=sim[j*n+i]=v; both[i*n+j]=both[j*n+i]=bo; miss[i*n+j]=miss[j*n+i]=ms;
       }
@@ -374,21 +378,24 @@ const SNPCompare = (function () {
   }
 
   /* ---------------- build the combined row set ---------------- */
-  async function buildRows(){
+  /* the rows for one focal line and scope, read once at the start: a focal line or scope picked
+     while the genome-wide fetch is pending must not mix into this answer (recompute() drops an
+     answer that is no longer the newest) */
+  async function buildRows(focal, mode){
     const ds=ST.dataset, meta=metaMap(ds);
     let g=null, l=null;
-    if(ST.mode==='global'||ST.mode==='both') g=await getGlobal(ds, ST.focal);
-    if(ST.mode==='local' ||ST.mode==='both') l=localCompute(regionInput(), ST.focal);
+    if(mode==='global'||mode==='both') g=await getGlobal(ds, focal);
+    if(mode==='local' ||mode==='both') l=localCompute(regionInput(), focal);
     const byId={};
     const add=id=>{ if(!byId[id]) byId[id]=Object.assign({id}, meta[id]||{name:id,run:id,bio:''}); return byId[id]; };
     if(g) g.rows.forEach(r=>{ const x=add(r.id); x.gsim=r.sim; x.gmiss=r.miss; });
     if(l) l.forEach(r=>{ const x=add(r.id); x.lsim=r.sim; x.lmiss=r.miss; x.lboth=r.both; });
     let rows=Object.values(byId);
-    if(ST.mode==='local') rows=rows.filter(r=>r.lboth!=null || r.id===ST.focal);
-    if(ST.mode==='both')  rows=rows.filter(r=>r.lboth!=null);
+    if(mode==='local') rows=rows.filter(r=>r.lboth!=null || r.id===focal);
+    if(mode==='both')  rows=rows.filter(r=>r.lboth!=null);
     rows.forEach(r=>{ r.dsim=(r.lsim!=null&&r.gsim!=null)? r.lsim-r.gsim : null;
-      r.sim = ST.mode==='local'? r.lsim : r.gsim; r.miss = ST.mode==='local'? r.lmiss : r.gmiss; });
-    ST.allRows=rows; ST.gdemo=!!(g&&g.demo);
+      r.sim = mode==='local'? r.lsim : r.gsim; r.miss = mode==='local'? r.lmiss : r.gmiss; });
+    return {rows, gdemo:!!(g&&g.demo)};
   }
 
   /* ---------------- sort + filter ---------------- */
@@ -1157,8 +1164,13 @@ const SNPCompare = (function () {
       }
     }
     if(wrap) wrap.innerHTML=`<div class="loading"><div class="spinner"></div><div>Computing similarities…</div></div>`;
-    try{ await buildRows(); paint(); ST.ran=true; ST.ranFocal=ST.focal; ST.ranMode=ST.mode; updatePending(); }
-    catch(err){ if(wrap) wrap.innerHTML=notice('Could not load similarities: '+esc(err.message||err)); }
+    const focal=ST.focal, mode=ST.mode, seq=ST.seq=(ST.seq||0)+1;
+    try{
+      const r=await buildRows(focal, mode);
+      if(seq!==ST.seq) return;                       // a newer run (another focal line or scope) owns the view
+      ST.allRows=r.rows; ST.gdemo=r.gdemo;
+      paint(); ST.ran=true; ST.ranFocal=focal; ST.ranMode=mode; updatePending(); }
+    catch(err){ if(seq===ST.seq && wrap) wrap.innerHTML=notice('Could not load similarities: '+esc(err.message||err)); }
   }
   function forceRun(){ ST.force=true; recompute(); }
   /* idle placeholder shown before anything is run (or after options change) */
