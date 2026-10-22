@@ -315,6 +315,13 @@ function geoGtClass(gt){ return geoGtInfo(gt).cls; }
               (2 per diploid call), giving the alternative-allele frequency.
    A heterozygote counts as a carrier (count/alt) and contributes one
    alternative allele. Field names used by the renderers are unchanged. */
+/* the node key of a sample's region record: its ISO code, else its country's code, else its name */
+function geoKey(geo){
+  if (geo.iso3) return geo.iso3;
+  const byName = window.SNPGEO_COUNTRY_ISO || {};
+  if (geo.country && byName[geo.country]) return byName[geo.country];
+  return 'name:' + (geo.country || 'Unknown');
+}
 function aggregateGeoData(snpIndex){
   if (GEO.snpStats[snpIndex]) return GEO.snpStats[snpIndex];
   const row = GEO.rows[snpIndex];
@@ -323,12 +330,17 @@ function aggregateGeoData(snpIndex){
   const dsIds = (typeof Data !== 'undefined' && Data.accessionsFor)
       ? new Set((Data.accessionsFor(GEO.dataset) || []).map(a => String(a.id))) : null;
   const result = {};
+  /* One node per country. A record without an ISO code (the 30 lines of the catalogue crosswalk)
+     takes its country's code from SNPGEO_COUNTRY_ISO, so it joins the country's own node (the map
+     colours it, the table has one row per country); a country the table has no code for gets a
+     node of its own by name, listed but not drawn. They used to pool under one key named after the
+     first such line ("United States 11/30" beside "United States 143/732"). */
   const node = (geo) => {
-    const iso3 = geo.iso3 || '???';
-    if (!result[iso3]) result[iso3] = {country: geo.country || 'Unknown', iso3, count:0, total:0, pct:0,
+    const key = geoKey(geo);
+    if (!result[key]) result[key] = {country: geo.country || 'Unknown', iso3: key.startsWith('name:') ? null : key, count:0, total:0, pct:0,
       called:0, alt:0, ref:0, missing:0, altFrac:null, altAlleles:0, calledAlleles:0, alleleFreq:null,
       het:0, isolates:[], states:{}};
-    return result[iso3];
+    return result[key];
   };
   const stNode = (c, geo) => {
     const state = geo.state || geo.county || 'Unknown';
@@ -348,7 +360,7 @@ function aggregateGeoData(snpIndex){
     const accId = String(acc.id);
     const geo = REGIONS[accId];
     if (!geo || (dsIds && !dsIds.has(accId))) return;             // unmapped / other dataset
-    const c = result[geo.iso3 || '???']; if (!c) return;
+    const c = result[geoKey(geo)]; if (!c) return;
     const st = stNode(c, geo);
     const g = geoGtInfo(isArr ? gts[accIdx] : row[`gt_${accIdx}`]);
     if (g.cls === 'missing'){ c.missing += 1; return; }
@@ -381,9 +393,11 @@ function aggregateGeoData(snpIndex){
 function geoCoverage(){
   const REGIONS = window.SNPGEO_REGIONS || {};
   const ds = (typeof Data !== 'undefined' && Data.accessionsFor) ? (Data.accessionsFor((S.geoInput||{}).dataset || GEO.dataset) || []) : [];
-  const mapped = ds.filter(a => REGIONS[a.id] && REGIONS[a.id].iso3).length;
+  // a line is known from a country when its record has a country node (geoKey): an ISO code, or a country name
+  const known = a => REGIONS[a.id] && !geoKey(REGIONS[a.id]).startsWith('name:');
+  const mapped = ds.filter(known).length;
   const accs = (S.geoInput && S.geoInput.accs) || GEO.accs || [];
-  const q = accs.filter(a => REGIONS[a.id] && REGIONS[a.id].iso3).length;
+  const q = accs.filter(known).length;
   return {datasetSamples: ds.length, mapped, queried: accs.length, queriedMapped: q};
 }
 function geoCoverageNote(){
@@ -684,7 +698,7 @@ function geoView(){
   const REGIONS = window.SNPGEO_REGIONS || {};
   const ds = (typeof Data !== 'undefined' && Data.accessionsFor) ? (Data.accessionsFor(GEO.dataset || S.dataset) || []) : [];
   let n = 0, na = 0;
-  ds.forEach(a => { const g = REGIONS[a.id]; if (g && g.iso3){ n++; if (GEO_NA_ISO.indexOf(g.iso3) >= 0) na++; } });
+  ds.forEach(a => { const g = REGIONS[a.id]; if (!g) return; const k = geoKey(g); if (!k.startsWith('name:')){ n++; if (GEO_NA_ISO.indexOf(k) >= 0) na++; } });
   return (n && na / n >= 0.5) ? 'na' : 'world';
 }
 function geoViewOptionsHTML(){

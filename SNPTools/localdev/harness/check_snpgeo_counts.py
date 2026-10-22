@@ -13,6 +13,7 @@ reg = open(f'{root}/js/snpgeo.regions.js', encoding='utf-8').read()
 REG = json.loads(re.search(r'window\.SNPGEO_REGIONS\s*=\s*(\{.*?\});', reg, re.S).group(1))
 cat = open(f'{root}/js/zmgrin.catalog.js', encoding='utf-8').read()
 fam = json.loads(re.search(r'families\["zmgrin2026"\]\s*=\s*(\{.*?\});\n', cat, re.S).group(1))
+ISO_BY_NAME = json.loads(re.search(r'window\.SNPGEO_COUNTRY_ISO\s*=\s*(\{.*?\});', open(f'{root}/js/snpgeo.regions.js', encoding='utf-8').read(), re.S).group(1))
 ds = {a['id'] for p in fam['projects'] for g in p['groups'] for a in g['accessions']}
 lo, hi = 12838008, 12843999            # Zm00001eb374090 as returned by lookupGeneModel.php
 sites = {}
@@ -26,7 +27,7 @@ def exp_site(gts):
     out = {}
     for sid, geo in REG.items():
         if sid not in ds: continue
-        iso = geo.get('iso3') or '???'
+        iso = geo.get('iso3') or ISO_BY_NAME.get(geo.get('country') or '') or 'name:' + (geo.get('country') or 'Unknown')   # snpgeo.js geoKey
         c = out.setdefault(iso, dict(total=0, called=0, count=0, het=0, altAlleles=0, calledAlleles=0, states={}))
         st = c['states'].setdefault(geo.get('state') or geo.get('county') or 'Unknown', dict(total=0, called=0, count=0, het=0, altAlleles=0, calledAlleles=0))
         c['total'] += 1; st['total'] += 1
