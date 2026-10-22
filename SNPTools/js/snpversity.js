@@ -116,6 +116,7 @@ window.versityRequest = function(payload){
   if(!payload) return;
   S.pendingVersity = payload;
   S.results = null;                  // the old result no longer matches the new query
+  RUN_SEQ++;                         // and a query still running is overtaken: its answer is dropped
   if(typeof go==='function') go('snpversity');
 };
 
@@ -1056,6 +1057,8 @@ function qcSummary(rows){
   return n;
 }
 function tableView(rows){
+  // an effect picked for an earlier result that this result does not have: back to all effects
+  if(S.fEffect!=='all' && !rows.some(r=>r.effect===S.fEffect)) S.fEffect='all';
   const fq=versityQc();
   const r2On=r2Filterable(), r2Min=r2On ? (S.fR2||0) : 0;
   const key=S.results&&S.results.vcfUrl+'|'+S.fImpact+'|'+S.fEffect+'|'+S.fMaf+'|'+fq+'|'+r2On+'|'+r2Min;
