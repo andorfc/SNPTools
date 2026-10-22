@@ -274,6 +274,7 @@ function geoInitDataset(){
 /* ================= DATA LOAD & PREP ================= */
 function geoLoad(){
   GEO.input = S.geoInput;
+  GEO.page = null;                       // a new result starts on the selected variant's page
   GEO.rows = S.geoInput.rows || [];
   GEO.accs = S.geoInput.accs || [];
   GEO.dataset = S.geoInput.dataset;
@@ -452,6 +453,36 @@ function geoResiduePair(row){
   return {resi: p.resi, label};
 }
 
+/* The variant table is paged (GEO_PAGE_ROWS a page): a hand-off may carry hundreds of thousands
+   of variants, and every click or arrow key used to rebuild every row. Selecting a variant now
+   moves the "active" class between two rows (geoSetActiveRow) and only renders a page when the
+   selection leaves the one on screen. GEO.pageRows overrides the page size (tests). */
+const GEO_PAGE_ROWS = 250;
+function geoPageRows(){ return Math.max(1, GEO.pageRows || GEO_PAGE_ROWS); }
+function geoPageOf(idx){ return Math.floor(Math.max(0, idx) / geoPageRows()); }
+function geoPagerHTML(page, nPages, n){
+  if (nPages <= 1) return '';
+  const lo = page * geoPageRows() + 1, hi = Math.min(n, (page + 1) * geoPageRows());
+  return `<div class="pager geo-pager"><div class="info">Variants <span class="mono">${lo.toLocaleString()}–${hi.toLocaleString()}</span> of <span class="mono">${n.toLocaleString()}</span></div>
+    <div class="pg"><button class="btn ghost" ${page <= 0 ? 'disabled' : ''} onclick="geoSetPage(${page - 1})" aria-label="Previous page">‹</button>
+    <span class="mono">${page + 1} / ${nPages}</span>
+    <button class="btn ghost" ${page >= nPages - 1 ? 'disabled' : ''} onclick="geoSetPage(${page + 1})" aria-label="Next page">›</button></div></div>`;
+}
+function geoSetPage(p){
+  const n = (GEO.rows || []).length, nPages = Math.max(1, Math.ceil(n / geoPageRows()));
+  GEO.page = Math.max(0, Math.min(nPages - 1, p));
+  geoRenderTable();
+}
+/* move the active mark without rebuilding the table; false when the row is not on the page */
+function geoSetActiveRow(idx){
+  const tbl = document.getElementById('geoTable');
+  if (!tbl) return false;
+  const next = tbl.querySelector(`tr[data-idx="${idx}"]`);
+  if (!next) return false;
+  tbl.querySelectorAll('tr.active').forEach(tr => { tr.classList.remove('active'); const r = tr.querySelector('.geo-radio'); if (r) r.checked = false; });
+  next.classList.add('active'); const r = next.querySelector('.geo-radio'); if (r) r.checked = true;
+  return true;
+}
 function geoRenderTable(){
   const tbl = document.getElementById('geoTable');
   if (!tbl) return;
@@ -461,6 +492,9 @@ function geoRenderTable(){
     tbl.innerHTML = '<div class="geo-empty">No variants to display.</div>';
     return;
   }
+  const n = rows.length, per = geoPageRows(), nPages = Math.max(1, Math.ceil(n / per));
+  if (GEO.page == null || GEO.page >= nPages) GEO.page = geoPageOf(GEO.snpIndex || 0);
+  const page = GEO.page, lo = page * per, hi = Math.min(n, lo + per);
   
   // Score columns share SNPFold's colour ramp and pill form via window.ScorePill
   // (defined in snpfold.js), so the SNPFold and SNPGeo tables render scores
@@ -484,7 +518,8 @@ function geoRenderTable(){
       ${models.map(m=>`<th class="num ${m.kind==='protein'?'lm-prot':'lm-dna'}" data-tt="${escGeoAttr(m.tip)}">${scoreHeadHTML(m.label)}</th>`).join('')}
     </tr>`;
   
-  const tbody = rows.map((row, idx) => {
+  const tbody = rows.slice(lo, hi).map((row, k) => {
+    const idx = lo + k;
     const active = idx === GEO.snpIndex ? 'active' : '';
     // Construct variant string from pos/ref/alt if not already present
     const variant = row.variant || (row.pos && row.ref && row.alt ? `${row.pos} ${row.ref}>${row.alt}` : '—');
@@ -492,7 +527,7 @@ function geoRenderTable(){
     const consequence = row.consequence || row.consClass || row.effect || '—';
     const {resi, label: resiVariant} = geoResiduePair(row);
     return `
-      <tr class="${active}" onclick="geoSelectSnp(${idx})">
+      <tr class="${active}" data-idx="${idx}" onclick="geoSelectSnp(${idx})">
         <td class="geo-cb"><input type="radio" name="geoVariantSel" class="geo-radio"
           tabindex="-1" ${active ? 'checked' : ''}
           aria-label="Show ${escGeoAttr(variant)} on the map"></td>
@@ -507,7 +542,7 @@ function geoRenderTable(){
   tbl.innerHTML = `<div class="tbl-wrap"><table class="vcf geo-vcf">
     <thead>${thead}</thead>
     <tbody>${tbody}</tbody>
-  </table></div>`;
+  </table></div>${geoPagerHTML(page, nPages, n)}`;
   geoFitTableHeight();
   attachTT();
 }
@@ -539,7 +574,8 @@ function geoFitTableHeight(){
 function geoSelectSnp(idx){
   GEO.snpIndex = idx;
   GEO.selectedCountry = null;
-  geoRenderTable();
+  // the row on screen: move the mark; a row on another page: show that page
+  if (!geoSetActiveRow(idx)){ GEO.page = geoPageOf(idx); geoRenderTable(); }
   geoRenderMap();
   geoRenderOverview();   // a different SNP means different numbers — back to the overview
 }
