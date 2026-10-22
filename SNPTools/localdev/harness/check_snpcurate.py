@@ -264,7 +264,7 @@ MK = ('gold', 'silver', 'white')
 marks = {m: sorted(i for i, x in EXP.items() if x['mark'] == m) for m in MK}
 check(all(D[i]['mark'] == x['mark'] for i, x in EXP.items()) and len(D) == len(src['entries']) == N_ENTRIES and len({e['id'] for e in src['entries']}) == N_ENTRIES,
       f"marks: gold {len(marks['gold'])}, silver {len(marks['silver'])}, white {len(marks['white'])} ({N_ENTRIES} entries)")
-check([l['badge'] for l in K['legend']] == [f'cur-badge cur-{m}' for m in MK] and [l['glyph'] for l in K['legend']] == ['\u2605', '\u2605', '\u2606']
+check([l['badge'] for l in K['legend']] == [f'cur-badge cur-{m}' for m in MK] and [l['glyph'] for l in K['legend']] == ['\u2605', '\u2605', '\u25cb']
       and all(f"({len(marks[m])})" in l['text'] for m, l in zip(MK, K['legend'])),
       f"legend: gold, silver and white stars, counts {[len(marks[m]) for m in MK]}")
 
@@ -343,7 +343,7 @@ check(K['toMap']['tool'] == 'snpgeo' and K['toMap']['rows'] == [[46648374, 'C', 
 CM = json.load(open(res)).get('curateMarks')
 if CM:
     W, WO = CM['with'], CM['without']
-    GLY = {'gold': '\u2605', 'silver': '\u2605', 'white': '\u2606'}
+    GLY = {'gold': '\u2605', 'silver': '\u2605', 'white': '\u25cb'}
     SRC = src['entries']
     def in_iv(e, chrom, lo, hi):
         return e['chr'] == chrom and ((e.get('pos') is not None and lo <= e['pos'] <= hi) or any(lo <= p <= hi for p in e.get('codon_positions') or [])

@@ -186,7 +186,9 @@
       return `<tr><th class="cur-lrow"><b>${esc(lineLabel(id))}</b><div class="cur-sub">${esc(id)}${lineSub(id)?' · '+esc(lineSub(id)):''}</div></th>${cells}<td class="num" data-tt="Homozygous for the favorable allele at how many of the ${favN} alleles whose favorable allele is known.">${fav} <span class="muted">of ${favN}</span></td><td class="num" data-tt="Homozygous for the alternate allele at how many of the ${E.length} genotyped alleles.">${alt}</td></tr>`;
     }).join('');
     return `<div class="cur-lines-acts">
-        <span class="cur-sub"><b>${CU.lines.length.toLocaleString()}</b> line${CU.lines.length===1?'':'s'} × ${E.length} genotyped alleles · H homozygous alternate · h heterozygous · · reference · ? missing</span>
+        <span class="cur-sub"><b>${CU.lines.length.toLocaleString()}</b> line${CU.lines.length===1?'':'s'} × ${E.length} genotyped alleles · H homozygous alternate · h heterozygous · · reference · ? missing ·
+          <span class="cur-lc cur-lc-favhom cur-key">H</span> the favorable allele <span class="cur-lc cur-lc-favhet cur-key">h</span> heterozygous for it ·
+          <span class="cur-lc cur-lc-alt cur-key">H</span> alternate where the favorable allele is the reference, depends on the goal, or is not known</span>
         <button class="btn ghost" onclick="CURATE.linesDownload()">${ICONS.download||''} TSV</button>
         <button class="btn ghost" onclick="CURATE.linesToSelection()" data-tt="Make these lines the SNPVersity selection.">Set as the selection</button>
       </div>
@@ -391,6 +393,7 @@
       .cur-lc{text-align:center;font-family:var(--mono);font-weight:600;width:34px}
       .cur-lc-ref{color:#9aa3b2} .cur-lc-missing{color:#b0b7c3} .cur-lc-alt{background:#fde9cc} .cur-lc-het{background:#fff7e6}
       .cur-lc-favhom{background:#cfe8d6;color:#176c3a} .cur-lc-favhet{background:#e7f3ec;color:#176c3a}
+      .cur-key{display:inline-block;width:auto;padding:0 6px;border-radius:5px;margin:0 2px}
       .cur-lines-tbl td.num{text-align:right}
       .cur-fav{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#f5f8fc;color:var(--ink)}
       .cur-fav-alt{background:#e7f3ec;border-color:#bfe0cb;color:#176c3a} .cur-fav-ref{background:#eaf1fc;border-color:#c5d6f3;color:#274b8f}

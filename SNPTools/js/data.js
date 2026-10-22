@@ -1375,9 +1375,9 @@ function scoreColorValue(key, v){
 
 /* Global helpers: the SNPCurate mark of a curated allele (window.SNP_CURATE, js/snpcurate.data.js)
    as a small link that opens its record. Each mark has its own glyph, so color is not the only
-   cue: gold (validated causal change, genotyped here), outline (published marker, associated
+   cue: gold star (published causal change, a site here), silver star (published variant, marker or lead SNP, a site here), white circle (published, not in this marker set). Older wording: gold (validated causal change, genotyped here), outline (published marker, associated
    change or tag, genotyped here), grey (known allele this release cannot show). */
-var CURATE_GLYPH = {gold:'\u2605', silver:'\u2605', white:'\u2606'};   // gold and silver stars, a white star with an outline
+var CURATE_GLYPH = {gold:'\u2605', silver:'\u2605', white:'\u25cb'};   // gold and silver stars, a white circle (a different shape, not only a colour)
 function curateBadge(e){
   if (!e || !e.mark) return '';
   var tips = (window.SNP_CURATE && window.SNP_CURATE.marks) || {};
