@@ -297,7 +297,10 @@ document.addEventListener('mouseover',e=>{
   const el=(e.target && e.target.closest) ? e.target.closest('[data-tt]') : null;
   if(el===ttEl) return;
   if(!el){ ttHide(); return; }
-  ttEl=el; tt.innerHTML=el.dataset.tt; tt.classList.add('show');
+  // the attribute's text as text: the browser already decoded the escaping once, so innerHTML
+  // would read a "<" in a VCF field or a gene name as markup. data-tt-html is for a static tooltip
+  // that needs markup (none today).
+  ttEl=el; if(el.dataset.ttHtml) tt.innerHTML=el.dataset.ttHtml; else tt.textContent=el.dataset.tt; tt.classList.add('show');
 });
 document.addEventListener('mousemove',e=>{
   if(!ttEl) return;

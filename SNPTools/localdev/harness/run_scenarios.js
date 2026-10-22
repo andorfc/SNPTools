@@ -1242,6 +1242,45 @@ async function until(site, expr, ms = 8000){
     K.errors = s19.errors.filter(e => !/favicon/.test(e));
     s19.window.close(); }
 
+  /* ---------- escaping (check_escaping.py): data strings are text, never markup ----------
+     A parsed VCF whose INFO and alleles carry markers (<img id=...>) is rendered in SNPVersity and
+     SNPImpact; the shared tooltip shows its attribute as text; PanEffect's not-found message with a
+     typed id; the ontology view's outLink keeps a javascript: href out. */
+  { const s20 = await openSite(ROOT); const $x = s20.$eval; const X = R.escaping = {};
+    const vcf = ['##fileformat=VCFv4.2', '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tZmG_B73\tZmG_B97',
+      'chr2\t4491500\t.\tC\tT<img id="xss1">\t.\t.\tTYPE=missense_variant<img id="xss2">;EFFECT=MODERATE;GENEMODEL=Zm00001eb067740<img id="xss3">;SUB=A10V<img id="xss4">;plantcad1_score=-1.2;MAF=0.1;NHET=1;NHOM=5;SITEQC=PASS\tGT\t0/0\t1/1',
+      'chr2\t4491600\t.\tA\tG\t.\t.\tTYPE=intron_variant;EFFECT=MODIFIER;GENEMODEL=Zm00001eb067740,Zm00001eb067750<img id="xss5">;SUB=.,.;MAF=0.1;NHET=1;NHOM=5;SITEQC=PASS\tGT\t0/0\t1/1'].join('\n');
+    X.versity = $x(`(()=>{ const p=Data.parseVcf(${JSON.stringify(vcf)}, ['ZmG_B73','ZmG_B97']);
+      S.results={rows:p.rows, accs:[{id:'ZmG_B73'},{id:'ZmG_B97'}], chr:'chr2', vcfUrl:'blob:esc', q:{dataset:'zmgrin2026_imp', chr:'chr2', lo:4491400, hi:4491700}, sampleCols:p.sampleCols};
+      S.fEffect='all'; S.fImpact='all'; S.fMaf=0; go('snpversity'); renderResults();
+      const injected=[1,2,3,4,5].filter(i=>document.getElementById('xss'+i)).map(i=>'xss'+i);
+      const txt=document.getElementById('rtBody').textContent;
+      const opt=[...document.querySelectorAll('#rtBody option')].map(o=>o.textContent).filter(t=>/img/.test(t));
+      return {injected, altShown:/T<img id="xss1">/.test(txt), effectShown:/missense variant<img/.test(txt), geneShown:/Zm00001eb067740<img/.test(txt), subShown:/A10V<img/.test(txt), effectOption:opt.length}; })()`);
+    // the shared tooltip: hover the ALT cell (its data-tt carries the allele) and the +1 gene marker
+    X.tooltip = $x(`(()=>{ const alt=document.querySelector('#rtBody td.c-alt'); alt.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+      const t1=document.getElementById('tt').textContent, i1=!!document.getElementById('tt').querySelector('img');
+      const more=document.querySelector('#rtBody .gene-more'); let t2=null, i2=null; if(more){ more.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); t2=document.getElementById('tt').textContent; i2=!!document.getElementById('tt').querySelector('img'); }
+      return {altTip:t1, altImg:i1, moreTip:t2, moreImg:i2}; })()`);
+    X.impact = $x(`(()=>{ sendToImpact(); const injected=[1,2,3,4,5].filter(i=>document.getElementById('xss'+i)).map(i=>'xss'+i);
+      const txt=document.querySelector('table.imp').textContent; return {injected, geneShown:/Zm00001eb067740<img/.test(txt), consShown:/<img/.test(txt)}; })()`);
+    $x(`IMPACT.open(document.querySelector('table.imp tbody tr').getAttribute('onclick').match(/'([^']+)'/)[1])`); await s20.wait(300);
+    Object.assign(X.impact, $x(`({injectedDetail:[1,2,3,4,5].filter(i=>document.getElementById('xss'+i)).map(i=>'xss'+i),
+      detailText:/Gene: ?Zm00001eb067740<img id="xss3">/.test(document.getElementById('page').textContent.replace(/\\s+/g,' '))})`));
+    // PanEffect: a typed id that is not found. A plain unknown id first, as the control: the not-found
+    // path logs the same errors for any unknown id in jsdom (no pan-genome files locally), and only
+    // errors the hostile id adds count.
+    $x(`S.pe={gene:'Zm0nothing'}; go('paneffect')`);
+    for (let i = 0; i < 40; i++){ await s20.wait(200); if ($x(`!!document.querySelector('#page .text-content, #page .pe-err, #page [style*="color: red"]')`)) break; }
+    await s20.wait(500); const controlErrors = new Set(s20.errors.map(e => e.replace(/Zm0nothing/g, 'ID')));
+    $x(`S.pe={gene:'Zm0<img id="xss6">'}; go('paneffect')`);
+    for (let i = 0; i < 40; i++){ await s20.wait(200); if ($x(`!!document.querySelector('#page .text-content, #page .pe-err, #page [style*="color: red"]')`)) break; }
+    await s20.wait(500);
+    X.paneffect = $x(`({injected: !!document.getElementById('xss6'), shown: /Zm0<img id="xss6">/.test(document.getElementById('page').textContent),
+      hosts: ['search_error','gene-summary','protein-summary','b73','pan-genome','summary'].filter(id=>document.getElementById(id))})`);
+    X.errors = s20.errors.filter(e => !/favicon|404|uniprot|paneffect|Element with id/.test(e) && !controlErrors.has(e.replace(/Zm0<img id="xss6">/g, 'ID')));
+    s20.window.close(); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

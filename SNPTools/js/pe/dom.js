@@ -1,25 +1,25 @@
 //Function to populate the gene and protein annotations
 function populateSummary() {
 
-    document.getElementById("summary_gm").innerHTML = '<a target="_blank" href="https://www.maizegdb.org/gene_center/gene/' + gene_model + '">' + gene_model + '</a>';
-    document.getElementById("summary_transcript").innerHTML = transcript;
-    document.getElementById("summary_canonical").innerHTML = gm_can;
-    document.getElementById("summary_gs").innerHTML = gs;
-    document.getElementById("summary_gn").innerHTML = gn;
-    document.getElementById("summary_protein").innerHTML = protein;
-    document.getElementById("summary_pl").innerHTML = gene_model_length;
-    document.getElementById("summary_msa").innerHTML = alignment_length;
+    document.getElementById("summary_gm").innerHTML = '<a target="_blank" href="https://www.maizegdb.org/gene_center/gene/' + encodeURIComponent(gene_model) + '">' + peEsc(gene_model) + '</a>';
+    document.getElementById("summary_transcript").textContent = transcript;
+    document.getElementById("summary_canonical").textContent = gm_can;
+    document.getElementById("summary_gs").textContent = gs;
+    document.getElementById("summary_gn").textContent = gn;
+    document.getElementById("summary_protein").textContent = protein;
+    document.getElementById("summary_pl").textContent = gene_model_length;
+    document.getElementById("summary_msa").textContent = alignment_length;
 
     if (unip_id != "N/A")
     {
-        document.getElementById("summary_uniprot").innerHTML = '<a target="_blank" href="https://www.uniprot.org/uniprotkb/'+ unip_id + '">' + unip_id + '</a>';;
+        document.getElementById("summary_uniprot").innerHTML = '<a target="_blank" href="https://www.uniprot.org/uniprotkb/'+ encodeURIComponent(unip_id) + '">' + peEsc(unip_id) + '</a>';
     } else {
-        document.getElementById("summary_uniprot").innerHTML = unip_id;
+        document.getElementById("summary_uniprot").textContent = unip_id;
     }
 
-    document.getElementById("summary_desc").innerHTML = unip_desc;
-    document.getElementById("summary_ss").innerHTML = '<a target="_blank" href="https://www.maizegdb.org/foldseek?uniprot='+ gene_model + '">' + gene_model + '</a>';
-    document.getElementById("summary_download").innerHTML = '<a href="' + gene_model_file + '" target="_blank">Download variant effects file</a>';
+    document.getElementById("summary_desc").textContent = unip_desc;
+    document.getElementById("summary_ss").innerHTML = '<a target="_blank" href="https://www.maizegdb.org/foldseek?uniprot='+ encodeURIComponent(gene_model) + '">' + peEsc(gene_model) + '</a>';
+    document.getElementById("summary_download").innerHTML = '<a href="' + peEsc(gene_model_file) + '" target="_blank">Download variant effects file</a>';
 
     //Added to show gene model ID on the top of the reference and pan-genome views
     let gn_print = "";
@@ -31,11 +31,11 @@ function populateSummary() {
     var pan_gm = document.getElementById("pan_gm");
 
     if(reference_gm) {
-        reference_gm.innerHTML = gene_model + " " + gn_print;
+        reference_gm.textContent = gene_model + " " + gn_print;
     }
 
     if(pan_gm) {
-        pan_gm.innerHTML = gene_model + " " + gn_print;
+        pan_gm.textContent = gene_model + " " + gn_print;
     }
 
 }
@@ -84,35 +84,35 @@ function errorInnerHTML() {
 
     const element1 = document.getElementById("search_error");
     if (element1) {
-        element1.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + main_id + '</b> was not found.</div>';
+        element1.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.</div>';
     } else {
         console.error("Element with id:", element1, "not found!");
     }
 
     const element2 = document.getElementById("gene-summary");
     if (element2) {
-        element2.innerHTML = '<p style="color: red;">The gene or transcript id <b>' + main_id + '</b> was not found.</p>';
+        element2.innerHTML = '<p style="color: red;">The gene or transcript id <b>' + peEsc(main_id) + '</b> was not found.</p>';
     } else {
         console.error("Element with id:", element2, "not found!");
     }
 
     const element3 = document.getElementById("protein-summary");
     if (element3) {
-        element3.innerHTML = '<p style="color: red;">The protein id <b>' + main_id + '</b> was not found.</p>';
+        element3.innerHTML = '<p style="color: red;">The protein id <b>' + peEsc(main_id) + '</b> was not found.</p>';
     } else {
         console.error("Element with id:", element3, "not found!");
     }
 
     const element4 = document.getElementById("b73");
     if (element4) {
-        element4.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + main_id + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        element4.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
     } else {
         console.error("Element with id:", element4, "not found!");
     }
 
     const element5 = document.getElementById("pan-genome");
     if (element5) {
-        element5.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + main_id + '</b> was not found.  Use the search tab to enter a new search term.</div>';
+        element5.innerHTML = '<div class="text-content" style="color: red;">The gene, transcript, or protein id <b>' + peEsc(main_id) + '</b> was not found.  Use the search tab to enter a new search term.</div>';
     } else {
         console.error("Element with id:", element5, "not found!");
     }

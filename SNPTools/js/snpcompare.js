@@ -1081,7 +1081,7 @@ const SNPCompare = (function () {
     const base=H-40;
     const dots=items.map(o=>{
       const cx=sx(o.v), cy=base-o.lane*11;
-      return `<g onclick="SNPCompare.pick('${esc(o.r.id)}')" style="cursor:pointer">
+      return `<g onclick="SNPCompare.pick('${jsStr(o.r.id)}')" style="cursor:pointer">
         <title>${esc(labelFor(o.r.id))} — similarity ${o.v.toFixed(4)}${o.r.lboth!=null?`, ${o.r.lboth.toLocaleString()} co-called sites`:''}</title>
         <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${R-0.6}" fill="${sc.color(o.v)}" stroke="#fff" stroke-width="1"></circle></g>`;
     }).join('');

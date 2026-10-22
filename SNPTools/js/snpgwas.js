@@ -902,10 +902,10 @@
     const wrapRect = DOM.plotCanvas.parentElement.getBoundingClientRect();
     DOM.tooltip.innerHTML =
       '<div class="coord">Chr' + f[0] + ':' + fmtBp(parseInt(f[2], 10)) + '</div>' +
-      '<div class="snp">' + f[1] + '</div>' +
-      '<div class="row"><span>Alleles</span><b>' + f[3] + '/' + f[4] + '</b></div>' +
-      '<div class="row"><span>Freq</span><b>' + f[5] + '</b></div>' +
-      '<div class="row"><span>Beta ± SE</span><b>' + f[6] + ' ± ' + f[7] + '</b></div>' +
+      '<div class="snp">' + escAttr(f[1]) + '</div>' +
+      '<div class="row"><span>Alleles</span><b>' + escAttr(f[3]) + '/' + escAttr(f[4]) + '</b></div>' +
+      '<div class="row"><span>Freq</span><b>' + escAttr(f[5]) + '</b></div>' +
+      '<div class="row"><span>Beta ± SE</span><b>' + escAttr(f[6]) + ' ± ' + escAttr(f[7]) + '</b></div>' +
       '<div class="row"><span>P</span><b>' + fmtP(f[8]) + '</b></div>' +
       (isSig ? '<span class="gwx-sig-badge">significant</span>' : '');
     let left = clientX - wrapRect.left + 14;
@@ -951,7 +951,7 @@
     const f = DATA.fields[Math.floor(DATA.n / 2)];
     const chr = f[0], bp = parseInt(f[2], 10);
     const lo = Math.max(0, bp - 5000), hi = bp + 5000;
-    return ' Try a SNP like ' + f[1] + ', or a region like chr' + chr + ':' + lo + '..' + hi + '.';
+    return ' Try a SNP like ' + escAttr(f[1]) + ', or a region like chr' + escAttr(chr) + ':' + lo + '..' + hi + '.';
   }
 
   let searchStatusTimer = null;
@@ -1102,13 +1102,13 @@
         const idx = list[k], f = DATA.fields[idx];
         const isSig = DATA.negLogP[idx] >= ACTIVE_THRESH_NEGLOG;
         rowsHtml += '<tr class="' + (isSig ? 'sig' : '') + '">' +
-          '<td class="snpid">' + f[1] + '</td>' +
-          '<td>' + f[0] + '</td>' +
+          '<td class="snpid">' + escAttr(f[1]) + '</td>' +
+          '<td>' + escAttr(f[0]) + '</td>' +
           '<td>' + fmtBp(parseInt(f[2], 10)) + '</td>' +
-          '<td>' + f[3] + '/' + f[4] + '</td>' +
-          '<td>' + f[5] + '</td>' +
-          '<td>' + f[6] + '</td>' +
-          '<td>' + f[7] + '</td>' +
+          '<td>' + escAttr(f[3]) + '/' + escAttr(f[4]) + '</td>' +
+          '<td>' + escAttr(f[5]) + '</td>' +
+          '<td>' + escAttr(f[6]) + '</td>' +
+          '<td>' + escAttr(f[7]) + '</td>' +
           '<td>' + fmtP(f[8]) + '</td>' +
           '<td>' + DATA.negLogP[idx].toFixed(2) + '</td>' +
           '</tr>';

@@ -800,7 +800,7 @@
   function searchBar(){
     return `<div class="card pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gene model</span>
-      <input id="foldGeneInput" value="${FD.gene||''}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
+      <input id="foldGeneInput" value="${escFold(FD.gene||'')}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
         style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
         onkeydown="if(event.key==='Enter')FOLD.loadGene()">
       <button class="btn" onclick="FOLD.loadGene()">Load structure</button>
@@ -1013,7 +1013,7 @@
     const header = datasetChooser() + searchBar();
 
     FD.root.innerHTML = header + `<div class="loading" style="padding:48px;text-align:center">
-      <div class="spinner"></div><div>Loading model for ${FD.gene}…</div></div>`;
+      <div class="spinner"></div><div>Loading model for ${escFold(FD.gene)}…</div></div>`;
 
     FD.structSource = null;
     let matched = null;
@@ -1038,7 +1038,7 @@
         : ` You have <b>${STRUCT_SOURCES.find(s=>s.key===FD.modelPref)?.label}</b> selected specifically —
            switch to <b>Best</b> above to let SNPFold fall back to the other model sources.`;
       FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="empty-state"><div class="ei">${ICONS.fold}</div>
-        <h3>No predicted model for “${FD.gene}”</h3>
+        <h3>No predicted model for “${escFold(FD.gene)}”</h3>
         <p>SNPFold ${whatWasChecked}. This usually means the protein wasn't modeled — most
         likely because it's part of a complex or its sequence is too long to fold.${modelNote}
         Search another gene model above, or generate its structure file and drop it in one
@@ -1055,7 +1055,7 @@
       : '—';
 
     FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:48px;text-align:center">
-      <div class="spinner"></div><div>Loading coding variants for ${s.gene}…</div></div>`;
+      <div class="spinner"></div><div>Loading coding variants for ${escFold(s.gene)}…</div></div>`;
     FD.iupred = null;
     FD.sites = null;
     FD.trackZoom = 1;
@@ -1126,11 +1126,11 @@
       </div></div>
 
       <div class="fold-context">
-        <span class="g"><b class="mono">${s.gene}</b></span>
+        <span class="g"><b class="mono">${escFold(s.gene)}</b></span>
         ${structSourceBadge()}
-        ${s.title?`<span class="dot">·</span><span>${s.title}</span>`:''}
+        ${s.title?`<span class="dot">·</span><span>${escFold(s.title)}</span>`:''}
         <span class="dot">·</span><span><b>${s.length}</b> aa</span>
-        ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${s.uniprot}" target="_blank" rel="noopener">${s.uniprot}</a></span>`:''}
+        ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${encodeURIComponent(s.uniprot)}" target="_blank" rel="noopener">${escFold(s.uniprot)}</a></span>`:''}
         <span class="dot">·</span><span>mean pLDDT <b>${meanP}</b></span>
         <span class="dot">·</span><span id="foldNVar">${nVariantsHTML()}</span>
         ${FD.hasQc?`<span class="dot">·</span><label class="chk" data-tt="Hide coding variants whose site is flagged (het only, het excess) or has no carrier in this release, from the track, the table and the 3D view."><input type="checkbox" id="foldUsableOnly" ${FD.usableOnly?'checked':''} onchange="FOLD.setUsableOnly(this.checked)"> Usable alleles only</label>`:''}
@@ -1727,10 +1727,10 @@
     const cr = carrierOf(v);
     const openC = FD.openCarrier===v.id;
     return `<tr class="fold-row ${on?'sel':''}" onclick="FOLD.select('${v.id}')">
-      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}${v.curated?curateBadge(v.curated):''}</td>
-      <td><span class="cons ${v.consClass}">${v.consequence}</span>${peJump(v)}</td>
+      <td class="c-mono c-alt" style="padding-left:11px">${escFold(v.variant)}${v.curated?curateBadge(v.curated):''}</td>
+      <td><span class="cons ${escFold(v.consClass)}">${escFold(v.consequence)}</span>${peJump(v)}</td>
       <td class="num">${finiteNumber(v.resi)==null?'<span style="color:var(--faint)">—</span>':v.resi}</td>
-      <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
+      <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${escFold(c.domain.name)}</span>`:`<span style="color:var(--muted);font-size:11px">${escFold(c.domain.name)}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${c.plddt==null?'<span style="color:var(--faint)">—</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span>`}</td>
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
@@ -1831,15 +1831,15 @@
     return `
       <div class="ctx-head">
         <div>
-          <div class="ctx-v mono">${v.variant}</div>
-          <div><span class="cons ${v.consClass}">${v.consequence}</span> ${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:''}</div>
+          <div class="ctx-v mono">${escFold(v.variant)}</div>
+          <div><span class="cons ${escFold(v.consClass)}">${escFold(v.consequence)}</span> ${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:''}</div>
         </div>
         <button class="btn ghost" onclick="FOLD.focus()">Focus in 3D</button>
       </div>
       <div class="interp ${tone}">${msg}</div>
       <div class="ctx-grid">
-        <div class="ck"><div class="kk">Residue</div><div class="vv mono">${finiteNumber(v.resi)==null?'—':`${v.ref||''}${v.resi}${v.consClass==='missense'&&v.alt?v.alt:''}`}</div></div>
-        <div class="ck"><div class="kk">Domain</div><div class="vv">${c.domain?c.domain.name:'—'}${c.domain&&c.domain.pfam&&c.domain.pfam!=='region'?` <span class="muted mono">${c.domain.pfam}</span>`:''}</div></div>
+        <div class="ck"><div class="kk">Residue</div><div class="vv mono">${finiteNumber(v.resi)==null?'—':`${escFold(v.ref||'')}${v.resi}${v.consClass==='missense'&&v.alt?escFold(v.alt):''}`}</div></div>
+        <div class="ck"><div class="kk">Domain</div><div class="vv">${c.domain?escFold(c.domain.name):'—'}${c.domain&&c.domain.pfam&&c.domain.pfam!=='region'?` <span class="muted mono">${escFold(c.domain.pfam)}</span>`:''}</div></div>
         <div class="ck"><div class="kk">Local confidence</div><div class="vv">${c.plddt==null?'<span class="muted">outside model</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span> <span class="muted">${plddtBand(c.plddt)}</span>`}</div></div>
         <div class="ck"><div class="kk">Secondary structure</div><div class="vv"><span class="ss-chip ss-${c.ss}">${c.ssLabel}</span></div></div>
         <div class="ck"><div class="kk">AI scores</div><div class="vv mono">${aiScoreSummary(v)}</div></div>
@@ -1894,7 +1894,7 @@
         if (FD.selId) focusResidue(false);
       }catch(e){
         console.error('3Dmol error', e);
-        el.innerHTML = `<div class="fold-3d-fallback"><b>Could not render structure</b><p class="mono">${String(e.message||e)}</p></div>`;
+        el.innerHTML = `<div class="fold-3d-fallback"><b>Could not render structure</b><p class="mono">${escFold(String(e.message||e))}</p></div>`;
       }
     });
   }

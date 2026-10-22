@@ -869,8 +869,8 @@ async function runQuery(){
     if(seq!==RUN_SEQ) return;
     const url=err&&err.detail&&err.detail.vcfUrl;   // set when the VCF was built but the fetch failed
     anchor.innerHTML=noticeCard('The query failed',
-      `<span style="color:var(--muted)">${(err&&err.message?err.message:err)}</span>`+
-      (url?`<br><br><button class="btn" onclick="downloadVcfUrl('${url}')">${ICONS.download} Download the VCF</button>`:''));
+      `<span style="color:var(--muted)">${escAttr(err&&err.message?err.message:err)}</span>`+
+      (url?`<br><br><button class="btn" data-u="${escAttr(url)}" onclick="downloadVcfUrl(this.dataset.u)">${ICONS.download} Download the VCF</button>`:''));
     console.error('SNPVersity query failed:', err);
   }
 }
@@ -1096,7 +1096,7 @@ function renderTable(){
         </select></div>
       <div class="fld"><label>Effect type</label>
         <select onchange="S.fEffect=this.value;S.page=1;renderTable()">
-          ${effects.map(v=>`<option value="${v}" ${v===S.fEffect?'selected':''}>${v==='all'?'All effects':v}</option>`).join('')}
+          ${effects.map(v=>`<option value="${escAttr(v)}" ${v===S.fEffect?'selected':''}>${v==='all'?'All effects':escAttr(v)}</option>`).join('')}
         </select></div>
       <div class="fld"><label>Min. MAF (0.0–0.5)</label>
         <input type="number" min="0" max="0.5" step="0.01" value="${S.fMaf.toFixed(2)}" inputmode="decimal"
@@ -1233,7 +1233,7 @@ function rowHTML(r){
   const foldJump = (isFoldCoding && hasGene)
     ? ` <a class="fold-jump" href="#" title="Show this variant on the predicted protein structure in SNPFold" onclick="goFold('${r.gene}',{chr:'${escAttr(chr)}',pos:${r.pos},ref:'${escAttr(r.ref)}',alt:'${escAttr(r.alt)}',sub:'${escAttr(r.sub||'')}',effect:'${escAttr(r.effect||'')}'});return false;">fold ↗</a>`
     : '';
-  const eff = (r.sub?`<span class="sub">(${r.sub})</span> ${r.effect}`:r.effect) + peJump + foldJump;
+  const eff = (r.sub?`<span class="sub">(${escAttr(r.sub)})</span> ${escAttr(r.effect)}`:escAttr(r.effect)) + peJump + foldJump;
   const fields=annotFields();
   const F={}; fields.forEach(f=>{F[f.key]=f;});
   const cur=Data.curatedAt ? Data.curatedAt(chr, r.pos, r.ref, r.alt) : null;   // SNPCurate
@@ -1297,8 +1297,8 @@ function moreGenes(r){
 function geneCell(g){
   if(!g || g==='—') return '<span style="color:var(--faint)">—</span>';
   return isSingleGeneModel(g)
-    ? `<a class="gene-link" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene page for ${escAttr(g)}">${g}</a>`
-    : g;
+    ? `<a class="gene-link" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene page for ${escAttr(g)}">${escAttr(g)}</a>`
+    : escAttr(g);
 }
 function genesPanel(){
   const rows=(S.results&&S.results.rows)||[];
@@ -1308,7 +1308,7 @@ function genesPanel(){
   if(!genes.length) return '';
   const jb=g=>`https://jbrowse.maizegdb.org/index.html?data=B73&loc=${encodeURIComponent(g)}`;
   const items=genes.map(g=>`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px;padding:5px 2px;border-bottom:1px solid #eef1f5">
-      <a class="c-mono" style="font-size:12.5px" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene model page for ${escAttr(g)}">${g}</a>
+      <a class="c-mono" style="font-size:12.5px" href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene model page for ${escAttr(g)}">${escAttr(g)}</a>
       <span style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;white-space:nowrap">
         <a href="${maizegdbGeneURL(g)}" target="_blank" rel="noopener" title="MaizeGDB gene model page">MaizeGDB ↗</a>
         <a href="${jb(g)}" target="_blank" rel="noopener">JBrowse ↗</a>

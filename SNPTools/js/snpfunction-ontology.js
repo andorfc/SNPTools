@@ -153,8 +153,12 @@
     return function () { clearTimeout(t); t = setTimeout(fn, ms); };
   }
   /* MaizeGDB links that leave SNPTools: absolute, new tab. */
+  /* a link from the API payload: only an http(s) or site-relative URL becomes an href; anything
+     else (another scheme, an empty value) is shown as text */
   function outLink(href, label, title, cls) {
-    return '<a' + (cls ? ' class="' + cls + '"' : '') + ' href="' + esc(href) + '" target="_blank" rel="noopener"' +
+    var h = String(href == null ? '' : href).trim();
+    if (!/^(https?:\/\/|\/)/i.test(h)) return '<span' + (cls ? ' class="' + cls + '"' : '') + (title ? ' title="' + esc(title) + '"' : '') + '>' + label + '</span>';
+    return '<a' + (cls ? ' class="' + cls + '"' : '') + ' href="' + esc(h) + '" target="_blank" rel="noopener"' +
       (title ? ' title="' + esc(title) + '"' : '') + '>' + label + '</a>';
   }
 

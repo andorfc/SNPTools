@@ -22,7 +22,7 @@ from a current index without touching it, rebuilds a stale, missing or truncated
 the store itself when the index is stale and gff/ is read-only.
 
 Patch 0040: no tooltip listeners are added to [data-tt] elements however often pages are shown,
-and the delegated tooltip shows the innermost element's text, hides off it and when its element
+and the delegated tooltip shows the innermost element's attribute as text (never markup), hides off it and when its element
 is re-rendered away; SNPFold's pLDDT legend names the model shown (AlphaFold2, ESMFold);
 PlantCAD1/2 (PlantCAD2 = the one-pass score, pc2op), Evo2 and ESM-C are available columns of the GRIN-linked set; SNPFunction's default
 gene has variants; processForm.php and ibsCompare.php replies name no server path (the details
@@ -85,7 +85,7 @@ check(fo['calls'] == ['Zm00001eb378140', 'Zm00001eb406050'] and fo['shown'] == '
       f"SNPFold: both genes waiting on variants, A answering last: B stands ({fo})")
 check(F['ttListeners'] == 0, f"tooltip listeners added to [data-tt] elements over 3 visits of 3 tools: {F['ttListeners']}")
 tb = F['ttBehaviour']
-check(tb == ['outer A', 'inner B', False, False], f"delegated tooltip: outer, inner, off, element removed -> {tb}")
+check(tb == ['outer <b>A</b>', 'inner B', False, False], f"delegated tooltip (shows its attribute as text): outer, inner, off, element removed -> {tb}")
 fl = F['foldLegend']
 check(fl.get('alphafold', {}).get('legend') == 'AlphaFold2 confidence score (pLDDT):'
       and fl.get('esmfold', {}).get('legend') == 'ESMFold confidence score (pLDDT):',

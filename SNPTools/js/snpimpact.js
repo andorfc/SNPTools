@@ -22,7 +22,7 @@
   const PRIO_RANK = { TOP:0, HIGH:1, MODERATE:2, LOW:3 };
 
   /* ---------- small helpers ---------- */
-  function consPill(r){ return `<span class="cons ${r.consClass}">${r.consequence}</span>`; }
+  function consPill(r){ return `<span class="cons ${esc(r.consClass)}">${esc(r.consequence)}</span>`; }
   function prioPill(p){ return `<span class="prio ${(p||'LOW').toLowerCase()}">${p||'LOW'}</span>`; }
   function scoreColor(v){
     const lo=-12, hi=6, t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
@@ -383,7 +383,7 @@
     const vDisp = truncVariant(r.variant);
     const vTrunc = vDisp !== String(r.variant==null?'':r.variant);
     return `<tr class="imp-row ${opened?'open':''}" onclick="IMPACT.open('${r.id}')">
-      <td class="gene-link" style="padding-left:11px">${r.gene}</td>
+      <td class="gene-link" style="padding-left:11px">${esc(r.gene)}</td>
       <td class="c-mono c-alt"${vTrunc?` data-tt="${esc(r.variant)}"`:''}>${esc(vDisp)}${r.curated?curateBadge(r.curated):''}</td>
       <td>${consPill(r)}${peJump}${foldJump}</td>
       <td>${domTag(r.domain)}</td>
@@ -533,7 +533,7 @@
             <span>Gene: ${isSingleGeneModel(r.gene)
               ? `<a class="mono" style="color:var(--blue-600);font-weight:700" href="${maizegdbGeneURL(r.gene)}" target="_blank" rel="noopener" title="MaizeGDB gene page for ${esc(r.gene)}">${esc(r.gene)}</a>`
               : `<b class="mono">${esc(r.gene)}</b>`}</span>
-            <span>Variant: <b class="mono">${r.variant}</b></span>
+            <span>Variant: <b class="mono">${esc(r.variant)}</b></span>
             <span>${consPill(r)}</span>
             <span>${prioPill(r.priority)}</span>
           </div>
@@ -541,7 +541,7 @@
         <div class="idh-actions">
           <button class="btn" onclick="IMPACT.fold('${r.id}')"
             title="${canFold(r) ? 'Show '+esc(peSub || r.variant)+' on the predicted structure' : 'View '+esc(r.gene)+' in SNPFold'}">${ICONS.fold} ${canFold(r) ? `SNPFold · ${esc(peSub || r.variant)}` : 'View in SNPFold'}</button>
-          <button class="btn" onclick="goFunction('${r.gene}','${IMP.input.dataset}')">${ICONS.leaf||''} Gene in SNPFunction</button>
+          <button class="btn" data-g="${esc(r.gene)}" data-d="${esc(IMP.input.dataset)}" onclick="goFunction(this.dataset.g,this.dataset.d)">${ICONS.leaf||''} Gene in SNPFunction</button>
           <button class="btn ghost" onclick="IMPACT.panEffect('${r.id}')"
             title="${peSub ? 'Highlight '+esc(peSub)+' in PanEffect' : 'View '+esc(r.gene)+' in PanEffect'}"
             ${canPanEffect(r)?'':'disabled'}>${ICONS.effect||''} ${peSub ? `PanEffect · ${esc(peSub)}` : 'PanEffect'} →</button>
@@ -556,8 +556,8 @@
           ${(()=>{ const gm=geneModelSVG(r, Data.geneModelOf(IMP.input.chr, r.gene));
             return gm
               ? `<div class="gm-wrap" style="margin:8px 0 2px">${gm.svg}</div>
-                 <div class="id-foot ${r.consClass==='lof'?'red':''}">${gm.caption} · ${IMP.input.chr}:${r.pos.toLocaleString()} ${r.ref}›${r.alt} · impact ${r.impactLevel||'—'}</div>`
-              : `<div class="id-foot ${r.consClass==='lof'?'red':''}">${IMP.input.chr}:${r.pos.toLocaleString()} · ${r.ref}›${r.alt} · impact ${r.impactLevel||'—'}</div>`;
+                 <div class="id-foot ${r.consClass==='lof'?'red':''}">${gm.caption} · ${IMP.input.chr}:${r.pos.toLocaleString()} ${esc(r.ref)}›${esc(r.alt)} · impact ${r.impactLevel||'—'}</div>`
+              : `<div class="id-foot ${r.consClass==='lof'?'red':''}">${IMP.input.chr}:${r.pos.toLocaleString()} · ${esc(r.ref)}›${esc(r.alt)} · impact ${r.impactLevel||'—'}</div>`;
           })()}
         </div>
 

@@ -615,7 +615,7 @@
       sm.innerHTML =
         '<div class="pe-sum">' +
           '<div class="pe-sum-kicker">Missense variant effects · ' + currentESM + ' · B73 v5</div>' +
-          '<h2 class="pe-sum-title">' + (gene_model || '') + gnPrint + '</h2>' +
+          '<h2 class="pe-sum-title">' + peEsc(gene_model || '') + peEsc(gnPrint) + '</h2>' +
           '<a class="pe-sum-dl" href="' + csv + '" download>' +
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">' +
             '<path d="M12 4v10m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" stroke-width="2" ' +
