@@ -750,6 +750,7 @@ async function until(site, expr, ms = 8000){
         return out; })()`);
       O.fold.data = await $u(`Data.geneFunction('Zm00001eb406050','zmgrin2026_imp').then(d=>({vcf:null, fold:d.foldVariants.map(f=>[f.pos,f.refNt,f.altNt,f.qc])}))`);
       O.fold.vcf = lastVcf(s);
+      O.fold.sitesFetch = s.log.filter(x => x.url && /sites/.test(x.url)).map(x => x.url);   // check_performance: the per-gene sites file
       // SNPGeo: the pill in the variant table and beside the label (su1 interval, all lines)
       O.geo = await $u(`(async()=>{ go('snpgeo'); document.getElementById('geoGeneInput').value='${GENES.su1}'; await geoLookupGene();
         await new Promise(r=>setTimeout(r,400));
@@ -1280,6 +1281,62 @@ async function until(site, expr, ms = 8000){
       hosts: ['search_error','gene-summary','protein-summary','b73','pan-genome','summary'].filter(id=>document.getElementById(id))})`);
     X.errors = s20.errors.filter(e => !/favicon|404|uniprot|paneffect|Element with id/.test(e) && !controlErrors.has(e.replace(/Zm0<img id="xss6">/g, 'ID')));
     s20.window.close(); }
+
+  /* ---------- performance batch (check_performance.py) ---------- */
+  { const s21 = await openSite(ROOT); const $v = s21.$eval; const Q = R.performance = {};
+    // scripts on demand: d3 with SNPGeo's map, the engine with PanEffect
+    const sc = {d3Before: $v(`typeof d3`), peBefore: $v(`typeof runPanEffect`)};
+    $v(`go('snpgeo'); document.getElementById('geoGeneInput').value='Zm00001eb174590'; geoLookupGene()`);
+    await until(s21, `typeof d3==='object' && !!document.getElementById('geoTable') && GEO.rows.length>100`, 60000); await s21.wait(600);
+    sc.d3AfterGeo = $v(`typeof d3`);
+    // SNPGeo: a 50-row page, a selection on another page, a selection in place, the arrow key
+    Q.geo = $v(`(()=>{ GEO.pageRows=50; GEO.page=null; geoRenderTable();
+      const rows=()=>document.querySelectorAll('#geoTable tbody tr').length, pager=()=>(document.querySelector('#geoTable .geo-pager .info')||{}).textContent||'';
+      const out={rowsOnPage:rows(), pager:pager(), pages:Math.ceil(GEO.rows.length/50)};
+      geoSelectSnp(60); out.sel60={page:GEO.page, active:+(document.querySelector('#geoTable tr.active')||{}).dataset.idx};
+      const tb=document.querySelector('#geoTable tbody'); geoSelectSnp(61);
+      out.sel61={sameTbody: tb===document.querySelector('#geoTable tbody'), active:+(document.querySelector('#geoTable tr.active')||{}).dataset.idx, nActive:document.querySelectorAll('#geoTable tr.active').length};
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
+      out.key={active:+(document.querySelector('#geoTable tr.active')||{}).dataset.idx, sameTbody: tb===document.querySelector('#geoTable tbody')};
+      GEO.pageRows=null; return out; })()`);
+    $v(`S.pe={gene:'Zm00001eb406050'}; go('paneffect')`);
+    await until(s21, `typeof runPanEffect==='function'`, 60000); await s21.wait(300);
+    sc.peAfter = $v(`typeof runPanEffect`); Q.scripts = sc;
+    // SNPCompare: clustering against a reference UPGMA, PCoA on known configurations, the matrix gate
+    Q.cluster = $v(`(()=>{ const n=12; let seed=7; const rnd=()=>{ seed=(seed*1103515245+12345)%2147483648; return seed/2147483648; };
+      const sim=new Float64Array(n*n), both=new Int32Array(n*n), miss=new Float64Array(n*n);
+      for(let a=0;a<n;a++){ sim[a*n+a]=1; both[a*n+a]=1000; for(let b=a+1;b<n;b++){ const v=0.5+0.5*rnd(); sim[a*n+b]=sim[b*n+a]=v; both[a*n+b]=both[b*n+a]=1000; } }
+      const P={n, total:1000, ids:[...Array(n)].map((_,i)=>'L'+i), sim, both, miss}; const idx=[...Array(n).keys()];
+      const c=SNPCompare.cluster(P, idx); const got=[]; (function w(nd){ if(!nd) return; if(nd.leaf===undefined){ got.push(nd.height); w(nd.left); w(nd.right); } })(c.root);
+      // reference UPGMA (dense, naive)
+      const D=[]; for(let a=0;a<n;a++){ D.push([]); for(let b=0;b<n;b++) D[a].push(a===b?0:1-sim[a*n+b]); }
+      let cl=idx.map(i=>({m:[i],s:1})); const ref=[];
+      while(cl.length>1){ let bi=0,bj=1,bd=Infinity; for(let a=0;a<cl.length;a++) for(let b=a+1;b<cl.length;b++) if(D[a][b]<bd){ bd=D[a][b]; bi=a; bj=b; }
+        ref.push(bd); const A=cl[bi],B=cl[bj]; const nd=[]; for(let c2=0;c2<cl.length;c2++){ if(c2===bi||c2===bj) continue; nd.push((D[bi][c2]*A.s+D[bj][c2]*B.s)/(A.s+B.s)); }
+        const keep=cl.filter((_,i)=>i!==bi&&i!==bj); const ND=keep.map((_,i)=>keep.map((_,j)=>D[idx2(i)][idx2(j)])); function idx2(i){ let k=-1; for(let q=0;q<cl.length;q++){ if(q===bi||q===bj) continue; k++; if(k===i) return q; } }
+        ND.forEach((row,i)=>row.push(nd[i])); ND.push(nd.concat([0])); cl=keep.concat([{m:A.m.concat(B.m), s:A.s+B.s}]); D.length=0; ND.forEach(r=>D.push(r)); }
+      const a1=got.map(x=>+x.toFixed(10)).sort(), a2=ref.map(x=>+x.toFixed(10)).sort();
+      return {heightsMatch: JSON.stringify(a1)===JSON.stringify(a2), nMerges:got.length, orderIsPermutation: c.order.slice().sort((x,y)=>x-y).join()===idx.join()}; })()`);
+    Q.pcoa = $v(`(()=>{ const mk=(dist)=>{ const n=dist.length, sim=new Float64Array(n*n), both=new Int32Array(n*n), miss=new Float64Array(n*n);
+        for(let a=0;a<n;a++) for(let b=0;b<n;b++){ sim[a*n+b]=1-dist[a][b]; both[a*n+b]=1000; } return {n,total:1000,ids:[...Array(n)].map((_,i)=>'L'+i),sim,both,miss}; };
+      const line=[[0,1/3,2/3,1],[1/3,0,1/3,2/3],[2/3,1/3,0,1/3],[1,2/3,1/3,0]];
+      const r1=SNPCompare.pcoa(mk(line),[0,1,2,3]); const xs=r1.pts.map(p=>p.x); const gaps=[xs[1]-xs[0],xs[2]-xs[1],xs[3]-xs[2]];
+      const spaced=gaps.every(g=>Math.abs(Math.abs(g)-Math.abs(gaps[0]))<1e-6);
+      const sq=[[0,1,1,1],[1,0,2,2],[1,2,0,2],[1,2,2,0]];   // three points 2 apart, all 1 from a fourth: not embeddable
+      const r2=SNPCompare.pcoa(mk(sq),[0,1,2,3]);
+      return {line:{v1:r1.v1, v2:r1.v2, spaced, nonEuclid:r1.nonEuclid}, square:{v1:r2.v1, v2:r2.v2, nonEuclid:r2.nonEuclid, finite:r2.pts.every(p=>isFinite(p.x)&&isFinite(p.y))}}; })()`);
+    const ids = [...Array(460)].map((_, i) => 'ZmG_X' + i);
+    Q.matrixGate = $v(`(()=>{ const ids=${JSON.stringify(ids)}; const lines=['##fileformat=VCFv4.2','#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO\\tFORMAT\\t'+ids.join('\\t')];
+      for(let i=0;i<40;i++) lines.push('chr2\\t'+(4491400+i)+'\\t.\\tA\\tG\\t.\\t.\\tTYPE=intron_variant;EFFECT=MODIFIER;GENEMODEL=Zm00001eb067740;MAF=0.2;NHET=1;NHOM=1;SITEQC=PASS\\tGT\\t'+ids.map((_,j)=>((i+j)%3===0?'1/1':'0/0')).join('\\t'));
+      const p=Data.parseVcf(lines.join('\\n'), ids); const r={rows:p.rows, accs:ids.map(id=>({id})), chr:'chr2', vcfUrl:'blob:m', q:{dataset:'zmgrin2026_imp', chr:'chr2', lo:4491400, hi:4491440}, sampleCols:p.sampleCols}; S.results=r;
+      S.compareInput=resultHandoff(r); S.compareRequest={view:'table', mode:'local', autorun:false}; go('snpcompare'); return null; })()`);
+    await until(s21, `!!(SNPCompare._ST.input && document.getElementById('cmpFocal'))`, 15000);
+    $v(`SNPCompare.setSites('all'); SNPCompare.pickFocal('ZmG_X0'); SNPCompare.setMode('local'); SNPCompare.setView('matrix')`);
+    await until(s21, `SNPCompare._ST.ran && /Draw anyway/.test(document.getElementById('cmpViewWrap').textContent)`, 20000);
+    Q.matrixGate = $v(`(()=>{ const w=document.getElementById('cmpViewWrap'); const out={n:SNPCompare._ST.input.accs.length, notice:!w.querySelector('canvas'), noticeText:w.textContent.replace(/\\s+/g,' ').trim()};
+      SNPCompare.forceMatrix(); out.afterForce=!!document.getElementById('cmpMatrixCv'); return out; })()`);
+    Q.errors = s21.errors.filter(e => !/favicon|404|Element with id/.test(e));   // dom.js logs the legacy shell's missing elements
+    s21.window.close(); }
 
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);

@@ -222,6 +222,7 @@ const SNPCompare = (function () {
     else if(ST.scale==='z'){ const a=Math.abs(T[Math.round(0.02*(n-1))]||0), b=Math.abs(T[Math.round(0.98*(n-1))]||0);
                              hi=Math.max(a,b,1e-9); lo=-hi; }
     else { lo=T[Math.max(0,Math.round(0.02*(n-1)))]; hi=T[Math.min(n-1,Math.round(0.98*(n-1)))]; }
+    if(!n){ lo=0; hi=1; }                    // no measurable pair (every pair masked): a nominal range, not NaN
     if(!(hi>lo)){ hi=lo+1e-6; }
     if(ST.dom){ lo=ST.dom.lo; hi=ST.dom.hi; }
 
@@ -248,28 +249,25 @@ const SNPCompare = (function () {
     const fill = cnt? sum/cnt : 0.2;
     for(let a=0;a<k;a++) for(let b=0;b<k;b++) if(a!==b && isNaN(d[a][b])) d[a][b]=fill;
 
-    const active=[];
-    for(let a=0;a<k;a++){ active.push({leaves:[idx[a]], size:1, id:a, node:{leaf:idx[a],height:0}}); }
-    const dist=new Map(); const key=(x,y)=>x<y? x+','+y : y+','+x;
-    for(let a=0;a<k;a++) for(let b=a+1;b<k;b++) dist.set(key(a,b), d[a][b]);
-    let next=k;
-    while(active.length>1){
-      let bi=0,bj=1,bd=Infinity;
-      for(let a=0;a<active.length;a++) for(let b=a+1;b<active.length;b++){
-        const v=dist.get(key(active[a].id,active[b].id));
-        if(v<bd){ bd=v; bi=a; bj=b; }
-      }
-      const A=active[bi], B=active[bj];
-      const merged={ id:next++, size:A.size+B.size, leaves:A.leaves.concat(B.leaves),
-                     node:{ left:A.node, right:B.node, height:bd } };
-      for(const C of active){ if(C===A||C===B) continue;
-        const va=dist.get(key(A.id,C.id)), vb=dist.get(key(B.id,C.id));
-        dist.set(key(merged.id,C.id), (va*A.size+vb*B.size)/(A.size+B.size));
-      }
-      active.splice(Math.max(bi,bj),1); active.splice(Math.min(bi,bj),1);
-      active.push(merged);
+    /* UPGMA on the dense matrix in place: cluster a absorbs cluster b (its row and column become
+       the size-weighted mean), b is retired. k rows of Float64Array, no per-pair strings: the
+       string-keyed Map of the first version allocated about k^3/6 keys and froze the tab at 933
+       lines. Ties go to the lowest pair (a, b) in index order, as before. */
+    const size=new Float64Array(k).fill(1), alive=new Uint8Array(k).fill(1);
+    const leaves=idx.map(i=>[i]), nodes=idx.map(i=>({leaf:i,height:0}));
+    let left=k;
+    while(left>1){
+      let bi=-1,bj=-1,bd=Infinity;
+      for(let a=0;a<k;a++){ if(!alive[a]) continue; const da=d[a];
+        for(let b=a+1;b<k;b++){ if(!alive[b]) continue; const v=da[b]; if(v<bd){ bd=v; bi=a; bj=b; } } }
+      const sa=size[bi], sb=size[bj], st=sa+sb;
+      for(let c=0;c<k;c++){ if(!alive[c]||c===bi||c===bj) continue;
+        const v=(d[bi][c]*sa+d[bj][c]*sb)/st; d[bi][c]=d[c][bi]=v; }
+      nodes[bi]={ left:nodes[bi], right:nodes[bj], height:bd };
+      leaves[bi]=leaves[bi].concat(leaves[bj]); size[bi]=st; alive[bj]=0; left--;
     }
-    return { order:active[0].leaves, root:active[0].node };
+    let root=0; while(!alive[root]) root++;
+    return { order:leaves[root], root:nodes[root] };
   }
 
   function layout(P){
@@ -306,16 +304,21 @@ const SNPCompare = (function () {
     gm/=k*k;
     const B=[]; for(let a=0;a<k;a++){ B.push(new Float64Array(k));
       for(let b=0;b<k;b++) B[a][b]=-0.5*(D2[a][b]-rm[a]-rm[b]+gm); }
+    /* power iteration; the eigenvalue is the Rayleigh quotient v'Bv (signed), not the norm of Bv:
+       with masked pairs imputed the matrix is not Euclidean and can have a dominant NEGATIVE
+       eigenvalue, which the norm would have reported as a positive axis. The next axis is sought in
+       B minus the found component. An axis with a non-positive eigenvalue is dropped (all zero). */
     const eig=(M)=>{
       let v=new Float64Array(k); for(let i=0;i<k;i++) v[i]=Math.sin(i*1.7+0.3);
-      let lam=0;
+      const w=new Float64Array(k);
       for(let it=0;it<300;it++){
-        const w=new Float64Array(k);
         for(let a=0;a<k;a++){ let s=0; const Ma=M[a]; for(let b=0;b<k;b++) s+=Ma[b]*v[b]; w[a]=s; }
         let nrm=0; for(let i=0;i<k;i++) nrm+=w[i]*w[i]; nrm=Math.sqrt(nrm);
         if(nrm<1e-12) break;
-        for(let i=0;i<k;i++) w[i]/=nrm; lam=nrm; v=w;
+        let delta=0; for(let i=0;i<k;i++){ const x=w[i]/nrm; delta+=Math.abs(x-v[i]); v[i]=x; }
+        if(delta<1e-10) break;
       }
+      let lam=0; for(let a=0;a<k;a++){ let s=0; const Ma=M[a]; for(let b=0;b<k;b++) s+=Ma[b]*v[b]; lam+=v[a]*s; }
       return {lam, v};
     };
     const e1=eig(B);
@@ -323,10 +326,16 @@ const SNPCompare = (function () {
       for(let b=0;b<k;b++) r[b]=row[b]-e1.lam*e1.v[a]*e1.v[b]; return r; });
     const e2=eig(B2);
     let tr=0; for(let a=0;a<k;a++) tr+=B[a][a];
-    const pts=order.map((gi,a)=>({ gi,
-      x:e1.v[a]*Math.sqrt(Math.max(e1.lam,0)),
-      y:e2.v[a]*Math.sqrt(Math.max(e2.lam,0)) }));
-    return { pts, v1: tr>0? e1.lam/tr:0, v2: tr>0? e2.lam/tr:0 };
+    // the most negative eigenvalue (of -B2): how far the distances are from Euclidean
+    const neg=eig(B2.map(row=>row.map(x=>-x)));
+    const l1=Math.max(e1.lam,0), l2=Math.max(e2.lam,0);
+    const pts=order.map((gi,a)=>({ gi, x:e1.v[a]*Math.sqrt(l1), y:e2.v[a]*Math.sqrt(l2) }));
+    // axis shares over the positive variation: the trace is the sum of ALL eigenvalues, negative
+    // ones included, so shares over the trace alone overstate the axes when distances are not
+    // Euclidean; the most negative eigenvalue found is added back (further negative ones are not
+    // known, so the shares stay approximate and the view says so)
+    const negMag=Math.max(neg.lam,0), den=tr+negMag;
+    return { pts, v1: den>0? l1/den:0, v2: den>0? l2/den:0, nonEuclid: den>0 ? negMag/den : 0 };
   }
 
   /* ---------------- metadata join ---------------- */
@@ -829,6 +838,11 @@ const SNPCompare = (function () {
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
     const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
+    // the same gate as SNPMatrix: an A×A matrix of hundreds of lines is slow to cluster and draw
+    if(P.n>IBS_COST.mtxAccWarn && !ST.forceMatrix){
+      wrap.innerHTML=notice(`<b>${P.n}</b> accessions: clustering and drawing a ${P.n}×${P.n} matrix will take a while and is hard to read. `+
+        `<br><br><button class="btn" onclick="SNPCompare.forceMatrix()">Draw anyway</button>`); return;
+    }
     const L=layout(P), order=L.order, k=order.length;
     if(!k){ wrap.innerHTML=notice('Every accession was removed by the missing-data filter. Raise the threshold.'); return; }
     const thr=minSites(P.total);
@@ -851,9 +865,12 @@ const SNPCompare = (function () {
     let lw=0; for(const s of labels) lw=Math.max(lw, ctx.measureText(s).width);
     const mar=Math.min(210, Math.max(90, Math.ceil(lw)+16));
     const avail=Math.max(320,(wrap.clientWidth||900)-mar-30);
-    const cell=Math.max(7, Math.min(34, Math.floor(avail/k)));
-    const W=mar+cell*k+16, H=mar+dendH+cell*k+16;
     const dpr=window.devicePixelRatio||1;
+    // a canvas past about 16 M device pixels draws blank on iOS Safari: cap the cell size so the
+    // bitmap stays under that (about 3,900 px a side at dpr 1; 1,950 at dpr 2)
+    const maxSide=Math.floor(3900/dpr);
+    const cell=Math.max(1, Math.min(34, Math.floor(avail/k), Math.floor((maxSide-mar-dendH-16)/k)));
+    const W=mar+cell*k+16, H=mar+dendH+cell*k+16;
     cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px';
     cv.id='cmpMatrixCv'; cv.style.cursor='crosshair';
     ctx.scale(dpr,dpr);
@@ -1004,7 +1021,7 @@ const SNPCompare = (function () {
       ${circles}${labels}</svg>
       <div class="mtx-note" style="margin-top:10px">Classical multidimensional scaling of the distance matrix (1 − similarity).
       Distances between unmeasurable pairs are imputed with the panel mean, so a poorly covered accession drifts toward the centre
-      rather than to an extreme — points are faded in proportion to their mean missing data. Click a point to make it focal.${declutNote}</div>`;
+      rather than to an extreme — points are faded in proportion to their mean missing data. Click a point to make it focal.${declutNote}${res.nonEuclid>0.05?` <b>These distances are not Euclidean</b> (the imputed pairs): a negative component worth ${(100*res.nonEuclid).toFixed(1)}% of the variation is left out, so the axis shares are approximate.`:''}</div>`;
     counter(`<b>${res.pts.length}</b> accessions placed · masking below <b>${thr.toLocaleString()}</b> co-called sites.${sitesUsedText()}`);
     banner();
   }
@@ -1173,6 +1190,7 @@ const SNPCompare = (function () {
     catch(err){ if(seq===ST.seq && wrap) wrap.innerHTML=notice('Could not load similarities: '+esc(err.message||err)); }
   }
   function forceRun(){ ST.force=true; recompute(); }
+  function forceMatrix(){ ST.forceMatrix=true; renderMatrix(); }
   /* idle placeholder shown before anything is run (or after options change) */
   function idleMessage(){
     if(!hasLocal() && !globalAvailable())
@@ -1377,6 +1395,6 @@ const SNPCompare = (function () {
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
            clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage, forceRun,
            // testing / debugging
-           dose, localCompute, allPairs, buildScale, cluster, pcoa, planLabels, getGlobal, _CFG:CFG, _ST:ST };
+           dose, localCompute, allPairs, buildScale, cluster, pcoa, planLabels, getGlobal, forceMatrix, _CFG:CFG, _ST:ST };
 })();
 if(typeof window!=='undefined') window.SNPCompare = SNPCompare;
