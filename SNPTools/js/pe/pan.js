@@ -92,8 +92,8 @@ function renderHeatmapPan(data) {
            tooltip_h.innerHTML = `
                B73 Position: ${cellData["X2"]}<br>
                Target Position: ${cellData["X3"]}<br>
-               Genome: ${GN_array[cellData["Y"]]}<br>
-               G.M.: ${GM_array[cellData["Y"]]}<br>
+               Genome: ${+cellData["Y"] === 1 ? 'B73 v5 (reference)' : GN_array[cellData["Y"] - 1]}<br>
+               G.M.: ${+cellData["Y"] === 1 ? '' : GM_array[cellData["Y"] - 1]}<br>
                Substitution: ${cellData["WT"]} to ${cellData["Sub"]}<br>
                Score: ${cellData["Score"]}
            `;

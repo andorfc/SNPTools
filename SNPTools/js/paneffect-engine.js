@@ -134,11 +134,15 @@
       cols: alignment_length, rows: rows || 1,
       cellW: window_length / alignment_length, cellH: 5,
       color: function (score, c) { return c.gap ? THEME.gapColor() : THEME.colorFor('pan', score); },
+      /* heatmap row 1 is B73 v5 itself (the reference against which every row is read); the target
+         file numbers the other genomes from 1, so heatmap row y is target genome y - 1 (the zoomed
+         view applies the same ROW_OFFSET) */
       tooltip: function (c) {
+        var gn = c.y === 1 ? 'B73 v5 (reference)' : GN_array[c.y - 1], gm = c.y === 1 ? '' : GM_array[c.y - 1];
         return 'B73 Position: ' + (c.x2 == null ? '' : c.x2) +
                '<br>Target Position: ' + (c.x3 == null ? '' : c.x3) +
-               '<br>Genome: ' + (GN_array[c.y] == null ? '' : GN_array[c.y]) +
-               '<br>G.M.: ' + (GM_array[c.y] == null ? '' : GM_array[c.y]) +
+               '<br>Genome: ' + (gn == null ? '' : gn) +
+               '<br>G.M.: ' + (gm == null ? '' : gm) +
                '<br>Substitution: ' + c.wt + ' to ' + c.sub +
                '<br>Score: ' + (isNaN(c.score) ? '' : c.score);
       },

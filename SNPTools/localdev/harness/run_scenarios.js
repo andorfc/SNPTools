@@ -1186,6 +1186,62 @@ async function until(site, expr, ms = 8000){
     L.errors = s18.errors.filter(e => !/favicon/.test(e));
     s18.window.close(); }
 
+  /* ---------- correctness fixes of 2026-10-21 (check_correctness.py) ----------
+     Synthetic three-line hand-offs built from a parsed VCF text: SNPCompare's allele-sharing similarity
+     (= 1 - SNPTree's distance), its both-scope race (a slower earlier genome-wide fetch answering
+     last), SNPMatrix's cache on a second set of the same size, SNPTree's text box after a new
+     hand-off, SNPVersity's hand-off during a running query and its effect filter after a new result. */
+  { const s19 = await openSite(ROOT); const $k = s19.$eval; const K = R.correctness = {};
+    const mk = (ids, gts, lo) => `(()=>{ const ids=${JSON.stringify(ids)}; const lines=['##fileformat=VCFv4.2','#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO\\tFORMAT\\t'+ids.join('\\t')];
+      ${JSON.stringify(gts)}.forEach((g,i)=>lines.push('chr2\\t'+(${lo}+i)+'\\t.\\tA\\tG\\t.\\t.\\tTYPE=intron_variant;EFFECT=MODIFIER;GENEMODEL=Zm00001eb067740;MAF=0.2;NHET=1;NHOM=1;SITEQC=PASS\\tGT\\t'+g.join('\\t')));
+      const p=Data.parseVcf(lines.join('\\n'), ids); const r={rows:p.rows, accs:ids.map(id=>({id})), chr:'chr2', vcfUrl:'blob:x'+${lo}, q:{dataset:'zmgrin2026_imp', chr:'chr2', lo:${lo}, hi:${lo}+${gts.length}}, sampleCols:p.sampleCols};
+      S.results=r; return resultHandoff(r); })()`;
+    const G4 = [['0/0','0/1','1/1'],['0/0','0/1','1/1'],['0/0','0/1','1/1'],['0/0','0/1','1/1']];
+    const h1 = mk(['ZmG_B73','ZmG_B97','ZmG_MO17'], G4, 4491400);
+    const h2 = mk(['ZmG_B73','ZmG_B97','ZmG_OH43'], [['0/0','0/0','1/1'],['0/0','0/0','1/1'],['0/0','0/0','1/1'],['0/0','0/0','1/1']], 4491400);
+    // 1. the metric: A ref, B het, C alt at four sites -> AB 0.5, AC 0, BC 0.5; = 1 - SNPTree's distance
+    $k(`S.compareInput=${h1}; S.compareRequest={view:'table', mode:'local', autorun:false}; go('snpcompare')`);
+    await until(s19, `!!(SNPCompare._ST.input && document.getElementById('cmpFocal'))`, 15000);   // the render checks the genome-wide matrices first
+    K.metric = $k(`(()=>{ SNPCompare.setSites('all'); const h=SNPCompare._ST.input;
+      const P=SNPCompare.allPairs(SNPCompare.regionInput()); const T=SNPTree.ibsMatrix(h.rows, 3).M;
+      return {AB:P.sim[1], AC:P.sim[2], BC:P.sim[5], treeAB:1-T[0][1], treeAC:1-T[0][2], treeBC:1-T[1][2]}; })()`);
+    // 2. the both-scope race: focal A's genome-wide fetch answers after focal B's
+    K.gAvail = $k(`SNPCompare.globalAvailable()`);
+    if (K.gAvail){
+      $k(`window.__realFetch=window.fetch; window.__pending={}; window.fetch=function(u,o){ const m=/ibsCompare\\.php.*focal=([^&]+)/.exec(String(u)); if(!m) return window.__realFetch(u,o);
+        const f=decodeURIComponent(m[1]); return new Promise(res=>{ window.__pending[f]=()=>res(new Response(JSON.stringify({ids:['ZmG_B73','ZmG_B97','ZmG_MO17'], sim:[f==='ZmG_B73'?0.11:0.99, 0.5, 0.5], miss:[0,0,0]}),{status:200,headers:{'Content-Type':'application/json'}})); }); }`);
+      $k(`SNPCompare._ST.globalCache={}; SNPCompare.setMode('both'); SNPCompare.pickFocal('ZmG_B73'); SNPCompare.setView('table')`); await s19.wait(50);
+      $k(`SNPCompare.pickFocal('ZmG_B97'); SNPCompare.setView('table')`); await s19.wait(50);
+      K.pendingKeys = $k(`Object.keys(window.__pending)`);
+      $k(`window.__pending['ZmG_B97'] && window.__pending['ZmG_B97']()`); await s19.wait(150);
+      $k(`window.__pending['ZmG_B73'] && window.__pending['ZmG_B73']()`); await s19.wait(150);
+      K.race = $k(`({ranFocal:SNPCompare._ST.ranFocal, b73:(SNPCompare._ST.allRows.find(r=>r.id==='ZmG_B73')||{}).gsim, ran:SNPCompare._ST.ran})`);
+      $k(`window.fetch=window.__realFetch`);
+    }
+    // 3. SNPMatrix: a second hand-off of the same size and region is a new build
+    K.matrix = $k(`(()=>{ S.matrixInput=${h1}; go('snpmatrix'); SNPMatrix.force(); const a=SNPMatrix._ST.built.labels.slice(), ma=SNPMatrix._ST.built.M[0][2];
+      S.matrixInput=${h2}; go('snpmatrix'); SNPMatrix.force(); const b=SNPMatrix._ST.built.labels.slice(), mb=SNPMatrix._ST.built.M[0][1];
+      return {first:a, second:b, firstAC:ma, secondAB:mb}; })()`);
+    // 4. SNPTree: the text box follows the hand-off
+    $k(`S.treeInput=${h1}; go('snptree')`); await s19.wait(400);
+    K.tree = {text1: $k(`document.getElementById('fmtOut').value`)};
+    K.tree.builtAfterNew = $k(`(()=>{ S.treeInput=${h2}; go('snptree'); return {built:SNPTree._ST.built, text:document.getElementById('fmtOut').value}; })()`);
+    await s19.wait(400);
+    K.tree.text2 = $k(`document.getElementById('fmtOut').value`);
+    // 5. SNPVersity: a hand-off during a running query drops that query's answer
+    $k(`window.__q=Data.queryVariants; window.__def=null; Data.queryVariants=function(){ return new Promise(res=>{ window.__def=res; }); }; S.results=null; go('snpversity'); runQuery();`);
+    await s19.wait(50);
+    $k(`versityRequest({from:'test', dataset:'zmgrin2026_imp', chr:'chr4', start:1000, end:2000, accessions:['ZmG_B73'], merge:'replace'})`); await s19.wait(50);
+    $k(`window.__def({rows:[{pos:1,ref:'A',alt:'G',gts:[0]}], accs:[{id:'ZmG_B73'}], chr:'chr10', vcfUrl:'blob:stale'})`); await s19.wait(100);
+    K.stale = $k(`({results:S.results===null?null:(S.results.vcfUrl||'set'), chr:S.chr, start:S.start, end:S.end})`);
+    $k(`Data.queryVariants=window.__q`);
+    // 6. the effect filter after a result without that effect
+    K.effect = $k(`(()=>{ S.results={vcfUrl:'blob:e1', rows:[]}; S.fEffect='intron variant'; S.fImpact='all'; S.fMaf=0;
+      const v=tableView([{effect:'downstream gene variant', impact:'MODIFIER', maf:0.3, r2:null, qc:'PASS'}]);
+      return {fEffect:S.fEffect, shown:v.fr.length, effects:v.effects}; })()`);
+    K.errors = s19.errors.filter(e => !/favicon/.test(e));
+    s19.window.close(); }
+
   R.requests = site.log.filter(x => x.url && x.url.endsWith('.php')).map(x => ({url: x.url, ms: x.ms, n_genotypes: x.n_genotypes, reply: x.reply && x.reply.slice(0, 160)}));
   R.missingStatic = site.log.filter(x => x.status === 404).map(x => x.url);
   R.consoleErrors = site.errors;

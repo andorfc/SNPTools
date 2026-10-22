@@ -43,7 +43,7 @@ const SNPHelp = (function () {
       get:'A functional-annotation dossier (identity, domains, cross-references), MaizeGDB\u2019s GO and pathway views, a variant-burden breakdown, and a damaging-allele catalog with carrier and reference lines.' },
     { id:'snpcompare', name:'SNPCompare', icon:'compare', color:'#0e7490', status:LIVE,
       tag:'Similarity to a focal accession',
-      what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is the fraction of co-called sites with the same genotype. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression. The region scope uses usable sites by default (Region sites: Usable only or All sites); the genome-wide values are precomputed over all sites.',
+      what:'Ranks every accession by identity-by-state similarity to one focal accession. Similarity is allele sharing over the co-called sites (1 for the same genotype, 0.5 for a heterozygote against a homozygote, 0 for the two homozygotes), which is 1 \u2212 the distance SNPTree and SNPMatrix compute. Works genome-wide (precomputed), for the current region (computed in-browser from a SNPVersity result), or both side-by-side with a delta that surfaces region-specific relatedness such as introgression. The region scope uses usable sites by default (Region sites: Usable only or All sites); the genome-wide values are precomputed over all sites.',
       give:'A focal accession, and optionally a region handed off from SNPVersity or loaded with Load data from SNPVersity.',
       get:'A ranked similarity table with project, SRA ID, accession name, and PI number (the line’s GRIN accession).' },
     { id:'snptree', name:'SNPTree', icon:'tree', color:'#15803d', status:LIVE,
@@ -277,8 +277,8 @@ const SNPHelp = (function () {
       ['SRA ID', 'Sequence Read Archive run identifier associated with the accession.'],
       ['Accession name', 'Human-readable line or germplasm name.'],
       ['PI number', 'GRIN accession number of the line (PI, Ames or NSL); empty for a set without GRIN links.'],
-      ['Global sim', 'Genome-wide identity-by-state similarity between the focal accession and the comparison accession: matching genotypes divided by co-called sites.'],
-      ['Local sim', 'Identity-by-state similarity calculated only from variants in the current SNPVersity region.'],
+      ['Global sim', 'Genome-wide identity-by-state similarity between the focal accession and the comparison accession, from the precomputed matrix.'],
+      ['Local sim', 'Identity-by-state similarity calculated only from variants in the current SNPVersity region: allele sharing over the co-called sites (a heterozygote against a homozygote counts 0.5), 1 \u2212 the distance SNPTree and SNPMatrix report for the same pair.'],
       ['Δ (local−global)', 'Local similarity minus global similarity. Positive values indicate the pair is more similar in the selected region than genome-wide; negative values indicate less similarity in the region.'],
       ['Global miss%', 'Percentage of genome-wide comparison sites where at least one accession lacks a genotype call.'],
       ['Local miss%', 'Percentage of sites in the selected region where at least one accession lacks a genotype call.'],
@@ -407,6 +407,7 @@ const SNPHelp = (function () {
 
   /* ---- what's new (the changes of October 2026) ---- */
   const NEWS = [
+    ['Fixes', 'SNPCompare\u2019s region similarity is now allele sharing, the same measure as SNPTree and SNPMatrix (a heterozygote against a homozygote counted as different before); a focal line picked while a genome-wide fetch was pending no longer mixes into its rows. SNPMatrix rebuilds for a new set of the same size; SNPTree\u2019s text box follows a new hand-off. SNPVersity drops a query overtaken by a hand-off, and its Effect type filter returns to all effects when a result lacks the picked one. SNPGeo lists each country once (lines whose record lacked an ISO code joined their country). PanEffect\u2019s pan-genome heatmap names the genome a hover is on correctly.'],
     ['Allele passport', 'SNPCurate\u2019s Your lines panel reads the genotype of any set of lines at every genotyped published allele from the registry, colours the favorable alleles, counts them per line, and exports the matrix as TSV; every entry now names its favorable allele and B73\u2019s genotype.'],
     ['Permalinks', 'The address bar follows what is on screen, so a link opens it again: #snpcurate/SC0003 opens that record; #snpfunction/<gene>, #snpfold/<gene>, #snpgeo/<gene> and #paneffect/<gene> open that gene; #snpgwas/<dataset> opens that GWAS dataset; #snpversity?ds=zmgrin2026_imp&chr=chr6&start=115183121&end=115185121 runs that region with the current selection. Back returns to the previous tool or record, and the tab is titled after the tool and the thing it shows.'],
     ['High Quality set', 'The GRIN-linked 2026 release is offered as two sets: Imputed (all 46,054,265 sites) and High Quality (27,787,101 sites: the sites with a carrier, less the common ones whose maxR² is below 0.2). Every tool works on either; they share their 933 lines, so a selection carries over when you switch. Genome-wide IBS in SNPCompare and SNPTree is precomputed on the Imputed set\u2019s sites.'],
