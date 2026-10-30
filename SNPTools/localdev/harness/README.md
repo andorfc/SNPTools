@@ -185,6 +185,14 @@ Outputs in `../out/`: `results.json`, `results_brief.json`, map PNG/SVG files (t
 `check_snptrait.py`, `check_snpgeo_counts.py`, `check_gwas_handoff.py`, `check_gene_consequences.py`, `check_site_qc.py`, `check_site_qc_ui.py`, `check_snpcurate.py`, `check_ui_changes.py`, `check_hq_dataset.py` and `check_feedback.py` recompute the numbers independently from
 the catalogue, trait side-file, region records and fixture VCF.
 
+`check_mcp.py <root>` starts PHP's built-in server on the tree and checks the SNPMaize MCP server
+(`mcp.php` + `tools/snpq.py`) over HTTP: the JSON-RPC transport (GET page, OPTIONS, 405, bad JSON,
+notifications, batches, initialize, tools/list, unknown method/tool, argument validation, the
+time budget) and the ten tools against the data the pages are built from (registry carriers,
+composite, tier and site QC must equal `js/snpcurate.data.js`; permalinks must point at the
+server; caps must refuse; rows must be sorted as documented). Store-backed cases skip when the
+chromosome's store is not installed.
+
     cd SNPTools/localdev/harness
     npm install
     PHP_BIN=$(which php) PYTHON_PATH=/path/to/python-with-h5py npm test

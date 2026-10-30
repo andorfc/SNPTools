@@ -288,6 +288,21 @@ the command and output to the PHP error log (`localdev/server.log` here); start 
 `SNPTOOLS_DEBUG=1` to get them back in the reply and the browser console. Running the harness or the
 local server therefore clears day-old query VCFs from `vcf/`.
 
+## 4b. The MCP server
+
+`mcp.php` at the site root is a Model Context Protocol server (JSON-RPC 2.0 over HTTP, stateless,
+the same transport as https://claude.maizegdb.org/mcp). It runs `tools/snpq.py` once per tool call
+(as processForm.php runs h5_to_vcf.py) with the same `PYTHON_PATH`. With the local server up:
+
+    curl -s http://127.0.0.1:$(cat localdev/server.port)/mcp.php                       # what it is, how to connect
+    curl -s -X POST -H 'Content-Type: application/json' http://127.0.0.1:$(cat localdev/server.port)/mcp.php \
+         -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"snpmaize_gene","arguments":{"gene":"tga1"}}}'
+    python tools/snpq.py snpmaize_carriers '{"curated":"SC0001"}'                      # the library alone
+
+Tools, arguments, caps and the environment variables (`SNPMAIZE_SITE`, `SNPMAIZE_MCP_MAX_CONCURRENT`,
+`SNPMAIZE_MCP_TIMEOUT`) are in `MCP.md`. In Claude Code: `claude mcp add --transport http snpmaize
+http://127.0.0.1:<port>/mcp.php`.
+
 ## 5. Headless checks (no browser)
 
     cd ~/Documents/code/SNPTools_maize_port/SNPTools
