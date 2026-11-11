@@ -1,3 +1,5 @@
+/* text into markup: the typed gene id, and the TSV fields, are data, not HTML */
+function peEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 //Set the colors for the Pfam domains
 const pastelColors = [
     "#FFD1DC",  // Pink
@@ -37,7 +39,7 @@ function numberToAminoAcid(number) {
     if (number >= 0 && number < aminoAcids.length) {
         return aminoAcids[number];
     } else {
-        throw new Error("Invalid number. The number should be between 0 and 19 inclusive.");
+        throw new Error("Invalid number. The number should be between 0 and 20 inclusive.");
     }
 }
 

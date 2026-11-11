@@ -10,7 +10,8 @@
  *       (domain, local confidence, secondary structure, predicted ΔΔG).
  *
  *  Structure data + PDB come from structure-<gene>.js via Data.structureFor()
- *  / Data.pdbFor(); variants from Data.queryFoldVariants().
+ *  / Data.pdbFor(); variants from Data.geneFunction()'s foldVariants (one
+ *  query of the gene's interval; Data.queryFoldVariants() is the fallback).
  * ===================================================================== */
 (function () {
   const THREEDMOL_URL = 'https://3Dmol.org/build/3Dmol-min.js';
@@ -24,11 +25,14 @@
     showVar: true,
     highlight: new Set(),   // variant ids force-shown in the 3D view regardless of showVar
     viewer: null, libState: 'idle',
-    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (MaizeGDB 2026 only)
+    dataset: null, sec: false,  // sec = show PlantCAD2/ESM2/ESM3 (datasets that carry them)
     structSource: null,  // 'alphafold' | 'boltz' | 'esmfold' | null — which folder the current FD.struct/FD.pdb came from
     modelPref: 'best',   // 'best' | 'alphafold' | 'boltz' | 'esmfold' — user's model choice for the next load
     carriers: null, openCarrier: null,   // pos|ref|alt -> {carriersHom,carriersHet,het,hom} (whole-panel, via geneFunction)
     locus: null,         // {chr,start,end,dataset} for this gene — used for the SNPVersity handoff
+    allVariants: [],     // every coding variant; FD.variants is what the track, table and 3D show
+    hasQc: false,        // the variants carry a Site QC class (geneFunction's full-panel counts)
+    usableOnly: (typeof Data !== 'undefined' && Data.SITE_QC_DEFAULTS) ? Data.SITE_QC_DEFAULTS.fold === 'usable' : true,
     sort: { key: null, dir: 'asc' },     // variant-table sort: column key + direction ('asc'|'desc'); null key = file order
     pendingVariant: null,// {chr,pos,ref,alt,sub,…} handed over by another tool; selected once variants are in hand
     truncation: null,    // {structureLength,maxVariantResidue,beyondCount,sourceLabel} when variants extend past the loaded model
@@ -44,10 +48,11 @@
   /* ---------- palettes ---------- */
   function plddtHex(b){ return b>=90?'#0053d6': b>=70?'#65cbf3': b>=50?'#ffdb13':'#ff7d45'; }
   function plddtBand(b){ return b>=90?'Very high': b>=70?'Confident': b>=50?'Low':'Very low'; }
+  /* colour by the composite AI score (a z against the release's missense sites: -3 and below red, +1.5 and above green) */
   function impactHex(s){
     const n = finiteNumber(s);
     if (n == null) return '#8a93a3';
-    const lo=-12,hi=4,t=Math.max(0,Math.min(1,(n-lo)/(hi-lo)));
+    const lo=-3,hi=1.5,t=Math.max(0,Math.min(1,(n-lo)/(hi-lo)));
     const r=t<.5?220:Math.round(220*(1-(t-.5)*2)), g=t<.5?Math.round(180*t*2):170;
     return `rgb(${r},${Math.max(50,g)},55)`;
   }
@@ -55,13 +60,21 @@
   const CONS_FILL = { lof:'#d6322a', missense:'#2f5bbf', lod:'#b54708', splice:'#6d28d9', indel:'#176c3a', syn:'#8a93a3' };
   const SS_LABEL = { H:'α-helix', E:'β-strand', C:'loop / coil' };
 
-  /* ---------- structure source (AlphaFold2 vs Boltz2) ----------
+  /* ---------- structure source (AlphaFold2 / Boltz2 / ESMFold) ----------
      Checked in this order — first folder that actually has the gene's file wins. */
   const STRUCT_SOURCES = [
     { key: 'alphafold', dir: './data/structures/alphafold', label: 'AlphaFold2', badge: 'AF2' },
     { key: 'boltz',      dir: './data/structures/boltz',     label: 'Boltz2',     badge: 'B2'  },
     { key: 'esmfold',    dir: './data/structures/esmfold',   label: 'ESMFold',    badge: 'ESM'  },
   ];
+
+  /* The model the current structure came from, for labels: "AlphaFold2", "Boltz2", "ESMFold".
+     Every source carries its own per-residue pLDDT, so the confidence legend names the model
+     shown instead of always saying AlphaFold. */
+  function structModelLabel(){
+    const src = STRUCT_SOURCES.find(s => s.key === FD.structSource);
+    return src ? src.label : 'Model';
+  }
 
   /* Loads structure-<gene>.js as a <script> tag (same mechanism the app already uses to
      bring in per-gene structure files) and resolves true once it has run, or rejects if
@@ -157,10 +170,10 @@
     const luminance = 0.2126*linear[0] + 0.7152*linear[1] + 0.0722*linear[2];
     return luminance > 0.179 ? '#111827' : '#ffffff';
   }
-  function scoreCell(v){
+  function scoreCell(v, key){
     const n = finiteNumber(v);
     if (n == null) return '<span style="color:var(--faint)">—</span>';
-    const bg = scoreColor(n);
+    const bg = scoreColor(scoreColorValue(key, n));       // the one-pass PlantCAD2 has its own scale (data.js)
     const fg = contrastTextColor(bg);
     return `<span class="imp-score" style="background:${bg};color:${fg} !important;text-shadow:none">${n>0?'+':''}${n.toFixed(1)}</span>`;
   }
@@ -173,9 +186,12 @@
   const SCORE_KEYS = {
     plantcad:  ['plantcad', 'plantcad1', 'plantcad_1', 'PLANTCAD', 'PLANTCAD1'],
     plantcad2: ['plantcad2', 'plantcad_2', 'PLANTCAD2'],
+    plantcad2op: ['plantcad2op', 'plantcad2_onepass', 'pc2op'],
     esm:       ['esm', 'esm1', 'esm_1', 'ESM', 'ESM1'],
     esm2:      ['esm2', 'esm_2', 'ESM2'],
     esm3:      ['esm3', 'esm_3', 'ESM3'],
+    evo2:      ['evo2', 'EVO2'],
+    esmc:      ['esmc', 'esm_c', 'ESMC'],
   };
   function modelScore(v, model){
     if (!v) return null;
@@ -188,19 +204,22 @@
   function hasSecondaryVariantScores(variants){
     return (variants || []).some(v =>
       modelScore(v, 'plantcad2') != null ||
+      modelScore(v, 'plantcad2op') != null ||
       modelScore(v, 'esm2') != null ||
       modelScore(v, 'esm3') != null
     );
   }
   function aiScoreSummary(v){
     const scores = [
-      ['PlantCAD', modelScore(v, 'plantcad')],
-      ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2')]] : []),
+      ['PlantCAD1', modelScore(v, 'plantcad')],
+      ...(FD.sec ? [['PlantCAD2', modelScore(v, 'plantcad2op')]] : []),
+      ...(FD.sec ? [['Evo2', modelScore(v, 'evo2')]] : []),
       ['ESM1', modelScore(v, 'esm')],
       ...(FD.sec ? [
         ['ESM2', modelScore(v, 'esm2')],
         ['ESM3', modelScore(v, 'esm3')],
       ] : []),
+      ...(FD.sec ? [['ESM-C', modelScore(v, 'esmc')]] : []),
     ];
     if (!scores.some(([, value]) => value != null)) return 'n/a';
     //return scores.map(([label, value]) => `${label} ${scoreText(value)}`).join(' · ');
@@ -497,8 +516,11 @@
       pos:v.pos, refNt:v.refNt != null ? v.refNt : v.ref, altNt:v.altNt != null ? v.altNt : v.alt,
       impact:v.impact || v.impactLevel || null, maf:v.maf != null ? v.maf : v.af, domain:v.domain,
       plantcad:v.plantcad != null ? v.plantcad : v.pc1, plantcad2:v.plantcad2 != null ? v.plantcad2 : v.pc2,
-      esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined,
+      plantcad2op:v.plantcad2op != null ? v.plantcad2op : (v.pc2op != null ? v.pc2op : null),
+      esm:v.esm != null ? v.esm : v.esm1, esm2:v.esm2, esm3:v.esm3, combined:v.combined, combinedN:v.combinedN,
+      evo2:v.evo2 != null ? v.evo2 : null, esmc:v.esmc != null ? v.esmc : null,
       priority:severeFoldConsequence(v) ? 'TOP' : (v.priority || null),
+      qc:v.qc != null ? v.qc : null, nHet:v.nHet != null ? v.nHet : v.het, nHom:v.nHom != null ? v.nHom : v.hom,
     };
   }
   function normalizePrimaryVariant(v, model, index){
@@ -529,6 +551,7 @@
         if (existing.resi == null && normalized.resi != null) existing.resi = normalized.resi;
         if ((!existing.variant || /^\d+\s/.test(existing.variant)) && normalized.variant) existing.variant = normalized.variant;
         if (severeFoldConsequence(normalized)) existing.priority = 'TOP';
+        if (existing.qc == null && normalized.qc != null){ existing.qc = normalized.qc; existing.nHet = normalized.nHet; existing.nHom = normalized.nHom; }
         return;
       }
       if (normalized.resi != null || severeFoldConsequence(normalized)){
@@ -649,10 +672,11 @@
       }
     }
 
-    /* Fallback accepts labels/IDs such as MaizeGDB2026, maizegdb_2026_hq,
-       or "MaizeGDB 2026 (High Coverage)". */
+    /* Fallback, when Data.hasSecondaryScores is unavailable: the sets that carry the
+       second-generation scores, by id or label (zmgrin2026_imp, "MaizeGDB GRIN-linked 2026",
+       MaizeGDB2026, maizegdb_2026_hq, "MaizeGDB 2026 (High Coverage)"). */
     const normalized = datasetText(dataset).toLowerCase().replace(/[^a-z0-9]+/g, '');
-    return normalized.includes('maizegdb2026');
+    return /maizegdb2026|zmgrin2026|grinlinked2026/.test(normalized);
   }
 
   /* ---------- dataset chooser (compact; shares Data.datasets() with SNPVersity) ---------- */
@@ -742,7 +766,7 @@
     const where = inDom ? (' in the '+c.domain.name+' domain')
                         : (c.domain && c.domain.kind==='region' ? (' in the '+c.domain.name) : ' in an inter-domain region');
     if (v.consClass==='lof'){
-      const after = inDom ? ('within / before the '+c.domain.name+' domain') : 'in the C-terminal region';
+      const after = inDom ? ('within / before the '+c.domain.name+' domain') : (finiteNumber(v.resi)!=null && FD.struct ? `at residue ${v.resi} of ${FD.struct.length}` : 'outside any annotated domain');
       const what = v.consequence==='Start lost' ? 'Disrupts the start codon'
                  : v.consequence==='Stop lost'  ? 'Removes the stop codon'
                  : 'Truncates the protein';
@@ -754,7 +778,8 @@
     if (v.combined==null){
       return ['mid', `Missense${where} — no language-model score available.`];
     }
-    const sev = v.combined<=-6 ? 'Likely damaging' : v.combined<=-3 ? 'Possibly damaging' : 'Likely tolerated';
+    const tier = Data.compositeTier(v.combined, FD.dataset);   // the composite's tier (js/zmgrin.scorecal.js)
+    const sev = tier==='TOP' ? 'Likely damaging' : tier==='HIGH' ? 'Possibly damaging' : 'Likely tolerated';
     const wellStruct = c.plddt>=70;
     const tone = sev==='Likely damaging' ? 'bad' : sev==='Possibly damaging' ? 'mid' : 'ok';
     return [tone, `${sev}: ${wellStruct?'well-structured':'low-confidence'} ${c.ssLabel}${where}.`];
@@ -775,7 +800,7 @@
   function searchBar(){
     return `<div class="card pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gene model</span>
-      <input id="foldGeneInput" value="${FD.gene||''}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
+      <input id="foldGeneInput" value="${escFold(FD.gene||'')}" placeholder="e.g. Zm00001eb406050" spellcheck="false"
         style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:13px"
         onkeydown="if(event.key==='Enter')FOLD.loadGene()">
       <button class="btn" onclick="FOLD.loadGene()">Load structure</button>
@@ -821,6 +846,8 @@
     if (requestedVariant && typeof S !== 'undefined' && S) S.foldVariant = null;
     if (requestedVariant) FD.pendingVariant = requestedVariant;
 
+    // a loaded gene shown again keeps its permalink (loadStructure writes it for a new load)
+    if (!requestedGene && FD.loaded && FD.loadedGene && typeof setRoute==='function') setRoute('snpfold', FD.loadedGene, FD.loadedGene);
     if (requestedGene){
       /* came from another tool — honor the explicit request and autoload */
       S.foldGene = null;
@@ -973,19 +1000,25 @@
   /* The heavy path: fetch the model + variants and render the full SNPFold UI into
      FD.root. Used both for autoload-from-tool and for explicit user loads. */
   async function loadStructure(){
+    /* a later gene (or model / dataset pick) overtakes this load: after each wait, an
+       overtaken load stops instead of painting its gene over the newer one */
+    const seq = FD.loadSeq = (FD.loadSeq || 0) + 1;
+    const stale = () => seq !== FD.loadSeq;
     FD.viewer = null;
     FD.truncation = null;
     FD.loaded = true;               // commit to the loaded view (keep across navigation)
     FD.loadedGene = FD.gene;
+    if (typeof setRoute==='function') setRoute('snpfold', FD.gene, FD.gene);   // the permalink: #snpfold/<gene>
 
     const header = datasetChooser() + searchBar();
 
     FD.root.innerHTML = header + `<div class="loading" style="padding:48px;text-align:center">
-      <div class="spinner"></div><div>Loading model for ${FD.gene}…</div></div>`;
+      <div class="spinner"></div><div>Loading model for ${escFold(FD.gene)}…</div></div>`;
 
     FD.structSource = null;
     let matched = null;
     try { matched = await resolveStructureSource(FD.gene, FD.modelPref); } catch (e){ /* no file for this gene in the checked folder(s) */ }
+    if (stale()) return;
 
     FD.struct = matched ? matched.data.struct : null;
     FD.pdb    = matched ? matched.data.pdb    : null;
@@ -1005,7 +1038,7 @@
         : ` You have <b>${STRUCT_SOURCES.find(s=>s.key===FD.modelPref)?.label}</b> selected specifically —
            switch to <b>Best</b> above to let SNPFold fall back to the other model sources.`;
       FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="empty-state"><div class="ei">${ICONS.fold}</div>
-        <h3>No predicted model for “${FD.gene}”</h3>
+        <h3>No predicted model for “${escFold(FD.gene)}”</h3>
         <p>SNPFold ${whatWasChecked}. This usually means the protein wasn't modeled — most
         likely because it's part of a complex or its sequence is too long to fold.${modelNote}
         Search another gene model above, or generate its structure file and drop it in one
@@ -1022,33 +1055,43 @@
       : '—';
 
     FD.root.innerHTML = datasetChooser() + searchBar() + `<div class="loading" style="padding:48px;text-align:center">
-      <div class="spinner"></div><div>Loading coding variants for ${s.gene}…</div></div>`;
+      <div class="spinner"></div><div>Loading coding variants for ${escFold(s.gene)}…</div></div>`;
     FD.iupred = null;
     FD.sites = null;
     FD.trackZoom = 1;
     try {
-      /* Passing the dataset as a second argument is backward-compatible in JavaScript:
-         older one-argument implementations simply ignore it. */
-      const variantsPromise = Promise.resolve(Data.queryFoldVariants(FD.gene, FD.dataset));
+      /* One query of the gene's interval: geneFunction() reads the full panel and also returns
+         the coding variants drawn here (foldVariants). queryFoldVariants() ran a second query of
+         the same interval in parallel; it is now only the fallback for a data layer without
+         that list. */
       const functionPromise = typeof Data.geneFunction === 'function'
         ? Promise.resolve(Data.geneFunction(FD.gene, FD.dataset)).catch(()=>null)
         : Promise.resolve(null);
+      const variantsPromise = functionPromise.then(fn => (fn && Array.isArray(fn.foldVariants))
+        ? fn.foldVariants : Data.queryFoldVariants(FD.gene, FD.dataset));
       const iupredPromise = loadIupredForGene(FD.gene, s.length).catch(()=>null);
       const sitesPromise = loadSitesForGene(FD.gene, s.length).catch(()=>null);
 
       const [variants, fn, iupred, sites] = await Promise.all([variantsPromise, functionPromise, iupredPromise, sitesPromise]);
+      if (stale()) return;
       FD.iupred = iupred || null;
       FD.sites = sites || null;
       const [geneModel, domainRecords] = await Promise.all([
         loadFoldGeneModel(fn),
         loadCanonicalDomainRecords(fn),
       ]);
+      if (stale()) return;
 
       /* Use canonical protein-coordinate domains even when the full-panel variant
          query fails, and convert genomic LOF positions through the canonical CDS
          before drawing the residue lollipop. */
       mergeCanonicalDomains(fn, domainRecords);
-      FD.variants = mergeFoldVariants(variants, fn, geneModel);
+      FD.allVariants = mergeFoldVariants(variants, fn, geneModel);
+      // SNPCurate: a curated coding variant gets a ring on the track and its mark in the table
+      const curChr = fn && fn.chr;
+      FD.allVariants.forEach(v => { v.curated = (curChr && Data.curatedAt) ? Data.curatedAt(curChr, v.pos, v.refNt, v.altNt) : null; });
+      FD.hasQc = FD.allVariants.some(v => v.qc != null);
+      FD.variants = shownVariants();
       detectStructureTruncation();
 
       /* If the app state did not expose the dataset, actual returned 2026 score fields
@@ -1065,8 +1108,9 @@
         : null;
     }
     catch (e){
+      if (stale()) return;
       console.error('SNPFold variant loading error', e);
-      FD.variants = [];
+      FD.variants = []; FD.allVariants = []; FD.hasQc = false;
       FD.carriers = null;
       FD.locus = null;
       FD.truncation = null;
@@ -1082,13 +1126,14 @@
       </div></div>
 
       <div class="fold-context">
-        <span class="g"><b class="mono">${s.gene}</b></span>
+        <span class="g"><b class="mono">${escFold(s.gene)}</b></span>
         ${structSourceBadge()}
-        ${s.title?`<span class="dot">·</span><span>${s.title}</span>`:''}
+        ${s.title?`<span class="dot">·</span><span>${escFold(s.title)}</span>`:''}
         <span class="dot">·</span><span><b>${s.length}</b> aa</span>
-        ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${s.uniprot}" target="_blank" rel="noopener">${s.uniprot}</a></span>`:''}
+        ${s.uniprot?`<span class="dot">·</span><span>UniProt <a href="https://www.uniprot.org/uniprotkb/${encodeURIComponent(s.uniprot)}" target="_blank" rel="noopener">${escFold(s.uniprot)}</a></span>`:''}
         <span class="dot">·</span><span>mean pLDDT <b>${meanP}</b></span>
-        <span class="dot">·</span><span><b>${FD.variants.length}</b> coding variants</span>
+        <span class="dot">·</span><span id="foldNVar">${nVariantsHTML()}</span>
+        ${FD.hasQc?`<span class="dot">·</span><label class="chk" data-tt="Hide coding variants whose site is flagged (het only, het excess) or has no carrier in this release, from the track, the table and the 3D view."><input type="checkbox" id="foldUsableOnly" ${FD.usableOnly?'checked':''} onchange="FOLD.setUsableOnly(this.checked)"> Usable alleles only</label>`:''}
       </div>
       ${truncationWarningHTML()}
 
@@ -1120,7 +1165,7 @@
             <span class="lg"><span class="sw" style="background:#cbd4e1"></span>coil</span>
           </div>
           <div class="lg-group" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-            <div class="lg-title" style="font-weight:600;color:var(--ink)">AlphaFold confidence score (pLDDT):</div>
+            <div class="lg-title" style="font-weight:600;color:var(--ink)">${escFold(structModelLabel())} confidence score (pLDDT):</div>
             <span class="lg"><span class="sw" style="background:#0053d6"></span>≥90</span>
             <span class="lg"><span class="sw" style="background:#65cbf3"></span>70–90</span>
             <span class="lg"><span class="sw" style="background:#ffdb13"></span>50–70</span>
@@ -1204,7 +1249,7 @@
     const s=FD.struct, N=s.length;
     const lolliTop=8, lolliH=58, base=lolliTop+lolliH;      // lollipop baseline
     const domY=base+6, domH=18, ssY=domY+domH+22, ssH=12, pY=ssY+ssH+22, pH=12;
-    const maxSev=10;
+    const maxSev=3;                      // lollipop height: the composite z, 0 (tolerated) to -3 (most damaging)
     /* InterProScan site/feature lanes — one horizontal lane per analysis program
        (CDD, PIRSR, SFLD), stacked under the pLDDT strip, mirroring how
        InterProScan's own site view groups hits by member database. All known
@@ -1331,12 +1376,14 @@
       if (resi == null || resi>N) return;   // only protein residues can be placed
       const xx=x(resi);
       const sev=severeFoldConsequence(v) ? maxSev
-        : (v.combined!=null?Math.min(maxSev, Math.abs(v.combined)):maxSev*0.5);
+        : (v.combined!=null?Math.min(maxSev, Math.max(0, -v.combined)):maxSev*0.5);
       const head=base - 6 - (sev/maxSev)*(lolliH-10);
       const col=CONS_FILL[v.consClass]||'#2f5bbf';
       const on=v.id===FD.selId;
-      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${v.variant} · ${v.consequence} · residue ${resi}">`;
+      const cur=v.curated;
+      g+=`<g class="lolli ${on?'on':''}" onclick="FOLD.select('${v.id}')" data-tt="${escFold(v.variant)} · ${escFold(v.consequence)} · residue ${resi}${cur?` · curated: ${escFold(cur.symbol)} ${escFold(cur.label)}`:''}">`;
       g+=`<line x1="${xx.toFixed(1)}" y1="${base}" x2="${xx.toFixed(1)}" y2="${head.toFixed(1)}" stroke="${col}" stroke-width="${on?2:1.4}"/>`;
+      if (cur) g+=`<circle class="cur-ring" data-curate="${escFold(cur.id)}" cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${(on?6:4.5)+3.2}" fill="none" stroke="${cur.mark==='gold'?'#c99a06':'#8d97a4'}" stroke-width="1.8"/>`;
       g+=`<circle cx="${xx.toFixed(1)}" cy="${head.toFixed(1)}" r="${on?6:4.5}" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
       if (v.consClass==='lof') g+=`<text x="${xx.toFixed(1)}" y="${(head-8).toFixed(1)}" class="vlab" text-anchor="middle">✱</text>`;
       g+=`</g>`;
@@ -1422,9 +1469,12 @@
      data/results.sites.tsv is one header-less standard InterProScan "sites" TSV
      for every isoform of every gene (12 tab-delimited columns: protein_id, md5,
      seq_length, analysis[-version], signature, sig_start, sig_end, group,
-     residue, site_start, site_end, description). It's ~55MB / 460k rows, so we
-     fetch and index it once (lazily, on first use) rather than per gene. */
+     residue, site_start, site_end, description). It's ~55MB / 460k rows. tools/split_sites.py
+     (`make sites-split`) cuts it into one file per gene under data/sites/by_gene/ with a MANIFEST.json;
+     when that manifest is there, a gene's file (a few kilobytes) is fetched on its own; without it
+     the whole file is fetched and indexed once, as before. */
   const SITES_URL = 'data/results.sites.tsv';
+  const SITES_DIR = 'data/sites/by_gene/';
   const SITE_PROGRAM_COLOR = { CDD:'#7a4fd6', PIRSR:'#0f9d78', SFLD:'#c2740c' };
   function siteProgramOf(analysis){
     const m = /^([A-Za-z]+)/.exec(String(analysis||''));
@@ -1456,18 +1506,8 @@
     const s = String(desc||'').trim();
     return s.replace(/^null:\s*/i, '');
   }
-  let sitesIndexPromise = null;
-  function ensureSitesIndex(){
-    if (sitesIndexPromise) return sitesIndexPromise;
-    sitesIndexPromise = (async () => {
-      if (typeof fetch !== 'function') return new Map();
-      let text;
-      try {
-        const resp = await fetch(SITES_URL);
-        if (!resp.ok) return new Map();
-        text = await resp.text();
-      } catch (e) { console.warn('InterProScan sites load failed', e); return new Map(); }
-      /* index by base gene id -> isoform suffix (e.g. "P002") -> row[] */
+  /* index by base gene id -> isoform suffix (e.g. "P002") -> row[] */
+  function parseSitesText(text){
       const genes = new Map();
       const lines = text.split('\n');
       for (const line of lines){
@@ -1488,15 +1528,54 @@
         rows.push(row);
       }
       return genes;
+  }
+  let sitesIndexPromise = null;
+  function ensureSitesIndex(){
+    if (sitesIndexPromise) return sitesIndexPromise;
+    sitesIndexPromise = (async () => {
+      if (typeof fetch !== 'function') return new Map();
+      let text;
+      try {
+        const resp = await fetch(SITES_URL);
+        if (!resp.ok) return new Map();
+        text = await resp.text();
+      } catch (e) { console.warn('InterProScan sites load failed', e); return new Map(); }
+      return parseSitesText(text);
     })();
     return sitesIndexPromise;
+  }
+  /* per-gene files: the manifest decides once; a gene's rows are cached */
+  let sitesManifestPromise = null;
+  const sitesGeneCache = new Map();
+  function sitesManifest(){
+    if (sitesManifestPromise) return sitesManifestPromise;
+    sitesManifestPromise = (async () => {
+      if (typeof fetch !== 'function') return null;
+      try { const r = await fetch(SITES_DIR + 'MANIFEST.json'); return r.ok ? await r.json() : null; }
+      catch (e) { return null; }
+    })();
+    return sitesManifestPromise;
+  }
+  /* the isoform map of one gene: from its own file when the split is installed, else from the whole table */
+  async function sitesForGene(gene){
+    const man = await sitesManifest();
+    if (!man) return (await ensureSitesIndex()).get(gene) || null;
+    if (sitesGeneCache.has(gene)) return sitesGeneCache.get(gene);
+    const p = (async () => {
+      try {
+        const r = await fetch(SITES_DIR + encodeURIComponent(gene) + '.tsv');
+        if (!r.ok) return null;                      // no sites for this gene
+        return parseSitesText(await r.text()).get(gene) || null;
+      } catch (e) { return null; }
+    })();
+    sitesGeneCache.set(gene, p);
+    return p;
   }
   /* picks the isoform whose recorded seq_length matches the loaded structure
      exactly, falling back to whichever isoform has the most site rows. */
   async function loadSitesForGene(gene, structLen){
     if (!gene) return null;
-    const genes = await ensureSitesIndex();
-    const byIso = genes.get(gene);
+    const byIso = await sitesForGene(gene);
     if (!byIso || !byIso.size) return null;
     let bestIso = null, bestRows = null;
     for (const [iso, rows] of byIso){
@@ -1545,7 +1624,7 @@
   /* ---------- variant table: sortable column model ----------
      One entry per <th>, in display order. `get` returns the value the column is
      sorted on (null/undefined => always sorted to the bottom, either direction).
-     `sec` marks the MaizeGDB-2026-only columns, so the header and the row markup
+     `sec` marks the second-generation score columns (PlantCAD2, Evo2, ESM2, ESM3, ESM-C), so the header and the row markup
      stay in sync automatically. `desc1` = first click sorts high→low, which reads
      better for counts/ranks; everything else starts low→high. */
   const PRIO_RANK = { top:4, high:3, moderate:2, medium:2, low:1, modifier:0 };
@@ -1562,16 +1641,24 @@
       get:v => finiteNumber(ctxFor(v).plddt) },
     { key:'ss',          label:'Structure',   type:'str',
       get:v => { const c = ctxFor(v); return c.inModel ? c.ssLabel : null; } },
-    { key:'plantcad',    label:'PlantCAD',    type:'num', num:true,
+    { key:'plantcad',    label:'PlantCAD1',   type:'num', num:true,
       get:v => modelScore(v, 'plantcad') },
-    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true,
+    // PlantCAD2: the table shows the one-pass score; the CSV/TSV keeps "PlantCAD2" = the 512-bp score,
+    // as before, and adds "PlantCAD2 one-pass"
+    { key:'plantcad2',   label:'PlantCAD2',   type:'num', num:true, sec:true, exportOnly:true,
       get:v => modelScore(v, 'plantcad2') },
+    { key:'plantcad2op', label:'PlantCAD2',   type:'num', num:true, sec:true, exportLabel:'PlantCAD2 one-pass',
+      get:v => modelScore(v, 'plantcad2op') },
+    { key:'evo2',        label:'Evo2',        type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'evo2') },
     { key:'esm',         label:'ESM1',        type:'num', num:true,
       get:v => modelScore(v, 'esm') },
     { key:'esm2',        label:'ESM2',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm2') },
     { key:'esm3',        label:'ESM3',        type:'num', num:true, sec:true,
       get:v => modelScore(v, 'esm3') },
+    { key:'esmc',        label:'ESM-C',       type:'num', num:true, sec:true,
+      get:v => modelScore(v, 'esmc') },
     { key:'disorder',    label:'IUPred2', type:'num', num:true,
       get:v => { const c = iupredAt(v.resi); return c ? c.disorder : null; } },
     { key:'anchor2',     label:'Anchor2',     type:'num', num:true,
@@ -1584,13 +1671,26 @@
     { key:'priority',    label:'Priority',    type:'num', desc1:true,
       get:v => { const p = v.priority ? PRIO_RANK[String(v.priority).toLowerCase()] : null;
                  return p == null ? null : p; } },
+    { key:'qc',          label:'Site QC',     type:'str', qc:true,
+      get:v => v.qc || null },
     { key:'carriers',    label:'Carriers',    type:'num', num:true, desc1:true,
       get:v => { const c = carrierOf(v);
                  if (!c) return null;
                  const n = (Number(c.hom) || 0) + (Number(c.het) || 0);
                  return n === 0 ? null : n; } },
   ];
-  function foldVisibleCols(){ return FOLD_COLS.filter(c => !c.sec || FD.sec); }
+  function foldExportCols(){ return FOLD_COLS.filter(c => (!c.sec || FD.sec) && (!c.qc || FD.hasQc)); }
+  function foldVisibleCols(){ return foldExportCols().filter(c => !c.exportOnly); }
+  /* Site QC: with "Usable alleles only" (the default) the track, the table and the 3D view show
+     only variants at usable sites (PASS, HET_ELEVATED); flagged and no-carrier ones are hidden. */
+  function shownVariants(){
+    const all = FD.allVariants || [];
+    return (FD.hasQc && FD.usableOnly) ? all.filter(v => Data.qcUsable(v.qc)) : all.slice();
+  }
+  function nVariantsHTML(){
+    const n = (FD.variants || []).length, all = (FD.allVariants || []).length;
+    return n === all ? `<b>${n}</b> coding variants` : `<b>${n}</b> of ${all} coding variants shown`;
+  }
   function foldCol(key){ return FOLD_COLS.find(c => c.key === key) || null; }
 
   /* Stable sort: ties (and blanks) keep their original order, so repeated sorts
@@ -1621,17 +1721,21 @@
     consequence:'Predicted molecular consequence of the change.',
     resi:'Residue — protein position of the affected amino acid.',
     domain:'Pfam domain overlapping the affected residue, when present.',
-    plddt:'Local pLDDT — AlphaFold per-residue confidence (0 to 100); higher is more reliable.',
+    plddt:'Local pLDDT — per-residue confidence (0 to 100) of the structure model shown (AlphaFold2, Boltz2 or ESMFold); higher is more reliable.',
     ss:'Secondary structure at the residue (helix, sheet, or loop).',
     plantcad:'PlantCAD DNA language-model score for the change.',
-    plantcad2:'Second-generation PlantCAD DNA score (MaizeGDB 2026).',
+    plantcad2:'Second-generation PlantCAD DNA score.',
+    plantcad2op:'PlantCAD2 one-pass DNA language-model score (INFO plantcad2_onepass_score): long-context, unmasked, 8,192-bp windows; not on the scale of PlantCAD2 (512 bp), which stays in the VCF as plantcad2_score. More negative is more disruptive.',
     esm:'ESM protein language-model score for the substitution.',
-    esm2:'ESM2 protein language-model score (MaizeGDB 2026).',
-    esm3:'ESM3 protein language-model score (MaizeGDB 2026).',
+    esm2:'ESM2 protein language-model score.',
+    esm3:'ESM3 protein language-model score.',
+    evo2:'Evo2 DNA language-model score (log-likelihood ratio), for every SNP.',
+    esmc:'ESM-C protein language-model score for the substitution.',
     disorder:'IUPred2 intrinsic disorder — how likely this residue sits in a region that does not fold on its own (0 to 1; higher = more disordered).',
     anchor2:'ANCHOR2 disordered binding — how likely this residue sits in a disordered region that folds upon binding a partner, i.e. a binding-prone segment within disorder (0 to 1; higher = more likely). Not a second disorder score.',
     activity:'Annotated functional site at this residue (e.g. active or binding site), when present.',
     priority:'Integrated evidence tier — TOP, HIGH, MODERATE, LOW.',
+    qc:'Site QC — the class of the site from its heterozygous and homozygous carriers across the panel (pass, het elevated, het excess, het only, no carrier).',
     carriers:'Number of accessions carrying this variant (heterozygous plus homozygous).',
   };
   function tableHeadHTML(){
@@ -1644,7 +1748,7 @@
         : ' · click to sort';
       return `<th class="fold-th${c.num ? ' num' : ''}${on ? ' sorted' : ''}" data-tt="${escFold(def + sortNote)}"
         aria-sort="${on ? (FD.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"
-        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${escFold(c.label)}<span class="fold-ar">${arrow}</span></span></th>`;
+        onclick="FOLD.sortBy('${c.key}')"><span class="fold-th-in">${scoreHeadHTML(escFold(c.label))}<span class="fold-ar">${arrow}</span></span></th>`;
     }).join('') + '<th class="fold-send-th" data-tt="Force-show this residue in the 3D view, independent of the Variant residues toggle.">3D</th><th class="fold-send-th"></th></tr>';
   }
 
@@ -1655,20 +1759,23 @@
     const cr = carrierOf(v);
     const openC = FD.openCarrier===v.id;
     return `<tr class="fold-row ${on?'sel':''}" onclick="FOLD.select('${v.id}')">
-      <td class="c-mono c-alt" style="padding-left:11px">${v.variant}</td>
-      <td><span class="cons ${v.consClass}">${v.consequence}</span>${peJump(v)}</td>
+      <td class="c-mono c-alt" style="padding-left:11px">${escFold(v.variant)}${v.curated?curateBadge(v.curated):''}</td>
+      <td><span class="cons ${escFold(v.consClass)}">${escFold(v.consequence)}</span>${peJump(v)}</td>
       <td class="num">${finiteNumber(v.resi)==null?'<span style="color:var(--faint)">—</span>':v.resi}</td>
-      <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${c.domain.name}</span>`:`<span style="color:var(--muted);font-size:11px">${c.domain.name}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
+      <td>${c.domain ? (c.domain.kind==='domain'?`<span class="dom-tag">${escFold(c.domain.name)}</span>`:`<span style="color:var(--muted);font-size:11px">${escFold(c.domain.name)}</span>`) : '<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${c.plddt==null?'<span style="color:var(--faint)">—</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span>`}</td>
       <td>${c.inModel?`<span class="ss-chip ss-${c.ss}">${c.ssLabel}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
       <td class="num">${scoreCell(modelScore(v, 'plantcad'))}</td>
-      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'plantcad2op'), 'pc2op')}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'evo2'))}</td>`:''}
       <td class="num">${scoreCell(modelScore(v, 'esm'))}</td>
       ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esm2'))}</td><td class="num">${scoreCell(modelScore(v, 'esm3'))}</td>`:''}
+      ${FD.sec?`<td class="num">${scoreCell(modelScore(v, 'esmc'))}</td>`:''}
       <td class="num">${iupredCell(iupredAt(v.resi)?.disorder)}</td>
       <td class="num">${iupredCell(iupredAt(v.resi)?.anchor2)}</td>
       <td>${activityCell(v.resi)}</td>
       <td>${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
+      ${FD.hasQc?`<td>${siteQcPill(v.qc, v.nHet, v.nHom)}</td>`:''}
       <td style="text-align:center">${carrierBtn(v, cr, openC)}</td>
       <td style="text-align:center" onclick="event.stopPropagation()">
         <input type="checkbox" title="Highlight this residue in the 3D view even if Variant residues is hidden"
@@ -1706,11 +1813,13 @@
           <div class="fn-chips">${homs||'<span class="muted">none</span>'}${carriersHom.length>60?` <span class="muted">+${carriersHom.length-60} more</span>`:''}</div></div>
         <div style="margin-top:8px"><div class="fn-k">Heterozygous · ${carriersHet.length}</div>
           <div class="fn-chips">${hets||'<span class="muted">none</span>'}${carriersHet.length>60?` <span class="muted">+${carriersHet.length-60} more</span>`:''}</div></div>
+        ${cr.nRef!=null?`<div style="margin-top:8px"><div class="fn-k">Reference (homozygous for the reference allele) · ${cr.nRef.toLocaleString()}</div></div>`:''}
         <div class="fold-sendrow">
           <span class="fn-k" style="margin:0">Open in SNPVersity</span>
           ${send('hom','Homozygous carriers',carriersHom.length)}
           ${send('het','Heterozygous carriers',carriersHet.length)}
           ${send('all','All carriers',carriersHom.length+carriersHet.length)}
+          ${send('ref','Reference lines',cr.nRef||0)}
         </div>
       </div></td></tr>`;
   }
@@ -1754,15 +1863,15 @@
     return `
       <div class="ctx-head">
         <div>
-          <div class="ctx-v mono">${v.variant}</div>
-          <div><span class="cons ${v.consClass}">${v.consequence}</span> ${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:''}</div>
+          <div class="ctx-v mono">${escFold(v.variant)}</div>
+          <div><span class="cons ${escFold(v.consClass)}">${escFold(v.consequence)}</span> ${v.priority?`<span class="prio ${v.priority.toLowerCase()}">${v.priority}</span>`:''}</div>
         </div>
         <button class="btn ghost" onclick="FOLD.focus()">Focus in 3D</button>
       </div>
       <div class="interp ${tone}">${msg}</div>
       <div class="ctx-grid">
-        <div class="ck"><div class="kk">Residue</div><div class="vv mono">${finiteNumber(v.resi)==null?'—':`${v.ref||''}${v.resi}${v.consClass==='missense'&&v.alt?v.alt:''}`}</div></div>
-        <div class="ck"><div class="kk">Domain</div><div class="vv">${c.domain?c.domain.name:'—'}${c.domain&&c.domain.pfam&&c.domain.pfam!=='region'?` <span class="muted mono">${c.domain.pfam}</span>`:''}</div></div>
+        <div class="ck"><div class="kk">Residue</div><div class="vv mono">${finiteNumber(v.resi)==null?'—':`${escFold(v.ref||'')}${v.resi}${v.consClass==='missense'&&v.alt?escFold(v.alt):''}`}</div></div>
+        <div class="ck"><div class="kk">Domain</div><div class="vv">${c.domain?escFold(c.domain.name):'—'}${c.domain&&c.domain.pfam&&c.domain.pfam!=='region'?` <span class="muted mono">${escFold(c.domain.pfam)}</span>`:''}</div></div>
         <div class="ck"><div class="kk">Local confidence</div><div class="vv">${c.plddt==null?'<span class="muted">outside model</span>':`<span class="plddt-chip" style="background:${plddtHex(c.plddt)};color:${c.plddt>=70?'#06294f':'#5c3a06'}">${c.plddt.toFixed(0)}</span> <span class="muted">${plddtBand(c.plddt)}</span>`}</div></div>
         <div class="ck"><div class="kk">Secondary structure</div><div class="vv"><span class="ss-chip ss-${c.ss}">${c.ssLabel}</span></div></div>
         <div class="ck"><div class="kk">AI scores</div><div class="vv mono">${aiScoreSummary(v)}</div></div>
@@ -1776,7 +1885,7 @@
           return n ? `<button class="btn" title="Preselect the ${n} accession${n>1?'s':''} carrying this allele in SNPVersity"
             onclick="FOLD.toVersity('${v.id}','all')">${ICONS.dna||''} Carriers to SNPVersity</button>` : ''; })()}
         <button class="btn" onclick="go('snpimpact')">${ICONS.star} SNPImpact</button>
-        <button class="btn" onclick="go('snpcompare')">${ICONS.compare} Send to SNPCompare</button>
+        <button class="btn" onclick="go('snpcompare')" title="Opens SNPCompare; send this gene's region from SNPVersity to compare the lines">${ICONS.compare} Open SNPCompare</button>
       </div>`;
   }
 
@@ -1817,7 +1926,7 @@
         if (FD.selId) focusResidue(false);
       }catch(e){
         console.error('3Dmol error', e);
-        el.innerHTML = `<div class="fold-3d-fallback"><b>Could not render structure</b><p class="mono">${String(e.message||e)}</p></div>`;
+        el.innerHTML = `<div class="fold-3d-fallback"><b>Could not render structure</b><p class="mono">${escFold(String(e.message||e))}</p></div>`;
       }
     });
   }
@@ -1900,10 +2009,11 @@
       const acc=new Set();
       vs.forEach(v=>{
         const c=carrierOf(v); if(!c) return;
+        if(mode==='ref'){ Data.referenceLines(c, datasetId(FD.dataset)).forEach(a=>acc.add(a)); return; }
         if(mode!=='het') (c.carriersHom||[]).forEach(a=>acc.add(a));
         if(mode!=='hom') (c.carriersHet||[]).forEach(a=>acc.add(a));
       });
-      if(!acc.size){ alert('No carriers to send for this allele.'); return; }
+      if(!acc.size){ alert(mode==='ref' ? 'No line is homozygous for the reference allele here.' : 'No carriers to send for this allele.'); return; }
 
       const locus = await foldLocus();
       if(!locus){
@@ -1912,6 +2022,7 @@
       }
       const what = mode==='hom' ? 'homozygous carriers'
                  : mode==='het' ? 'heterozygous carriers'
+                 : mode==='ref' ? 'lines homozygous for the reference allele'
                  : 'carriers of an alternative allele';
       const note = id==='all'
         ? `${what} across ${vs.length} coding variant${vs.length>1?'s':''}`
@@ -1956,6 +2067,13 @@
     color(m){ FD.colorMode=m; document.querySelectorAll('.fold-toolbar .seg-b').forEach(b=>b.classList.remove('on'));
       const map={plddt:0,domain:1,impact:2}; const btns=document.querySelectorAll('.fold-toolbar .seg-b'); if(btns[map[m]])btns[map[m]].classList.add('on'); applyStyle(); },
     toggleVar(on){ FD.showVar=on; applyStyle(); },
+    setUsableOnly(on){
+      FD.usableOnly = !!on;
+      FD.variants = shownVariants();
+      if (FD.selId && !FD.variants.some(v => v.id === FD.selId)){ FD.selId = null; if (FD.viewer) FD.viewer.removeAllLabels(); }
+      const n = document.getElementById('foldNVar'); if (n) n.innerHTML = nVariantsHTML();
+      refreshSelection(); applyStyle();
+    },
     /* Force-show/hide a single variant residue in the 3D view independent of
        the blanket "Variant residues" toggle — lets a user highlight just the
        residues they care about instead of all-or-nothing. */
@@ -2071,8 +2189,8 @@
       const rows = sortedVariants();
       if (!rows.length){ alert('No variant table to export.'); return; }
       const delim = format === 'tsv' ? '\t' : ',';
-      const cols = foldVisibleCols();
-      const header = [...cols.map(c => c.label), 'Carriers (hom)', 'Carriers (het)'];
+      const cols = foldExportCols();
+      const header = [...cols.map(c => c.exportLabel || c.label), 'Carriers (hom)', 'Carriers (het)'];
       const lines = [header.map(h => csvEscape(h, delim)).join(delim)];
       rows.forEach(v => {
         const cr = carrierOf(v);
@@ -2090,7 +2208,7 @@
       a.href = url;
       a.download = `${FD.gene||'variants'}_coding_variants.${format === 'tsv' ? 'tsv' : 'csv'}`;
       document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);   // after the click has started the download (Firefox)
     },
     reset(){ if(FD.viewer){ FD.viewer.zoomTo(); FD.viewer.render(); } },
     focus(){ focusResidue(true); },

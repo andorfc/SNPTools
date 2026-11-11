@@ -12,7 +12,7 @@
  *  through Handoff.toVersity() rather than rolling its own copy:
  *
  *    <span data-ho-mount data-ho-id="fnMergeReplace"
- *          data-ho-target="SNPVersity" data-ho-dataset="nam2026"></span>
+ *          data-ho-target="SNPVersity" data-ho-dataset="zmgrin2026_imp"></span>
  *
  *  …then call Handoff.sync() after the container's innerHTML is written.
  *
@@ -22,7 +22,7 @@
   'use strict';
 
   /* ---------- session state ---------------------------------------- */
-  /* S.handoff.mode:  null = auto (decided by the heuristic below)
+  /* S.handoff.mode:  null = the default ('add': merge into the current selection)
                       'add' | 'replace' = pinned by the user            */
   function st(){
     if (typeof S === 'undefined' || !S) return null;
@@ -36,18 +36,6 @@
         return Data.defaultSelectionFor(ds) || [];
     } catch (e) { /* no data layer yet */ }
     return [];
-  }
-
-  /* A selection is "pristine" while it is still exactly the dataset's
-     preselected founders — nothing of the user's own is in it yet, so
-     replacing it destroys no work. Once they have curated it at all,
-     the safe default flips to add. */
-  function isPristine(){
-    if (typeof S === 'undefined' || !S || !S.selected) return true;
-    const def = defaultsFor(S.dataset);
-    if (S.selected.size !== def.length) return false;
-    for (let i = 0; i < def.length; i++) if (!S.selected.has(def[i])) return false;
-    return true;
   }
 
   function mode(){
@@ -66,11 +54,13 @@
   }
 
   /* Accession IDs are not portable between dataset families, so a handoff
-     that switches dataset can only ever reset the selection. */
+     that switches family can only ever reset the selection. The sets of one
+     family (the Imputed and High Quality sets of a release) share their lines. */
   function sameDataset(ds){
     if (ds == null || ds === '') return true;
     if (typeof S === 'undefined' || !S) return true;
-    return String(ds) === String(S.dataset);
+    if (String(ds) === String(S.dataset)) return true;
+    return typeof Data !== 'undefined' && !!Data.sameFamily && Data.sameFamily(ds, S.dataset);
   }
 
   function esc(s){
@@ -175,7 +165,6 @@
     mode: mode,
     setMode: setMode,
     isPinned: isPinned,
-    isPristine: isPristine,
     sameDataset: sameDataset,
     selectedCount: selectedCount,
     controlHTML: controlHTML,

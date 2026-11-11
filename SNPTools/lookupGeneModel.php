@@ -1,25 +1,22 @@
 <?php
+/* lookupGeneModel.php?geneModelId=<B73 v5 gene model> -> {"chromosome","start","end","ID"}
+   (all strings), or {"chromosome":"chr1","start":"0","end":"0","id":"empty"} when the id is
+   unknown. The lookup is a binary search of gff/genes_index.txt (gene_index_lib.php); the
+   index is rebuilt from gff/genes_data.serialized when the store changes. */
+require __DIR__ . '/gene_index_lib.php';
+header('Content-Type: application/json');
 
-$geneId = $_GET['geneModelId'];
+$geneId = isset($_GET['geneModelId']) ? (string) $_GET['geneModelId'] : '';
+$geneInfo = ($geneId !== '') ? gene_lookup(__DIR__ . '/gff', $geneId) : null;
 
-$genesData = unserialize(file_get_contents('./gff/genes_data.serialized'));
-
-if (isset($genesData[$geneId])) {
-
-    $geneInfo = $genesData[$geneId];
-    // Convert the array to a JSON string
-    $jsonString = json_encode($geneInfo);
-
-    //echo $jsonString; // Output the JSON string
-    echo $jsonString ;
-    // Process $geneInfo as needed
+if ($geneInfo !== null) {
+    echo json_encode($geneInfo);
 } else {
-    $data =[
+    $data = [
         'chromosome' => 'chr1',
         'start' => '0',
         'end' => '0',
         'id' => 'empty'
     ];
-
     echo json_encode($data);
 }

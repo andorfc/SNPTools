@@ -11,7 +11,15 @@
  * ===================================================================== */
 const SNPMatrix = (function () {
 
-  const ST = { input:null, order:'input', value:'distance', bars:true, force:false, built:null, _sig:null };
+  const ST = { input:null, order:'input', value:'distance', bars:true, force:false, built:null, _sig:null,
+               sites:null };   // 'usable' | 'all' (null = Data.SITE_QC_DEFAULTS.distance)
+
+  /* Site QC: by default the matrix uses usable sites only (PASS, HET_ELEVATED); "All sites" uses
+     every site. A result without Site QC classes always uses every site. */
+  function siteMode(){ return ST.sites || Data.SITE_QC_DEFAULTS.distance; }
+  function usedRows(inp){
+    return (siteMode() === 'all' || !Data.hasSiteQc(inp.rows)) ? (inp.rows || []) : Data.usableRows(inp.rows);
+  }
 
   /* ---- IBS distance from the genotype matrix ----
      gts entries are 1-byte codes from Data.parseVcf: 0/1/2 = dosage, 3 = missing. */
@@ -64,13 +72,14 @@ const SNPMatrix = (function () {
     else if (!ST.input && S.treeInput) ST.input = S.treeInput;
     const inp = ST.input;
     page.className='page fade';
+    if (!ST.sites) ST.sites = Data.SITE_QC_DEFAULTS.distance;
 
     if (!inp || !inp.accs || inp.accs.length<2){
       page.innerHTML = shellHead() + `<div class="empty-state"><div class="ei">${ICONS.grid||ICONS.compare||''}</div>
         <h3>Send a region from SNPVersity</h3>
         <p>SNPMatrix computes the pairwise identity-by-state distance among the accessions you queried.
-        Run a query in SNPVersity (pick at least two accessions) and use <b>Send to SNPMatrix</b>,
-        or open it from SNPTree.</p>
+        Run a query in SNPVersity (pick at least two accessions) and use <b>Send data to SNPMatrix</b>,
+        or open it from SNPTree (<b>SNPMatrix →</b>) or SNPCompare's Matrix view.</p>
         <button class="btn solid" onclick="go('snpversity')">Go to SNPVersity</button></div>`;
       return;
     }
@@ -89,6 +98,7 @@ const SNPMatrix = (function () {
       <div><div class="fl-lbl">Order</div>${seg('order','input','Input')}${seg('order','clustered','Clustered')}</div>
       <div><div class="fl-lbl">Values</div>${seg('value','distance','IBS distance')}${seg('value','identity','% identity')}</div>
       <div><div class="fl-lbl">Bioproject bars</div>${seg('bars',true,'On')}${seg('bars',false,'Off')}</div>
+      ${Data.hasSiteQc(inp.rows)?`<div id="mtxSites"><div class="fl-lbl" data-tt="Usable sites leave out flagged sites (het only, het excess) and sites with no carrier in this release.">Sites</div>${seg('sites','usable','Usable only')}${seg('sites','all','All sites')}</div>`:''}
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
         <button class="qbtn" onclick="SNPMatrix.download('csv')">Download matrix (CSV)</button>
         <button class="qbtn" onclick="SNPMatrix.download('phylip')">PHYLIP</button>
@@ -105,19 +115,20 @@ const SNPMatrix = (function () {
   }
 
   function build(inp){
-    const sig = `${inp.chr}:${inp.start}-${inp.end}:${inp.accs.length}:${(inp.rows||[]).length}`;
-    if (ST.built && ST._sig===sig) return ST.built;
+    // the cache is for this very hand-off: a different set of the same size and region is a new build
+    const sig = `${inp.chr}:${inp.start}-${inp.end}:${inp.accs.map(a=>a.id).join('|')}:${(inp.rows||[]).length}:${siteMode()}`;
+    if (ST.built && ST._sig===sig && ST._sigInput===inp) return ST.built;
     const n = inp.accs.length;
-    const {M,C,sites} = ibsMatrix(inp.rows, n);
-    ST.built = {M, C, sites, n, accs:inp.accs, labels:inp.accs.map(a=>a.id)};
-    ST._sig = sig;
+    const {M,C,sites} = ibsMatrix(usedRows(inp), n);
+    ST.built = {M, C, sites, n, accs:inp.accs, labels:inp.accs.map(a=>a.id), total:(inp.rows||[]).length, qc:Data.hasSiteQc(inp.rows)};
+    ST._sig = sig; ST._sigInput = inp;
     return ST.built;
   }
   function orderedIdx(b){ return ST.order==='clustered' ? clusterOrder(b.M) : b.M.map((_,i)=>i); }
 
   function stageInner(inp){
     const n = inp.accs.length;
-    const V = (inp.rows && inp.rows.length) || 0;
+    const V = usedRows(inp).length;      // the cost gates count the sites actually used
     if (ibsWork(V,n) > IBS_COST.workBlock){
       return `<div class="mtx-note">Selected data too large for SNPMatrix - choose a smaller region, a lower-density SNP set, or fewer accessions, then re-run in SNPVersity.</div>`;
     }
@@ -174,7 +185,7 @@ const SNPMatrix = (function () {
     const legend = `<div class="legend-wrap" style="margin-top:10px">
         <span class="li"><span class="sw" style="background:rgb(37,99,235)"></span>identical (0 distance)</span>
         <span class="li"><span class="sw" style="background:rgb(217,189,115)"></span>divergent</span>
-        <span class="li" style="margin-left:auto;color:var(--muted)">${b.sites.toLocaleString()} sites · mean pairwise identity ${(meanId*100).toFixed(1)}%</span>
+        <span class="li" style="margin-left:auto;color:var(--muted)"><span id="mtxSitesUsed">${b.qc ? `${b.sites.toLocaleString()} of ${b.total.toLocaleString()} sites used` : `${b.sites.toLocaleString()} sites`}</span> · mean pairwise identity ${(meanId*100).toFixed(1)}%</span>
       </div>${ST.bars?projLegend(b):''}`;
     return note + svg + legend;
   }
@@ -234,7 +245,7 @@ const SNPMatrix = (function () {
   /* ---- public ---- */
   function set(k,v){ ST[k] = (v==='true')?true:(v==='false')?false:v;
     const stage=document.getElementById('mtxStage'); if(stage) stage.innerHTML=stageInner(ST.input);
-    document.querySelectorAll('.page .qbtn').forEach(()=>{}); render(); }
+    render(); }
   function force(){ ST.force=true; const stage=document.getElementById('mtxStage'); if(stage) stage.innerHTML=stageInner(ST.input); }
   function toTree(){ if(ST.input){ S.treeInput=ST.input; } go('snptree'); }
 

@@ -178,7 +178,19 @@ const SNPTree = (function () {
    *  5. State + tool render
    * ------------------------------------------------------------------ */
   const ST = { method:'upgma', layout:'rectangular', format:'newick', colorBy:'proj', markers:'color',
-               view:'tree', input:null, built:null, force:false, _pi:null };
+               view:'tree', input:null, built:null, force:false, _pi:null,
+               sites:null, _used:null };   // sites: 'usable' | 'all' (null = Data.SITE_QC_DEFAULTS.distance)
+
+  /* Site QC: by default the distances use usable sites only (PASS, HET_ELEVATED); "All" uses
+     every site. A result without Site QC classes always uses every site. */
+  function siteMode(){ return ST.sites || Data.SITE_QC_DEFAULTS.distance; }
+  function usedRows(inp){
+    const key = siteMode();
+    if (ST._used && ST._used.inp === inp && ST._used.key === key) return ST._used.rows;
+    const rows = (key === 'all' || !Data.hasSiteQc(inp.rows)) ? inp.rows : Data.usableRows(inp.rows);
+    ST._used = {inp, key, rows};
+    return rows;
+  }
 
   function metaFor(name){ return ST.metaMap ? ST.metaMap[name] : null; }
 
@@ -187,22 +199,47 @@ const SNPTree = (function () {
     injectCSS();
     const crumb=document.getElementById('crumbTool'); if(crumb) crumb.innerHTML='<b>SNPTree</b>';
     const inp = S.treeInput || ST.input;
-    if (inp !== ST.input) ST.force = false;
+    if (inp !== ST.input){ ST.force = false; ST.built = null; }   // a new hand-off: nothing is built for it yet
     ST.input = inp;
+    if (!ST.sites) ST.sites = Data.SITE_QC_DEFAULTS.distance;
     if (!inp || !inp.rows || !inp.rows.length){
       page.innerHTML = emptyState();
+      fillGenomeWide((S && S.dataset) || null);
       return;
     }
     // metadata lookup by accession id (= tree label)
     ST.metaMap = {}; inp.accs.forEach(a=>{ ST.metaMap[a.id]=a; });
     ST._pi = null;   // recompute project->shape mapping for this dataset
     page.innerHTML = shell(inp);
+    fillGenomeWide(inp.dataset);
     draw();
+  }
+
+  /* Precomputed genome-wide trees (NJ / UPGMA over the whole release) are offered as
+     Newick downloads when ./distance/<family>/tree_*.nwk exist (ibsCompare.php?probe=1).
+     They are not drawn here: SNPTree draws trees it computes from a region. */
+  function fillGenomeWide(ds){
+    const el = document.getElementById('treeGW');
+    if (!el || !ds || !Data.globalDistance) return;
+    const fam = Data.familyOf(ds);
+    if (fam === 'mgdb2026') return;
+    Data.globalDistance(fam).then(p => {
+      const e = document.getElementById('treeGW');
+      if (!e || !p || !(p.trees || []).length) return;
+      const name = {nj:'Neighbour-Joining', upgma:'UPGMA'};
+      e.innerHTML = `<div class="card pad" style="margin-bottom:16px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b>Genome-wide tree</b><span style="color:var(--muted);font-size:12.5px">precomputed from all sites of the release${p.n ? ' · ' + p.n.toLocaleString() + ' lines' : ''} (Newick)${Data.gwSitesNote(ds) ? ' · ' + Data.gwSitesNote(ds) : ''}</span>
+        <span style="margin-left:auto;display:flex;gap:8px">${p.trees.map(t =>
+          `<a class="qbtn" id="treeGW_${t}" href="ibsCompare.php?tree=${t}&dataset=${encodeURIComponent(fam)}" download="${fam}_genomewide_${t}.nwk">Download ${name[t] || t}</a>`).join('')}</span>
+      </div></div>`;
+    });
   }
 
   function emptyState(){
     return `<section class="sec"><div class="bar"></div><div>
       <h1>SNPTree</h1><p>Local phylogeny &amp; similarity from a SNPVersity result.</p></div></section>
+      ${typeof loadFromVersityHTML==='function' ? loadFromVersityHTML('sendToTree', 'Build an identity-by-state tree of those lines over that region.') : ''}
+      <div id="treeGW"></div>
       <div class="card pad fade" style="text-align:center">
         <div style="max-width:560px;margin:0 auto">
           <h3 style="font-family:var(--disp);margin:0 0 8px">No data yet</h3>
@@ -235,6 +272,8 @@ const SNPTree = (function () {
           ${radio('markers','color','Color')}${radio('markers','shape','Shapes')}</div>
         <div><div class="fl-lbl">Text output</div>
           ${radio('format','newick','Newick')}${radio('format','mega','Pairwise (MEGA)')}${radio('format','phylip','PHYLIP')}</div>
+        ${Data.hasSiteQc(inp.rows)?`<div id="treeSites"><div class="fl-lbl" data-tt="Usable sites leave out flagged sites (het only, het excess) and sites with no carrier in this release.">Sites</div>
+          ${radio('sites','usable','Usable only')}${radio('sites','all','All')}</div>`:''}
         <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">
           <button class="btn solid" onclick="SNPTree.draw()">Draw tree</button>
         </div>
@@ -242,6 +281,7 @@ const SNPTree = (function () {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <button class="qbtn" onclick="SNPTree.toCompare('table')">SNPCompare (Table view) →</button>
         <button class="qbtn" onclick="SNPTree.toCompare('matrix')">SNPCompare (Distance matrix) →</button>
+        <button class="qbtn" onclick="SNPTree.toMatrix()">SNPMatrix →</button>
         <span style="margin-left:auto"></span>
         <button class="qbtn" onclick="SNPTree.downloadSVG()">Download SVG</button>
         <button class="qbtn" onclick="SNPTree.downloadPNG()">Download PNG</button>
@@ -249,6 +289,7 @@ const SNPTree = (function () {
       </div>
     </div>
 
+    <div id="treeGW"></div>
     <div id="treeMeta" class="meta-strip"></div>
     <div class="card pad fade" id="treeStage" style="overflow:auto"></div>
     <div class="card pad" style="margin-top:16px">
@@ -274,6 +315,7 @@ const SNPTree = (function () {
     if (g==='format') refreshText();     // text output can update without rebuilding
     else draw();                          // topology/layout/color need a redraw
   }
+  function toMatrix(){ if(ST.input) S.matrixInput=ST.input; go('snpmatrix'); }
   function toCompare(view){
     if(ST.input){
       // Reuse the exact SNPVersity result that produced this tree.
@@ -294,11 +336,11 @@ const SNPTree = (function () {
     const inp=ST.input;
     const accs=inp.accs, n=accs.length;
     const labels=accs.map(a=>a.id);
-    const {M,C,sites,informative}=ibsMatrix(inp.rows, n);
+    const {M,C,sites,informative}=ibsMatrix(usedRows(inp), n);
     const tree = ST.method==='nj' ? nj(M,labels) : upgma(M,labels);
     // mean shared sites across pairs
     let sp=0,cnt=0; for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){ sp+=C[i][j]; cnt++; }
-    ST.built = {M, C, tree, labels, sites, informative, meanShared: cnt? sp/cnt:0, n};
+    ST.built = {M, C, tree, labels, sites, informative, meanShared: cnt? sp/cnt:0, n, total: inp.rows.length, qc: Data.hasSiteQc(inp.rows)};
     return ST.built;
   }
 
@@ -308,7 +350,7 @@ const SNPTree = (function () {
     const stage=document.getElementById('treeStage');
     const meta=document.getElementById('treeMeta');
     if (n<3){ stage.innerHTML=notice('Need at least 3 accessions to build a tree. Select more in SNPVersity.'); meta.innerHTML=''; return; }
-    const V = (inp.rows && inp.rows.length) || 0;
+    const V = usedRows(inp).length;      // the cost gates count the sites actually used
     if (ibsWork(V,n) > IBS_COST.workBlock){
       stage.innerHTML = notice('Selected data too large for SNPTree - choose a smaller region, a lower-density SNP set, or fewer accessions, then re-run in SNPVersity.');
       meta.innerHTML=''; return;
@@ -342,7 +384,7 @@ const SNPTree = (function () {
       }).join('')}</div>`;
     return `<div class="meta-row">
       <span><b>${b.n}</b> accessions</span>
-      <span><b>${b.sites.toLocaleString()}</b> variant sites</span>
+      <span id="treeSitesUsed">${b.qc ? `<b>${b.sites.toLocaleString()}</b> of ${b.total.toLocaleString()} sites used` : `<b>${b.sites.toLocaleString()}</b> variant sites`}</span>
       <span><b>${b.informative.toLocaleString()}</b> informative</span>
       <span>~<b>${Math.round(b.meanShared).toLocaleString()}</b> sites/pair</span>
       <span>metric: <b>IBS allele distance</b></span>
@@ -402,7 +444,7 @@ const SNPTree = (function () {
     const rowH=18, pad=24;
     const H=Math.max(240, leaves.length*rowH + pad*2);
     const labelW=Math.min(320, 30+Math.max(...b.labels.map(l=>l.length))*7);
-    const W=Math.max(760, 900);
+    const W=900;
     const treeW=W-labelW-pad;
     layoutRect(b.tree.root, treeW, H, pad);
     let edges='', tips='';
@@ -459,8 +501,9 @@ const SNPTree = (function () {
   function refreshText(){
     const ta=document.getElementById('fmtOut'); const ti=document.getElementById('fmtTitle');
     if(!ta) return;
-    if(!ST.built) build();
-    ta.value=currentText();
+    // nothing built (the cost notice is up, or the tree is still computing): no text, and no build
+    // behind the cost gates of draw()
+    ta.value=ST.built ? currentText() : '';
     if(ti) ti.textContent = ST.format==='mega'?'Pairwise diversity (MEGA)':ST.format==='phylip'?'PHYLIP distance matrix':'Newick';
   }
   function copyText(){ const ta=document.getElementById('fmtOut'); if(!ta)return; ta.select();
@@ -540,6 +583,6 @@ const SNPTree = (function () {
   return { render, draw, setOpt, toCompare, forceBuild, copyText, downloadText,
            downloadSVG, downloadPNG, downloadPDF,
            // exposed for testing
-           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage };
+           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage, usedRows, siteMode, toMatrix, _ST:ST };
 })();
 if (typeof window !== 'undefined') window.SNPTree = SNPTree;

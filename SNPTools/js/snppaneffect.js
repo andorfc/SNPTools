@@ -33,6 +33,9 @@
       /* local data folder (same-origin) used by BOTH the native engine and
          the panel's own canonical-transcript check */
       dataBase:   './paneffect/',
+      /* the native engine, loaded on first use (classic scripts, in this order; d3 first) */
+      scripts: [D3_URL, './js/pe/support.js', './js/pe/genome.js', './js/pe/pan.js', './js/pe/dom.js', './js/pe/main.js',
+                './js/paneffect-heatmap.js', './js/paneffect-engine.js'],
       /* only used by the 'embed' fallback */
       baseUrl:    'https://maizegdb.org/effect/maize_v2/index.html',
       esmModels:  ['ESM1', 'ESM2', 'ESM3'],
@@ -64,8 +67,11 @@
          substitution ring lives), a plain gene jump defaults to Both */
       option:  (opts.option || (variant ? 'b73' : 'both')),
       variant: variant,
-      /* external modules open in the MaizeGDB 2026 view, not "all variants" */
-      wgs:     (opts.wgs || 'maize2026'),
+      /* External modules open on "all variant effects". They opened on the MaizeGDB 2026
+         view, which colours only substitutions seen in that set; PanEffect's per-gene files
+         flag WGS2024/WGS2026 only, so a GRIN-linked substitution could be hidden. Pass
+         wgs:'maize2026' to get that view back. */
+      wgs:     (opts.wgs || 'all'),
     };
     go('paneffect');
   };
@@ -124,7 +130,7 @@
       .map(m => `<option value="${m}" ${m === st.esm ? 'selected' : ''}>${m}</option>`).join('');
     const examples = PE.cfg.examples
       .map(g => `<a href="#" class="pe-ex" data-gene="${g}">${g}</a>`)
-      .join('<span class="pe-ex-sep">·</span>');
+      .join('<span class="pe-ex-sep">·</span><wbr>');  /* <wbr>: the row may wrap on a phone */
     const vLbl = variantLabel(st.variant);
 
     return `
@@ -135,7 +141,7 @@
       <h2>Predicted effects of amino-acid substitutions</h2>
       <p>Pick a gene model and a protein language-model, then read every possible
          substitution as a heatmap — in B73 and across the pan-genome. Jump here
-         from SNPVersity or SNPFold on a specific missense call and it lands
+         from SNPVersity, SNPImpact, SNPFunction or SNPFold on a specific missense call and it lands
          pre-highlighted.</p>
     </div></div>
 
@@ -226,6 +232,7 @@
    *  LOAD FLOW — resolve canonical, apply policy, then render          *
    * ------------------------------------------------------------------ */
   async function loadGene() {
+    if (typeof setRoute==='function') setRoute('paneffect', PE.state.gene, PE.state.gene);   // the permalink: #paneffect/<gene>
     status('Checking transcript…');
     let info = null;
     try { info = await resolveGene(PE.state.gene); } catch (e) { info = null; }
@@ -381,12 +388,22 @@
       window.PanEffectEngine && typeof window.PanEffectEngine.render === 'function' &&
       typeof window.runPanEffect === 'function';   /* ported pipeline present */
 
+    /* first use: fetch the engine's scripts, then come back here */
+    if (PE.cfg.engine === 'native' && !nativeReady && !PE.engineFailed && typeof loadScriptsOnce === 'function') {
+      const seq = PE.loadSeq = (PE.loadSeq || 0) + 1;
+      status('Loading PanEffect…'); onLoadingIcon_safe();
+      loadScriptsOnce(PE.cfg.scripts)
+        .then(() => { if (seq === PE.loadSeq && S.tool === 'paneffect') loadViews(); })
+        .catch(err => { console.error('[paneffect] engine scripts:', err); PE.engineFailed = true; if (seq === PE.loadSeq && S.tool === 'paneffect') loadViews(); });
+      return;
+    }
+
     if (PE.cfg.engine === 'native' && nativeReady) {
       renderNative(host);
     } else {
       if (PE.cfg.engine === 'native') {
         status(window.PanEffectEngine
-          ? 'PanEffect scripts (./js/pe/*.js) aren’t loaded — showing embedded view. See console.'
+          ? 'PanEffect’s scripts could not be loaded — showing the embedded view.'
           : 'Native engine not loaded — showing embedded view.');
       }
       renderEmbed(host);
