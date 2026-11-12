@@ -95,6 +95,10 @@ try:
     st, h, body = S.http('GET')
     check(st == 200 and h.get('Content-Type', '').startswith('text/plain') and 'SNPMaize MCP server' in body and 'claude.maizegdb.org/mcp' in body,
           f'GET: {st} {h.get("Content-Type")}, a plain-text page naming the companion server')
+    st, h, body = S.http('GET', headers={'Accept': 'text/event-stream'})
+    check(st == 405 and json.loads(body)['error']['code'] == -32600, f'GET for an event stream: {st} -32600 (no SSE stream)')
+    st, h, body = S.http('GET', headers={'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8'})
+    check(st == 200 and 'SNPMaize MCP server' in body, f'GET from a browser: {st}, the page')
     st, h, body = S.http('OPTIONS')
     check(st == 204 and h.get('Access-Control-Allow-Origin') == '*' and 'POST' in h.get('Access-Control-Allow-Methods', ''), f'OPTIONS: {st}, CORS headers')
     st, h, body = S.http('PUT', '{}')

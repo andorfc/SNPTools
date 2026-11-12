@@ -53,6 +53,16 @@ final class SnpMcp {
     if ($method === 'OPTIONS') { ob_end_clean(); http_response_code(204); return; }
     if ($method === 'GET' || $method === 'HEAD') {
       ob_end_clean();
+      // A GET asking for text/event-stream (and not a page) is a client opening the server-sent event
+      // stream. This server is stateless and has none, which Streamable HTTP says to answer with 405.
+      $accept = isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : '';
+      if (stripos($accept, 'text/event-stream') !== false && stripos($accept, 'text/html') === false) {
+        http_response_code(405);
+        header('Allow: POST, GET, OPTIONS');
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(self::error(null, self::E_INVALID_REQUEST, 'This server opens no event stream; send JSON-RPC requests with POST.'));
+        return;
+      }
       header('Content-Type: text/plain; charset=utf-8');
       echo self::page();
       return;

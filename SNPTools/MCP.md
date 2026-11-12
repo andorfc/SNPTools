@@ -10,7 +10,8 @@ QTL and literature: resolve a gene name there, query its variants here.
 ## Connecting
 
 Endpoint: `https://<host>/mcp.php` (Streamable HTTP, stateless, no authentication; JSON-RPC 2.0 over
-POST; `GET` answers a short plain-text page; `OPTIONS` answers CORS).
+POST; `GET` answers a short plain-text page, or 405 when it asks for `text/event-stream`, since the server
+opens no event stream; `OPTIONS` answers CORS).
 
     claude mcp add --transport http snpmaize https://snpmaize.maizegdb.org/mcp.php
     claude mcp add --transport http maizegdb https://claude.maizegdb.org/mcp
