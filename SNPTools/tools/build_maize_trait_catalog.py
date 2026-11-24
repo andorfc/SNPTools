@@ -29,9 +29,8 @@ Faceting rules (the fusarium SNPTrait matches facets by exact string equality):
     (precedence NAM > Ames282 > WiDiv > Other GRIN); every sample sits in exactly
     one project, so Data.accessionsFor() never duplicates a sample
   * coded GRIN descriptors are decoded to their labels ("C" -> "Dent")
-  * numeric GRIN descriptors are binned into tertiles computed over the v1
-    samples that have a value ("Low (<= 214 g)", ...), because the current
-    SNPTrait has no numeric-range facet
+  * numeric GRIN descriptors are not binned: SNPTrait filters and shows them by their
+    per-accession means from the trait side-file (data/traits/<family>.traits.json)
 
 Usage:
   python3 build_maize_trait_catalog.py --samples data/zmgrin2026_samples.tsv \
@@ -56,21 +55,11 @@ CODED_FACETS = OrderedDict([
     ("KERNEL-COLOR", ("kernelColor","Kernel colour")),
     ("STEWARTS-WILT",("stewartsWilt","Stewart's wilt score")),
 ])
-# numeric descriptors binned into tertiles
-NUMERIC_FACETS = OrderedDict([
-    ("KERNEL-WEIGHT-1000",  ("kw1000",      "1000-kernel weight")),
-    ("PLANT-HEIGHT",        ("plantHeight", "Plant height")),
-    ("GDU-SILK-F_LAT40-49", ("gduSilk",     "GDU to silk (lat 40-49)")),
-    ("EAR-LENGTH",          ("earLength",   "Ear length")),
-])
-# KERNEL-ROW-NUMBER is deliberately NOT faceted: 485 of 841 v1 values are 0 (not a
-# possible row count), i.e. the GRIN export mixes 0-as-missing with real counts.
-# It stays in data/traits/<family>.traits.json unchanged; see the design doc.
+# KERNEL-ROW-NUMBER: 485 of 841 v1 values are 0 (not a possible row count), i.e. the GRIN
+# export mixes 0-as-missing with real counts. It stays in data/traits/<family>.traits.json
+# unchanged; see the design doc.
 
 
-# T4c carries unit "%" for the GDU descriptors, which are growing-degree units
-# (degrees F x days, 86/50 method) -- override for display only.
-UNIT_OVERRIDE = {"GDU-SILK-F_LAT40-49": "GDU F"}
 ORIGIN_PREFIX = re.compile(r"^\s*(Developed|Donated|Collected|Unknown)\s*[\u2013-]\s*", re.I)
 
 
@@ -102,8 +91,29 @@ def num(v):
         return None
 
 
+# misspellings in GRIN's code definitions, corrected wherever a label is read
+GRIN_LABEL_FIXES = {"Ristance": "Resistance"}
+
+
+def fix_label(lab):
+    for bad, good in GRIN_LABEL_FIXES.items():
+        lab = re.sub(r"\b%s\b" % re.escape(bad), good, lab)
+    return lab
+
+
+def number_scores(out):
+    """A numbered score scale (every code a number) whose labels are long or repeat (GRIN often
+    gives every middle score the scale's definition, e.g. Plant Vigor 2-8 "(1 = good, 9 = poor)")
+    -> "4 \u00b7 label" for every code, so each score keeps its own value and sorts by number.
+    The label is kept whole: SNPTrait shortens it on screen and shows it in full on hover."""
+    if out and all(k.isdigit() for k in out) and (
+            any(len(v) > 24 for v in out.values()) or len(set(out.values())) < len(out)):
+        return {k: f"{k} \u00b7 {v}" for k, v in out.items()}
+    return out
+
+
 def parse_codes(defn):
-    """'1=WHITE; 2=RED' -> {'1':'White','2':'Red'}  (labels shortened, title-cased)."""
+    """'1=WHITE; 2=RED' -> {'1':'White','2':'Red'}  (title-cased, full text, GRIN typos fixed)."""
     out = {}
     for part in re.split(r";\s*(?=[A-Za-z0-9]{1,4}=)", defn or ""):
         m = re.match(r"\s*([A-Za-z0-9]{1,4})=(.+)", part)
@@ -111,34 +121,27 @@ def parse_codes(defn):
             continue
         lab = m.group(2).strip()
         lab = re.sub(r"^\(\d+\)\s*", "", lab)          # "(1) Little or no spread." -> ...
-        lab = lab.split(".")[0].strip() or lab
+        lab = re.sub(r"\s+", " ", lab).rstrip(" .") or lab
         if lab.isupper():
             lab = lab.capitalize()
-        out[m.group(1)] = lab
-    # ordinal score scales with long descriptions -> "4 · Abundant spread ..." for every code
-    if out and all(k.isdigit() for k in out) and any(len(v) > 24 for v in out.values()):
-        out = {k: f"{k} \u00b7 " + (v[:32].rstrip() + "\u2026" if len(v) > 32 else v) for k, v in out.items()}
-    return out
+        out[m.group(1)] = fix_label(lab)
+    return number_scores(out)
 
 
-def fmt(x):
-    return f"{x:.0f}" if abs(x) >= 100 else (f"{x:.1f}" if abs(x) >= 10 else f"{x:.2f}")
+def grin_unit(code, unit):
+    """T4c gives "%" for the days-to-silk / days-to-shed descriptors, which count days."""
+    return "days" if code.startswith("DAYS-TO-") and unit == "%" else unit
 
 
-def tertile_labeler(values, unit):
-    vs = sorted(values)
-    if len(vs) < 6:
-        return None, None
-    q1, q2 = vs[len(vs) // 3], vs[(2 * len(vs)) // 3]
-    u = f" {unit}" if unit else ""
-    labs = [f"Low (<= {fmt(q1)}{u})", f"Mid ({fmt(q1)}-{fmt(q2)}{u})", f"High (> {fmt(q2)}{u})"]
-    def lab(x):
-        return labs[0] if x <= q1 else (labs[1] if x <= q2 else labs[2])
-    return lab, {"q1": q1, "q2": q2, "labels": labs}
+def plain_text(v):
+    """GRIN passport names sometimes arrive as an HTML link (e.g. '<a href="...">Duplicate of PI
+    151090</a>'): keep the link text, drop the markup, and decode entities."""
+    import html
+    return html.unescape(re.sub(r"<[^>]*>", "", v or "")).strip()
 
 
 def clean(v):
-    s = (v or "").strip()
+    s = plain_text(v)
     return "" if s.lower() in {"", ".", "na", "n/a", "nan", "none", "null", "unknown"} else s
 
 
@@ -148,8 +151,6 @@ def main():
         ap.add_argument("--" + k, required=True)
     ap.add_argument("--outdir", required=True)
     ap.add_argument("--family", default=FAMILY)
-    ap.add_argument("--bins-from", help="existing <family>.traits.json: reuse its facetBins edges and labels, so "
-                    "facet labels stay stable when samples are added (e.g. v1.3 -> v1.4)")
     a = ap.parse_args()
 
     samples = read_tsv(a.samples)
@@ -170,25 +171,9 @@ def main():
         if not d:
             print(f"!! trait {c} missing from T4c"); continue
         dictionary[c] = {"name": d["trait_name"], "class": d["trait_class"], "category": d["category"],
-                         "scale": d["scale_type"], "unit": d["unit"], "url": d["grin_descriptor_url"]}
+                         "scale": d["scale_type"], "unit": grin_unit(c, d["unit"]), "url": d["grin_descriptor_url"]}
         if codes.get(c):
             dictionary[c]["codes"] = codes[c]
-
-    # ---- numeric tertiles over v1 samples (one value per GRIN accession) ----------
-    binners, bins_meta = {}, {}
-    pinned = json.load(open(a.bins_from, encoding="utf-8")).get("facetBins", {}) if a.bins_from else {}
-    for c, (key, _) in NUMERIC_FACETS.items():
-        vals = [num(t4b[g][c]["mean"]) for g in grins if c in t4b.get(g, {})]
-        vals = [v for v in vals if v is not None]
-        if c in pinned:
-            q1, q2, labs = pinned[c]["q1"], pinned[c]["q2"], pinned[c]["labels"]
-            binners[c] = (lambda q1, q2, labs: lambda x: labs[0] if x <= q1 else (labs[1] if x <= q2 else labs[2]))(q1, q2, labs)
-            bins_meta[c] = {"q1": q1, "q2": q2, "labels": labs, "n": len(vals),
-                            "pinnedFrom": os.path.basename(a.bins_from), "pinnedN": pinned[c].get("n")}
-            continue
-        lab, meta = tertile_labeler(vals, UNIT_OVERRIDE.get(c, t4c.get(c, {}).get("unit", "")))
-        if lab:
-            binners[c], bins_meta[c] = lab, dict(meta, n=len(vals))
 
     # ---- per-sample accession objects --------------------------------------------
     by_panel = defaultdict(list)
@@ -199,7 +184,7 @@ def main():
         p5 = t5.get(grin, {})
         xr = xw.get(s["vcf_name"], {})
         tr = t4b.get(grin, {})
-        name = clean(p5.get("accession_name")) or s["accession_name"] or s["vcf_name"]
+        name = clean(p5.get("accession_name")) or plain_text(s["accession_name"]) or s["vcf_name"]
         acc = OrderedDict([
             ("id", sid), ("run", s["vcf_name"]), ("founder", s["base_id"]),
             ("label", f"{name} ({grin})" if grin else name),
@@ -233,10 +218,6 @@ def main():
             v = tr.get(c, {}).get("mode_value", "")
             if v:
                 meta[key] = codes.get(c, {}).get(v, v)
-        for c, (key, _) in NUMERIC_FACETS.items():
-            x = num(tr.get(c, {}).get("mean"))
-            if x is not None and c in binners:
-                meta[key] = binners[c](x)
         meta["nTraits"] = str(len(tr))
         for k, v in list(meta.items()):
             if v in ("", None):
@@ -277,7 +258,6 @@ def main():
               ["improvement", "Improvement status (GRIN)"], ["originType", "Origin type (GRIN)"],
               ["era", "Improvement era"]]
     facets += [[k, l] for _, (k, l) in CODED_FACETS.items()]
-    facets += [[k, l] for c, (k, l) in NUMERIC_FACETS.items() if c in binners]
     schema = {
         "groupBy": "panel", "groupLabel": "germplasm panel",
         "groupOrder": [p for p in PANEL_ORDER],
@@ -287,6 +267,9 @@ def main():
         "columns": [["grin", "GRIN accession"], ["strain", "Name"], ["subpop", "Subpopulation"],
                     ["country", "Country"], ["state", "State"], ["kernelType", "Kernel type"]],
         "search": ["id", "strain", "grin", "pedigree", "state", "country", "subpop", "genotypeId"],
+        # line fields holding a decoded GRIN descriptor (field -> descriptor code): SNPTrait lists
+        # them with the GRIN phenotypes and leaves the descriptor itself out (the same values)
+        "grinFields": {k: c for c, (k, _) in CODED_FACETS.items()},
     }
 
     # ---- emit -------------------------------------------------------------------
@@ -315,7 +298,7 @@ def main():
                    "valueLayout": {"numeric": ["n_obs", "mean", "sd", "min", "max"],
                                    "ordinal_or_nominal_coded": ["n_obs", "mode_code"],
                                    "text": ["n_obs", "mode_text"]},
-                   "facetBins": bins_meta, "dictionary": dictionary, "samples": values},
+                   "dictionary": dictionary, "samples": values},
                   fh, separators=(",", ":"), ensure_ascii=False)
 
     n = family["count"]
@@ -327,8 +310,6 @@ def main():
     print("[coverage] facet fill (samples with a value):")
     for k, _ in facets:
         print(f"             {k:>12}: {fill.get(k, 0)}/{n}")
-    for c, m in bins_meta.items():
-        print(f"[bins]     {c}: n={m['n']} q1={m['q1']:.4g} q2={m['q2']:.4g}")
     print(f"[traits]   {len(dictionary)} traits, {sum(len(v['traits']) for v in values.values())} "
           f"sample x trait values -> {tr_path} ({os.path.getsize(tr_path)/1024:.0f} KB)")
     notr = [s for s, v in values.items() if not v["traits"]]

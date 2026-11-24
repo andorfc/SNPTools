@@ -438,8 +438,6 @@ def descriptor_summary(desc):
         if len(xs):
             q = np.percentile(xs, [0, 25, 50, 75, 100])
             out.update({'mean': round(float(xs.mean()), 3), 'min': float(q[0]), 'q1': float(q[1]), 'median': float(q[2]), 'q3': float(q[3]), 'max': float(q[4])})
-        fb = (traits().get('facetBins') or {}).get(desc)
-        if fb: out['facet_bins'] = fb.get('labels')
     else:
         c = Counter(str(v[1]) for _, v in vals)
         codes = d.get('codes') or {}

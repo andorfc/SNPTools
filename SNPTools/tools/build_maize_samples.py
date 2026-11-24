@@ -42,6 +42,13 @@ V1_CLASSES = ("A_", "B_", "C_")
 PANEL_ORDER = ["NAM", "Ames282", "WiDiv", "Other GRIN"]
 
 
+def plain_text(v):
+    """GRIN passport names sometimes arrive as an HTML link (e.g. '<a href="...">Duplicate of PI
+    151090</a>'): keep the link text, drop the markup, and decode entities."""
+    import html
+    return html.unescape(re.sub(r"<[^>]*>", "", v or "")).strip()
+
+
 def read_tsv(path):
     with open(path, encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh, delimiter="\t"))
@@ -151,7 +158,7 @@ def main():
         out.append({
             "sample_id": r["_sid"], "base_id": r["_base"], "rep": r["_rep"], "reps": r["_reps"],
             "vcf_name": r["VCFname"], "genotype_id": g, "grin_accession": grin,
-            "grin_dbid": pa.get("grin_germplasm_dbid", ""), "accession_name": pa.get("accession_name") or r["Uniform_Name"],
+            "grin_dbid": pa.get("grin_germplasm_dbid", ""), "accession_name": plain_text(pa.get("accession_name") or r["Uniform_Name"]),
             "dataset_class": r["dataset_class"], "match_tier": r["match_tier"],
             "pop_NAM": pops["NAM"], "pop_Ames282": pops["Ames282"], "pop_WiDiv": pops["WiDiv"],
             "primary_panel": panel, "nam_founder": nam_founder, "id_provisional": r["_prov"],

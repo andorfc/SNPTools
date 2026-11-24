@@ -177,7 +177,7 @@ ZmG_CI21E	ZmG_CI21E	1	1	CI_21E	ZmG:CI21E	PI 693395	1000801	CI 21E	B_panel_member
 ZmG_CI28A	ZmG_CI28A	1	1	CI_28A	ZmG:CI28A	PI 693392	1904933	CI 28A Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
 ZmG_CI3A	ZmG_CI3A	1	1	CI_3A	ZmG:CI3A	PI 693347	1606091	C.I. 3a	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
 ZmG_CI40H	ZmG_CI40H	1	1	CI_40H	ZmG:CI40H	PI 694078	1606103	C.I. 40h	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
-ZmG_CI540	ZmG_CI540	1	1	CI_540	ZmG:CI540	Ames 26028	1597271	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+151090"">Duplicate of PI 151090</a>"	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
+ZmG_CI540	ZmG_CI540	1	1	CI_540	ZmG:CI540	Ames 26028	1597271	"Duplicate of PI 151090"	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
 ZmG_CI64	ZmG_CI64	1	1	CI_64	ZmG:CI64	PI 693331	1082766	CI 64	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
 ZmG_CI91B	ZmG_CI91B	1	1	CI_91B	ZmG:CI91B	PI 693386	1712935	CI 91B Goodman-Buckler	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
 ZmG_CL17	ZmG_CL17	1	1	CL17	ZmG:CL17	Ames 27024	1645393	CL17	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
@@ -305,8 +305,8 @@ ZmG_T122	ZmG_T122	1	1	G22_T122	ZmG:T122	PI 340821	1254126	T122	B_panel_member_no
 ZmG_T5A	ZmG_T5A	1	1	G3_T5a	ZmG:T5A	PI 340818	1254123	T5a	B_panel_member_not_in_selection	high	False	False	True	WiDiv		False
 ZmG_GA209	ZmG_GA209	1	1	GA209	ZmG:GA209	PI 693323	1052068	GA209	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
 ZmG_C_PI700945	ZmG_C_PI700945	1	1	GA219	ZmG:C_PI700945	PI 700945		GA219	C_other_GRIN_accession	high	False	False	False	Other GRIN		False
-ZmG_GE129	ZmG_GE129	1	1	GE129	ZmG:GE129	Ames 10256	1052101	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+700950"">Duplicate of PI 700950</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
-ZmG_GE54	ZmG_GE54	1	1	GE54	ZmG:GE54	Ames 10254	1052093	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+700948"">Duplicate of PI 700948</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_GE129	ZmG_GE129	1	1	GE129	ZmG:GE129	Ames 10256	1052101	"Duplicate of PI 700950"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_GE54	ZmG_GE54	1	1	GE54	ZmG:GE54	Ames 10254	1052093	"Duplicate of PI 700948"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
 ZmG_GT112	ZmG_GT112	1	1	GT112	ZmG:GT112	PI 693364	1645497	GT112	B_panel_member_not_in_selection	high	False	True	False	Ames282		False
 ZmG_H105W	ZmG_H105W	1	1	H105W	ZmG:H105W	PI 587127	1084242	H105W	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
 ZmG_H110	ZmG_H110	1	1	H110	ZmG:H110	PI 550526	1445462	H110	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
@@ -373,7 +373,7 @@ ZmG_K150	ZmG_K150	1	1	K150	ZmG:K150	PI 706567	1088094	K150	A_panel_in_our_5to30x
 ZmG_K155	ZmG_K155	1	1	K155	ZmG:K155	PI 706570	1088098	K155	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
 ZmG_K201	ZmG_K201	1	1	K201	ZmG:K201	PI 706569	1088096	K201	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
 ZmG_K4	ZmG_K4	1	1	K4	ZmG:K4	PI 154380	1891757	K 4	B_panel_member_not_in_selection	high	False	True	True	Ames282		False
-ZmG_K41	ZmG_K41	1	1	K41	ZmG:K41	NSL 22635	1088099	"<a href=""https://npgsweb.ars-grin.gov/gringlobal/accessiondetail.aspx?accid=PI+154379"">Duplicate of PI 154379</a>"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
+ZmG_K41	ZmG_K41	1	1	K41	ZmG:K41	NSL 22635	1088099	"Duplicate of PI 154379"	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
 ZmG_K47	ZmG_K47	1	1	K47	ZmG:K47	PI 706566	1088092	K47	A_panel_in_our_5to30x_selection	high	False	False	True	WiDiv		False
 ZmG_K55	ZmG_K55	1	1	K55	ZmG:K55	PI 154384	1891761	K 55	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False
 ZmG_K64	ZmG_K64	1	1	K64	ZmG:K64	PI 154387	1891764	K64	A_panel_in_our_5to30x_selection	high	False	True	True	Ames282		False

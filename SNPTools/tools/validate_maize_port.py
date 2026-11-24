@@ -135,7 +135,7 @@ for k in ("inNAM", "inAmes282", "inWiDiv"):
     col = "pop_" + k[2:]
     exp = Counter("yes" if man[i][col] == "True" else "no" for i in ids)
     check(fc[k] == dict(exp), f"SNPTrait {k} facet counts == manifest {col}")
-for k in ("subpop", "country", "kernelType", "kw1000"):
+for k in ("subpop", "country", "kernelType", "cobColor"):
     exp = Counter(acc_by[i].get(k, "Unknown") for i in ids)
     check(fc[k] == dict(exp), f"SNPTrait {k} facet counts == catalogue values (Unknown for absent)")
 exp_f = sorted(i for i in ids if acc_by[i].get("subpop") == "SS" and acc_by[i].get("inAmes282") == "yes"
