@@ -472,7 +472,7 @@ function accSay(html){ const el=document.getElementById('accSay'); if(el) el.inn
    catalogue, and one run per NAM founder where founders are tagged. */
 function accPicks(){
   const A=ACCESSIONS, picks=[];
-  const flags=[['inNAM','NAM founders + B73'],['inAmes282','Ames 282'],['inWiDiv','WiDiv']];
+  const flags=[['inNAM','NAM founders + B73'],['inAmes282','MAP'],['inWiDiv','WiDiv']];
   if(A.some(a=>a.inNAM!=null || a.inAmes282!=null || a.inWiDiv!=null)){
     flags.forEach(([k,label])=>{ const ids=A.filter(a=>a[k]==='yes').map(a=>a.id); if(ids.length) picks.push({key:k, label, ids}); });
     const other=A.filter(a=>a.panel==='Other GRIN').map(a=>a.id);

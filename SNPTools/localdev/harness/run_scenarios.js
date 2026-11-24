@@ -118,12 +118,12 @@ async function until(site, expr, ms = 8000){
   T.rangeKWStatus = $('document.getElementById("traitStatus").textContent');
   $('traitToggleFacet("panel","Ames282",true)');
   T.rangeKW_Ames = $('traitVisible().length');
-  snapshot(site, 'snptrait_range', 'SNPTrait - 1000-kernel weight 250-300 g x Ames282');
+  snapshot(site, 'snptrait_range', 'SNPTrait - 1000-kernel weight 250-300 g x MAP');
   $('traitClearFacets(); traitToggleFacet("subpop","SS",true); traitToggleFacet("inAmes282","yes",true); traitToggleFacet("kernelType","Dent",true)');
   $('TRAIT.q=""; traitSelectVisible(true)');
   T.selectedAfterSelectVisible = $('TRAIT.selected.size');
   T.runbar = $('document.getElementById("traitRunbar").textContent.replace(/\\s+/g," ").trim()');
-  snapshot(site, 'snptrait_filtered', 'SNPTrait - SS x Ames282 x Dent');
+  snapshot(site, 'snptrait_filtered', 'SNPTrait - SS x MAP x Dent');
   $('traitSendToVersity()'); await site.wait(300);
   T.handoff = {tool: $('S.tool'), selected: $('S.selected.size'), dataset: $('S.dataset')};
   /* the Send dialog, as in GWAS Explorer: replace pre-ticked; "add" keeps SNPVersity's

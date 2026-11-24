@@ -45,8 +45,8 @@ FAMILY_LABEL = "MaizeGDB GRIN-linked 2026 (release v1.4)"
 PANEL_ORDER = ["NAM", "Ames282", "WiDiv", "Other GRIN"]
 PANEL_META = {
     "NAM":        ("NAM founders + B73",          "#7c3aed", "Nested Association Mapping founders (and the B73 reference)."),
-    "Ames282":    ("Ames 282 association panel",  "#2563eb", "Goodman/Buckler 282 panel members not already listed under NAM."),
-    "WiDiv":      ("Wisconsin Diversity panel",   "#1f8a4c", "WiDiv members not already listed under NAM or Ames282."),
+    "Ames282":    ("Maize Association Panel",     "#2563eb", "Maize Association Panel (MAP), also known as the Maize 282, Goodman, or Goodman-Buckler Panel; members not already listed under NAM."),
+    "WiDiv":      ("Wisconsin Diversity panel",   "#1f8a4c", "WiDiv members not already listed under NAM or MAP."),
     "Other GRIN": ("Other GRIN accessions",       "#999999", "Grzybowski 2023 lines linked to a GRIN accession outside the three panels (class C; provisional IDs)."),
 }
 # coded / nominal descriptors surfaced as facets  (trait_code -> (facet key, label))
@@ -271,7 +271,7 @@ def main():
               "projects": projects}
 
     # ---- SNPTrait schema: exact TRAIT_SCHEMA shape ------------------------------
-    facets = [["panel", "Primary panel"], ["inNAM", "In NAM"], ["inAmes282", "In Ames 282"],
+    facets = [["panel", "Primary panel"], ["inNAM", "In NAM"], ["inAmes282", "In MAP"],
               ["inWiDiv", "In WiDiv"], ["subpop", "Subpopulation (Grzybowski 2023)"],
               ["country", "Country of origin"], ["state", "State / province"],
               ["improvement", "Improvement status (GRIN)"], ["originType", "Origin type (GRIN)"],

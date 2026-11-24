@@ -890,7 +890,7 @@ def t_gwas(args, site):
     out = gwas_hits(r, study, trait, significant, limit)
     out.update({'region': ({k: r[k] for k in ('chrom', 'start', 'end', 'label', 'gene', 'flank') if k in r} if r else None),
                 'significant_only': significant, 'returned': min(limit, out['matched']),
-                'note': 'Positions are B73 v5. Significance uses each study\'s own SimpleM threshold; the GWAS panels (NAM, Ames) are not the SNPMaize lines.',
+                'note': 'Positions are B73 v5. Significance uses each study\'s own SimpleM threshold; the GWAS panels (NAM, MAP) are not the SNPMaize lines.',
                 'links': links_for(site, snpgwas=route('snpgwas', out['studies'][0]['id']) if len(out['studies']) == 1 else route('snpgwas'))})
     if r and r.get('gene'): out['links']['snpfunction'] = (site or '') + route('snpfunction', r['gene'])
     return out

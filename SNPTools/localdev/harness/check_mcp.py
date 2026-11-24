@@ -170,7 +170,7 @@ try:
           f"lines: Tropical with 1000-kernel weight >= 300 g: {sc.get('matched')} matched, descriptor measured on {sc.get('descriptor', {}).get('lines_measured')} lines")
     st, res, sc = S.call('snpmaize_lines', {'trait': 'Kernel Type', 'trait_value': 'Flint', 'panel': 'Ames282', 'limit': 200})
     check(sc.get('ok') and sc['matched'] > 0 and all(l['trait']['label'] == 'Flint' and 'Ames282' in l['panels'] for l in sc['lines']),
-          f"lines: coded descriptor by label + panel: {sc.get('matched')} Flint lines in Ames282")
+          f"lines: coded descriptor by label + panel: {sc.get('matched')} Flint lines in MAP")
     st, res, sc = S.call('snpmaize_lines', {'query': 'Mo17'})
     check(sc.get('ok') and sc['lines'] and sc['lines'][0]['id'] == 'ZmG_MO17', f"lines: query Mo17 puts Mo17 first ({sc.get('matched')} matched)")
     st, res, sc = S.call('snpmaize_curated', {'id': 'SC0001'})

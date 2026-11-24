@@ -9,16 +9,16 @@ are needed. d3 v5 is served from `node_modules`.
 Scenarios (dataset `zmgrin2026_imp`, the first of the two sets offered in the initial release (scenario 18
 covers the High Quality set, `zmgrin2026_hq`), local test store
 from `../build_test_store.sh`; the MaizeGDB 2026 cases are kept in the code, switched off):
-1. SNPTrait: schema, facet counts, compound filter (SS x Ames282 x Dent), search, a
-   numeric trait range (1000-kernel weight 250-300 g, then x Ames282), select-visible
-   and hand-off to SNPVersity (replace); while SS x Ames282 x Dent is ticked every section's counts
+1. SNPTrait: schema, facet counts, compound filter (SS x MAP x Dent), search, a
+   numeric trait range (1000-kernel weight 250-300 g, then x MAP), select-visible
+   and hand-off to SNPVersity (replace); while SS x MAP x Dent is ticked every section's counts
    are taken under the other sections' filters (Subpopulation still lists its values) and SS or NSS
    is the union; then the Send dialog: replace pre-ticked, add unticks
    it, and *add* keeps SNPVersity's 5 lines and adds the 14 (19). SNPTrait starts with nothing
    selected (not SNPVersity's selection). (The neutral-schema case for
    `mgdb2026_hq` is off with that set.)
-   Then SNPVersity's step 3 (prototype): the quick pick Ames 282 (280 = inAmes282) with Undo, the
-   SNPTrait drawer (draft = the 26 NAM lines; SS x Ames282 x Dent, select visible, Apply -> 39;
+   Then SNPVersity's step 3 (prototype): the quick pick MAP (280 = inAmes282) with Undo, the
+   SNPTrait drawer (draft = the 26 NAM lines; SS x MAP x Dent, select visible, Apply -> 39;
    Escape changes nothing; filters kept on reopening; the SNPTrait page's selection untouched), and
    a pasted list resolving `PI 550473` and `Mo17`.
    Then the top bar's selection chip: 26 on SNPGeo, opened there, + Other GRIN applied (56) with

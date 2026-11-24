@@ -38,8 +38,8 @@ if T['facetsWhileFiltered'] != exp_counts:
     bad += 1; print('section counts while filtered differ:', [k for k in exp_counts if T['facetsWhileFiltered'].get(k) != exp_counts[k]])
 if sorted(T['subpopListed']) != sorted(exp_counts['subpop']): bad += 1; print('subpopulations listed', T['subpopListed'])
 orf = [a for a in rows if val(a, 'subpop') in ('SS', 'NSS') and val(a, 'inAmes282') == 'yes' and val(a, 'kernelType') == 'Dent']
-if sorted(a['id'] for a in orf) != T['filterSSorNSS_Ames_Dent']: bad += 1; print('SS or NSS x Ames282 x Dent differs', len(orf), len(T['filterSSorNSS_Ames_Dent']))
-print(f"while SS x Ames282 x Dent is ticked, Subpopulation still lists {len(exp_counts['subpop'])} values; SS or NSS -> {len(orf)} lines")
+if sorted(a['id'] for a in orf) != T['filterSSorNSS_Ames_Dent']: bad += 1; print('SS or NSS x MAP x Dent differs', len(orf), len(T['filterSSorNSS_Ames_Dent']))
+print(f"while SS x MAP x Dent is ticked, Subpopulation still lists {len(exp_counts['subpop'])} values; SS or NSS -> {len(orf)} lines")
 hay = lambda a: ' '.join(str(a.get(k) or (a.get('label') or a['id'] if k == 'strain' else '')) for k in sch['search']).lower()
 fi = [a for a in f if 'iowa' in hay(a)]
 if sorted(a['id'] for a in fi) != T['filterPlusIowa']: bad += 1; print('search differs', len(fi), len(T['filterPlusIowa']))
@@ -69,10 +69,10 @@ ames = sorted(a['id'] for a in rows if a.get('inAmes282') == 'yes')
 if Q['before'] != nam: bad += 1; print('step 3 start (NAM founders)', len(Q['before']), len(nam))
 if Q['initial']['oldPicker'] or Q['initial']['count'] != str(len(nam)): bad += 1; print('step 3 initial', Q['initial'])
 picks = dict((t.rsplit(' ', 1)[0], on) for t, on in Q['initial']['picks'] if t != 'Clear')
-if not picks.get('NAM founders + B73') or f"Ames 282 {len(ames)}" not in [t for t, _ in Q['initial']['picks']]:
+if not picks.get('NAM founders + B73') or f"MAP {len(ames)}" not in [t for t, _ in Q['initial']['picks']]:
     bad += 1; print('quick picks', Q['initial']['picks'])
-if Q['pick']['selected'] != ames or not Q['pick']['on'] or 'Ames 282' not in Q['pick']['say'] or 'Undo' not in Q['pick']['say']:
-    bad += 1; print('quick pick Ames 282', len(Q['pick']['selected']), len(ames), Q['pick']['say'])
+if Q['pick']['selected'] != ames or not Q['pick']['on'] or 'MAP' not in Q['pick']['say'] or 'Undo' not in Q['pick']['say']:
+    bad += 1; print('quick pick MAP', len(Q['pick']['selected']), len(ames), Q['pick']['say'])
 if Q['undo'] != nam: bad += 1; print('undo after quick pick', len(Q['undo']))
 D = Q['drawer']
 if not D['open'] or D['mode'] != 'drawer' or D['draft'] != nam or D['facetBlocks'] < 10: bad += 1; print('drawer open', {k: v for k, v in D.items() if k != 'visible'})
@@ -87,7 +87,7 @@ if Q['afterCancel'] != {'selected': exp_applied, 'closed': True}: bad += 1; prin
 if Q['pageAfter'] != {'selected': Q['pageSel'], 'filtered': False}: bad += 1; print('SNPTrait page state disturbed', Q['pageAfter'])
 mo17 = [a['id'] for a in rows if a.get('strain') == 'Mo17']
 if Q['paste']['selected'] != sorted(['ZmG_B73'] + mo17) or Q['paste']['unmatched'] != ['not-a-line']: bad += 1; print('pasted list', Q['paste'])
-print(f"step 3: quick pick Ames 282 = {len(ames)}, undo -> {len(Q['undo'])}; drawer +{added} -> {len(exp_applied)}; "
+print(f"step 3: quick pick MAP = {len(ames)}, undo -> {len(Q['undo'])}; drawer +{added} -> {len(exp_applied)}; "
       f"pasted 'PI 550473', 'Mo17' -> {', '.join(Q['paste']['selected'])}")
 # the top bar's selection chip
 C = json.load(open(res))['chip']
@@ -100,7 +100,7 @@ if C['applied']['n'] != grown or C['applied']['chip'] != str(grown) or C['applie
 if C['undone'] != {'n': len(nam), 'chip': str(len(nam))}: bad += 1; print('chip undo', C['undone'])
 if C['onTrait'] != {'grids': 1, 'pageSetAside': True} or not C['traitBack']: bad += 1; print('chip on the SNPTrait page', C['onTrait'], C['traitBack'])
 print(f"selection chip: {C['onGeo']} on SNPGeo; apply + Other GRIN -> {C['applied']['n']}; undo -> {C['undone']['n']}; SNPTrait page set aside and restored")
-print(f'KW1000 in [250,300] g: {len(kw)} (x Ames282: {len(kwa)})')
+print(f'KW1000 in [250,300] g: {len(kw)} (x MAP: {len(kwa)})')
 # line QC (js/zmgrin.lineqc.js): the Sample heterozygosity facet, its exports, the hand-off of the
 # heterozygous samples, the "het" marker; and the same pages without the file
 LQ = json.load(open(res)).get('lineqc')
@@ -133,5 +133,5 @@ if LQ:
         bad += 1; print('without js/zmgrin.lineqc.js', {k: WO[k] for k in ('facetKeys', 'facetBlock', 'consoleErrors')}, W['consoleErrors'])
     print(f"line QC: {exp_counts}; Heterozygous sample -> SNPVersity selects {len(W['versity']['selected'])} lines; ZmG_CH9 marked het ({lq['ZmG_CH9'][0]:.4f}); "
           f"{len(C['marked'])} marked carriers of {C['allele']}; without the file: no facet, no marker, no error")
-print(f'rows={len(rows)} facets={len(sch["facets"])} SSxAmes282xDent={len(f)} +iowa={len(fi)} mismatches={bad}')
+print(f'rows={len(rows)} facets={len(sch["facets"])} SSxMAPxDent={len(f)} +iowa={len(fi)} mismatches={bad}')
 sys.exit(1 if bad else 0)

@@ -119,14 +119,14 @@ The page loads d3 v5 and fonts from public CDNs, so the browser needs internet a
 ## 4. What to try
 
 1. **SNPTrait** (sidebar, "Visualization & Search"): click the *MaizeGDB GRIN-linked 2026* pill.
-   Lines are grouped by panel (NAM 26, Ames 282 254, WiDiv 623, Other GRIN 30). Try
-   Subpopulation = SS, In Ames 282 = yes, Kernel type = Dent (14 lines), then search `iowa` (6).
+   Lines are grouped by panel (NAM 26, MAP 254, WiDiv 623, Other GRIN 30). Try
+   Subpopulation = SS, In MAP = yes, Kernel type = Dent (14 lines), then search `iowa` (6).
    Under *GRIN trait ranges* pick *1000 Kernel Weight*, min 250, max 300, Add (299 lines).
    Within a filter section, ticked values combine with OR (SS and NSS: 182 + 117 = 299 lines);
    sections combine with AND. Each section is counted under the other sections' filters, so its
    other values stay listed with +n (patch 0035); before, ticking one value hid the rest.
    The same selector opens from SNPVersity (prototype, patch 0032): step 3 shows the selection
-   (count, panel bar, subpopulation mix, chips), quick picks (NAM founders + B73 26, Ames 282 280,
+   (count, panel bar, subpopulation mix, chips), quick picks (NAM founders + B73 26, MAP 280,
    WiDiv 831, Other GRIN 30 -- panel membership, so a line can be in several -- random 2-25 %, All),
    each with Undo, and the paste/upload box (now also GRIN accessions such as `PI 550473` and line
    names). *Browse & filter lines…* opens SNPTrait as a drawer on a draft of the selection; the

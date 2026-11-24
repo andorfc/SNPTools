@@ -140,7 +140,7 @@ for k in ("subpop", "country", "kernelType", "kw1000"):
     check(fc[k] == dict(exp), f"SNPTrait {k} facet counts == catalogue values (Unknown for absent)")
 exp_f = sorted(i for i in ids if acc_by[i].get("subpop") == "SS" and acc_by[i].get("inAmes282") == "yes"
                and acc_by[i].get("kernelType") == "Dent")
-check(prop["trait"]["filterSS_Ames_Dent"] == exp_f, f"compound filter SS & Ames282 & Dent: {len(exp_f)} samples, same ids")
+check(prop["trait"]["filterSS_Ames_Dent"] == exp_f, f"compound filter SS & MAP & Dent: {len(exp_f)} samples, same ids")
 
 CODE = {"0|0": 0, "0/0": 0, "0|1": 1, "1|0": 1, "0/1": 1, "1/0": 1, "1|1": 2, "1/1": 2}
 for v, g in zip(VCFS, prop["geo"]):

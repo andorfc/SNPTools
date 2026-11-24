@@ -2159,7 +2159,7 @@
           '<ul>' +
             '<li>Wisconsin Diversity Panel (WiDiv)</li>' +
             '<li>Nested Association Mapping (NAM) population</li>' +
-            '<li>Maize Association Panel (MAP; also known as the Maize 282 or Buckler–Goodman panel)</li>' +
+            '<li>Maize Association Panel (MAP; also known as the Maize 282, Goodman, or Goodman-Buckler Panel)</li>' +
           '</ul>' +
           '<h4>Requirements</h4>' +
           '<ul>' +
