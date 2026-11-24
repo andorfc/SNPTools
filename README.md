@@ -121,8 +121,8 @@ vcf/snpv_*.vcf.gz ─► data.js parses it ─► rows ─► SNPVersity table a
 | **SNPCurate** | A registry of the variants published for maize genes (76 entries in 17 genes, re-read from the papers; 21 are sites of release v1.4.3), each with its favorable allele as the publication reads it (alternate, reference, depends), B73's genotype, carriers by subpopulation and country, Site QC class, scores, priority, rank in its gene and GRIN trait means in this release, or the reason the release cannot show it. Gold, silver and white marks; hand-offs of the carriers to SNPVersity, the gene to SNPFunction and the site to SNPGeo. A *Your lines* panel gives the allele passport of pasted lines, the SNPVersity selection or the NAM founders (each line's genotype at every genotyped allele, favorable alleles coloured and counted, TSV export, `#snpcurate?lines=…`). The same marks, opening the record, appear on curated alleles in SNPVersity (beside the position, and a line naming the curated alleles of the interval), SNPImpact (never hidden by the Site QC or score filters), SNPFunction (a "Curated alleles" block for the gene, grey ones included), SNPFold (a ring on the track and the table) and SNPGeo. |
 | **SNPFold** | Coding variants on the predicted protein structure (AlphaFold2, Boltz2 or ESMFold model): a linear protein browser (domains, secondary structure, pLDDT, InterProScan sites, disorder) and a 3D view. "Usable alleles only" (on by default) leaves flagged and no-carrier variants out of the track, the table and the 3D view. |
 | **SNPGeo** | Where each allele is found: countries, U.S. states, Canadian provinces and Mexican states coloured by reference/alternative composition, carrier fraction or allele frequency, from the GRIN origin of each line. Each variant shows its Site QC class. |
-| **SNPCompare** | Lines ranked by identity-by-state to a focal line: genome-wide (precomputed), in the region, or both with the difference. Opens SNPMatrix for the region's pairwise matrix. The table lists each line's PI number (GRIN accession). The region scope uses usable sites by default ("Region sites"); the genome-wide matrices use all sites. |
-| **SNPTree** | Neighbour-joining / UPGMA trees from the region's genotypes (Newick, MEGA, PHYLIP); the precomputed genome-wide trees as downloads. Usable sites by default, with a switch to all sites (SNPMatrix likewise). |
+| **SNPCompare** | Lines ranked by identity-by-state to a focal line: genome-wide (precomputed), in the region, or both with the difference. For a region, a Distance matrix view (all-pairs heatmap, clustered, with a dendrogram), a PCoA and a focal spread. The table lists each line's PI number (GRIN accession). The region scope uses usable sites by default ("Region sites"); the genome-wide matrices use all sites. |
+| **SNPTree** | Neighbour-joining / UPGMA trees from the region's genotypes (Newick, MEGA, PHYLIP); the precomputed genome-wide trees as downloads. Usable sites by default, with a switch to all sites (SNPCompare's region scope likewise). |
 | **PanEffect** | Every amino-acid substitution of a protein scored by ESM, for B73 and across the pan-genome, with domains and secondary structure (native port of MaizeGDB's PanEffect). |
 
 **Permalinks.** The URL hash follows what is on screen and opens it again when pasted: `#snpcurate/SC0003`
@@ -181,8 +181,8 @@ least 3 homozygous carriers; the median line is at 0.78%): SNPTrait filters them
 heterozygosity*), and SNPVersity and SNPFunction mark them "het".
 Flagged sites are kept in the data and in every download; each view's default
 (`Data.SITE_QC_DEFAULTS`) is: SNPVersity and SNPGeo show every site with its class; SNPImpact,
-SNPFunction and SNPFold hide flagged and no-carrier sites; SNPTree, SNPMatrix and SNPCompare (region
-scope) use usable sites. The pages read the counts from each VCF's INFO: the v1.4.2 and later stores carry
+SNPFunction and SNPFold hide flagged and no-carrier sites; SNPTree and SNPCompare (region scope)
+use usable sites. The pages read the counts from each VCF's INFO: the v1.4.2 and later stores carry
 them, and for a store that does not `h5_to_vcf.py` adds them from the sidecars
 `tools/build_site_qc.py` writes. Without them (`SNPTOOLS_SITEQC=0`, or such a store without its
 sidecar) the views behave as before, except SNPFunction (and SNPFold, which reads SNPFunction's

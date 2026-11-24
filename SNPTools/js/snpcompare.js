@@ -125,8 +125,8 @@ const SNPCompare = (function () {
 
   /* full n×n IBS from a SNPVersity result, cached on the hand-off. Similarity is allele sharing over
      the sites both lines are called at: 1 for the same genotype, 0.5 for a heterozygote against a
-     homozygote, 0 for the two homozygotes; that is 1 - SNPTree's and SNPMatrix's distance
-     (mean |dose_i - dose_j| / 2), so the three tools agree. (It used to count whole-genotype matches,
+     homozygote, 0 for the two homozygotes; that is 1 - SNPTree's distance
+     (mean |dose_i - dose_j| / 2), so the two tools agree. (It used to count whole-genotype matches,
      a het against a hom scoring 0, so the matrix SNPTree opened here was not 1 - its distances.) */
   function pairKey(input){
     return [input.dataset,input.chr,input.start,input.end,
@@ -838,7 +838,7 @@ const SNPCompare = (function () {
     const wrap=document.getElementById('cmpViewWrap'); if(!wrap) return;
     const P=allPairs(regionInput());
     if(!P||P.n<2){ wrap.innerHTML=notice('Send a result with at least two accessions from SNPVersity.'); return; }
-    // the same gate as SNPMatrix: an A×A matrix of hundreds of lines is slow to cluster and draw
+    // the gate SNPMatrix had: an A×A matrix of hundreds of lines is slow to cluster and draw
     if(P.n>IBS_COST.mtxAccWarn && !ST.forceMatrix){
       wrap.innerHTML=notice(`<b>${P.n}</b> accessions: clustering and drawing a ${P.n}×${P.n} matrix will take a while and is hard to read. `+
         `<br><br><button class="btn" onclick="SNPCompare.forceMatrix()">Draw anyway</button>`); return;
@@ -1264,7 +1264,6 @@ const SNPCompare = (function () {
     if(ST.sortKey===k){ ST.sortDir*=-1; } else { ST.sortKey=k; ST.sortDir=(k==='id'||k==='name'||k==='run'||k==='bio'||k==='grin')?1:-1; }
     renderTable(); }
   function toTree(){ if(!ST.input)return; S.treeInput=ST.input; go('snptree'); }
-  function toMatrix(){ if(!ST.input)return; S.matrixInput=ST.input; go('snpmatrix'); }
 
   function imageFileName(){
     const view={matrix:'distance_matrix',mds:'pcoa',spread:'focal_spread'}[ST.view]||'view';
@@ -1393,7 +1392,7 @@ const SNPCompare = (function () {
 
   return { render, setFocalFromInput, syncFocal, pickFocal, runCurrent, pick, setMode, setSites, regionInput, setView, setGSites, setDataset, globalAvailable,
            setF, setScale, setLower, setOrder, setMinSites, setDropMiss, setMdsLabels,
-           clearFilters, sortBy, toTree, toMatrix, exportCSV, exportMatrixCSV, saveImage, forceRun,
+           clearFilters, sortBy, toTree, exportCSV, exportMatrixCSV, saveImage, forceRun,
            // testing / debugging
            dose, localCompute, allPairs, buildScale, cluster, pcoa, planLabels, getGlobal, forceMatrix, _CFG:CFG, _ST:ST };
 })();

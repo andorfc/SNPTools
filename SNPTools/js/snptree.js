@@ -281,7 +281,6 @@ const SNPTree = (function () {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <button class="qbtn" onclick="SNPTree.toCompare('table')">SNPCompare (Table view) →</button>
         <button class="qbtn" onclick="SNPTree.toCompare('matrix')">SNPCompare (Distance matrix) →</button>
-        <button class="qbtn" onclick="SNPTree.toMatrix()">SNPMatrix →</button>
         <span style="margin-left:auto"></span>
         <button class="qbtn" onclick="SNPTree.downloadSVG()">Download SVG</button>
         <button class="qbtn" onclick="SNPTree.downloadPNG()">Download PNG</button>
@@ -315,7 +314,6 @@ const SNPTree = (function () {
     if (g==='format') refreshText();     // text output can update without rebuilding
     else draw();                          // topology/layout/color need a redraw
   }
-  function toMatrix(){ if(ST.input) S.matrixInput=ST.input; go('snpmatrix'); }
   function toCompare(view){
     if(ST.input){
       // Reuse the exact SNPVersity result that produced this tree.
@@ -483,7 +481,7 @@ const SNPTree = (function () {
     return svgWrap(size,size,`${edges}${tips}`);
   }
 
-  /* distance-matrix rendering now lives in SNPMatrix (snpmatrix.js) */
+  /* distance-matrix rendering lives in SNPCompare's Distance matrix view (snpcompare.js) */
 
   function svgWrap(W,H,inner){
     return `<svg id="snptreeSVG" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto;background:#fff">${inner}</svg>`;
@@ -583,6 +581,6 @@ const SNPTree = (function () {
   return { render, draw, setOpt, toCompare, forceBuild, copyText, downloadText,
            downloadSVG, downloadPNG, downloadPDF,
            // exposed for testing
-           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage, usedRows, siteMode, toMatrix, _ST:ST };
+           ibsMatrix, upgma, nj, toNewick, phylip, mega, dosage, usedRows, siteMode, _ST:ST };
 })();
 if (typeof window !== 'undefined') window.SNPTree = SNPTree;

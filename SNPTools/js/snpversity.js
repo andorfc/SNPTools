@@ -826,7 +826,7 @@ function resultQuery(res){
   res=res||S.results||{};
   return res.q || {dataset:S.dataset, chr:S.chr, lo:Math.min(S.start,S.end), hi:Math.max(S.start,S.end)};
 }
-/* A result as the other tools take it (SNPTree, SNPMatrix, SNPCompare, SNPImpact, SNPGeo). */
+/* A result as the other tools take it (SNPTree, SNPCompare, SNPImpact, SNPGeo). */
 function resultHandoff(res){
   res=res||S.results;
   const q=resultQuery(res);
@@ -945,7 +945,6 @@ function renderResults(){
           ${sendBtnHTML('sendToImpact()',  sendGate('impact'),  'Send to SNPImpact',   ICONS.star)}
           ${sendBtnHTML('sendToCompare()', sendGate('compare'), 'Send to SNPCompare',  ICONS.compare||ICONS.grid)}
           ${sendBtnHTML('sendToTree()',    sendGate('tree'),    'Send data to SNPTree', ICONS.tree)}
-          ${sendBtnHTML('sendToMatrix()',  sendGate('tree'),    'Send data to SNPMatrix', ICONS.grid)}
           ${sendBtnHTML('sendToGeo()',     sendGate('geo'),     'Send to SNPGeo',      ICONS.map||'')}
           <button class="btn${pgOK?'':' off'}" ${pgOK?'':'aria-disabled="true" data-tt="Selected region too large for Pangenome viewer - choose a region under 10 kb"'} onclick="openPangenomeRegion()">${ICONS.grid||''} Pangenome viewer ↗</button>
           <button class="btn" onclick="downloadVCF()">${ICONS.download} Download VCF</button>
@@ -980,11 +979,6 @@ function loadFromVersityHTML(sendFn, what){
 function sendToTree(){
   if(S.results&&S.results.rows&&S.results.rows.length) S.treeInput=resultHandoff();
   go('snptree');   // navigates even with no result yet (SNPTree shows a guided empty state)
-}
-/* hand the region's genotype matrix to SNPMatrix (IBS distance heatmap) */
-function sendToMatrix(){
-  if(S.results&&S.results.rows&&S.results.rows.length) S.matrixInput=resultHandoff();
-  go('snpmatrix');
 }
 /* hand the generated VCF matrix (+ metadata) to SNPCompare for local vs global IBS */
 function sendToCompare(){
