@@ -37,15 +37,15 @@
 (function (window, document) {
   'use strict';
 
-  /* The MaizeGDB origin to read from. claude.maizegdb.org is the
-     development instance of the new site; alpha/beta.maizegdb.org serve
-     the same API (beta has no KEGG block yet) and www.maizegdb.org has no
-     /api/v1 until the new site goes live there. Override before this
+  /* The MaizeGDB origin to read from. beta.maizegdb.org serves the new
+     site's API (GO, pathways and the KEGG block, CORS-open);
+     www.maizegdb.org has no /api/v1 until the new site goes live there,
+     and then this default should move to it. Override before this
      script loads: window.SNPTOOLS_MAIZEGDB_BASE = 'https://…' ('' = the
      page's own origin, once SNPTools is served from a MaizeGDB host). */
   var BASE = (typeof window.SNPTOOLS_MAIZEGDB_BASE === 'string')
     ? window.SNPTOOLS_MAIZEGDB_BASE.replace(/\/+$/, '')
-    : 'https://claude.maizegdb.org';
+    : 'https://beta.maizegdb.org';
   var TIMEOUT_MS = 20000;
 
   var SVG_NS = 'http://www.w3.org/2000/svg';

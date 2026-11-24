@@ -228,7 +228,7 @@ chromosome by chromosome (a dashed header and a note above the table).
    Neighbour-Joining and UPGMA trees (933 tips) as Newick downloads; region trees are unchanged.
 7. **SNPFunction Gene Ontology & pathways** (needs internet): pick the GRIN-linked dataset and
    analyze `Zm00001eb056510` (adh1). The *Gene Ontology & pathways* card is MaizeGDB's own view,
-   read live from `https://claude.maizegdb.org/api/v1/records/gene/<id>?fields=function` (CORS
+   read live from `https://beta.maizegdb.org/api/v1/records/gene/<id>?fields=function` (CORS
    open, ~0.4 s): 10 GO terms, 11 of 94 plant-slim categories lit, the ancestry graph per aspect;
    *Pathways* shows 6 E2P2 pathways (adh1's step in gold) and 4 KEGG maps. Set
    `window.SNPTOOLS_MAIZEGDB_BASE` before `js/snpfunction-ontology.js` loads to read another
