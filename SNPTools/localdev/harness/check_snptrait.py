@@ -34,7 +34,8 @@ for k, _ in FACETS:
             c[val(a, k)] = c.get(val(a, k), 0) + 1
     for v in F.get(k, ()): c.setdefault(v, 0)
     exp_counts[k] = c
-if T['facetsWhileFiltered'] != exp_counts:
+# (the page also counts its GRIN trait sections; only the schema's sections are recomputed here)
+if {k: T['facetsWhileFiltered'].get(k) for k in exp_counts} != exp_counts:
     bad += 1; print('section counts while filtered differ:', [k for k in exp_counts if T['facetsWhileFiltered'].get(k) != exp_counts[k]])
 if sorted(T['subpopListed']) != sorted(exp_counts['subpop']): bad += 1; print('subpopulations listed', T['subpopListed'])
 orf = [a for a in rows if val(a, 'subpop') in ('SS', 'NSS') and val(a, 'inAmes282') == 'yes' and val(a, 'kernelType') == 'Dent']

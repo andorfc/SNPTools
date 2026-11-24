@@ -47,7 +47,7 @@ const TOOLS = {
     desc:'Explore extensive variant datasets across maize accessions. Enter a genomic interval, choose accessions, and get a color-coded table plus a downloadable VCF — with allele states, effect annotations, and DNA/protein language-model scores.'},
   snptrait:{name:'SNPTrait', icon:'leaf', color:'#1f8a4c', cat:'Visualization & Search',
     tag:'Select lines by passport and trait metadata',
-    desc:'Browse the lines of a dataset with their GRIN passport and evaluation metadata — panel, subpopulation, country and state of origin, improvement status, kernel type, and binned trait values. Filter with facets and search, batch-select, export, and send the selection straight to SNPVersity.',
+    desc:'Browse the lines of a dataset with their GRIN passport and evaluation metadata — panel, subpopulation, country and state of origin, improvement status, kernel type, and continuous GRIN phenotypes. Filter with facets, ranges and search, choose the table’s columns, batch-select, download, and send the selection straight to SNPVersity.',
     feats:[['search','Search & filter','Facet the 933 GRIN-linked lines of the 2026 release (v1.4) by panel, origin, and trait class.'],['leaf','GRIN records','Passport data and evaluation summaries from the U.S. National Plant Germplasm System.'],['compare','Hand off sets','Send selected lines directly to SNPVersity and beyond.']]},
   snpgeo:{name:'SNPGeo', icon:'map', color:'#059669', cat:'Explore & Analyze',
     tag:'Map where each allele is found',
