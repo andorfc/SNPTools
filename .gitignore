@@ -8,3 +8,6 @@ SNPTools/localdev/server.port
 SNPTools/localdev/server.log
 SNPTools/localdev/out/
 SNPTools/localdev/node_modules/
+
+# Python bytecode caches
+__pycache__/
